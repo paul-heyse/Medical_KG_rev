@@ -16,7 +16,7 @@ def test_schema_exports_sdl(tmp_path) -> None:
     assert "type Query" in sdl_path.read_text()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_query_document() -> None:
     service = get_gateway_service()
     query = """

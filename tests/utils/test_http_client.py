@@ -35,7 +35,7 @@ def test_http_client_exhausts_retries():
         client.request("GET", "https://example.com")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_async_http_client_rate_limiter():
     rate_limiter = RateLimiter(rate_per_second=10)
 

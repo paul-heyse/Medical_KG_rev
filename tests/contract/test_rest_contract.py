@@ -23,7 +23,7 @@ def _jsonapi(data: Any, meta: Dict[str, Any] | None = None) -> Dict[str, Any]:
 
 
 def test_ingest_returns_multi_status(client: TestClient) -> None:
-    payload = IngestionRequest(tenant_id="test", items=[{"id": "doc-1"}]).model_dump()
+    payload = IngestionRequest(tenant_id="tenant", items=[{"id": "doc-1"}]).model_dump()
     response = client.post("/v1/ingest/clinicaltrials", json=payload)
     assert response.status_code == 207
     body = response.json()
@@ -31,7 +31,7 @@ def test_ingest_returns_multi_status(client: TestClient) -> None:
 
 
 def test_retrieve_supports_odata_parameters(client: TestClient) -> None:
-    request = {"tenant_id": "test", "query": "cancer", "top_k": 2}
+    request = {"tenant_id": "tenant", "query": "cancer", "top_k": 2}
     response = client.post("/v1/retrieve?$select=title&$expand=entities", json=request)
     assert response.status_code == 200
     meta = response.json()["meta"]

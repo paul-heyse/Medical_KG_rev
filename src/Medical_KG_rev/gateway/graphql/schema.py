@@ -6,6 +6,7 @@ from dataclasses import asdict
 from typing import Any, List, Optional, Sequence
 
 import strawberry
+from strawberry import ID
 from strawberry.fastapi import GraphQLRouter
 from strawberry.scalars import JSON
 from strawberry.types import Info
@@ -227,8 +228,8 @@ class ExtractionInput:
 @strawberry.input
 class KnowledgeGraphWriteInput:
     tenant_id: str
-    nodes: JSON = strawberry.field(default_factory=list)
-    edges: JSON = strawberry.field(default_factory=list)
+    nodes: JSON = strawberry.field(default=None)
+    edges: JSON = strawberry.field(default=None)
     transactional: bool = True
 
 
@@ -245,9 +246,9 @@ async def _get_service(info: Info[GraphQLContext, None]) -> GatewayService:
 @strawberry.type
 class Query:
     @strawberry.field
-    async def document(self, info: Info[GraphQLContext, None], id: str) -> DocumentType:
+    async def document(self, info: Info[GraphQLContext, None], id: ID) -> DocumentType:
         service = await _get_service(info)
-        doc = await info.context.loaders.document_loader.load(id)
+        doc = await info.context.loaders.document_loader.load(str(id))
         return _document_to_type(doc)
 
     @strawberry.field
@@ -334,6 +335,14 @@ class Mutation:
     ) -> KnowledgeGraphWriteResultType:
         service = await _get_service(info)
         request = KnowledgeGraphWriteRequest(**asdict(input))
+        if isinstance(request.nodes, dict):
+            request = request.model_copy(update={"nodes": list(request.nodes.values())})
+        if isinstance(request.edges, dict):
+            request = request.model_copy(update={"edges": list(request.edges.values())})
+        if request.nodes is None:
+            request = request.model_copy(update={"nodes": []})
+        if request.edges is None:
+            request = request.model_copy(update={"edges": []})
         result = service.write_kg(request)
         return KnowledgeGraphWriteResultType(
             nodes_written=result.nodes_written,

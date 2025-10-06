@@ -15,12 +15,16 @@ class EventStreamManager:
 
     def __init__(self) -> None:
         self._subscribers: Dict[str, List[asyncio.Queue[JobEvent]]] = defaultdict(list)
+        self._pending: Dict[str, List[JobEvent]] = defaultdict(list)
         self._lock = asyncio.Lock()
 
     async def subscribe(self, job_id: str) -> AsyncIterator[JobEvent]:
         queue: asyncio.Queue[JobEvent] = asyncio.Queue()
         async with self._lock:
             self._subscribers[job_id].append(queue)
+            pending = self._pending.pop(job_id, [])
+        for event in pending:
+            queue.put_nowait(event)
 
         try:
             while True:
@@ -34,6 +38,9 @@ class EventStreamManager:
 
     def publish(self, event: JobEvent) -> None:
         queues = list(self._subscribers.get(event.job_id, []))
+        if not queues:
+            self._pending[event.job_id].append(event)
+            return
         for queue in queues:
             queue.put_nowait(event)
 

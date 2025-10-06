@@ -29,7 +29,7 @@ class _FakeS3Client:
         self._store.pop(Key, None)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_in_memory_object_store_roundtrip():
     store = InMemoryObjectStore()
     await store.put("key", b"value")
@@ -40,7 +40,7 @@ async def test_in_memory_object_store_roundtrip():
         await store.get("key")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_in_memory_cache():
     cache = InMemoryCache()
     await cache.set("key", b"value", ttl=1)
@@ -51,7 +51,7 @@ async def test_in_memory_cache():
     assert await cache.get("key") is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_in_memory_ledger():
     ledger = InMemoryLedger()
     await ledger.record_state("job1", {"status": "running"})
@@ -59,7 +59,7 @@ async def test_in_memory_ledger():
     assert state["status"] == "running"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_s3_object_store_with_fake_client(monkeypatch):
     from Medical_KG_rev.storage import object_store as obj_module
 

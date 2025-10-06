@@ -26,6 +26,10 @@ def test_ingest_operation() -> None:
       </Body>
     </Envelope>
     """
-    response = client.post("/soap", data=envelope, headers={"Content-Type": "text/xml"})
+    response = client.post(
+        "/soap",
+        data=envelope,
+        headers={"Content-Type": "text/xml", "X-API-Key": "test-api-key"},
+    )
     assert response.status_code == 200
     assert "IngestResponse" in response.text

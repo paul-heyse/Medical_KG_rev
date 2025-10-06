@@ -8,7 +8,7 @@ from Medical_KG_rev.gateway.models import JobEvent
 from Medical_KG_rev.gateway.services import get_gateway_service
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_event_stream_manager() -> None:
     service = get_gateway_service()
     job_id = "job-test"
@@ -18,6 +18,7 @@ async def test_event_stream_manager() -> None:
     event = await asyncio.wait_for(task, timeout=1)
     assert event.job_id == job_id
     assert event.type == "jobs.started"
-    task.cancel()
+    pending = asyncio.create_task(stream.__anext__())
+    pending.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        await pending

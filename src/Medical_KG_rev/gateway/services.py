@@ -268,17 +268,27 @@ class GatewayService:
     # ------------------------------------------------------------------
     # Job APIs
     # ------------------------------------------------------------------
-    def get_job(self, job_id: str) -> Optional[JobStatus]:
+    def get_job(self, job_id: str, *, tenant_id: str) -> Optional[JobStatus]:
         entry = self.ledger.get(job_id)
-        return self._to_job_status(entry) if entry else None
+        if not entry or entry.tenant_id != tenant_id:
+            return None
+        return self._to_job_status(entry)
 
-    def list_jobs(self, status: Optional[str] = None) -> List[JobStatus]:
+    def list_jobs(self, *, tenant_id: str, status: Optional[str] = None) -> List[JobStatus]:
         entries = self.ledger.list(status=status)
-        return [self._to_job_status(entry) for entry in entries]
+        filtered = [entry for entry in entries if entry.tenant_id == tenant_id]
+        return [self._to_job_status(entry) for entry in filtered]
 
-    def cancel_job(self, job_id: str, *, reason: Optional[str] = None) -> Optional[JobStatus]:
-        entry = self.orchestrator.cancel_job(job_id, reason=reason)
-        return self._to_job_status(entry) if entry else None
+    def cancel_job(
+        self, job_id: str, *, tenant_id: str, reason: Optional[str] = None
+    ) -> Optional[JobStatus]:
+        entry = self.ledger.get(job_id)
+        if not entry or entry.tenant_id != tenant_id:
+            return None
+        updated = self.orchestrator.cancel_job(job_id, reason=reason)
+        if not updated:
+            return None
+        return self._to_job_status(updated)
 
 
 _service: Optional[GatewayService] = None

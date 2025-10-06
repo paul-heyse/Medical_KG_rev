@@ -24,6 +24,7 @@ from .rest.router import JSONAPI_CONTENT_TYPE, router as rest_router
 from .services import GatewayError
 from .sse.routes import router as sse_router
 from .soap.routes import router as soap_router
+from ..config.settings import get_settings
 
 
 class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
@@ -53,18 +54,46 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: FastAPI, *, headers_config) -> None:  # type: ignore[override]
+        super().__init__(app)
+        self._cfg = headers_config
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        if request.url.scheme != "https" and request.app.state.settings.security.enforce_https:
+            forwarded_proto = request.headers.get("x-forwarded-proto")
+            if forwarded_proto != "https":
+                raise HTTPException(status_code=400, detail="HTTPS is required")
+        response = await call_next(request)
+        response.headers.setdefault("Strict-Transport-Security", f"max-age={self._cfg.hsts_max_age}; includeSubDomains")
+        response.headers.setdefault("Content-Security-Policy", self._cfg.content_security_policy)
+        response.headers.setdefault("X-Frame-Options", self._cfg.frame_options)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-XSS-Protection", "1; mode=block")
+        return response
+
+
 def create_problem_response(detail: ProblemDetail) -> JSONResponse:
     payload: Dict[str, Any] = detail.model_dump(mode="json")
-    status = payload.pop("status")
+    status = payload.get("status", 500)
     return JSONResponse(payload, status_code=status, media_type="application/problem+json")
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
     app = FastAPI(title="Medical KG Multi-Protocol Gateway", version="0.1.0")
+    app.state.settings = settings
+    app.state.jwt_cache = {}
 
     app.add_middleware(JSONAPIResponseMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(SecurityHeadersMiddleware, headers_config=settings.security.headers)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.security.cors.allow_origins),
+        allow_methods=list(settings.security.cors.allow_methods),
+        allow_headers=list(settings.security.cors.allow_headers),
+    )
 
     app.include_router(rest_router)
     app.include_router(sse_router)

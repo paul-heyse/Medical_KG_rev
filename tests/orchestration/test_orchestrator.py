@@ -6,6 +6,7 @@ from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration import KafkaClient, Orchestrator, OrchestrationError
 from Medical_KG_rev.orchestration.orchestrator import (
     INGEST_REQUESTS_TOPIC,
+    INGEST_RESULTS_TOPIC,
     MAPPING_EVENTS_TOPIC,
     Pipeline,
     PipelineStage,
@@ -66,8 +67,9 @@ def test_pipeline_failure_requeues_with_backoff() -> None:
     except OrchestrationError:
         pass
 
-    requeued = list(orchestrator.kafka.consume(INGEST_REQUESTS_TOPIC))
-    assert requeued
-    delay = requeued[0].available_at - start
+    assert orchestrator.kafka.pending(INGEST_REQUESTS_TOPIC) >= 1
+    requeued = orchestrator.kafka.peek(INGEST_REQUESTS_TOPIC)
+    assert requeued is not None
+    delay = requeued.available_at - start
     assert delay >= 1.0
     assert orchestrator.ledger.get(entry.job_id).attempts == 1

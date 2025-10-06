@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+message IngestionJobRequest {
+  string tenant_id = 1;
+  string dataset = 2;
+  repeated string item_ids = 3;
+}
+
+message OperationStatus {
+  string job_id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message IngestionJobResponse {
+  repeated OperationStatus operations = 1;
+}
+
+service IngestionService {
+  rpc Submit (IngestionJobRequest) returns (IngestionJobResponse);
+}

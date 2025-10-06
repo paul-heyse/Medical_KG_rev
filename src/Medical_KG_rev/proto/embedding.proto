@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+message EmbedRequest {
+  string tenant_id = 1;
+  repeated string inputs = 2;
+  string model = 3;
+  bool normalize = 4;
+}
+
+message EmbeddingVector {
+  string id = 1;
+  repeated float values = 2;
+}
+
+message EmbedResponse {
+  repeated EmbeddingVector embeddings = 1;
+}
+
+service EmbeddingService {
+  rpc Embed (EmbedRequest) returns (EmbedResponse);
+}

@@ -1,18 +1,283 @@
 [project]
-name = "yourpkg"
+name = "Medical_KG_rev"
 version = "0.1.0"
-description = "Replace me in scripts/init.sh"
+description = "Multi-protocol API gateway and orchestration system for biomedical knowledge integration"
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Medical_KG_rev Contributors"}
+]
+keywords = [
+    "biomedical",
+    "knowledge-graph",
+    "api-gateway",
+    "clinical-trials",
+    "medical-literature",
+    "fhir",
+    "openapi",
+    "graphql",
+    "grpc"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+]
+
+dependencies = [
+    # API Framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+
+    # Data Validation & Models
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+
+    # GraphQL
+    "strawberry-graphql[fastapi]>=0.219.0",
+
+    # gRPC & Protocol Buffers
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0",
+    "protobuf>=4.25.0",
+
+    # SOAP (Legacy Support)
+    "zeep>=4.2.1",
+
+    # HTTP Client & Async
+    "httpx>=0.26.0",
+    "aiohttp>=3.9.1",
+    "tenacity>=8.2.3",  # Retry logic
+
+    # Message Broker
+    "aiokafka>=0.10.0",
+    "kafka-python>=2.0.2",
+
+    # Database Drivers
+    "neo4j>=5.16.0",  # Graph database
+    "opensearch-py>=2.4.0",  # Search engine
+    "redis[hiredis]>=5.0.1",  # Cache & rate limiting
+    "asyncpg>=0.29.0",  # PostgreSQL (optional for ledger)
+
+    # Object Storage
+    "boto3>=1.34.0",  # S3/MinIO
+    "minio>=7.2.3",
+
+    # Vector Search
+    "faiss-cpu>=1.7.4",  # Use faiss-gpu for GPU support
+
+    # ML/AI Libraries
+    "torch>=2.1.0",  # Deep learning framework
+    "transformers>=4.37.0",  # Hugging Face models
+    "sentence-transformers>=2.3.0",  # Dense embeddings
+
+    # PDF Processing (MinerU dependencies)
+    "pypdf>=4.0.0",
+    "pdfplumber>=0.11.0",
+    "pillow>=10.2.0",
+
+    # Biomedical API Clients
+    "pyalex>=0.13",  # OpenAlex
+    "biopython>=1.83",  # Bio utilities
+
+    # Data Processing
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "pyyaml>=6.0.1",
+
+    # Authentication & Security
+    "python-jose[cryptography]>=3.3.0",  # JWT
+    "passlib[bcrypt]>=1.7.4",
+    "cryptography>=42.0.0",
+    "python-dotenv>=1.0.0",
+
+    # Observability
+    "opentelemetry-api>=1.22.0",
+    "opentelemetry-sdk>=1.22.0",
+    "opentelemetry-instrumentation-fastapi>=0.43b0",
+    "opentelemetry-instrumentation-grpc>=0.43b0",
+    "opentelemetry-instrumentation-httpx>=0.43b0",
+    "opentelemetry-exporter-jaeger>=1.22.0",
+    "prometheus-client>=0.19.0",
+
+    # Logging
+    "structlog>=24.1.0",
+
+    # Utilities
+    "click>=8.1.7",  # CLI
+    "tqdm>=4.66.0",  # Progress bars
+    "python-dateutil>=2.8.2",
+    "pytz>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "pytest-timeout>=2.2.0",
+    "httpx>=0.26.0",  # Test client
+    "faker>=22.0.0",  # Test data generation
+
+    # Contract Testing
+    "schemathesis>=3.19.0",  # OpenAPI contract tests
+
+    # Performance Testing
+    # k6 (install separately via system package manager)
+
+    # Code Quality
+    "black>=24.1.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+
+    # Type Stubs
+    "types-redis>=4.6.0",
+    "types-pyyaml>=6.0.12",
+    "types-python-dateutil>=2.8.19",
+
+    # Documentation
+    "mkdocs>=1.5.3",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+
+    # Development Tools
+    "ipython>=8.20.0",
+    "ipykernel>=6.29.0",
+    "jupyter>=1.0.0",
+]
+
+gpu = [
+    # GPU-specific dependencies
+    "faiss-gpu>=1.7.4",  # GPU-accelerated vector search
+    "torch>=2.1.0+cu121",  # CUDA 12.1 support
+]
+
+docs = [
+    "mkdocs>=1.5.3",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/Medical_KG_rev"
+Documentation = "https://your-org.github.io/Medical_KG_rev"
+Repository = "https://github.com/your-org/Medical_KG_rev"
+Issues = "https://github.com/your-org/Medical_KG_rev/issues"
+
+[project.scripts]
+medkg = "Medical_KG_rev.cli:main"
+medkg-gateway = "Medical_KG_rev.gateway.main:main"
+medkg-worker = "Medical_KG_rev.orchestration.workers:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.black]
 line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-select = ["I"]
+extend-select = [
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "RUF",  # ruff-specific
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "PTH",  # flake8-use-pathlib
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+]
+ignore = [
+    "E501",  # Line too long (handled by black)
+]
+
+[tool.ruff.isort]
+known-first-party = ["Medical_KG_rev"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pyalex.*",
+    "neo4j.*",
+    "opensearch.*",
+    "faiss.*",
+    "minio.*",
+    "zeep.*",
+    "aiokafka.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=Medical_KG_rev",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+asyncio_mode = "auto"
+markers = [
+    "integration: Integration tests requiring external services",
+    "gpu: Tests requiring GPU hardware",
+    "slow: Slow-running tests",
+    "contract: Contract tests against API specs",
+    "performance: Performance and load tests",
+]
+
+[tool.coverage.run]
+source = ["src/Medical_KG_rev"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

@@ -97,13 +97,13 @@ dependencies = [
     "cryptography>=42.0.0",
     "python-dotenv>=1.0.0",
 
-    # Observability
-    "opentelemetry-api>=1.22.0",
-    "opentelemetry-sdk>=1.22.0",
-    "opentelemetry-instrumentation-fastapi>=0.43b0",
-    "opentelemetry-instrumentation-grpc>=0.43b0",
-    "opentelemetry-instrumentation-httpx>=0.43b0",
-    "opentelemetry-exporter-jaeger>=1.22.0",
+    # Observability (pinned to versions compatible with Python 3.12 and Jaeger exporter availability)
+    "opentelemetry-api>=1.21.0,<1.22.0",
+    "opentelemetry-sdk>=1.21.0,<1.22.0",
+    "opentelemetry-instrumentation-fastapi>=0.42b0,<0.43",
+    "opentelemetry-instrumentation-grpc>=0.42b0,<0.43",
+    "opentelemetry-instrumentation-httpx>=0.42b0,<0.43",
+    "opentelemetry-exporter-jaeger>=1.21.0,<1.22.0",
     "prometheus-client>=0.19.0",
 
     # Logging
@@ -157,8 +157,8 @@ dev = [
 
 gpu = [
     # GPU-specific dependencies
-    "faiss-gpu>=1.7.4",  # GPU-accelerated vector search
-    "torch>=2.1.0+cu121",  # CUDA 12.1 support
+    "faiss-gpu>=1.7.4 ; platform_system != 'Windows'",  # GPU-accelerated vector search (Linux/macOS)
+    "torch>=2.1.0",  # Install with appropriate CUDA wheel via extra index URL if needed
 ]
 
 docs = [

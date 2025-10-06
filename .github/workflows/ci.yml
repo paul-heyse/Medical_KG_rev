@@ -1,35 +1,252 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - develop
   pull_request:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.12'
+  POETRY_VIRTUALENVS_CREATE: 'false'
 
 jobs:
-  lint-test:
+  lint:
+    name: Lint & Static Analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
+        run: pip install .[dev]
+      - name: Black
+        run: black --check .
+      - name: Ruff
+        run: ruff check .
+      - name: MyPy
+        run: mypy src tests
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install .[dev]
+      - name: Run pytest (unit)
+        run: pytest tests --ignore=tests/performance --maxfail=1 --cov=Medical_KG_rev --cov-report=xml
+      - name: Upload coverage to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    services:
+      kafka:
+        image: bitnami/kafka:3.6
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_BROKER_ID: 1
+          KAFKA_CFG_ZOOKEEPER_CONNECT: localhost:2181
+          KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
+          KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
+        options: >-
+          --health-cmd="kafka-topics.sh --bootstrap-server localhost:9092 --list"
+          --health-interval=10s
+          --health-timeout=10s
+          --health-retries=10
+      zookeeper:
+        image: bitnami/zookeeper:3.8
+        ports:
+          - 2181:2181
+        env:
+          ALLOW_ANONYMOUS_LOGIN: 'yes'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install .[dev]
+      - name: Launch Docker Compose stack
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements-dev.txt
-      - name: Lint
+          docker compose -f ops/docker-compose.yml up -d
+      - name: Wait for services
+        run: ./scripts/wait_for_services.sh
+      - name: Run integration suite
+        run: pytest tests/gateway tests/services tests/orchestration
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f ops/docker-compose.yml down -v
+
+  contract-tests:
+    name: Contract Validation
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install .[dev]
+      - name: Run pytest contract tests
+        run: pytest tests/contract
+      - name: Generate OpenAPI schema
+        run: python -m Medical_KG_rev.gateway.main --export-openapi > openapi.yaml
+      - name: Schemathesis CLI
+        run: schemathesis run --app=Medical_KG_rev.gateway.app:create_app openapi.yaml
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: GraphQL Inspector diff
         run: |
-          source .venv/bin/activate
-          ruff check .
-          black --check .
-      - name: Type check
+          npm install -g @graphql-inspector/cli
+          python -m Medical_KG_rev.gateway.main --export-graphql > current.graphql
+          graphql-inspector diff docs/schema.graphql current.graphql
+      - name: Buf breaking change detection
+        uses: bufbuild/buf-setup-action@v1
+      - name: Run Buf checks
         run: |
-          source .venv/bin/activate
-          mypy src
-      - name: Tests
+          buf lint
+          buf breaking --against '.git#branch=main'
+
+  performance-tests:
+    name: k6 Performance Tests
+    runs-on: ubuntu-latest
+    needs: contract-tests
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+      - name: Run retrieval performance scenario
+        run: k6 run tests/performance/retrieve_latency.js
+      - name: Run ingestion throughput scenario
+        run: k6 run tests/performance/ingest_throughput.js
+      - name: Run concurrent jobs scenario
+        run: k6 run tests/performance/concurrency.js
+
+  docker-image:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: docker-image
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://staging.medical-kg.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Render manifests
+        run: kubectl kustomize ops/k8s/overlays/staging
+      - name: Deploy manifests
         run: |
-          source .venv/bin/activate
-          pytest
+          kubectl apply -k ops/k8s/overlays/staging
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://medical-kg.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Render manifests
+        run: kubectl kustomize ops/k8s/overlays/production
+      - name: Deploy manifests
+        run: |
+          kubectl apply -k ops/k8s/overlays/production
+      - name: Manual approval gate
+        uses: chrnorm/deployment-action@v2
+        with:
+          environment: production
+
+  docs:
+    name: Publish Documentation
+    runs-on: ubuntu-latest
+    needs: contract-tests
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install documentation tooling
+        run: pip install .[dev]
+      - name: Build MkDocs site
+        run: mkdocs build --strict
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+
+  branch-protection:
+    name: Update Branch Protection
+    runs-on: ubuntu-latest
+    needs: docker-image
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Configure branch protection
+        uses: peter-evans/create-or-update-branch-protection@v4
+        with:
+          token: ${{ secrets.ADMIN_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          branch: main
+          enforce_admins: true
+          require_status_checks: true
+          required_status_checks: >-
+            ["Lint & Static Analysis", "Unit Tests", "Integration Tests", "Contract Validation"]
+          required_pull_request_reviews: 2

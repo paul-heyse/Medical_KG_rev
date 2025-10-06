@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import uuid
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import List, Optional, Sequence
 
 import structlog
@@ -37,6 +38,7 @@ from .sse.manager import EventStreamManager
 from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
 from ..orchestration.kafka import KafkaClient
 from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
+from ..observability.metrics import observe_job_duration, record_business_event
 
 logger = structlog.get_logger(__name__)
 
@@ -116,6 +118,7 @@ class GatewayService:
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
 
     def ingest(self, dataset: str, request: IngestionRequest) -> BatchOperationResult:
+        started = perf_counter()
         statuses: List[OperationStatus] = []
         for item in request.items:
             entry = self.orchestrator.submit_job(
@@ -142,7 +145,12 @@ class GatewayService:
                     },
                 )
             )
-        return build_batch_result(statuses)
+        result = build_batch_result(statuses)
+        duration = perf_counter() - started
+        observe_job_duration("ingest", duration)
+        if request.items:
+            record_business_event("documents_ingested", len(request.items))
+        return result
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
         job_id = self._new_job(request.tenant_id, "chunk")
@@ -180,6 +188,7 @@ class GatewayService:
         return embeddings
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
+        started = perf_counter()
         job_id = self._new_job(request.tenant_id, "retrieve")
         documents = [
             DocumentSummary(
@@ -195,6 +204,10 @@ class GatewayService:
         result = RetrievalResult(query=request.query, documents=documents, total=len(documents))
         self.ledger.update_metadata(job_id, {"documents": result.total})
         self._complete_job(job_id, payload={"documents": result.total})
+        observe_job_duration("retrieve", perf_counter() - started)
+        record_business_event("retrieval_requests")
+        if result.total:
+            record_business_event("documents_retrieved", result.total)
         return result
 
     def entity_link(self, request: EntityLinkRequest) -> Sequence[EntityLinkResult]:

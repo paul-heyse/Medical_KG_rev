@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-worker
+  namespace: medical-kg
+  labels:
+    app: ingest-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-worker
+  template:
+    metadata:
+      labels:
+        app: ingest-worker
+    spec:
+      containers:
+        - name: ingest-worker
+          image: ghcr.io/example/medical-kg-worker:latest
+          envFrom:
+            - configMapRef:
+                name: gateway-config
+            - secretRef:
+                name: gateway-sentry
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: medical-kg
+data:
+  MK_ENV: "prod"
+  MK_TELEMETRY__EXPORTER: "jaeger"
+  MK_TELEMETRY__ENDPOINT: "http://jaeger-collector.monitoring:4318"
+  MK_OBSERVABILITY__LOGGING__LEVEL: "INFO"
+  MK_OBSERVABILITY__METRICS__PATH: "/metrics"
+  MK_OBSERVABILITY__LOGGING__CORRELATION_ID_HEADER: "X-Correlation-ID"

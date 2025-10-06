@@ -660,29 +660,55 @@ When adding medical domain features:
 # Start local development stack
 docker-compose up -d
 
-# Run adapter with sample data
-python -m Medical_KG_rev.adapters.clinicaltrials --nct-id NCT04267848
+# Start API gateway
+python -m Medical_KG_rev.gateway.main
+
+# Start background workers
+python -m Medical_KG_rev.orchestration.workers
+
+# Run adapter with sample data (via API)
+curl -X POST http://localhost:8000/v1/ingest/clinicaltrials \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"data": {"type": "ingestion", "attributes": {"nct_ids": ["NCT04267848"]}}}'
 
 # Test retrieval performance
-k6 run tests/performance/retrieval_test.js
+k6 run tests/performance/retrieve_latency.js
 
 # Check GPU availability
 python -c "import torch; print(torch.cuda.is_available())"
 
+# Validate UCUM units
+python -c "from Medical_KG_rev.validation import UCUMValidator; v = UCUMValidator(); print(v.validate('10 mg/dL'))"
+
+# Validate FHIR resource
+python -c "from Medical_KG_rev.validation.fhir import FHIRValidator; v = FHIRValidator(); v.validate_resource('Evidence', {...})"
+
 # Validate graph shapes
-python -m Medical_KG_rev.kg.validate --shacl-file shapes/evidence.ttl
+python -c "from Medical_KG_rev.kg.shacl import ShaclValidator; v = ShaclValidator(); v.validate_graph(graph_data)"
 
 # Generate OpenAPI spec
-python -m Medical_KG_rev.gateway.main --export-openapi > docs/openapi.yaml
+python scripts/generate_api_docs.py
 
 # Export GraphQL schema
-python -m Medical_KG_rev.gateway.graphql.schema --export-sdl > docs/schema.graphql
+python scripts/update_graphql_schema.py
 
 # Compile gRPC protos
 buf generate
 
 # Run contract tests
-pytest tests/contract/ --openapi-schema docs/openapi.yaml
+pytest tests/contract/
+
+# Run performance tests
+k6 run tests/performance/gateway_smoke_test.js
+
+# Run all quality checks
+pre-commit run --all-files
+
+# Check for breaking changes in gRPC
+bash scripts/run_buf_checks.sh
+
+# Health check
+python -m Medical_KG_rev.scripts.healthcheck
 ```
 
 ### Resources & References
@@ -696,18 +722,21 @@ pytest tests/contract/ --openapi-schema docs/openapi.yaml
 
 ### Change Implementation Sequence
 
-Follow this order for the 8 major changes:
+Follow this order for the 9 major changes:
 
-1. `add-foundation-infrastructure` - Core models and utilities
-2. `add-multi-protocol-gateway` - API façade layer
-3. `add-biomedical-adapters` - Data source integrations
-4. `add-ingestion-orchestration` - Kafka pipeline
-5. `add-gpu-microservices` - ML/AI services
-6. `add-knowledge-graph-retrieval` - Storage and search
-7. `add-security-auth` - OAuth and multi-tenancy
-8. `add-devops-observability` - CI/CD and monitoring
+1. `add-foundation-infrastructure` - Core models and utilities (48 tasks) ✅ IMPLEMENTED
+2. `add-multi-protocol-gateway` - API façade layer (62 tasks) ✅ IMPLEMENTED
+3. `add-biomedical-adapters` - Data source integrations (49 tasks) ✅ IMPLEMENTED
+4. `add-ingestion-orchestration` - Kafka pipeline (36 tasks) ✅ IMPLEMENTED
+5. `add-gpu-microservices` - ML/AI services (33 tasks) ✅ IMPLEMENTED
+6. `add-knowledge-graph-retrieval` - Storage and search (43 tasks) ✅ IMPLEMENTED
+7. `add-security-auth` - OAuth and multi-tenancy (49 tasks) ✅ IMPLEMENTED
+8. `add-devops-observability` - CI/CD and monitoring (69 tasks) ✅ IMPLEMENTED
+9. `add-domain-validation-caching` - UCUM, FHIR, HTTP caching (73 tasks) ✅ IMPLEMENTED
 
-Each change builds on previous ones. Don't skip ahead.
+**Total**: 462 tasks across 16+ capabilities - ALL IMPLEMENTED
+
+Each change builds on previous ones. The system is now production-ready.
 
 ### Getting Unstuck
 
@@ -725,3 +754,18 @@ A: In extraction/mapping phase after initial ingestion. RxNorm/ICD adapters are 
 
 **Q: How do I debug a failed job?**
 A: Check ledger state, correlation ID in logs, trace in Jaeger, and dead letter queue for retries.
+
+**Q: How do I validate UCUM units?**
+A: Use `UCUMValidator` from `Medical_KG_rev.validation`. It uses `pint` library for unit validation. Example: `validator.validate("10 mg/dL")`.
+
+**Q: How do I validate FHIR resources?**
+A: Use `FHIRValidator` from `Medical_KG_rev.validation.fhir`. It validates against FHIR R5 schemas using jsonschema.
+
+**Q: Where are the extraction templates defined?**
+A: In `Medical_KG_rev.services.extraction.templates`. Templates include: PICO, EffectMeasure, AdverseEvent, DoseRegimen, EligibilityCriteria.
+
+**Q: How do I enable HTTP caching?**
+A: ETags and Cache-Control headers are automatically added by the REST API. Check `gateway/rest/router.py` for implementation.
+
+**Q: How do I add a new SHACL shape?**
+A: Add shape definitions to `src/Medical_KG_rev/kg/shapes.ttl` and update `ShaclValidator` in `kg/shacl.py`.

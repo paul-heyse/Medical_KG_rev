@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Iterable, List, Sequence
+from dataclasses import dataclass, field
+from typing import Iterable, List, Mapping, Sequence
 
 from Medical_KG_rev.models import Document
 
@@ -15,6 +15,7 @@ class AdapterContext:
     tenant_id: str
     domain: str
     correlation_id: str
+    parameters: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass

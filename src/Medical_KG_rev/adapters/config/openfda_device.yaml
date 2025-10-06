@@ -1,0 +1,21 @@
+name: openfda-device-yaml
+source: openfda-device
+base_url: https://api.fda.gov
+rate_limit:
+  requests: 240
+  per_seconds: 60
+request:
+  method: GET
+  path: /device/classification.json
+  params:
+    search: product_code:"{device_id}"
+    limit: 1
+response:
+  items_path: results
+mapping:
+  id: product_code
+  title: device_name
+  summary: definition
+  metadata:
+    device_class: device_class
+    medical_specialty: medical_specialty_description

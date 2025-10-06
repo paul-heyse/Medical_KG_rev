@@ -1,5 +1,7 @@
 import pytest
 
+import pytest
+
 from Medical_KG_rev.adapters import ExampleAdapter, registry, run_adapter
 from Medical_KG_rev.adapters.registry import AdapterRegistry
 from Medical_KG_rev.adapters.yaml_parser import AdapterConfig, load_adapter_config
@@ -29,17 +31,20 @@ def test_load_adapter_config(tmp_path):
     config_file = tmp_path / "adapter.yaml"
     config_file.write_text(
         """
+name: example-config
 source: example
-requests:
-  - url: https://example.com
+base_url: https://example.com
+request:
+  method: GET
+  path: /resource
 mapping:
-  document:
-    id: $.id
+  id: id
 """
     )
     config = load_adapter_config(config_file)
     assert isinstance(config, AdapterConfig)
     assert config.source == "example"
+    assert config.request.path == "/resource"
 
     empty_file = tmp_path / "empty.yaml"
     empty_file.write_text("{}")

@@ -1,0 +1,149 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <http://medical-kg/schema#> .
+
+ex:DocumentShape a sh:NodeShape ;
+    sh:targetClass ex:Document ;
+    sh:property [
+        sh:path ex:document_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:title ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:source ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:tenant_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:ingested_at ;
+        sh:minCount 1 ;
+        sh:datatype xsd:dateTime ;
+    ] ;
+    sh:property [
+        sh:path ex:mentions ;
+        sh:class ex:Entity ;
+        sh:minCount 0 ;
+    ] .
+
+ex:EntityShape a sh:NodeShape ;
+    sh:targetClass ex:Entity ;
+    sh:property [
+        sh:path ex:entity_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:name ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:type ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:ontology_code ;
+        sh:minCount 1 ;
+        sh:pattern "^(RXCUI:|ICD11:|SNOMED:)" ;
+    ] .
+
+ex:ClaimShape a sh:NodeShape ;
+    sh:targetClass ex:Claim ;
+    sh:property [
+        sh:path ex:claim_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:statement ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:generatedBy ;
+        sh:minCount 1 ;
+        sh:class ex:ExtractionActivity ;
+    ] ;
+    sh:property [
+        sh:path ex:describes ;
+        sh:minCount 1 ;
+        sh:class ex:Entity ;
+    ] .
+
+ex:EvidenceShape a sh:NodeShape ;
+    sh:targetClass ex:Evidence ;
+    sh:property [
+        sh:path ex:evidence_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:chunk_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:confidence ;
+        sh:minCount 0 ;
+        sh:datatype xsd:decimal ;
+    ] ;
+    sh:property [
+        sh:path ex:supports ;
+        sh:minCount 1 ;
+        sh:class ex:Claim ;
+    ] ;
+    sh:property [
+        sh:path ex:derivedFrom ;
+        sh:minCount 1 ;
+        sh:class ex:Document ;
+    ] ;
+    sh:property [
+        sh:path ex:generatedBy ;
+        sh:minCount 1 ;
+        sh:class ex:ExtractionActivity ;
+    ] .
+
+ex:ExtractionActivityShape a sh:NodeShape ;
+    sh:targetClass ex:ExtractionActivity ;
+    sh:property [
+        sh:path ex:activity_id ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ex:performed_at ;
+        sh:minCount 1 ;
+        sh:datatype xsd:dateTime ;
+    ] ;
+    sh:property [
+        sh:path ex:pipeline ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .
+
+ex:TreatsShape a sh:NodeShape ;
+    sh:targetClass ex:Entity ;
+    sh:property [
+        sh:path ex:treats ;
+        sh:minCount 0 ;
+        sh:class ex:Entity ;
+    ] .
+
+ex:CausesShape a sh:NodeShape ;
+    sh:targetClass ex:Entity ;
+    sh:property [
+        sh:path ex:causes ;
+        sh:minCount 0 ;
+        sh:class ex:Entity ;
+    ] .

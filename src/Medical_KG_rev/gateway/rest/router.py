@@ -24,8 +24,10 @@ from ..models import (
     RetrieveRequest,
 )
 from ..services import GatewayService, get_gateway_service
+from ...services.health import HealthService
 
 router = APIRouter(prefix="/v1", tags=["gateway"])
+health_router = APIRouter(tags=["system"])
 
 
 class ODataParams(BaseModel):
@@ -78,6 +80,18 @@ def json_api_response(
         status_code=status_code,
         media_type=JSONAPI_CONTENT_TYPE,
     )
+
+
+@health_router.get("/health", include_in_schema=True)
+async def health_check(request: Request) -> JSONResponse:
+    service: HealthService = request.app.state.health  # type: ignore[attr-defined]
+    return JSONResponse(service.liveness())
+
+
+@health_router.get("/ready", include_in_schema=True)
+async def readiness_check(request: Request) -> JSONResponse:
+    service: HealthService = request.app.state.health  # type: ignore[attr-defined]
+    return JSONResponse(service.readiness())
 
 
 TModel = TypeVar("TModel", bound=BaseModel)
@@ -249,7 +263,41 @@ async def retrieve(
     odata = ODataParams.from_request(http_request)
     request = _ensure_tenant(request, security)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
-    meta = {"total": result.total, "select": odata.select, "expand": odata.expand}
+    meta = {
+        "total": result.total,
+        "select": odata.select,
+        "expand": odata.expand,
+        "rerank": result.rerank_metrics,
+    }
+    return json_api_response(result, meta=meta)
+
+
+@router.get("/search", status_code=200)
+async def search(
+    http_request: Request,
+    query: str = Query(..., min_length=1),
+    top_k: int = Query(5, ge=1, le=50),
+    rerank: bool = Query(True),
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="GET /v1/search")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    request_model = RetrieveRequest(
+        tenant_id=security.tenant_id,
+        query=query,
+        top_k=top_k,
+        filters={},
+        rerank=rerank,
+    )
+    result: RetrievalResult = service.retrieve(request_model)
+    odata = ODataParams.from_request(http_request)
+    meta = {
+        "total": result.total,
+        "select": odata.select,
+        "expand": odata.expand,
+        "rerank": result.rerank_metrics,
+    }
     return json_api_response(result, meta=meta)
 
 

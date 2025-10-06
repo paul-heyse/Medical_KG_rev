@@ -75,6 +75,7 @@ def _chunk_to_type(chunk: DocumentChunk) -> "DocumentChunkType":
         chunk_index=chunk.chunk_index,
         content=chunk.content,
         metadata=chunk.metadata,
+        token_count=chunk.token_count,
     )
 
 
@@ -150,6 +151,7 @@ class DocumentChunkType:
     chunk_index: int
     content: str
     metadata: JSON
+    token_count: int
 
 
 @strawberry.type

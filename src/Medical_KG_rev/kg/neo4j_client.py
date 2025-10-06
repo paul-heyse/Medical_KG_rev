@@ -17,7 +17,7 @@ class Neo4jClient:
 
     driver: Any
     templates: CypherTemplates = field(default_factory=lambda: CypherTemplates(GRAPH_SCHEMA))
-    validator: ShaclValidator = field(default_factory=lambda: ShaclValidator.from_schema(GRAPH_SCHEMA))
+    validator: ShaclValidator = field(default_factory=ShaclValidator.default)
 
     @contextmanager
     def _session(self) -> Iterator[Any]:

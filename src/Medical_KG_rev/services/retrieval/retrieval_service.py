@@ -104,7 +104,7 @@ class RetrievalService:
         candidates = [
             {"id": result.id, "text": result.text, **result.metadata} for result in materialised
         ]
-        scored = self.reranker.rerank(query, candidates)
+        scored, _metrics = self.reranker.rerank(query, candidates)
         score_map = {item.get("id"): item.get("rerank_score", 0.0) for item in scored}
         reranked: List[RetrievalResult] = []
         for result in materialised:

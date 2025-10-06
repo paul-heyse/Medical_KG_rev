@@ -17,18 +17,21 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .graphql.schema import graphql_router
 from .models import ProblemDetail
-from .rest.router import JSONAPI_CONTENT_TYPE, router as rest_router
+from .middleware import CachePolicy, CachingMiddleware
+from .rest.router import JSONAPI_CONTENT_TYPE, health_router, router as rest_router
 from .services import GatewayError
 from .sse.routes import router as sse_router
 from .soap.routes import router as soap_router
 from ..config.settings import get_settings
 from ..observability import setup_observability
+from ..services.health import CheckResult, HealthService, success
 from ..utils.logging import (
     bind_correlation_id,
     get_correlation_id,
     get_logger,
     reset_correlation_id,
 )
+from .services import get_gateway_service
 
 
 class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
@@ -128,6 +131,23 @@ def create_app() -> FastAPI:
 
     setup_observability(app, settings)
 
+    cache_settings = settings.caching
+
+    def to_policy(policy) -> CachePolicy:
+        return CachePolicy(
+            ttl=policy.ttl,
+            scope=policy.scope,
+            vary=tuple(policy.vary),
+            etag=policy.etag,
+            last_modified=policy.last_modified,
+        )
+
+    app.add_middleware(
+        CachingMiddleware,
+        policies={path: to_policy(policy) for path, policy in cache_settings.endpoints.items()},
+        default_policy=to_policy(cache_settings.default),
+    )
+
     app.add_middleware(JSONAPIResponseMiddleware)
     app.add_middleware(
         RequestLoggingMiddleware,
@@ -141,11 +161,31 @@ def create_app() -> FastAPI:
         allow_headers=list(settings.security.cors.allow_headers),
     )
 
+    app.include_router(health_router)
     app.include_router(rest_router)
     app.include_router(sse_router)
     app.include_router(graphql_router, prefix="/graphql")
     app.include_router(soap_router)
     app.mount("/static", StaticFiles(directory="docs"), name="static")
+
+    gateway_service = get_gateway_service()
+
+    def kafka_check() -> CheckResult:
+        health = gateway_service.orchestrator.kafka.health()
+        if all(health.values()):
+            return success("brokers reachable")
+        detail = ", ".join(f"{key}={value}" for key, value in health.items())
+        return CheckResult(status="error", detail=detail)
+
+    app.state.health = HealthService(
+        checks={
+            "neo4j": lambda: success("neo4j stub"),
+            "opensearch": lambda: success("opensearch stub"),
+            "kafka": kafka_check,
+            "redis": lambda: success("redis stub"),
+        },
+        version=app.version,
+    )
 
     @app.get("/docs/openapi", include_in_schema=False)
     async def openapi_docs() -> HTMLResponse:

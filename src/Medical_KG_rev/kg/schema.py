@@ -35,6 +35,7 @@ GRAPH_SCHEMA: Dict[str, NodeSchema] = {
             "title": "required",
             "source": "optional",
             "ingested_at": "required",
+            "tenant_id": "required",
         },
     ),
     "Entity": NodeSchema(
@@ -44,6 +45,7 @@ GRAPH_SCHEMA: Dict[str, NodeSchema] = {
             "name": "required",
             "type": "required",
             "canonical_identifier": "optional",
+            "ontology_code": "required",
         },
     ),
     "Claim": NodeSchema(

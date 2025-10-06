@@ -94,6 +94,15 @@ class KafkaClient:
             raise ValueError(f"Topic '{topic}' has not been created")
         return len(self._topics[topic])
 
+    def peek(self, topic: str) -> Optional[KafkaMessage]:
+        """Return the next message for a topic without consuming it."""
+
+        if topic not in self._topics:
+            raise ValueError(f"Topic '{topic}' has not been created")
+        if not self._topics[topic]:
+            return None
+        return self._topics[topic][0]
+
     def discard(self, topic: str, *, key: str) -> int:
         if topic not in self._topics:
             raise ValueError(f"Topic '{topic}' has not been created")

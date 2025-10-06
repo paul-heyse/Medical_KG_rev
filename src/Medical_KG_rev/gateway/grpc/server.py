@@ -3,10 +3,43 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 from typing import Optional
 
 import grpc
-from grpc_health.v1 import health, health_pb2, health_pb2_grpc
+
+_grpc_health_spec = None
+try:
+    _grpc_health_spec = importlib.util.find_spec("grpc_health")
+except ModuleNotFoundError:  # pragma: no cover - optional dependency missing
+    _grpc_health_spec = None
+
+if _grpc_health_spec is not None:
+    from grpc_health.v1 import health, health_pb2, health_pb2_grpc
+else:  # pragma: no cover - fallback when grpc-health not installed
+    class _StubHealth:
+        class HealthServicer:  # type: ignore[too-many-ancestors]
+            def __init__(self) -> None:
+                self._statuses = {}
+
+            async def Watch(self, request, context):  # pragma: no cover - stub
+                return None
+
+            def set(self, service: str, status: str) -> None:
+                self._statuses[service] = status
+
+    class _StubHealthPb2:
+        class HealthCheckResponse:  # pragma: no cover - stub
+            SERVING = "SERVING"
+
+    class _StubHealthGrpc:
+        @staticmethod
+        def add_HealthServicer_to_server(*args, **kwargs):  # pragma: no cover - stub
+            return None
+
+    health = _StubHealth()
+    health_pb2 = _StubHealthPb2()
+    health_pb2_grpc = _StubHealthGrpc()
 
 from ..models import ChunkRequest, EmbedRequest, ExtractionRequest, IngestionRequest
 from ..services import GatewayService, get_gateway_service

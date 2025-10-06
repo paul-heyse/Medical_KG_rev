@@ -14,7 +14,7 @@ def drain_results() -> None:
     list(service.orchestrator.kafka.consume(INGEST_RESULTS_TOPIC))
 
 
-def test_ingestion_job_lifecycle() -> None:
+def test_ingestion_job_lifecycle(api_key: str) -> None:
     app = create_app()
     client = TestClient(app)
     service = get_gateway_service()
@@ -25,7 +25,7 @@ def test_ingestion_job_lifecycle() -> None:
         "metadata": {"requested_by": "test"},
     }
 
-    response = client.post("/v1/ingest/clinicaltrials", json=payload)
+    response = client.post("/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key})
     assert response.status_code == 207
     data = response.json()["data"]
     job_id = data[0]["job_id"]
@@ -34,19 +34,19 @@ def test_ingestion_job_lifecycle() -> None:
         worker.run_once()
     drain_results()
 
-    job_response = client.get(f"/v1/jobs/{job_id}")
+    job_response = client.get(f"/v1/jobs/{job_id}", headers={"X-API-Key": api_key})
     assert job_response.status_code == 200
     job_data = job_response.json()["data"]
     assert job_data["status"] == "completed"
     assert job_data["pipeline"] == "two-phase"
 
-    list_response = client.get("/v1/jobs")
+    list_response = client.get("/v1/jobs", headers={"X-API-Key": api_key})
     assert list_response.status_code == 200
     job_ids = [item["job_id"] for item in list_response.json()["data"]]
     assert job_id in job_ids
 
 
-def test_cancel_job_before_processing() -> None:
+def test_cancel_job_before_processing(api_key: str) -> None:
     app = create_app()
     client = TestClient(app)
 
@@ -55,10 +55,10 @@ def test_cancel_job_before_processing() -> None:
         "items": [{"id": "demo-2"}],
     }
 
-    response = client.post("/v1/ingest/clinicaltrials", json=payload)
+    response = client.post("/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key})
     job_id = response.json()["data"][0]["job_id"]
 
-    cancel_response = client.post(f"/v1/jobs/{job_id}/cancel")
+    cancel_response = client.post(f"/v1/jobs/{job_id}/cancel", headers={"X-API-Key": api_key})
     assert cancel_response.status_code == 202
     cancel_data = cancel_response.json()["data"]
     assert cancel_data["status"] == "cancelled"
@@ -81,7 +81,7 @@ def test_concurrent_job_processing() -> None:
             worker.run_once()
     drain_results()
 
-    statuses = [service.get_job(job_id) for job_id in job_ids]
+    statuses = [service.get_job(job_id, tenant_id="tenant") for job_id in job_ids]
     assert all(status and status.status == "completed" for status in statuses)
 
 
@@ -106,7 +106,7 @@ def test_retry_logic_with_transient_failure() -> None:
     service.workers[1].run_once()
     drain_results()
 
-    status = service.get_job(entry.job_id)
+    status = service.get_job(entry.job_id, tenant_id="tenant")
     assert status is not None
     assert status.status == "completed"
     assert status.attempts >= 1

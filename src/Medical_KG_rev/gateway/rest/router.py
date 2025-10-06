@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,7 @@ from ..models import (
     EntityLinkRequest,
     ExtractionRequest,
     IngestionRequest,
+    JobStatus,
     KnowledgeGraphWriteRequest,
     RetrievalResult,
     RetrieveRequest,
@@ -85,6 +86,38 @@ async def ingest_dataset(
     result: BatchOperationResult = service.ingest(dataset, request)
     meta = {"total": result.total, "dataset": dataset}
     return json_api_response(result.operations, status_code=207, meta=meta)
+
+
+@router.get("/jobs/{job_id}", status_code=200, response_model=JobStatus)
+async def get_job(
+    job_id: str,
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    job = service.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return json_api_response(job)
+
+
+@router.get("/jobs", status_code=200, response_model=List[JobStatus])
+async def list_jobs(
+    status: Optional[str] = None,
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    jobs = service.list_jobs(status=status)
+    meta = {"total": len(jobs), "status": status}
+    return json_api_response(jobs, meta=meta)
+
+
+@router.post("/jobs/{job_id}/cancel", status_code=202, response_model=JobStatus)
+async def cancel_job(
+    job_id: str,
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    job = service.cancel_job(job_id, reason="client-request")
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return json_api_response(job, status_code=202)
 
 
 @router.post("/ingest/clinicaltrials", status_code=207, include_in_schema=False)

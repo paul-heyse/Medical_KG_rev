@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 import uuid
-from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence
+from dataclasses import dataclass, field
+from typing import List, Optional, Sequence
 
 import structlog
 
@@ -22,6 +22,8 @@ from .models import (
     ExtractionResult,
     IngestionRequest,
     JobEvent,
+    JobHistoryEntry,
+    JobStatus,
     KnowledgeGraphWriteRequest,
     KnowledgeGraphWriteResult,
     OperationStatus,
@@ -32,6 +34,9 @@ from .models import (
     build_batch_result,
 )
 from .sse.manager import EventStreamManager
+from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
+from ..orchestration.kafka import KafkaClient
+from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
 
 logger = structlog.get_logger(__name__)
 
@@ -49,9 +54,51 @@ class GatewayService:
     """Coordinates business logic shared across protocols."""
 
     events: EventStreamManager
+    orchestrator: Orchestrator
+    ledger: JobLedger
+    workers: List[WorkerBase] = field(default_factory=list)
 
-    def _new_job(self, tenant_id: str, operation: str) -> str:
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _to_job_status(self, entry: JobLedgerEntry) -> JobStatus:
+        history = [
+            JobHistoryEntry(
+                from_status=transition.from_status,
+                to_status=transition.to_status,
+                stage=transition.stage,
+                reason=transition.reason,
+                timestamp=transition.timestamp,
+            )
+            for transition in entry.history
+        ]
+        return JobStatus(
+            job_id=entry.job_id,
+            doc_key=entry.doc_key,
+            tenant_id=entry.tenant_id,
+            status=entry.status,
+            stage=entry.stage,
+            pipeline=entry.pipeline,
+            metadata=dict(entry.metadata),
+            attempts=entry.attempts,
+            created_at=entry.created_at,
+            updated_at=entry.updated_at,
+            history=history,
+        )
+
+    def _new_job(
+        self, tenant_id: str, operation: str, *, metadata: Optional[dict] = None
+    ) -> str:
         job_id = f"job-{uuid.uuid4().hex[:12]}"
+        doc_key = f"{operation}:{job_id}"
+        self.ledger.create(
+            job_id=job_id,
+            doc_key=doc_key,
+            tenant_id=tenant_id,
+            pipeline=operation,
+            metadata={"operation": operation, **(metadata or {})},
+        )
+        self.ledger.mark_processing(job_id, stage=operation)
         logger.info("gateway.job.created", tenant_id=tenant_id, job_id=job_id, operation=operation)
         self.events.publish(
             JobEvent(job_id=job_id, type="jobs.started", payload={"operation": operation})
@@ -60,24 +107,41 @@ class GatewayService:
 
     def _complete_job(self, job_id: str, payload: Optional[dict] = None) -> None:
         logger.info("gateway.job.completed", job_id=job_id)
+        self.ledger.mark_completed(job_id, metadata=payload or {})
         self.events.publish(JobEvent(job_id=job_id, type="jobs.completed", payload=payload or {}))
 
     def _fail_job(self, job_id: str, reason: str) -> None:
         logger.warning("gateway.job.failed", job_id=job_id, reason=reason)
+        self.ledger.mark_failed(job_id, stage="error", reason=reason)
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
 
     def ingest(self, dataset: str, request: IngestionRequest) -> BatchOperationResult:
         statuses: List[OperationStatus] = []
         for item in request.items:
-            job_id = self._new_job(request.tenant_id, f"ingest:{dataset}")
-            status = OperationStatus(
-                job_id=job_id,
-                status="completed",
-                message=f"Ingested item for {dataset}",
-                metadata={"dataset": dataset, "item": item.get("id", uuid.uuid4().hex)},
+            entry = self.orchestrator.submit_job(
+                tenant_id=request.tenant_id,
+                dataset=dataset,
+                item=item,
+                priority=request.priority,
+                metadata=request.metadata,
             )
-            statuses.append(status)
-            self._complete_job(job_id, payload={"dataset": dataset})
+            duplicate = bool(entry.metadata.get("duplicate"))
+            message = (
+                f"Duplicate job for {dataset}" if duplicate else f"Queued pipeline {entry.pipeline}"
+            )
+            statuses.append(
+                OperationStatus(
+                    job_id=entry.job_id,
+                    status=entry.status,
+                    message=message,
+                    metadata={
+                        "dataset": dataset,
+                        "pipeline": entry.pipeline,
+                        "doc_key": entry.doc_key,
+                        "duplicate": duplicate,
+                    },
+                )
+            )
         return build_batch_result(statuses)
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
@@ -94,6 +158,7 @@ class GatewayService:
                     metadata={"strategy": request.strategy},
                 )
             )
+        self.ledger.update_metadata(job_id, {"chunks": len(chunks)})
         self._complete_job(job_id, payload={"chunks": len(chunks)})
         return chunks
 
@@ -110,6 +175,7 @@ class GatewayService:
                     metadata={"length": len(text), "normalized": request.normalize},
                 )
             )
+        self.ledger.update_metadata(job_id, {"embeddings": len(embeddings)})
         self._complete_job(job_id, payload={"embeddings": len(embeddings)})
         return embeddings
 
@@ -127,6 +193,7 @@ class GatewayService:
             for i in range(min(request.top_k, 3))
         ]
         result = RetrievalResult(query=request.query, documents=documents, total=len(documents))
+        self.ledger.update_metadata(job_id, {"documents": result.total})
         self._complete_job(job_id, payload={"documents": result.total})
         return result
 
@@ -141,6 +208,7 @@ class GatewayService:
             )
             for mention in request.mentions
         ]
+        self.ledger.update_metadata(job_id, {"links": len(results)})
         self._complete_job(job_id, payload={"links": len(results)})
         return results
 
@@ -149,11 +217,20 @@ class GatewayService:
         results = [
             {"kind": kind, "document_id": request.document_id, "value": "synthetic"},
         ]
+        self.ledger.update_metadata(job_id, {"kind": kind})
         self._complete_job(job_id, payload={"kind": kind})
         return ExtractionResult(kind=kind, document_id=request.document_id, results=results)
 
     def write_kg(self, request: KnowledgeGraphWriteRequest) -> KnowledgeGraphWriteResult:
         job_id = self._new_job(request.tenant_id, "kg-write")
+        self.ledger.update_metadata(
+            job_id,
+            {
+                "nodes": len(request.nodes),
+                "edges": len(request.edges),
+                "transactional": request.transactional,
+            },
+        )
         self._complete_job(
             job_id,
             payload={
@@ -169,6 +246,7 @@ class GatewayService:
         )
 
     def search(self, args: SearchArguments) -> RetrievalResult:
+        job_id = self._new_job("system", "search")
         request = RetrievalResult(
             query=args.query,
             documents=[
@@ -183,14 +261,45 @@ class GatewayService:
             ],
             total=1,
         )
+        self.ledger.update_metadata(job_id, {"query": args.query})
+        self._complete_job(job_id, payload={"documents": 1})
         return request
+
+    # ------------------------------------------------------------------
+    # Job APIs
+    # ------------------------------------------------------------------
+    def get_job(self, job_id: str) -> Optional[JobStatus]:
+        entry = self.ledger.get(job_id)
+        return self._to_job_status(entry) if entry else None
+
+    def list_jobs(self, status: Optional[str] = None) -> List[JobStatus]:
+        entries = self.ledger.list(status=status)
+        return [self._to_job_status(entry) for entry in entries]
+
+    def cancel_job(self, job_id: str, *, reason: Optional[str] = None) -> Optional[JobStatus]:
+        entry = self.orchestrator.cancel_job(job_id, reason=reason)
+        return self._to_job_status(entry) if entry else None
 
 
 _service: Optional[GatewayService] = None
+_kafka: Optional[KafkaClient] = None
+_ledger: Optional[JobLedger] = None
+_orchestrator: Optional[Orchestrator] = None
+_workers: List[WorkerBase] = []
 
 
 def get_gateway_service() -> GatewayService:
-    global _service
+    global _service, _kafka, _ledger, _orchestrator, _workers
     if _service is None:
-        _service = GatewayService(events=EventStreamManager())
+        events = EventStreamManager()
+        _kafka = KafkaClient()
+        _kafka.create_topics(["ingest.requests.v1", "ingest.results.v1", "mapping.events.v1", "ingest.deadletter.v1"])
+        _ledger = JobLedger()
+        _orchestrator = Orchestrator(_kafka, _ledger, events)
+        _service = GatewayService(events=events, orchestrator=_orchestrator, ledger=_ledger)
+        _workers = [
+            IngestWorker(_orchestrator, _kafka, _ledger, events),
+            MappingWorker(_kafka, _ledger, events),
+        ]
+        _service.workers.extend(_workers)
     return _service

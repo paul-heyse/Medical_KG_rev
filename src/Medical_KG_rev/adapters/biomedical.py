@@ -1,12 +1,19 @@
 """Biomedical adapter implementations for external data sources."""
+
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
 from Medical_KG_rev.models import Block, BlockType, Document, Section
-from Medical_KG_rev.utils.http_client import CircuitBreaker, HttpClient, RetryConfig, SyncRateLimiter
+from Medical_KG_rev.utils.http_client import (
+    CircuitBreaker,
+    HttpClient,
+    RetryConfig,
+    SyncRateLimiter,
+)
 from Medical_KG_rev.utils.identifiers import build_document_id, normalize_identifier
 from Medical_KG_rev.utils.validation import (
     validate_chembl_id,
@@ -47,7 +54,7 @@ def _flatten_abstract(inverted_index: Mapping[str, Sequence[int]]) -> str:
     return " ".join(ordered)
 
 
-def _listify(items: Iterable[Any]) -> List[Any]:
+def _listify(items: Iterable[Any]) -> list[Any]:
     return [item for item in items if item]
 
 
@@ -92,7 +99,9 @@ class ResilientHTTPAdapter(BaseAdapter):
         response.raise_for_status()
         return response.text
 
-    def write(self, documents: Sequence[Document], context: AdapterContext) -> None:  # pragma: no cover - passthrough
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover - passthrough
         # Persistence is handled by downstream ingestion pipeline; adapters simply return documents.
         return None
 
@@ -119,8 +128,10 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
         study = payload.get("study") or payload
         return [study]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for study in payloads:
             protocol = study.get("protocolSection", {})
             identification = protocol.get("identificationModule", {})
@@ -140,7 +151,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
                 if item.get("name")
             ]
             outcomes = [item.get("measure") for item in outcomes_module.get("primaryOutcomes", [])]
-            metadata: Dict[str, Any] = {
+            metadata: dict[str, Any] = {
                 "nct_id": nct_id,
                 "brief_title": identification.get("briefTitle"),
                 "official_title": identification.get("officialTitle"),
@@ -159,7 +170,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
                 },
             }
 
-            sections: List[Section] = []
+            sections: list[Section] = []
             summary_text = description_module.get("briefSummary")
             if summary_text:
                 sections.append(
@@ -175,7 +186,9 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
                     Section(
                         id="description",
                         title="Detailed Description",
-                        blocks=[Block(id="description-block", text=_to_text(detailed_text), spans=[])],
+                        blocks=[
+                            Block(id="description-block", text=_to_text(detailed_text), spans=[])
+                        ],
                     )
                 )
 
@@ -217,17 +230,19 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
         ndc = context.parameters.get("ndc")
         set_id = context.parameters.get("set_id")
-        params: Dict[str, Any] = {"limit": 1}
+        params: dict[str, Any] = {"limit": 1}
         if ndc:
-            params["search"] = f"openfda.package_ndc:\"{validate_ndc(str(ndc))}\""
+            params["search"] = f'openfda.package_ndc:"{validate_ndc(str(ndc))}"'
         elif set_id:
-            params["search"] = f"set_id:\"{validate_set_id(str(set_id))}\""
+            params["search"] = f'set_id:"{validate_set_id(str(set_id))}"'
         else:  # pragma: no cover - defensive branch
             raise ValueError("Either 'ndc' or 'set_id' parameter must be provided")
         return self._query(params)
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             openfda = payload.get("openfda", {})
             set_id = payload.get("set_id") or payload.get("id")
@@ -242,7 +257,7 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
                 "spl_version": payload.get("version"),
                 "route": openfda.get("route", []),
             }
-            blocks: List[Block] = []
+            blocks: list[Block] = []
             for key in ("indications_and_usage", "dosage_and_administration", "warnings"):
                 text = _to_text(payload.get(key))
                 if text:
@@ -276,17 +291,21 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
         drug_name = normalize_identifier(_require_parameter(context, "drug"))
-        params = {"search": f"patient.drug.medicinalproduct:\"{drug_name}\"", "limit": 5}
+        params = {"search": f'patient.drug.medicinalproduct:"{drug_name}"', "limit": 5}
         return self._query(params)
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             report_id = payload.get("safetyreportid")
             if not report_id:
                 continue
             patient = payload.get("patient", {})
-            reactions = [reaction.get("reactionmeddrapt") for reaction in patient.get("reaction", [])]
+            reactions = [
+                reaction.get("reactionmeddrapt") for reaction in patient.get("reaction", [])
+            ]
             indications = [drug.get("drugindication") for drug in patient.get("drug", [])]
             metadata = {
                 "safety_report_id": report_id,
@@ -316,15 +335,19 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
     """Adapter for medical device classifications."""
 
     def __init__(self, client: HttpClient | None = None) -> None:
-        super().__init__(name="openfda-device", endpoint="/device/classification.json", client=client)
+        super().__init__(
+            name="openfda-device", endpoint="/device/classification.json", client=client
+        )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
         device_id = _require_parameter(context, "device_id")
-        params = {"search": f"product_code:\"{device_id}\"", "limit": 1}
+        params = {"search": f'product_code:"{device_id}"', "limit": 1}
         return self._query(params)
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             product_code = payload.get("product_code")
             if not product_code:
@@ -378,14 +401,19 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
         response = self._get_json("/works", params={"search": query, "per-page": 5})
         return response.get("results", [])
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             work_id = payload.get("id") or payload.get("openalex_id")
             if not work_id:
                 continue
             doi = payload.get("doi") or payload.get("ids", {}).get("doi")
-            authors = [auth.get("author", {}).get("display_name") for auth in payload.get("authorships", [])]
+            authors = [
+                auth.get("author", {}).get("display_name")
+                for auth in payload.get("authorships", [])
+            ]
             concepts = [concept.get("display_name") for concept in payload.get("concepts", [])]
             metadata = {
                 "openalex_id": work_id,
@@ -398,7 +426,11 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 "cited_by_count": payload.get("cited_by_count"),
             }
             abstract = payload.get("abstract_inverted_index")
-            abstract_text = _flatten_abstract(abstract) if isinstance(abstract, Mapping) else payload.get("abstract")
+            abstract_text = (
+                _flatten_abstract(abstract)
+                if isinstance(abstract, Mapping)
+                else payload.get("abstract")
+            )
             section = Section(
                 id="abstract",
                 title="Abstract",
@@ -419,7 +451,9 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
 class UnpaywallAdapter(ResilientHTTPAdapter):
     """Adapter for Unpaywall open access status."""
 
-    def __init__(self, email: str = "oss@medical-kg.local", client: HttpClient | None = None) -> None:
+    def __init__(
+        self, email: str = "oss@medical-kg.local", client: HttpClient | None = None
+    ) -> None:
         super().__init__(
             name="unpaywall",
             base_url="https://api.unpaywall.org/v2",
@@ -434,8 +468,10 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
         payload = self._get_json(f"/{doi}", params={"email": self._email})
         return [payload]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             doi = payload.get("doi")
             metadata = {
@@ -482,8 +518,10 @@ class CrossrefAdapter(ResilientHTTPAdapter):
         message = payload.get("message", {})
         return [message]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for message in payloads:
             doi = message.get("DOI")
             title_list = message.get("title", [])
@@ -539,8 +577,10 @@ class COREAdapter(ResilientHTTPAdapter):
             raise ValueError("Either 'core_id' or 'doi' parameter must be provided")
         return [payload]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             raw_entries = payload.get("data")
             if isinstance(raw_entries, list):
@@ -589,14 +629,14 @@ class PMCAdapter(ResilientHTTPAdapter):
         return [xml_text]
 
     def parse(self, payloads: Iterable[str], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+        documents: list[Document] = []
         for xml_text in payloads:
             root = ElementTree.fromstring(xml_text)
             pmcid = root.findtext(".//article-id[@pub-id-type='pmcid']")
             title = _collect_text(root.find(".//article-title"))
             abstract_text = _collect_text(root.find(".//abstract"))
             body_paragraphs = [_collect_text(elem) for elem in root.findall(".//body//p")]
-            blocks: List[Block] = []
+            blocks: list[Block] = []
             if abstract_text:
                 blocks.append(Block(id="pmc-abstract", text=abstract_text, spans=[]))
             for idx, paragraph in enumerate(body_paragraphs[:5]):
@@ -631,8 +671,10 @@ class RxNormAdapter(ResilientHTTPAdapter):
         payload = self._get_json("/REST/drugs", params={"name": drug_name})
         return [payload]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             concepts = payload.get("rxnormConceptProperties", [])
             normalized = [concept for concept in concepts if concept.get("rxcui")]
@@ -642,7 +684,9 @@ class RxNormAdapter(ResilientHTTPAdapter):
             rxcui = validate_rxcui(primary.get("rxcui"))
             block = Block(
                 id="rxnorm",
-                text=", ".join(sorted({concept.get("name") for concept in normalized if concept.get("name")})),
+                text=", ".join(
+                    sorted({concept.get("name") for concept in normalized if concept.get("name")})
+                ),
                 spans=[],
             )
             section = Section(id="rxnorm", title="RxNorm Concepts", blocks=[block])
@@ -683,8 +727,10 @@ class ICD11Adapter(ResilientHTTPAdapter):
         payload = self._get_json("/search", params={"q": query})
         return payload.get("destinationEntities", [])
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for entity in payloads:
             code = entity.get("theCode") or entity.get("code")
             if not code:
@@ -736,8 +782,10 @@ class MeSHAdapter(ResilientHTTPAdapter):
         payload = self._get_json("/lookup", params={"label": term, "limit": 5})
         return payload.get("result", [])
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for descriptor in payloads:
             identifier = descriptor.get("descriptorUI") or descriptor.get("resource")
             if not identifier:
@@ -793,12 +841,16 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
             payload = self._get_json(f"/molecule/{identifier}")
             return [payload]
         if smiles:
-            payload = self._get_json("/molecule", params={"molecule_structures__canonical_smiles__iexact": smiles})
+            payload = self._get_json(
+                "/molecule", params={"molecule_structures__canonical_smiles__iexact": smiles}
+            )
             return payload.get("molecules", [])
         raise ValueError("Either 'chembl_id' or 'smiles' parameter must be provided")
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for molecule in payloads:
             chembl_id = molecule.get("molecule_chembl_id")
             if not chembl_id:
@@ -858,12 +910,20 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
         )
         return [payload]
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        documents: List[Document] = []
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
+        documents: list[Document] = []
         for payload in payloads:
             paper_id = payload.get("paperId") or payload.get("paper_id")
-            doi = payload.get("externalIds", {}).get("DOI") if isinstance(payload.get("externalIds"), Mapping) else None
-            references = [ref.get("title") or ref.get("paperId") for ref in payload.get("references", [])]
+            doi = (
+                payload.get("externalIds", {}).get("DOI")
+                if isinstance(payload.get("externalIds"), Mapping)
+                else None
+            )
+            references = [
+                ref.get("title") or ref.get("paperId") for ref in payload.get("references", [])
+            ]
             metadata = {
                 "paper_id": paper_id,
                 "doi": doi,
@@ -887,4 +947,3 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
-

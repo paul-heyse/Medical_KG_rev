@@ -1,11 +1,13 @@
 """Parser for declarative adapter configuration files."""
+
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Mapping, Sequence
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,7 +17,6 @@ from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
 
 from .base import AdapterContext, BaseAdapter
 from .biomedical import ResilientHTTPAdapter
-
 
 TOKEN_PATTERN = re.compile(r"[^\[\].]+|\[\d+\]")
 
@@ -34,8 +35,8 @@ class RateLimitConfig:
 class RequestConfig:
     method: str
     path: str
-    params: Dict[str, Any] = field(default_factory=dict)
-    headers: Dict[str, str] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class MappingConfig:
     title: str | None = None
     summary: str | None = None
     body: str | None = None
-    metadata: Dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -73,8 +74,8 @@ class RateLimitModel(BaseModel):
 class RequestModel(BaseModel):
     method: str = Field(default="GET")
     path: str
-    params: Dict[str, Any] = Field(default_factory=dict)
-    headers: Dict[str, str] = Field(default_factory=dict)
+    params: dict[str, Any] = Field(default_factory=dict)
+    headers: dict[str, str] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -90,7 +91,7 @@ class MappingModel(BaseModel):
     title: str | None = None
     summary: str | None = None
     body: str | None = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -127,7 +128,9 @@ def load_adapter_config(path: Path) -> AdapterConfig:
         metadata=model.mapping.metadata,
     )
     rate_limit = (
-        RateLimitConfig(requests=model.rate_limit.requests, per_seconds=model.rate_limit.per_seconds)
+        RateLimitConfig(
+            requests=model.rate_limit.requests, per_seconds=model.rate_limit.per_seconds
+        )
         if model.rate_limit
         else None
     )
@@ -171,7 +174,9 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         data = response.json()
         return _resolve_items(data, self._config.response.items_path)
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
+    def parse(
+        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
         documents: list[Document] = []
         for payload in payloads:
             document_id = _resolve_path(payload, self._config.mapping.document_id)
@@ -242,7 +247,9 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         return documents
 
 
-def create_adapter_from_config(config: AdapterConfig, client: HttpClient | None = None) -> BaseAdapter:
+def create_adapter_from_config(
+    config: AdapterConfig, client: HttpClient | None = None
+) -> BaseAdapter:
     """Instantiate an adapter from a validated configuration."""
 
     return YAMLConfiguredAdapter(config, client=client)
@@ -321,4 +328,3 @@ def _to_text(value: Any) -> str:
     if isinstance(value, str):
         return value
     return str(value)
-

@@ -1,7 +1,8 @@
 """Entity graph models for the federated knowledge graph."""
+
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence
+from collections.abc import Sequence
 
 from pydantic import Field, field_validator
 
@@ -17,7 +18,7 @@ class Entity(IRBaseModel):
     canonical_name: str
     aliases: Sequence[str] = Field(default_factory=tuple)
     spans: Sequence[Span] = Field(default_factory=tuple)
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("aliases")
     @classmethod
@@ -39,7 +40,7 @@ class Claim(IRBaseModel):
     subject_id: str
     predicate: str
     object_id: str
-    qualifiers: Dict[str, str] = Field(default_factory=dict)
+    qualifiers: dict[str, str] = Field(default_factory=dict)
     extraction: ExtractionActivity
 
 
@@ -49,16 +50,16 @@ class Evidence(IRBaseModel):
     id: str
     document_id: str
     span: Span
-    statement: Optional[str] = None
+    statement: str | None = None
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     supporting_entities: Sequence[str] = Field(default_factory=tuple)
     extraction: ExtractionActivity
 
 
 __all__ = [
-    "Entity",
     "Claim",
+    "DataSource",
+    "Entity",
     "Evidence",
     "ExtractionActivity",
-    "DataSource",
 ]

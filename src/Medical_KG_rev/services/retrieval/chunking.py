@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Tuple
 
 import tiktoken
 
@@ -34,7 +34,9 @@ class ChunkingService:
         except KeyError:
             self._encoder = tiktoken.get_encoding(encoding)
 
-    def chunk(self, document_id: str, text: str, options: ChunkingOptions | None = None) -> List[Chunk]:
+    def chunk(
+        self, document_id: str, text: str, options: ChunkingOptions | None = None
+    ) -> list[Chunk]:
         opts = options or ChunkingOptions()
         strategy = opts.strategy.lower()
         if strategy in {"semantic", "section"}:
@@ -49,31 +51,41 @@ class ChunkingService:
             raise ValueError(f"Unknown chunking strategy: {strategy}")
         return self._materialize_chunks(document_id, segments, opts)
 
-    def _paragraph_chunks(self, text: str) -> List[Tuple[str, dict[str, object]]]:
+    def _paragraph_chunks(self, text: str) -> list[tuple[str, dict[str, object]]]:
         paragraphs = [para.strip() for para in text.split("\n\n") if para.strip()]
         if not paragraphs:
             paragraphs = [text.strip()]
         return [(paragraph, {"segment_type": "paragraph"}) for paragraph in paragraphs]
 
-    def _section_chunks(self, text: str) -> List[Tuple[str, dict[str, object]]]:
-        sections: List[Tuple[str, dict[str, object]]] = []
-        current_lines: List[str] = []
+    def _section_chunks(self, text: str) -> list[tuple[str, dict[str, object]]]:
+        sections: list[tuple[str, dict[str, object]]] = []
+        current_lines: list[str] = []
         current_title = ""
         for line in text.splitlines():
             if self.SECTION_PATTERN.match(line):
                 if current_lines:
-                    sections.append(("\n".join(current_lines).strip(), {"segment_type": "section", "section_title": current_title}))
+                    sections.append(
+                        (
+                            "\n".join(current_lines).strip(),
+                            {"segment_type": "section", "section_title": current_title},
+                        )
+                    )
                 current_title = line.strip().strip(":")
                 current_lines = [line]
             else:
                 current_lines.append(line)
         if current_lines:
-            sections.append(("\n".join(current_lines).strip(), {"segment_type": "section", "section_title": current_title}))
+            sections.append(
+                (
+                    "\n".join(current_lines).strip(),
+                    {"segment_type": "section", "section_title": current_title},
+                )
+            )
         return sections or [(text.strip(), {"segment_type": "section", "section_title": ""})]
 
-    def _table_chunks(self, text: str) -> List[Tuple[str, dict[str, object]]]:
-        chunks: List[Tuple[str, dict[str, object]]] = []
-        current: List[str] = []
+    def _table_chunks(self, text: str) -> list[tuple[str, dict[str, object]]]:
+        chunks: list[tuple[str, dict[str, object]]] = []
+        current: list[str] = []
         in_table = False
         for line in text.splitlines():
             if "|" in line or "\t" in line:
@@ -92,12 +104,12 @@ class ChunkingService:
 
     def _sliding_window_chunks(
         self, text: str, max_tokens: int, overlap: float
-    ) -> List[Tuple[str, dict[str, object]]]:
+    ) -> list[tuple[str, dict[str, object]]]:
         tokens = self._encoder.encode(text)
         if not tokens:
             return []
         step = max(1, int(max_tokens * (1 - overlap)))
-        windows: List[Tuple[str, dict[str, object]]] = []
+        windows: list[tuple[str, dict[str, object]]] = []
         for index in range(0, len(tokens), step):
             window = tokens[index : index + max_tokens]
             if not window:
@@ -111,10 +123,10 @@ class ChunkingService:
     def _materialize_chunks(
         self,
         document_id: str,
-        segments: Sequence[Tuple[str, dict[str, object]]],
+        segments: Sequence[tuple[str, dict[str, object]]],
         options: ChunkingOptions,
-    ) -> List[Chunk]:
-        chunks: List[Chunk] = []
+    ) -> list[Chunk]:
+        chunks: list[Chunk] = []
         for segment_index, (segment_text, metadata) in enumerate(segments):
             tokens = self._encoder.encode(segment_text)
             if not tokens:
@@ -138,7 +150,14 @@ class ChunkingService:
                     "token_count": token_count,
                 }
                 chunk_metadata.update(metadata)
-                chunks.append(Chunk(id=chunk_id, text=chunk_text, metadata=chunk_metadata, token_count=token_count))
+                chunks.append(
+                    Chunk(
+                        id=chunk_id,
+                        text=chunk_text,
+                        metadata=chunk_metadata,
+                        token_count=token_count,
+                    )
+                )
         return chunks
 
     def _token_windows(
@@ -156,16 +175,18 @@ class ChunkingService:
             if start + max_tokens >= len(tokens):
                 break
 
-    def chunk_sections(self, document_id: str, text: str) -> List[Chunk]:
+    def chunk_sections(self, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(document_id, text, ChunkingOptions(strategy="section"))
 
-    def chunk_paragraphs(self, document_id: str, text: str) -> List[Chunk]:
+    def chunk_paragraphs(self, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(document_id, text, ChunkingOptions(strategy="paragraph"))
 
-    def chunk_tables(self, document_id: str, text: str) -> List[Chunk]:
+    def chunk_tables(self, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(document_id, text, ChunkingOptions(strategy="table"))
 
-    def sliding_window(self, document_id: str, text: str, max_tokens: int, overlap: float) -> List[Chunk]:
+    def sliding_window(
+        self, document_id: str, text: str, max_tokens: int, overlap: float
+    ) -> list[Chunk]:
         return self.chunk(
             document_id,
             text,

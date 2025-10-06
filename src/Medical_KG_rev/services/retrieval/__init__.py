@@ -5,20 +5,20 @@ from .faiss_index import FAISSIndex
 from .indexing_service import IndexingService
 from .opensearch_client import DocumentIndexTemplate, OpenSearchClient
 from .query_dsl import QueryDSL, QueryValidationError
-from .retrieval_service import RetrievalResult, RetrievalService
 from .reranker import CrossEncoderReranker
+from .retrieval_service import RetrievalResult, RetrievalService
 
 __all__ = [
     "Chunk",
     "ChunkingOptions",
     "ChunkingService",
+    "CrossEncoderReranker",
+    "DocumentIndexTemplate",
     "FAISSIndex",
     "IndexingService",
-    "DocumentIndexTemplate",
     "OpenSearchClient",
     "QueryDSL",
     "QueryValidationError",
     "RetrievalResult",
     "RetrievalService",
-    "CrossEncoderReranker",
 ]

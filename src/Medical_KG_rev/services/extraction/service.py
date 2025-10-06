@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
 
 import structlog
 
@@ -27,8 +27,8 @@ class ExtractionSpan:
 class ExtractionResult:
     document_id: str
     kind: str
-    spans: List[ExtractionSpan] = field(default_factory=list)
-    raw_response: Dict[str, object] = field(default_factory=dict)
+    spans: list[ExtractionSpan] = field(default_factory=list)
+    raw_response: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -52,18 +52,18 @@ class _LLMClient:
 
     def __init__(self, gpu: GpuManager) -> None:
         self.gpu = gpu
-        self._prompt_cache: Dict[str, str] = {}
+        self._prompt_cache: dict[str, str] = {}
 
-    def generate(self, *, prompt: str, text: str) -> Dict[str, object]:
+    def generate(self, *, prompt: str, text: str) -> dict[str, object]:
         cache_key = f"{prompt}:{hash(text)}"
         if cache_key in self._prompt_cache:
             return json.loads(self._prompt_cache[cache_key])
         with self.gpu.device_session("extraction", warmup=True):
             # Build a deterministic pseudo-response by matching heuristics.
-            result: Dict[str, List[Dict[str, object]]] = {}
+            result: dict[str, list[dict[str, object]]] = {}
             lowered = text.lower()
             for label, keywords in PicoSchema.items():
-                matches: List[Dict[str, object]] = []
+                matches: list[dict[str, object]] = []
                 for keyword in keywords:
                     for match in re.finditer(keyword, lowered):
                         span = {
@@ -87,8 +87,10 @@ class ExtractionService:
         self.gpu = gpu
         self.llm = _LLMClient(gpu)
 
-    def _validate_spans(self, text: str, spans: Iterable[Dict[str, object]]) -> List[ExtractionSpan]:
-        validated: List[ExtractionSpan] = []
+    def _validate_spans(
+        self, text: str, spans: Iterable[dict[str, object]]
+    ) -> list[ExtractionSpan]:
+        validated: list[ExtractionSpan] = []
         for span in spans:
             start = int(span.get("start", -1))
             end = int(span.get("end", -1))
@@ -97,7 +99,9 @@ class ExtractionService:
                 continue
             snippet = text[start:end]
             if snippet != span.get("text"):
-                logger.warning("extraction.span.mismatch", expected=snippet, actual=span.get("text"))
+                logger.warning(
+                    "extraction.span.mismatch", expected=snippet, actual=span.get("text")
+                )
                 continue
             validated.append(
                 ExtractionSpan(
@@ -118,7 +122,7 @@ class ExtractionService:
         }.get(request.kind, "generic extraction")
         raw = self.llm.generate(prompt=template, text=request.text)
 
-        spans: List[ExtractionSpan] = []
+        spans: list[ExtractionSpan] = []
         for label, matches in raw.items():
             validated = self._validate_spans(
                 request.text,

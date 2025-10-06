@@ -1,9 +1,10 @@
 """Adapter SDK base classes."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, List, Mapping, Sequence
 
 from Medical_KG_rev.models import Document
 
@@ -39,20 +40,24 @@ class BaseAdapter(ABC):
         """Fetch raw payloads from external systems."""
 
     @abstractmethod
-    def parse(self, payloads: Iterable[dict], context: AdapterContext) -> Sequence[Document]:  # pragma: no cover
+    def parse(
+        self, payloads: Iterable[dict], context: AdapterContext
+    ) -> Sequence[Document]:  # pragma: no cover
         """Transform payloads into domain documents."""
 
     def validate(self, documents: Sequence[Document], context: AdapterContext) -> Sequence[str]:
         """Validate documents, returning warnings if applicable."""
 
-        warnings: List[str] = []
+        warnings: list[str] = []
         for document in documents:
             if not document.sections:
                 warnings.append(f"Document {document.id} is empty")
         return warnings
 
     @abstractmethod
-    def write(self, documents: Sequence[Document], context: AdapterContext) -> None:  # pragma: no cover
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover
         """Persist documents to downstream storage."""
 
     def run(self, context: AdapterContext) -> AdapterResult:

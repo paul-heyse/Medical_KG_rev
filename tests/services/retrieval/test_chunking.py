@@ -14,7 +14,9 @@ def _sample_document() -> str:
 
 def test_section_chunking_preserves_headers():
     service = ChunkingService()
-    chunks = service.chunk("doc-1", _sample_document(), ChunkingOptions(strategy="section", max_tokens=50))
+    chunks = service.chunk(
+        "doc-1", _sample_document(), ChunkingOptions(strategy="section", max_tokens=50)
+    )
     assert any("Introduction" in chunk.text for chunk in chunks)
     assert any("Methods" in chunk.text for chunk in chunks)
     assert all(chunk.metadata.get("segment_type") == "section" for chunk in chunks)
@@ -22,14 +24,18 @@ def test_section_chunking_preserves_headers():
 
 def test_paragraph_chunking_respects_boundaries():
     service = ChunkingService()
-    chunks = service.chunk("doc-1", _sample_document(), ChunkingOptions(strategy="paragraph", max_tokens=20))
+    chunks = service.chunk(
+        "doc-1", _sample_document(), ChunkingOptions(strategy="paragraph", max_tokens=20)
+    )
     assert all("\n\n" not in chunk.text for chunk in chunks)
     assert all(chunk.metadata.get("segment_type") == "paragraph" for chunk in chunks)
 
 
 def test_table_chunking_keeps_table_intact():
     service = ChunkingService()
-    chunks = service.chunk("doc-1", _sample_document(), ChunkingOptions(strategy="table", max_tokens=50))
+    chunks = service.chunk(
+        "doc-1", _sample_document(), ChunkingOptions(strategy="table", max_tokens=50)
+    )
     table_chunks = [chunk for chunk in chunks if chunk.metadata.get("segment_type") == "table"]
     assert len(table_chunks) == 1
     assert "Row|Value" in table_chunks[0].text

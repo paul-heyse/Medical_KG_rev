@@ -1,5 +1,4 @@
 from Medical_KG_rev.models.ir import Span
-from Medical_KG_rev.models.ir import Span
 from Medical_KG_rev.utils.spans import merge_overlapping, spans_within
 
 

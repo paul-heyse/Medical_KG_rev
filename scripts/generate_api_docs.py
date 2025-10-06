@@ -1,4 +1,5 @@
 """Generate API documentation using pdoc."""
+
 from __future__ import annotations
 
 import argparse

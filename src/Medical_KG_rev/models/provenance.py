@@ -1,8 +1,9 @@
 """Provenance models that capture data lineage for all ingested artifacts."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -18,7 +19,7 @@ class DataSource(ProvenanceBaseModel):
 
     id: str
     name: str
-    url: Optional[str] = None
+    url: str | None = None
     version: str = Field(default="v1")
     credentials_required: bool = Field(default=False)
 
@@ -27,9 +28,9 @@ class ExtractionActivity(ProvenanceBaseModel):
     """Metadata describing how a particular entity/evidence was extracted."""
 
     id: str
-    performed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    performed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     actor: str = Field(description="System or user responsible for extraction")
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
     data_source: DataSource
     tool_version: str = Field(default="v1")
 
@@ -38,4 +39,4 @@ class ExtractionActivity(ProvenanceBaseModel):
     def _ensure_timezone(cls, value: datetime) -> datetime:
         if value.tzinfo is None:
             raise ValueError("performed_at must include timezone information")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)

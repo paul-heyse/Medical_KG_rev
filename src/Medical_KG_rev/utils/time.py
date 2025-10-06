@@ -1,13 +1,14 @@
 """Timestamp helpers with strict UTC enforcement."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def utc_now() -> datetime:
     """Return current UTC time with tzinfo."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def ensure_utc(value: datetime) -> datetime:
@@ -15,4 +16,4 @@ def ensure_utc(value: datetime) -> datetime:
 
     if value.tzinfo is None:
         raise ValueError("Datetime must include timezone information")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)

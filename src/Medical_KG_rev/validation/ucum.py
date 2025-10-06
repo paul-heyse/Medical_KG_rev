@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
-from typing import Dict, Mapping, MutableMapping, Optional, Tuple
 
 from pint import UnitRegistry
 from pint.errors import PintError
@@ -24,7 +24,7 @@ class UnitValidationResult:
     context: str
 
 
-_DefaultContexts: Dict[str, Dict[str, object]] = {
+_DefaultContexts: dict[str, dict[str, object]] = {
     "dose": {
         "canonical": "mg",
         "allowed": {"mg", "g", "mcg", "mg/kg"},
@@ -49,19 +49,23 @@ class UCUMValidator:
     def __init__(
         self,
         *,
-        registry: Optional[UnitRegistry] = None,
-        contexts: Optional[Mapping[str, Mapping[str, object]]] = None,
+        registry: UnitRegistry | None = None,
+        contexts: Mapping[str, Mapping[str, object]] | None = None,
     ) -> None:
         self._ureg = registry or UnitRegistry()
-        self._contexts: Dict[str, Dict[str, object]] = {
+        self._contexts: dict[str, dict[str, object]] = {
             name: {
-                "canonical": self._canonicalise_unit(str(ctx["canonical"])) if "canonical" in ctx else None,
-                "allowed": {self._canonicalise_unit(str(unit)) for unit in ctx.get("allowed", set())},
+                "canonical": (
+                    self._canonicalise_unit(str(ctx["canonical"])) if "canonical" in ctx else None
+                ),
+                "allowed": {
+                    self._canonicalise_unit(str(unit)) for unit in ctx.get("allowed", set())
+                },
                 "range": ctx.get("range", (None, None)),
             }
             for name, ctx in (contexts or _DefaultContexts).items()
         }
-        self._normalization_cache: MutableMapping[Tuple[str, str], Tuple[float, str]] = {}
+        self._normalization_cache: MutableMapping[tuple[str, str], tuple[float, str]] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -113,7 +117,7 @@ class UCUMValidator:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _get_context(self, name: str) -> Dict[str, object]:
+    def _get_context(self, name: str) -> dict[str, object]:
         try:
             return self._contexts[name]
         except KeyError as exc:  # pragma: no cover - defensive branch
@@ -133,7 +137,7 @@ class UCUMValidator:
         value: float,
         unit: str,
         ctx: Mapping[str, object],
-    ) -> Tuple[float, str]:
+    ) -> tuple[float, str]:
         formatted_unit = self._canonicalise_unit(unit)
         canonical_unit = str(ctx["canonical"])  # type: ignore[index]
         cache_key = (formatted_unit, canonical_unit)

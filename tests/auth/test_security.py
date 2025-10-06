@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import time
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -15,7 +14,7 @@ from Medical_KG_rev.auth.audit import get_audit_trail
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.auth.dependencies import secure_endpoint
 from Medical_KG_rev.auth.jwt import JWTAuthenticator
-from Medical_KG_rev.auth.rate_limit import RateLimitExceeded, RateLimitSettings, RateLimiter
+from Medical_KG_rev.auth.rate_limit import RateLimiter, RateLimitSettings
 
 
 @pytest.mark.anyio("asyncio")
@@ -44,20 +43,20 @@ async def test_jwt_authenticator_validates_token(monkeypatch):
     }
 
     class DummyResponse:
-        def __init__(self, data: Dict[str, Any]):
+        def __init__(self, data: dict[str, Any]):
             self._data = data
 
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> Dict[str, Any]:
+        def json(self) -> dict[str, Any]:
             return self._data
 
     class DummyClient:
         def __init__(self, *args, **kwargs):
             self.calls = []
 
-        async def __aenter__(self) -> "DummyClient":
+        async def __aenter__(self) -> DummyClient:
             return self
 
         async def __aexit__(self, exc_type, exc, tb) -> None:
@@ -68,7 +67,9 @@ async def test_jwt_authenticator_validates_token(monkeypatch):
             return DummyResponse(jwks)
 
     dummy_client = DummyClient()
-    monkeypatch.setattr("Medical_KG_rev.auth.jwt.httpx.AsyncClient", lambda *args, **kwargs: dummy_client)
+    monkeypatch.setattr(
+        "Medical_KG_rev.auth.jwt.httpx.AsyncClient", lambda *args, **kwargs: dummy_client
+    )
 
     authenticator = JWTAuthenticator(
         issuer="https://issuer",
@@ -114,7 +115,7 @@ async def test_secure_endpoint_enforces_scope_and_rate():
     assert exc.value.status_code == 403
 
 
-def jwt_encode(payload: Dict[str, Any], private_key, kid: str) -> str:
+def jwt_encode(payload: dict[str, Any], private_key, kid: str) -> str:
     from jose import jwt
 
     pem = private_key.private_bytes(

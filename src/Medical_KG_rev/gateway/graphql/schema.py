@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import asdict
-from typing import Any, List, Optional, Sequence
+from typing import Any
 
 import strawberry
 from strawberry import ID
@@ -15,8 +16,8 @@ from ..models import (
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
-    EmbedRequest,
     EmbeddingVector,
+    EmbedRequest,
     EntityLinkRequest,
     ExtractionRequest,
     IngestionRequest,
@@ -32,7 +33,7 @@ from ..services import GatewayService, get_gateway_service
 from .context import GraphQLContext, build_context
 
 
-def _operation_status_to_type(status: OperationStatus) -> "OperationStatusType":
+def _operation_status_to_type(status: OperationStatus) -> OperationStatusType:
     return OperationStatusType(
         job_id=status.job_id,
         status=status.status,
@@ -41,7 +42,7 @@ def _operation_status_to_type(status: OperationStatus) -> "OperationStatusType":
     )
 
 
-def _document_to_type(document: DocumentSummary) -> "DocumentType":
+def _document_to_type(document: DocumentSummary) -> DocumentType:
     return DocumentType(
         id=document.id,
         title=document.title,
@@ -52,7 +53,7 @@ def _document_to_type(document: DocumentSummary) -> "DocumentType":
     )
 
 
-def _retrieval_to_type(result: RetrievalResult) -> "RetrievalResultType":
+def _retrieval_to_type(result: RetrievalResult) -> RetrievalResultType:
     return RetrievalResultType(
         query=result.query,
         total=result.total,
@@ -60,7 +61,7 @@ def _retrieval_to_type(result: RetrievalResult) -> "RetrievalResultType":
     )
 
 
-def _embedding_to_type(vector: EmbeddingVector) -> "EmbeddingVectorType":
+def _embedding_to_type(vector: EmbeddingVector) -> EmbeddingVectorType:
     return EmbeddingVectorType(
         id=vector.id,
         vector=vector.vector,
@@ -69,7 +70,7 @@ def _embedding_to_type(vector: EmbeddingVector) -> "EmbeddingVectorType":
     )
 
 
-def _chunk_to_type(chunk: DocumentChunk) -> "DocumentChunkType":
+def _chunk_to_type(chunk: DocumentChunk) -> DocumentChunkType:
     return DocumentChunkType(
         document_id=chunk.document_id,
         chunk_index=chunk.chunk_index,
@@ -83,14 +84,14 @@ def _chunk_to_type(chunk: DocumentChunk) -> "DocumentChunkType":
 class OperationStatusType:
     job_id: str
     status: str
-    message: Optional[str]
+    message: str | None
     metadata: JSON
 
 
 @strawberry.type
 class BatchOperationType:
     total: int
-    operations: List[OperationStatusType]
+    operations: list[OperationStatusType]
 
 
 @strawberry.type
@@ -112,18 +113,20 @@ class DocumentType:
     id: str
     title: str
     score: float
-    summary: Optional[str]
+    summary: str | None
     source: str
     metadata: JSON
 
     @strawberry.field
-    async def organization(self, info: Info[GraphQLContext, None], id: Optional[str] = None) -> OrganizationType:
+    async def organization(
+        self, info: Info[GraphQLContext, None], id: str | None = None
+    ) -> OrganizationType:
         identifier = id or f"org-{self.id}"  # synthetic identifier
         data = await info.context.loaders.organization_loader.load(identifier)
         return OrganizationType(id=data["id"], name=data["name"], country=data["country"])
 
     @strawberry.field
-    async def claims(self, info: Info[GraphQLContext, None]) -> List[ClaimType]:
+    async def claims(self, info: Info[GraphQLContext, None]) -> list[ClaimType]:
         # Return synthetic claims derived from document id
         return [
             ClaimType(id=f"claim-{self.id}", predicate="supports", object_id="obj-1"),
@@ -134,13 +137,13 @@ class DocumentType:
 class RetrievalResultType:
     query: str
     total: int
-    documents: List[DocumentType]
+    documents: list[DocumentType]
 
 
 @strawberry.type
 class EmbeddingVectorType:
     id: str
-    vector: List[float]
+    vector: list[float]
     model: str
     metadata: JSON
 
@@ -170,7 +173,7 @@ class KnowledgeGraphWriteResultType:
 
 @strawberry.input
 class PaginationInput:
-    after: Optional[str] = None
+    after: str | None = None
     first: int = 10
 
 
@@ -200,7 +203,7 @@ class ChunkInput:
 @strawberry.input
 class EmbedInput:
     tenant_id: str
-    inputs: List[str]
+    inputs: list[str]
     model: str
     normalize: bool = True
 
@@ -216,8 +219,8 @@ class RetrieveInput:
 @strawberry.input
 class EntityLinkInput:
     tenant_id: str
-    mentions: List[str]
-    context: Optional[str] = None
+    mentions: list[str]
+    context: str | None = None
 
 
 @strawberry.input
@@ -259,7 +262,9 @@ class Query:
         return OrganizationType(id=data["id"], name=data["name"], country=data["country"])
 
     @strawberry.field
-    async def search(self, info: Info[GraphQLContext, None], arguments: SearchInput) -> RetrievalResultType:
+    async def search(
+        self, info: Info[GraphQLContext, None], arguments: SearchInput
+    ) -> RetrievalResultType:
         service = await _get_service(info)
         args = SearchArguments(
             query=arguments.query,
@@ -273,7 +278,9 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def ingest(self, info: Info[GraphQLContext, None], dataset: str, input: IngestionInput) -> BatchOperationType:
+    async def ingest(
+        self, info: Info[GraphQLContext, None], dataset: str, input: IngestionInput
+    ) -> BatchOperationType:
         service = await _get_service(info)
         request = IngestionRequest(
             tenant_id=input.tenant_id,
@@ -288,32 +295,42 @@ class Mutation:
         )
 
     @strawberry.mutation
-    async def chunk(self, info: Info[GraphQLContext, None], input: ChunkInput) -> List[DocumentChunkType]:
+    async def chunk(
+        self, info: Info[GraphQLContext, None], input: ChunkInput
+    ) -> list[DocumentChunkType]:
         service = await _get_service(info)
         request = ChunkRequest(**asdict(input))
         return [_chunk_to_type(chunk) for chunk in service.chunk_document(request)]
 
     @strawberry.mutation
-    async def embed(self, info: Info[GraphQLContext, None], input: EmbedInput) -> List[EmbeddingVectorType]:
+    async def embed(
+        self, info: Info[GraphQLContext, None], input: EmbedInput
+    ) -> list[EmbeddingVectorType]:
         service = await _get_service(info)
         request = EmbedRequest(**asdict(input))
         return [_embedding_to_type(vector) for vector in service.embed(request)]
 
     @strawberry.mutation
-    async def retrieve(self, info: Info[GraphQLContext, None], input: RetrieveInput) -> RetrievalResultType:
+    async def retrieve(
+        self, info: Info[GraphQLContext, None], input: RetrieveInput
+    ) -> RetrievalResultType:
         service = await _get_service(info)
         request = RetrieveRequest(**asdict(input))
         result = service.retrieve(request)
         return _retrieval_to_type(result)
 
     @strawberry.mutation
-    async def entity_link(self, info: Info[GraphQLContext, None], input: EntityLinkInput) -> BatchOperationType:
+    async def entity_link(
+        self, info: Info[GraphQLContext, None], input: EntityLinkInput
+    ) -> BatchOperationType:
         service = await _get_service(info)
         request = EntityLinkRequest(**asdict(input))
         result = service.entity_link(request)
         batch = build_batch_result(
             [
-                OperationStatus(job_id=item.entity_id, status="completed", metadata={"mention": item.mention})
+                OperationStatus(
+                    job_id=item.entity_id, status="completed", metadata={"mention": item.mention}
+                )
                 for item in result
             ]
         )
@@ -323,11 +340,15 @@ class Mutation:
         )
 
     @strawberry.mutation
-    async def extract(self, info: Info[GraphQLContext, None], kind: str, input: ExtractionInput) -> ExtractionResultType:
+    async def extract(
+        self, info: Info[GraphQLContext, None], kind: str, input: ExtractionInput
+    ) -> ExtractionResultType:
         service = await _get_service(info)
         request = ExtractionRequest(**asdict(input))
         result = service.extract(kind, request)
-        return ExtractionResultType(kind=result.kind, document_id=result.document_id, results=result.results)
+        return ExtractionResultType(
+            kind=result.kind, document_id=result.document_id, results=result.results
+        )
 
     @strawberry.mutation
     async def write_kg(

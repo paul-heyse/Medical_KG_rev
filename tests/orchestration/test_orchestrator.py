@@ -3,7 +3,8 @@ from __future__ import annotations
 import time
 
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
-from Medical_KG_rev.orchestration import KafkaClient, Orchestrator, OrchestrationError
+from Medical_KG_rev.orchestration import KafkaClient, OrchestrationError, Orchestrator
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.orchestrator import (
     INGEST_REQUESTS_TOPIC,
     INGEST_RESULTS_TOPIC,
@@ -11,12 +12,13 @@ from Medical_KG_rev.orchestration.orchestrator import (
     Pipeline,
     PipelineStage,
 )
-from Medical_KG_rev.orchestration.ledger import JobLedger
 
 
 def create_orchestrator() -> Orchestrator:
     kafka = KafkaClient()
-    kafka.create_topics([INGEST_REQUESTS_TOPIC, INGEST_RESULTS_TOPIC, MAPPING_EVENTS_TOPIC, "ingest.deadletter.v1"])
+    kafka.create_topics(
+        [INGEST_REQUESTS_TOPIC, INGEST_RESULTS_TOPIC, MAPPING_EVENTS_TOPIC, "ingest.deadletter.v1"]
+    )
     ledger = JobLedger()
     events = EventStreamManager()
     return Orchestrator(kafka, ledger, events)
@@ -58,7 +60,9 @@ def test_pipeline_failure_requeues_with_backoff() -> None:
     def failing_handler(*_: object, **__: object) -> dict:
         raise RuntimeError("boom")
 
-    orchestrator.pipelines["auto"] = Pipeline(name="auto", stages=[PipelineStage("boom", failing_handler)])
+    orchestrator.pipelines["auto"] = Pipeline(
+        name="auto", stages=[PipelineStage("boom", failing_handler)]
+    )
 
     message = next(orchestrator.kafka.consume(INGEST_REQUESTS_TOPIC))
     start = time.time()

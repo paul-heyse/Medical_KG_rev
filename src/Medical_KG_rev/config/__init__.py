@@ -1,4 +1,5 @@
 """Configuration helpers for Medical_KG_rev."""
+
 from .domains import DomainConfig, DomainRegistry
 from .settings import (
     AppSettings,

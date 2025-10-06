@@ -1,8 +1,6 @@
 import pytest
 
-import pytest
-
-from Medical_KG_rev.adapters import ExampleAdapter, registry, run_adapter
+from Medical_KG_rev.adapters import ExampleAdapter, run_adapter
 from Medical_KG_rev.adapters.registry import AdapterRegistry
 from Medical_KG_rev.adapters.yaml_parser import AdapterConfig, load_adapter_config
 

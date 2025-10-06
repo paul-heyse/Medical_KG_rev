@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from typing import Optional
 
 import grpc
 
@@ -17,6 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency missing
 if _grpc_health_spec is not None:
     from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 else:  # pragma: no cover - fallback when grpc-health not installed
+
     class _StubHealth:
         class HealthServicer:  # type: ignore[too-many-ancestors]
             def __init__(self) -> None:
@@ -73,11 +73,15 @@ class MineruService(mineru_pb2_grpc.MineruServiceServicer if mineru_pb2_grpc els
             return None
         response = mineru_pb2.ProcessPdfResponse()
         for chunk in chunks:
-            response.chunks.add(document_id=chunk.document_id, index=chunk.chunk_index, text=chunk.content)
+            response.chunks.add(
+                document_id=chunk.document_id, index=chunk.chunk_index, text=chunk.content
+            )
         return response
 
 
-class EmbeddingService(embedding_pb2_grpc.EmbeddingServiceServicer if embedding_pb2_grpc else object):
+class EmbeddingService(
+    embedding_pb2_grpc.EmbeddingServiceServicer if embedding_pb2_grpc else object
+):
     def __init__(self, service: GatewayService) -> None:
         self.service = service
 
@@ -98,7 +102,9 @@ class EmbeddingService(embedding_pb2_grpc.EmbeddingServiceServicer if embedding_
         return response
 
 
-class ExtractionService(extraction_pb2_grpc.ExtractionServiceServicer if extraction_pb2_grpc else object):
+class ExtractionService(
+    extraction_pb2_grpc.ExtractionServiceServicer if extraction_pb2_grpc else object
+):
     def __init__(self, service: GatewayService) -> None:
         self.service = service
 
@@ -113,11 +119,15 @@ class ExtractionService(extraction_pb2_grpc.ExtractionServiceServicer if extract
             return None
         response = extraction_pb2.ExtractionResponse()
         for item in result.results:
-            response.results.add(kind=result.kind, document_id=result.document_id, value=item.get("value", ""))
+            response.results.add(
+                kind=result.kind, document_id=result.document_id, value=item.get("value", "")
+            )
         return response
 
 
-class IngestionService(ingestion_pb2_grpc.IngestionServiceServicer if ingestion_pb2_grpc else object):
+class IngestionService(
+    ingestion_pb2_grpc.IngestionServiceServicer if ingestion_pb2_grpc else object
+):
     def __init__(self, service: GatewayService) -> None:
         self.service = service
 
@@ -132,27 +142,37 @@ class IngestionService(ingestion_pb2_grpc.IngestionServiceServicer if ingestion_
             return None
         response = ingestion_pb2.IngestionJobResponse()
         for status in result.operations:
-            response.operations.add(job_id=status.job_id, status=status.status, message=status.message or "")
+            response.operations.add(
+                job_id=status.job_id, status=status.status, message=status.message or ""
+            )
         return response
 
 
 class GatewayGrpcServer:
     """Wrapper that registers all gateway services with a grpc.aio server."""
 
-    def __init__(self, service: Optional[GatewayService] = None) -> None:
+    def __init__(self, service: GatewayService | None = None) -> None:
         self.service = service or get_gateway_service()
-        self._server: Optional[grpc.aio.Server] = None
+        self._server: grpc.aio.Server | None = None
 
     async def start(self, host: str = "0.0.0.0", port: int = 50051) -> None:
         self._server = grpc.aio.server()
         if mineru_pb2_grpc:
-            mineru_pb2_grpc.add_MineruServiceServicer_to_server(MineruService(self.service), self._server)
+            mineru_pb2_grpc.add_MineruServiceServicer_to_server(
+                MineruService(self.service), self._server
+            )
         if embedding_pb2_grpc:
-            embedding_pb2_grpc.add_EmbeddingServiceServicer_to_server(EmbeddingService(self.service), self._server)
+            embedding_pb2_grpc.add_EmbeddingServiceServicer_to_server(
+                EmbeddingService(self.service), self._server
+            )
         if extraction_pb2_grpc:
-            extraction_pb2_grpc.add_ExtractionServiceServicer_to_server(ExtractionService(self.service), self._server)
+            extraction_pb2_grpc.add_ExtractionServiceServicer_to_server(
+                ExtractionService(self.service), self._server
+            )
         if ingestion_pb2_grpc:
-            ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(IngestionService(self.service), self._server)
+            ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(
+                IngestionService(self.service), self._server
+            )
 
         health_servicer = health.HealthServicer()
         health_pb2_grpc.add_HealthServicer_to_server(health_servicer, self._server)

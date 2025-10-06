@@ -1,7 +1,6 @@
 """Organization and tenant models used for multi-tenancy."""
-from __future__ import annotations
 
-from typing import Dict, Optional
+from __future__ import annotations
 
 from pydantic import Field, field_validator
 
@@ -13,12 +12,12 @@ class Organization(IRBaseModel):
 
     id: str
     name: str
-    domain: Optional[str] = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    domain: str | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("domain")
     @classmethod
-    def _validate_domain(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_domain(cls, value: str | None) -> str | None:
         if value is None:
             return value
         if "." not in value:
@@ -32,9 +31,9 @@ class TenantContext(IRBaseModel):
     tenant_id: str
     organization: Organization
     correlation_id: str
-    feature_flags: Dict[str, bool] = Field(default_factory=dict)
+    feature_flags: dict[str, bool] = Field(default_factory=dict)
 
     @field_validator("feature_flags")
     @classmethod
-    def _normalize_flags(cls, value: Dict[str, bool]) -> Dict[str, bool]:
+    def _normalize_flags(cls, value: dict[str, bool]) -> dict[str, bool]:
         return {key.lower(): bool(enabled) for key, enabled in value.items()}

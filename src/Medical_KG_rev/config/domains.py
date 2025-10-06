@@ -1,8 +1,9 @@
 """Utilities for managing multi-domain configuration."""
+
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from pathlib import Path
-from typing import Dict, Iterator, Mapping
 
 import yaml
 from pydantic import BaseModel, Field
@@ -20,7 +21,7 @@ class DomainConfig(BaseModel):
 class DomainRegistry(BaseModel):
     """Collection of domain configurations loaded from YAML."""
 
-    domains: Dict[str, DomainConfig]
+    domains: dict[str, DomainConfig]
 
     def get(self, domain_id: str) -> DomainConfig:
         try:
@@ -32,8 +33,10 @@ class DomainRegistry(BaseModel):
         return iter(self.domains.values())
 
     @classmethod
-    def from_path(cls, path: Path) -> "DomainRegistry":
+    def from_path(cls, path: Path) -> DomainRegistry:
         raw = yaml.safe_load(path.read_text()) if path.exists() else {}
         data = raw or {}
-        domains = {item["id"]: DomainConfig.model_validate(item) for item in data.get("domains", [])}
+        domains = {
+            item["id"]: DomainConfig.model_validate(item) for item in data.get("domains", [])
+        }
         return cls(domains=domains)

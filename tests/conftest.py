@@ -3,11 +3,9 @@ from __future__ import annotations
 import hashlib
 
 import pytest
-
-from Medical_KG_rev.config.settings import get_settings
-
 from fastapi.testclient import TestClient
 
+from Medical_KG_rev.config.settings import get_settings
 
 API_TEST_KEY = "test-api-key"
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -18,7 +18,7 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-def _jsonapi(data: Any, meta: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def _jsonapi(data: Any, meta: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"data": data, "meta": meta or {}}
 
 
@@ -48,7 +48,7 @@ def test_problem_details_format(client: TestClient) -> None:
 
 def test_openapi_contract_matches_file(client: TestClient) -> None:
     live_spec = client.get("/openapi.json").json()
-    with open("docs/openapi.yaml", "r", encoding="utf-8") as handle:
+    with open("docs/openapi.yaml", encoding="utf-8") as handle:
         file_spec = handle.read()
     assert json.loads(json.dumps(live_spec))  # ensures valid JSON
     assert "paths" in live_spec

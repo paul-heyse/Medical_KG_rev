@@ -1,6 +1,11 @@
 import pytest
 
-from Medical_KG_rev.utils.validation import validate_doi, validate_nct_id, validate_pmcid, validate_pmid
+from Medical_KG_rev.utils.validation import (
+    validate_doi,
+    validate_nct_id,
+    validate_pmcid,
+    validate_pmid,
+)
 
 
 def test_validate_nct_id():

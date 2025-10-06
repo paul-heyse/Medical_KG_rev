@@ -25,7 +25,9 @@ def test_ingestion_job_lifecycle(api_key: str) -> None:
         "metadata": {"requested_by": "test"},
     }
 
-    response = client.post("/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key})
+    response = client.post(
+        "/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key}
+    )
     assert response.status_code == 207
     data = response.json()["data"]
     job_id = data[0]["job_id"]
@@ -55,7 +57,9 @@ def test_cancel_job_before_processing(api_key: str) -> None:
         "items": [{"id": "demo-2"}],
     }
 
-    response = client.post("/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key})
+    response = client.post(
+        "/v1/ingest/clinicaltrials", json=payload, headers={"X-API-Key": api_key}
+    )
     job_id = response.json()["data"][0]["job_id"]
 
     cancel_response = client.post(f"/v1/jobs/{job_id}/cancel", headers={"X-API-Key": api_key})

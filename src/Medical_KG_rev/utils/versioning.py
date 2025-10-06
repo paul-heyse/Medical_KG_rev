@@ -1,4 +1,5 @@
 """Utilities for handling version strings."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ class Version:
         return f"v{self.major}.{self.minor}.{self.patch}"
 
     @classmethod
-    def parse(cls, value: str) -> "Version":
+    def parse(cls, value: str) -> Version:
         if not value.startswith("v"):
             raise ValueError("Version must start with 'v'")
         parts = value[1:].split(".")
@@ -23,8 +24,8 @@ class Version:
             numbers.append(0)
         return cls(*numbers[:3])
 
-    def bump_minor(self) -> "Version":
+    def bump_minor(self) -> Version:
         return Version(self.major, self.minor + 1, 0)
 
-    def bump_patch(self) -> "Version":
+    def bump_patch(self) -> Version:
         return Version(self.major, self.minor, self.patch + 1)

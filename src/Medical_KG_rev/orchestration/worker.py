@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict
 
 from ..gateway.models import JobEvent
 from ..gateway.sse.manager import EventStreamManager
@@ -39,7 +38,7 @@ class WorkerBase:
     def shutdown(self) -> None:
         self._stopped = True
 
-    def health(self) -> Dict[str, object]:
+    def health(self) -> dict[str, object]:
         return {
             "name": self.name,
             "stopped": self._stopped,
@@ -78,7 +77,9 @@ class IngestWorker(WorkerBase):
         name: str = "ingest-worker",
         batch_size: int = 10,
     ) -> None:
-        super().__init__(name=name, kafka=kafka, ledger=ledger, events=events, batch_size=batch_size)
+        super().__init__(
+            name=name, kafka=kafka, ledger=ledger, events=events, batch_size=batch_size
+        )
         self.orchestrator = orchestrator
 
     @property
@@ -91,7 +92,9 @@ class IngestWorker(WorkerBase):
             return
         try:
             result = self.orchestrator.execute_pipeline(job_id, message.value)
-            self.kafka.publish(INGEST_RESULTS_TOPIC, {"job_id": job_id, "result": result}, key=job_id)
+            self.kafka.publish(
+                INGEST_RESULTS_TOPIC, {"job_id": job_id, "result": result}, key=job_id
+            )
         except OrchestrationError as exc:
             self.metrics.failed += 1
             self.events.publish(
@@ -119,7 +122,9 @@ class MappingWorker(WorkerBase):
         name: str = "mapping-worker",
         batch_size: int = 10,
     ) -> None:
-        super().__init__(name=name, kafka=kafka, ledger=ledger, events=events, batch_size=batch_size)
+        super().__init__(
+            name=name, kafka=kafka, ledger=ledger, events=events, batch_size=batch_size
+        )
 
     @property
     def topic(self) -> str:
@@ -138,4 +143,4 @@ class MappingWorker(WorkerBase):
         )
 
 
-__all__ = ["WorkerBase", "IngestWorker", "MappingWorker", "WorkerMetrics"]
+__all__ = ["IngestWorker", "MappingWorker", "WorkerBase", "WorkerMetrics"]

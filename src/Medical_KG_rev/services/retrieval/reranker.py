@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 
 
 @dataclass(slots=True)
@@ -20,20 +20,22 @@ class CrossEncoderReranker:
         *,
         text_field: str = "text",
         top_k: int = 10,
-    ) -> Tuple[List[Mapping[str, object]], MutableMapping[str, object]]:
+    ) -> tuple[list[Mapping[str, object]], MutableMapping[str, object]]:
         items = [dict(candidate) for candidate in candidates]
         if not items:
             return [], {"model": self.model_name, "evaluated": 0, "applied": False}
         top_k = min(top_k, len(items))
         evaluated = items[:top_k]
         scores = self._predict(query, evaluated, text_field)
-        for item, score in zip(evaluated, scores):
+        for item, score in zip(evaluated, scores, strict=False):
             item["rerank_score"] = float(score)
         evaluated.sort(key=lambda entry: entry.get("rerank_score", 0.0), reverse=True)
         remainder = items[top_k:]
         ranked = evaluated + remainder
         metrics: MutableMapping[str, object] = {
-            "model": self.model_name if self._model else f"fallback:{self._load_error or 'lexical'}",
+            "model": (
+                self.model_name if self._model else f"fallback:{self._load_error or 'lexical'}"
+            ),
             "evaluated": len(evaluated),
             "applied": True,
         }
@@ -44,7 +46,7 @@ class CrossEncoderReranker:
     # ------------------------------------------------------------------
     def _predict(
         self, query: str, candidates: Sequence[Mapping[str, object]], text_field: str
-    ) -> List[float]:
+    ) -> list[float]:
         model = self._ensure_model()
         if model is None:
             return self._lexical_overlap(query, candidates, text_field)
@@ -54,9 +56,9 @@ class CrossEncoderReranker:
 
     def _lexical_overlap(
         self, query: str, candidates: Sequence[Mapping[str, object]], text_field: str
-    ) -> List[float]:
+    ) -> list[float]:
         query_terms = set(query.lower().split())
-        scores: List[float] = []
+        scores: list[float] = []
         for candidate in candidates:
             text = str(candidate.get(text_field, ""))
             terms = set(text.lower().split())

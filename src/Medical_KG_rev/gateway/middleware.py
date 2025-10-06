@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import time
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Dict, Mapping, MutableMapping, Sequence
+from datetime import UTC, datetime
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -79,7 +79,9 @@ class CachingMiddleware(BaseHTTPMiddleware):
         if policy.etag:
             entry = self._cache.get(cache_key)
             if entry and request.headers.get("if-none-match") == entry.etag:
-                headers = self._build_headers(policy, etag=entry.etag, last_modified=entry.last_modified)
+                headers = self._build_headers(
+                    policy, etag=entry.etag, last_modified=entry.last_modified
+                )
                 return Response(status_code=304, headers=headers)
 
         response = await call_next(request)
@@ -87,8 +89,10 @@ class CachingMiddleware(BaseHTTPMiddleware):
         etag = self._generate_etag(body) if policy.etag else None
         last_modified = response.headers.get("Last-Modified")
         if not last_modified and policy.last_modified:
-            last_modified = self._http_date(datetime.now(timezone.utc))
-        headers = self._build_headers(policy, existing_headers=response.headers, etag=etag, last_modified=last_modified)
+            last_modified = self._http_date(datetime.now(UTC))
+        headers = self._build_headers(
+            policy, existing_headers=response.headers, etag=etag, last_modified=last_modified
+        )
         new_response = Response(
             content=body if method == "GET" else b"",
             status_code=response.status_code,
@@ -98,7 +102,10 @@ class CachingMiddleware(BaseHTTPMiddleware):
         )
         if etag:
             expires_at = time.time() + max(policy.ttl, 0)
-            self._cache.set(cache_key, CacheEntry(etag=etag, expires_at=expires_at, last_modified=last_modified or ""))
+            self._cache.set(
+                cache_key,
+                CacheEntry(etag=etag, expires_at=expires_at, last_modified=last_modified or ""),
+            )
         return new_response
 
     def _lookup_policy(self, request: Request) -> CachePolicy:
@@ -116,7 +123,7 @@ class CachingMiddleware(BaseHTTPMiddleware):
         existing_headers: Mapping[str, str] | None = None,
         etag: str | None = None,
         last_modified: str | None = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         headers = dict(existing_headers or {})
         headers["Cache-Control"] = self._cache_control(policy)
         if policy.vary:
@@ -143,4 +150,4 @@ class CachingMiddleware(BaseHTTPMiddleware):
         return moment.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
-__all__ = ["CachingMiddleware", "CachePolicy", "ResponseCache", "CacheEntry"]
+__all__ = ["CacheEntry", "CachePolicy", "CachingMiddleware", "ResponseCache"]

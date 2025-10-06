@@ -2,20 +2,20 @@
 
 from .service import (
     EmbeddingBatch,
+    EmbeddingGrpcService,
     EmbeddingModelRegistry,
     EmbeddingRequest,
     EmbeddingResponse,
     EmbeddingVector,
     EmbeddingWorker,
-    EmbeddingGrpcService,
 )
 
 __all__ = [
     "EmbeddingBatch",
+    "EmbeddingGrpcService",
     "EmbeddingModelRegistry",
     "EmbeddingRequest",
     "EmbeddingResponse",
     "EmbeddingVector",
     "EmbeddingWorker",
-    "EmbeddingGrpcService",
 ]

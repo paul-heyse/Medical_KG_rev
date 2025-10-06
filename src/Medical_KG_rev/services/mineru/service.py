@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import uuid
-import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable, List
 
 import structlog
 
@@ -37,7 +36,7 @@ class Document:
 
     document_id: str
     tenant_id: str
-    blocks: List[Block] = field(default_factory=list)
+    blocks: list[Block] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -59,7 +58,7 @@ class MineruProcessor:
         self.gpu = gpu
         self.min_memory_mb = min_memory_mb
 
-    def _decode_pdf(self, payload: bytes) -> List[str]:
+    def _decode_pdf(self, payload: bytes) -> list[str]:
         # In test environments we treat the payload as UTF-8 text for determinism.
         try:
             text = payload.decode("utf-8")
@@ -68,8 +67,8 @@ class MineruProcessor:
         pages = [page.strip() for page in text.split("\f") if page.strip()]
         return pages or [text.strip()]
 
-    def _infer_blocks(self, pages: Iterable[str]) -> List[Block]:
-        blocks: List[Block] = []
+    def _infer_blocks(self, pages: Iterable[str]) -> list[Block]:
+        blocks: list[Block] = []
         for page_index, page_text in enumerate(pages, start=1):
             for raw_index, line in enumerate(page_text.splitlines()):
                 if not line.strip():
@@ -101,7 +100,9 @@ class MineruProcessor:
             logger.error("mineru.process.failed", reason="gpu-unavailable")
             raise
 
-        document = Document(document_id=request.document_id, tenant_id=request.tenant_id, blocks=blocks)
+        document = Document(
+            document_id=request.document_id, tenant_id=request.tenant_id, blocks=blocks
+        )
         logger.info("mineru.process.completed", document_id=request.document_id, blocks=len(blocks))
         return MineruResponse(document=document)
 
@@ -140,5 +141,7 @@ class MineruGrpcService:
             reply_block.kind = block.kind
             reply_block.text = block.text
             reply_block.confidence = block.confidence
-            reply_block.bbox.x0, reply_block.bbox.y0, reply_block.bbox.x1, reply_block.bbox.y1 = block.bbox
+            reply_block.bbox.x0, reply_block.bbox.y0, reply_block.bbox.x1, reply_block.bbox.y1 = (
+                block.bbox
+            )
         return reply

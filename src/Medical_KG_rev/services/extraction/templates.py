@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Mapping, Sequence, Tuple, Type
+from collections.abc import Iterable, Mapping, Sequence
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
@@ -17,7 +17,7 @@ class Span(BaseModel):
     end: int = Field(gt=0)
 
     @model_validator(mode="after")
-    def validate_range(cls, values: "Span") -> "Span":  # type: ignore[override]
+    def validate_range(cls, values: Span) -> Span:  # type: ignore[override]
         if values.end <= values.start:
             raise ValueError("Span end must be greater than start")
         return values
@@ -90,7 +90,7 @@ class EffectMeasure(BaseModel):
     span: Span
 
     @model_validator(mode="after")
-    def validate_interval(cls, values: "EffectMeasure") -> "EffectMeasure":  # type: ignore[override]
+    def validate_interval(cls, values: EffectMeasure) -> EffectMeasure:  # type: ignore[override]
         if values.ci_low is not None and values.ci_high is not None:
             if values.ci_low > values.ci_high:
                 raise ValueError("Confidence interval lower bound must be <= upper bound")
@@ -131,7 +131,7 @@ class DoseExtraction(BaseModel):
 class CriteriaItem(BaseModel):
     text: str
     span: Span
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class EligibilityExtraction(BaseModel):
@@ -139,7 +139,7 @@ class EligibilityExtraction(BaseModel):
     exclusion: Sequence[CriteriaItem]
 
 
-_TEMPLATE_REGISTRY: Dict[str, Type[BaseModel]] = {
+_TEMPLATE_REGISTRY: dict[str, type[BaseModel]] = {
     "pico": PICOExtraction,
     "effects": EffectsExtraction,
     "ae": AdverseEventsExtraction,
@@ -148,7 +148,9 @@ _TEMPLATE_REGISTRY: Dict[str, Type[BaseModel]] = {
 }
 
 
-def validate_template(kind: str, payload: Mapping[str, object], source_text: str) -> Mapping[str, object]:
+def validate_template(
+    kind: str, payload: Mapping[str, object], source_text: str
+) -> Mapping[str, object]:
     try:
         model = _TEMPLATE_REGISTRY[kind]
     except KeyError as exc:
@@ -184,20 +186,20 @@ def _iter_spans(instance: BaseModel | Sequence | Mapping) -> Iterable[Span]:
 
 
 __all__ = [
-    "Span",
-    "Population",
-    "Intervention",
-    "Comparison",
-    "Outcome",
-    "PICOExtraction",
-    "EffectMeasure",
-    "EffectsExtraction",
     "AdverseEvent",
     "AdverseEventsExtraction",
+    "Comparison",
+    "CriteriaItem",
     "DoseExtraction",
     "DoseRegimen",
+    "EffectMeasure",
+    "EffectsExtraction",
     "EligibilityExtraction",
-    "CriteriaItem",
-    "validate_template",
+    "Intervention",
+    "Outcome",
+    "PICOExtraction",
+    "Population",
+    "Span",
     "TemplateValidationError",
+    "validate_template",
 ]

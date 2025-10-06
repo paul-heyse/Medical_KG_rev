@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import textwrap
 import xml.etree.ElementTree as ET
-from typing import List
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
 
@@ -51,8 +50,8 @@ async def serve_wsdl() -> Response:
     return Response(content=WSDL_TEMPLATE, media_type="application/xml")
 
 
-def _parse_items(element: ET.Element) -> List[dict]:
-    items: List[dict] = []
+def _parse_items(element: ET.Element) -> list[dict]:
+    items: list[dict] = []
     for node in element.findall("item"):
         item_payload = {child.tag: child.text or "" for child in node}
         items.append(item_payload)
@@ -76,7 +75,11 @@ async def soap_entrypoint(
         try:
             rate_limiter.check(security.identity, "SOAP:Ingest")
         except RateLimitExceeded as exc:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded", headers={"Retry-After": str(int(exc.retry_after))})
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded",
+                headers={"Retry-After": str(int(exc.retry_after))},
+            )
         if not security.has_scope(Scopes.INGEST_WRITE):
             raise HTTPException(status_code=403, detail="Missing required scopes: ingest:write")
         dataset = action_node.get("dataset", "clinicaltrials")
@@ -97,7 +100,7 @@ async def soap_entrypoint(
             metadata={"items": len(items)},
         )
         return Response(
-            content=f"<Envelope><Body><IngestResponse total=\"{result.total}\">{payload}</IngestResponse></Body></Envelope>",
+            content=f'<Envelope><Body><IngestResponse total="{result.total}">{payload}</IngestResponse></Body></Envelope>',
             media_type="application/xml",
         )
 
@@ -106,7 +109,11 @@ async def soap_entrypoint(
         try:
             rate_limiter.check(security.identity, "SOAP:Retrieve")
         except RateLimitExceeded as exc:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded", headers={"Retry-After": str(int(exc.retry_after))})
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded",
+                headers={"Retry-After": str(int(exc.retry_after))},
+            )
         if not security.has_scope(Scopes.RETRIEVE_READ):
             raise HTTPException(status_code=403, detail="Missing required scopes: kg:read")
         tenant_id = retrieve_node.get("tenantId", "tenant-default")
@@ -116,7 +123,7 @@ async def soap_entrypoint(
         request = RetrieveRequest(tenant_id=tenant_id, query=query)
         result = service.retrieve(request)
         documents = "".join(
-            f"<document id=\"{doc.id}\" title=\"{doc.title}\" score=\"{doc.score}\"/>"
+            f'<document id="{doc.id}" title="{doc.title}" score="{doc.score}"/>'
             for doc in result.documents
         )
         get_audit_trail().record(
@@ -126,7 +133,7 @@ async def soap_entrypoint(
             metadata={"total": result.total},
         )
         return Response(
-            content=f"<Envelope><Body><RetrieveResponse total=\"{result.total}\">{documents}</RetrieveResponse></Body></Envelope>",
+            content=f'<Envelope><Body><RetrieveResponse total="{result.total}">{documents}</RetrieveResponse></Body></Envelope>',
             media_type="application/xml",
         )
 

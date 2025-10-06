@@ -13,5 +13,10 @@ def test_organization_domain_validation():
 
 def test_tenant_context_feature_flags_normalized():
     org = Organization(id="org1", name="Org")
-    ctx = TenantContext(tenant_id="tenant", organization=org, correlation_id="corr", feature_flags={"FeatureA": True})
+    ctx = TenantContext(
+        tenant_id="tenant",
+        organization=org,
+        correlation_id="corr",
+        feature_flags={"FeatureA": True},
+    )
     assert ctx.feature_flags["featurea"] is True

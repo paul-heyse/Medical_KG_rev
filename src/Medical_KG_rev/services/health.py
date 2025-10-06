@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Callable, Dict, Mapping
+from datetime import UTC, datetime
 
 
 @dataclass(slots=True)
@@ -20,22 +20,22 @@ HealthCheck = Callable[[], CheckResult]
 class HealthService:
     checks: Mapping[str, HealthCheck]
     version: str
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def uptime_seconds(self) -> float:
-        delta = datetime.now(timezone.utc) - self.started_at
+        delta = datetime.now(UTC) - self.started_at
         return round(delta.total_seconds(), 3)
 
-    def liveness(self) -> Dict[str, object]:
+    def liveness(self) -> dict[str, object]:
         return {
             "status": "ok",
             "version": self.version,
             "uptime_seconds": self.uptime_seconds(),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
-    def readiness(self) -> Dict[str, object]:
-        results: Dict[str, Dict[str, object]] = {}
+    def readiness(self) -> dict[str, object]:
+        results: dict[str, dict[str, object]] = {}
         overall_status = "ok"
         for name, check in self.checks.items():
             try:
@@ -60,4 +60,4 @@ def failure(detail: str) -> CheckResult:
     return CheckResult(status="error", detail=detail)
 
 
-__all__ = ["HealthService", "CheckResult", "success", "failure"]
+__all__ = ["CheckResult", "HealthService", "failure", "success"]

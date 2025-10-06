@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Mapping
 
 
 @dataclass(slots=True, frozen=True)
@@ -27,7 +27,7 @@ class RelationshipSchema:
     properties: Mapping[str, str] = field(default_factory=dict)
 
 
-GRAPH_SCHEMA: Dict[str, NodeSchema] = {
+GRAPH_SCHEMA: dict[str, NodeSchema] = {
     "Document": NodeSchema(
         label="Document",
         key="document_id",
@@ -74,7 +74,7 @@ GRAPH_SCHEMA: Dict[str, NodeSchema] = {
     ),
 }
 
-RELATIONSHIPS: Dict[str, RelationshipSchema] = {
+RELATIONSHIPS: dict[str, RelationshipSchema] = {
     "MENTIONS": RelationshipSchema(
         type="MENTIONS",
         start_label="Document",

@@ -4,26 +4,34 @@ from __future__ import annotations
 
 import math
 import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import List, Mapping, Optional, Sequence
 
 import structlog
 
+from ..kg import ShaclValidator, ValidationError
+from ..observability.metrics import observe_job_duration, record_business_event
+from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
+from ..orchestration.kafka import KafkaClient
+from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
+from ..services.extraction.templates import TemplateValidationError, validate_template
+from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
+from ..services.retrieval.reranker import CrossEncoderReranker
+from ..validation import UCUMValidator
+from ..validation.fhir import FHIRValidationError, FHIRValidator
 from .models import (
     BatchError,
     BatchOperationResult,
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
-    EmbedRequest,
     EmbeddingVector,
+    EmbedRequest,
     EntityLinkRequest,
     EntityLinkResult,
     ExtractionRequest,
     ExtractionResult,
-    GraphEdge,
-    GraphNode,
     IngestionRequest,
     JobEvent,
     JobHistoryEntry,
@@ -38,16 +46,6 @@ from .models import (
     build_batch_result,
 )
 from .sse.manager import EventStreamManager
-from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
-from ..orchestration.kafka import KafkaClient
-from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
-from ..observability.metrics import observe_job_duration, record_business_event
-from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
-from ..services.retrieval.reranker import CrossEncoderReranker
-from ..validation import UCUMValidator
-from ..validation.fhir import FHIRValidationError, FHIRValidator
-from ..services.extraction.templates import TemplateValidationError, validate_template
-from ..kg import ShaclValidator, ValidationError
 
 logger = structlog.get_logger(__name__)
 
@@ -67,7 +65,7 @@ class GatewayService:
     events: EventStreamManager
     orchestrator: Orchestrator
     ledger: JobLedger
-    workers: List[WorkerBase] = field(default_factory=list)
+    workers: list[WorkerBase] = field(default_factory=list)
     chunker: ChunkingService = field(default_factory=ChunkingService)
     reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
@@ -102,9 +100,7 @@ class GatewayService:
             history=history,
         )
 
-    def _new_job(
-        self, tenant_id: str, operation: str, *, metadata: Optional[dict] = None
-    ) -> str:
+    def _new_job(self, tenant_id: str, operation: str, *, metadata: dict | None = None) -> str:
         job_id = f"job-{uuid.uuid4().hex[:12]}"
         doc_key = f"{operation}:{job_id}"
         self.ledger.create(
@@ -121,7 +117,7 @@ class GatewayService:
         )
         return job_id
 
-    def _complete_job(self, job_id: str, payload: Optional[dict] = None) -> None:
+    def _complete_job(self, job_id: str, payload: dict | None = None) -> None:
         logger.info("gateway.job.completed", job_id=job_id)
         self.ledger.mark_completed(job_id, metadata=payload or {})
         self.events.publish(JobEvent(job_id=job_id, type="jobs.completed", payload=payload or {}))
@@ -133,7 +129,7 @@ class GatewayService:
 
     def ingest(self, dataset: str, request: IngestionRequest) -> BatchOperationResult:
         started = perf_counter()
-        statuses: List[OperationStatus] = []
+        statuses: list[OperationStatus] = []
         for item in request.items:
             entry = self.orchestrator.submit_job(
                 tenant_id=request.tenant_id,
@@ -152,7 +148,11 @@ class GatewayService:
             if duplicate:
                 http_status = 409
                 status_value = "failed"
-                error = BatchError(code="duplicate", message="Document already queued", details={"dataset": dataset})
+                error = BatchError(
+                    code="duplicate",
+                    message="Document already queued",
+                    details={"dataset": dataset},
+                )
             statuses.append(
                 OperationStatus(
                     job_id=entry.job_id,
@@ -183,9 +183,11 @@ class GatewayService:
                 "Population: Adults with hypertension. Intervention: ACE inhibitor administered daily. "
                 "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
             )
-        options = ChunkingOptions(strategy=request.strategy, max_tokens=request.chunk_size, overlap=request.overlap)
+        options = ChunkingOptions(
+            strategy=request.strategy, max_tokens=request.chunk_size, overlap=request.overlap
+        )
         raw_chunks = self.chunker.chunk(request.document_id, sample_text, options)
-        chunks: List[DocumentChunk] = []
+        chunks: list[DocumentChunk] = []
         for index, chunk in enumerate(raw_chunks):
             metadata = dict(chunk.metadata)
             metadata.setdefault("strategy", request.strategy)
@@ -204,7 +206,7 @@ class GatewayService:
 
     def embed(self, request: EmbedRequest) -> Sequence[EmbeddingVector]:
         job_id = self._new_job(request.tenant_id, "embed")
-        embeddings: List[EmbeddingVector] = []
+        embeddings: list[EmbeddingVector] = []
         for index, text in enumerate(request.inputs):
             vector = [round(math.sin(i + len(text)) % 1, 4) for i in range(8)]
             embeddings.append(
@@ -258,7 +260,12 @@ class GatewayService:
                 )
                 for item in ranked
             ]
-        result = RetrievalResult(query=request.query, documents=documents, total=len(documents), rerank_metrics=rerank_metrics)
+        result = RetrievalResult(
+            query=request.query,
+            documents=documents,
+            total=len(documents),
+            rerank_metrics=rerank_metrics,
+        )
         self.ledger.update_metadata(job_id, {"documents": result.total})
         self._complete_job(job_id, payload={"documents": result.total})
         observe_job_duration("retrieve", perf_counter() - started)
@@ -349,13 +356,13 @@ class GatewayService:
                 "Comparison: Placebo tablets. Outcome: Reduced systolic blood pressure at 12 weeks."
             ),
             "effects": (
-                "Effect size 0.45 (95% CI 0.30-0.60) for reduction in systolic blood pressure after 12 weeks."),
-            "ae": (
-                "Adverse event: dry cough (moderate, probable) occurred in 12% of patients.") ,
-            "dose": (
-                "Lisinopril 20 mg orally once daily for 12 weeks improved outcomes."),
+                "Effect size 0.45 (95% CI 0.30-0.60) for reduction in systolic blood pressure after 12 weeks."
+            ),
+            "ae": ("Adverse event: dry cough (moderate, probable) occurred in 12% of patients."),
+            "dose": ("Lisinopril 20 mg orally once daily for 12 weeks improved outcomes."),
             "eligibility": (
-                "Inclusion: Age 18-75 with primary hypertension. Exclusion: Severe renal impairment or pregnancy."),
+                "Inclusion: Age 18-75 with primary hypertension. Exclusion: Severe renal impairment or pregnancy."
+            ),
         }
         return base.get(kind, base["pico"])
 
@@ -503,20 +510,20 @@ class GatewayService:
     # ------------------------------------------------------------------
     # Job APIs
     # ------------------------------------------------------------------
-    def get_job(self, job_id: str, *, tenant_id: str) -> Optional[JobStatus]:
+    def get_job(self, job_id: str, *, tenant_id: str) -> JobStatus | None:
         entry = self.ledger.get(job_id)
         if not entry or entry.tenant_id != tenant_id:
             return None
         return self._to_job_status(entry)
 
-    def list_jobs(self, *, tenant_id: str, status: Optional[str] = None) -> List[JobStatus]:
+    def list_jobs(self, *, tenant_id: str, status: str | None = None) -> list[JobStatus]:
         entries = self.ledger.list(status=status)
         filtered = [entry for entry in entries if entry.tenant_id == tenant_id]
         return [self._to_job_status(entry) for entry in filtered]
 
     def cancel_job(
-        self, job_id: str, *, tenant_id: str, reason: Optional[str] = None
-    ) -> Optional[JobStatus]:
+        self, job_id: str, *, tenant_id: str, reason: str | None = None
+    ) -> JobStatus | None:
         entry = self.ledger.get(job_id)
         if not entry or entry.tenant_id != tenant_id:
             return None
@@ -526,11 +533,11 @@ class GatewayService:
         return self._to_job_status(updated)
 
 
-_service: Optional[GatewayService] = None
-_kafka: Optional[KafkaClient] = None
-_ledger: Optional[JobLedger] = None
-_orchestrator: Optional[Orchestrator] = None
-_workers: List[WorkerBase] = []
+_service: GatewayService | None = None
+_kafka: KafkaClient | None = None
+_ledger: JobLedger | None = None
+_orchestrator: Orchestrator | None = None
+_workers: list[WorkerBase] = []
 
 
 def get_gateway_service() -> GatewayService:
@@ -538,7 +545,9 @@ def get_gateway_service() -> GatewayService:
     if _service is None:
         events = EventStreamManager()
         _kafka = KafkaClient()
-        _kafka.create_topics(["ingest.requests.v1", "ingest.results.v1", "mapping.events.v1", "ingest.deadletter.v1"])
+        _kafka.create_topics(
+            ["ingest.requests.v1", "ingest.results.v1", "mapping.events.v1", "ingest.deadletter.v1"]
+        )
         _ledger = JobLedger()
         _orchestrator = Orchestrator(_kafka, _ledger, events)
         _service = GatewayService(events=events, orchestrator=_orchestrator, ledger=_ledger)

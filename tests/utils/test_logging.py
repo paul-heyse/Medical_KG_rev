@@ -33,5 +33,5 @@ def test_structured_logging_includes_correlation_id(caplog):
     logger = get_logger("observability")
     logger.info("processed", extra={"token": "super-secret", "detail": "ok"})
     reset_correlation_id(token)
-    assert "\"correlation_id\": \"corr-123\"" in caplog.text
-    assert "\"token\": \"***\"" in caplog.text
+    assert '"correlation_id": "corr-123"' in caplog.text
+    assert '"token": "***"' in caplog.text

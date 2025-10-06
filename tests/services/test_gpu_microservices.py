@@ -92,9 +92,9 @@ def gpu_env():
 
 @pytest.fixture(scope="module")
 def microservice_modules(gpu_env):
-    import Medical_KG_rev.services.mineru.service as mineru_service
     import Medical_KG_rev.services.embedding.service as embedding_service
     import Medical_KG_rev.services.extraction.service as extraction_service
+    import Medical_KG_rev.services.mineru.service as mineru_service
 
     importlib.reload(mineru_service)
     importlib.reload(embedding_service)
@@ -200,7 +200,9 @@ def test_grpc_state_and_interceptors(monkeypatch):
         def start_as_current_span(self, name):
             return DummySpan(name)
 
-    monkeypatch.setattr(grpc_server, "trace", types.SimpleNamespace(get_tracer=lambda *_: DummyTracer()))
+    monkeypatch.setattr(
+        grpc_server, "trace", types.SimpleNamespace(get_tracer=lambda *_: DummyTracer())
+    )
 
     async def continuation(details):
         return "ok"

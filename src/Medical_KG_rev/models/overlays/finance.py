@@ -1,7 +1,9 @@
 """Finance domain overlay aligned with XBRL constructs."""
+
 from __future__ import annotations
 
-from typing import Literal, Optional, Sequence
+from collections.abc import Sequence
+from typing import Literal
 
 from pydantic import Field, ValidationInfo, field_validator
 
@@ -12,8 +14,8 @@ class XBRLContext(IRBaseModel):
     """Represents an XBRL context definition."""
 
     identifier: str
-    period_start: Optional[str] = None
-    period_end: Optional[str] = None
+    period_start: str | None = None
+    period_end: str | None = None
     entity_scheme: str
     entity_identifier: str
 
@@ -23,7 +25,7 @@ class FinancialFact(IRBaseModel):
 
     concept: str
     value: str
-    unit: Optional[str] = None
+    unit: str | None = None
     context_ref: str
 
 

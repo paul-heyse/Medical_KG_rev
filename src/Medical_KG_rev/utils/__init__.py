@@ -1,4 +1,5 @@
 """Utility modules for the foundation layer."""
+
 from .errors import FoundationError, ProblemDetail
 from .http_client import AsyncHttpClient, HttpClient, RateLimiter, RetryConfig
 from .identifiers import build_document_id, hash_content, normalize_identifier
@@ -23,6 +24,7 @@ __all__ = [
     "ProblemDetail",
     "RateLimiter",
     "RetryConfig",
+    "Version",
     "bind_correlation_id",
     "build_document_id",
     "configure_logging",
@@ -41,5 +43,4 @@ __all__ = [
     "validate_nct_id",
     "validate_pmcid",
     "validate_pmid",
-    "Version",
 ]

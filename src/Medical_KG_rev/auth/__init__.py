@@ -1,7 +1,7 @@
 """Authentication and authorization helpers for the gateway."""
 
 from .context import SecurityContext
-from .dependencies import secure_endpoint, get_security_context
+from .dependencies import get_security_context, secure_endpoint
 from .scopes import Scopes
 
-__all__ = ["SecurityContext", "secure_endpoint", "get_security_context", "Scopes"]
+__all__ = ["Scopes", "SecurityContext", "get_security_context", "secure_endpoint"]

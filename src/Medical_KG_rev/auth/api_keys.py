@@ -5,9 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Iterable, Optional
 
 from ..config.settings import APIKeyRecord, AppSettings, SecretResolver, get_settings
 
@@ -19,7 +19,7 @@ class APIKey:
     hashed_secret: str
     tenant_id: str
     scopes: Iterable[str]
-    rotated_at: Optional[str] = None
+    rotated_at: str | None = None
 
 
 class APIKeyManager:
@@ -27,12 +27,14 @@ class APIKeyManager:
 
     def __init__(self, *, hashing_algorithm: str = "sha256") -> None:
         self.hashing_algorithm = hashing_algorithm
-        self._records: Dict[str, APIKeyRecord] = {}
+        self._records: dict[str, APIKeyRecord] = {}
 
-    def load(self, records: Dict[str, APIKeyRecord]) -> None:
+    def load(self, records: dict[str, APIKeyRecord]) -> None:
         self._records = dict(records)
 
-    def generate(self, *, key_id: Optional[str] = None, tenant_id: str, scopes: Iterable[str]) -> APIKey:
+    def generate(
+        self, *, key_id: str | None = None, tenant_id: str, scopes: Iterable[str]
+    ) -> APIKey:
         key_id = key_id or f"key_{secrets.token_urlsafe(8)}"
         raw_secret = secrets.token_urlsafe(32)
         hashed = self._hash(raw_secret)
@@ -43,7 +45,13 @@ class APIKeyManager:
             rotated_at=datetime.utcnow().isoformat(),
         )
         self._records[key_id] = record
-        return APIKey(key_id=key_id, raw_secret=raw_secret, hashed_secret=hashed, tenant_id=tenant_id, scopes=scopes)
+        return APIKey(
+            key_id=key_id,
+            raw_secret=raw_secret,
+            hashed_secret=hashed,
+            tenant_id=tenant_id,
+            scopes=scopes,
+        )
 
     def rotate(self, key_id: str) -> APIKey:
         if key_id not in self._records:
@@ -66,7 +74,7 @@ class APIKeyManager:
         return algorithm(value.encode("utf-8")).hexdigest()
 
 
-def build_api_key_manager(settings: Optional[AppSettings] = None) -> APIKeyManager:
+def build_api_key_manager(settings: AppSettings | None = None) -> APIKeyManager:
     settings = settings or get_settings()
     cfg = settings.security.api_keys
     manager = APIKeyManager(hashing_algorithm=cfg.hashing_algorithm)
@@ -94,7 +102,9 @@ def build_api_key_manager(settings: Optional[AppSettings] = None) -> APIKeyManag
                 secret_payload = resolver.get_secret(cfg.secret_store_path)
             except KeyError:
                 secret_payload = {}
-            keys_payload = secret_payload.get("keys", {}) if isinstance(secret_payload, dict) else {}
+            keys_payload = (
+                secret_payload.get("keys", {}) if isinstance(secret_payload, dict) else {}
+            )
             for key_id, payload in keys_payload.items():
                 if isinstance(payload, dict) and "hashed_secret" in payload:
                     records[key_id] = APIKeyRecord.model_validate(payload)

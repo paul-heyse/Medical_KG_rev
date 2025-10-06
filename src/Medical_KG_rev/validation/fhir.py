@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, Mapping, MutableMapping, Sequence
 
 from jsonschema import Draft202012Validator
 
@@ -16,7 +16,7 @@ class FHIRValidationError(ValueError):
         self.errors = list(errors)
 
 
-_CODING_SCHEMA: Dict[str, object] = {
+_CODING_SCHEMA: dict[str, object] = {
     "type": "object",
     "required": ["system", "code"],
     "properties": {
@@ -26,7 +26,7 @@ _CODING_SCHEMA: Dict[str, object] = {
     },
 }
 
-_CODEABLE_CONCEPT_SCHEMA: Dict[str, object] = {
+_CODEABLE_CONCEPT_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
         "coding": {
@@ -38,7 +38,7 @@ _CODEABLE_CONCEPT_SCHEMA: Dict[str, object] = {
     },
 }
 
-_CHARACTERISTIC_SCHEMA: Dict[str, object] = {
+_CHARACTERISTIC_SCHEMA: dict[str, object] = {
     "type": "object",
     "required": ["code"],
     "properties": {
@@ -48,7 +48,7 @@ _CHARACTERISTIC_SCHEMA: Dict[str, object] = {
 }
 
 
-FHIR_SCHEMAS: Dict[str, Dict[str, object]] = {
+FHIR_SCHEMAS: dict[str, dict[str, object]] = {
     "Evidence": {
         "$id": "https://example.org/fhir/Evidence",
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -117,7 +117,11 @@ FHIR_SCHEMAS: Dict[str, Dict[str, object]] = {
             "medication": {
                 "oneOf": [
                     {"$ref": "#/definitions/CodeableConcept"},
-                    {"type": "object", "required": ["reference"], "properties": {"reference": {"type": "string"}}},
+                    {
+                        "type": "object",
+                        "required": ["reference"],
+                        "properties": {"reference": {"type": "string"}},
+                    },
                 ]
             },
             "subject": {
@@ -173,7 +177,9 @@ class FHIRValidator:
         self._validators: MutableMapping[str, _CompiledSchema] = {}
         for resource_type, schema in source.items():
             validator = Draft202012Validator(schema)
-            self._validators[resource_type] = _CompiledSchema(validator=validator, resource_type=resource_type)
+            self._validators[resource_type] = _CompiledSchema(
+                validator=validator, resource_type=resource_type
+            )
 
     def validate(self, resource: Mapping[str, object]) -> None:
         resource_type = resource.get("resourceType")
@@ -234,4 +240,4 @@ class FHIRValidator:
                 stack.extend(current)
 
 
-__all__ = ["FHIRValidator", "FHIRValidationError", "FHIR_SCHEMAS"]
+__all__ = ["FHIR_SCHEMAS", "FHIRValidationError", "FHIRValidator"]

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -8,12 +8,12 @@ from Medical_KG_rev.utils.versioning import Version
 
 def test_utc_now_returns_timezone_aware():
     now = utc_now()
-    assert now.tzinfo == timezone.utc
+    assert now.tzinfo == UTC
 
 
 def test_ensure_utc_requires_timezone():
-    aware = ensure_utc(datetime.now(timezone.utc))
-    assert aware.tzinfo == timezone.utc
+    aware = ensure_utc(datetime.now(UTC))
+    assert aware.tzinfo == UTC
     with pytest.raises(ValueError):
         ensure_utc(datetime.now())
 

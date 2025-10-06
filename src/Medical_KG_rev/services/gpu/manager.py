@@ -5,8 +5,8 @@ from __future__ import annotations
 import contextlib
 import threading
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, Optional
 
 import structlog
 
@@ -36,10 +36,10 @@ class GpuDevice:
 class GpuManager:
     """Detects CUDA devices and enforces fail-fast semantics when unavailable."""
 
-    def __init__(self, *, min_memory_mb: int = 0, preferred_device: Optional[int] = None) -> None:
+    def __init__(self, *, min_memory_mb: int = 0, preferred_device: int | None = None) -> None:
         self.min_memory_mb = min_memory_mb
         self.preferred_device = preferred_device
-        self._device_cache: Optional[GpuDevice] = None
+        self._device_cache: GpuDevice | None = None
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -126,19 +126,22 @@ class GpuManager:
             with lib.cuda.device(device.index):
                 utilization = getattr(lib.cuda, "utilization", None)
                 if callable(utilization):
-                    util_value = float(utilization(device.index))  # pragma: no cover - depends on NVML
+                    util_value = float(
+                        utilization(device.index)
+                    )  # pragma: no cover - depends on NVML
                 else:
                     util_value = 0.0
                 GPU_UTILIZATION.labels(service=service_name, device=device_label).set(util_value)
-                allocated, total = lib.cuda.memory_allocated(device.index), lib.cuda.get_device_properties(
-                    device.index
-                ).total_memory
-                GPU_MEMORY_USED.labels(service=service_name, device=device_label, state="allocated").set(
-                    allocated / (1024 * 1024)
+                allocated, total = (
+                    lib.cuda.memory_allocated(device.index),
+                    lib.cuda.get_device_properties(device.index).total_memory,
                 )
-                GPU_MEMORY_USED.labels(service=service_name, device=device_label, state="total").set(
-                    total / (1024 * 1024)
-                )
+                GPU_MEMORY_USED.labels(
+                    service=service_name, device=device_label, state="allocated"
+                ).set(allocated / (1024 * 1024))
+                GPU_MEMORY_USED.labels(
+                    service=service_name, device=device_label, state="total"
+                ).set(total / (1024 * 1024))
         except Exception as exc:  # pragma: no cover - metrics best-effort
             logger.warning("gpu.metrics.failed", error=str(exc))
 
@@ -177,7 +180,7 @@ class GpuManager:
         """Poll until a GPU becomes available or timeout occurs."""
 
         deadline = time.monotonic() + timeout
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         while time.monotonic() < deadline:
             try:
                 return self.get_device()
@@ -187,4 +190,4 @@ class GpuManager:
         raise GpuNotAvailableError(str(last_error) if last_error else "GPU not available")
 
 
-__all__ = ["GpuManager", "GpuDevice", "GpuNotAvailableError"]
+__all__ = ["GpuDevice", "GpuManager", "GpuNotAvailableError"]

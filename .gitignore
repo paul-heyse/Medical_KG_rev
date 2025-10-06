@@ -6,3 +6,29 @@ __pycache__/
 .envrc.local
 .ipynb_checkpoints/
 .DS_Store
+
+# Coverage artifacts
+.coverage
+coverage.xml
+htmlcov/
+
+# Tool caches
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Extended bytecode ignores
+*.py[cod]
+
+# Generated documentation
+docs/api/
+
+# Generated protobuf stubs
+src/Medical_KG_rev/proto/gen/
+
+# Packaging and build artifacts
+build/
+dist/
+.eggs/
+pip-wheel-metadata/
+*.egg-info/

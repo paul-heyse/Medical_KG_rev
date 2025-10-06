@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Iterator, Mapping
+from typing import Any
 
 from .cypher_templates import CypherTemplates
 from .schema import GRAPH_SCHEMA
@@ -27,7 +28,9 @@ class Neo4jClient:
         finally:
             session.close()
 
-    def write(self, query: str, parameters: Mapping[str, object] | None = None) -> Iterable[Mapping[str, Any]]:
+    def write(
+        self, query: str, parameters: Mapping[str, object] | None = None
+    ) -> Iterable[Mapping[str, Any]]:
         with self._session() as session:
             return session.execute_write(lambda tx: tx.run(query, parameters or {}).data())
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
@@ -11,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from ...auth import Scopes, SecurityContext, secure_endpoint
 from ...auth.audit import get_audit_trail
+from ...services.health import HealthService
 from ..models import (
     BatchOperationResult,
     ChunkRequest,
@@ -24,27 +26,30 @@ from ..models import (
     RetrieveRequest,
 )
 from ..services import GatewayService, get_gateway_service
-from ...services.health import HealthService
 
 router = APIRouter(prefix="/v1", tags=["gateway"])
 health_router = APIRouter(tags=["system"])
 
 
 class ODataParams(BaseModel):
-    select: Optional[List[str]] = None
-    expand: Optional[List[str]] = None
-    filter: Optional[str] = Field(default=None, alias="$filter")
-    top: Optional[int] = Field(default=None, alias="$top")
-    skip: Optional[int] = Field(default=None, alias="$skip")
+    select: list[str] | None = None
+    expand: list[str] | None = None
+    filter: str | None = Field(default=None, alias="$filter")
+    top: int | None = Field(default=None, alias="$top")
+    skip: int | None = Field(default=None, alias="$skip")
 
     @classmethod
-    def from_request(cls, request: Request) -> "ODataParams":
-        params: Dict[str, Any] = {}
+    def from_request(cls, request: Request) -> ODataParams:
+        params: dict[str, Any] = {}
         qp = request.query_params
         if "$select" in qp:
-            params["select"] = [value.strip() for value in qp["$select"].split(",") if value.strip()]
+            params["select"] = [
+                value.strip() for value in qp["$select"].split(",") if value.strip()
+            ]
         if "$expand" in qp:
-            params["expand"] = [value.strip() for value in qp["$expand"].split(",") if value.strip()]
+            params["expand"] = [
+                value.strip() for value in qp["$expand"].split(",") if value.strip()
+            ]
         if "$filter" in qp:
             params["$filter"] = qp["$filter"]
         if "$top" in qp:
@@ -61,11 +66,13 @@ def _normalise_payload(data: Any) -> Any:
     if isinstance(data, BaseModel):
         return data.model_dump(mode="json")
     if isinstance(data, Iterable) and not isinstance(data, (str, bytes, dict)):
-        return [item.model_dump(mode="json") if isinstance(item, BaseModel) else item for item in data]
+        return [
+            item.model_dump(mode="json") if isinstance(item, BaseModel) else item for item in data
+        ]
     return data
 
 
-def json_api_payload(data: Any, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def json_api_payload(data: Any, meta: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"data": _normalise_payload(data), "meta": meta or {}}
 
 
@@ -73,7 +80,7 @@ def json_api_response(
     data: Any,
     *,
     status_code: int = 200,
-    meta: Optional[Dict[str, Any]] = None,
+    meta: dict[str, Any] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
         json_api_payload(data, meta=meta),
@@ -154,9 +161,9 @@ async def list_job_events(
     return json_api_response([], meta=meta)
 
 
-@router.get("/jobs", status_code=200, response_model=List[JobStatus])
+@router.get("/jobs", status_code=200, response_model=list[JobStatus])
 async def list_jobs(
-    status: Optional[str] = None,
+    status: str | None = None,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs")
     ),

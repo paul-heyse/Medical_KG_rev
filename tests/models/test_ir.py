@@ -25,7 +25,13 @@ def test_block_type_enum():
 
 def test_table_validation_and_iteration():
     table = Table(cells=[TableCell(row=0, column=0, content="A")])
-    block = Block(id="b1", type=BlockType.TABLE, text="A", spans=[Span(start=0, end=1, text="A")], metadata={"table": table.model_dump()})
+    block = Block(
+        id="b1",
+        type=BlockType.TABLE,
+        text="A",
+        spans=[Span(start=0, end=1, text="A")],
+        metadata={"table": table.model_dump()},
+    )
     section = Section(id="s1", blocks=[block])
     document = Document(id="doc2", source="clinicaltrials", sections=[section])
     blocks = list(document.iter_blocks())
@@ -34,4 +40,6 @@ def test_table_validation_and_iteration():
     assert spans[0].end == 1
 
     with pytest.raises(ValueError):
-        Table(cells=[TableCell(row=0, column=0, content="A"), TableCell(row=0, column=0, content="B")])
+        Table(
+            cells=[TableCell(row=0, column=0, content="A"), TableCell(row=0, column=0, content="B")]
+        )

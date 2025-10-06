@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Dict, List
 
 from ..models import JobEvent
 
@@ -14,8 +14,8 @@ class EventStreamManager:
     """Manages per-job event queues for SSE streaming."""
 
     def __init__(self) -> None:
-        self._subscribers: Dict[str, List[asyncio.Queue[JobEvent]]] = defaultdict(list)
-        self._pending: Dict[str, List[JobEvent]] = defaultdict(list)
+        self._subscribers: dict[str, list[asyncio.Queue[JobEvent]]] = defaultdict(list)
+        self._pending: dict[str, list[JobEvent]] = defaultdict(list)
         self._lock = asyncio.Lock()
 
     async def subscribe(self, job_id: str) -> AsyncIterator[JobEvent]:

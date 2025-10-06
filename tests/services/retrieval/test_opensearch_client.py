@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from Medical_KG_rev.services.retrieval.opensearch_client import DocumentIndexTemplate, OpenSearchClient
+from Medical_KG_rev.services.retrieval.opensearch_client import (
+    DocumentIndexTemplate,
+    OpenSearchClient,
+)
 
 
 def test_bulk_index_and_search_with_filters():
     client = OpenSearchClient()
     client.put_index_template(
-        DocumentIndexTemplate(name="documents", settings={}, mappings={"properties": {"text": {"type": "text"}}})
+        DocumentIndexTemplate(
+            name="documents", settings={}, mappings={"properties": {"text": {"type": "text"}}}
+        )
     )
 
     documents = [

@@ -1,4 +1,5 @@
 """Storage abstractions exports."""
+
 from .base import CacheBackend, LedgerStore, ObjectMetadata, ObjectStore, StorageError
 from .cache import InMemoryCache, RedisCache
 from .ledger import InMemoryLedger, LedgerRecord
@@ -13,7 +14,7 @@ __all__ = [
     "LedgerStore",
     "ObjectMetadata",
     "ObjectStore",
+    "RedisCache",
     "S3ObjectStore",
     "StorageError",
-    "RedisCache",
 ]

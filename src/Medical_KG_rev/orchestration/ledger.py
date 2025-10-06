@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import builtins
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Iterable, Iterator, List, Optional
-
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 ALLOWED_TRANSITIONS = {
@@ -22,7 +22,7 @@ class JobTransition:
     from_status: str
     to_status: str
     stage: str
-    reason: Optional[str]
+    reason: str | None
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -33,17 +33,17 @@ class JobLedgerEntry:
     tenant_id: str
     status: str = "queued"
     stage: str = "pending"
-    pipeline: Optional[str] = None
-    metadata: Dict[str, object] = field(default_factory=dict)
+    pipeline: str | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
     attempts: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    history: List[JobTransition] = field(default_factory=list)
+    history: list[JobTransition] = field(default_factory=list)
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
 
-    def snapshot(self) -> "JobLedgerEntry":
+    def snapshot(self) -> JobLedgerEntry:
         """Return a copy suitable for external consumption."""
 
         return JobLedgerEntry(
@@ -69,8 +69,8 @@ class JobLedger:
     """In-memory ledger implementation with idempotency helpers."""
 
     def __init__(self) -> None:
-        self._entries: Dict[str, JobLedgerEntry] = {}
-        self._doc_index: Dict[str, str] = {}
+        self._entries: dict[str, JobLedgerEntry] = {}
+        self._doc_index: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Creation & idempotency
@@ -81,8 +81,8 @@ class JobLedger:
         job_id: str,
         doc_key: str,
         tenant_id: str,
-        pipeline: Optional[str] = None,
-        metadata: Optional[Dict[str, object]] = None,
+        pipeline: str | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> JobLedgerEntry:
         if job_id in self._entries:
             raise JobLedgerError(f"Job {job_id} already exists")
@@ -105,8 +105,8 @@ class JobLedger:
         job_id: str,
         doc_key: str,
         tenant_id: str,
-        pipeline: Optional[str],
-        metadata: Optional[Dict[str, object]] = None,
+        pipeline: str | None,
+        metadata: dict[str, object] | None = None,
     ) -> JobLedgerEntry:
         existing_id = self._doc_index.get(doc_key)
         if existing_id:
@@ -126,10 +126,10 @@ class JobLedger:
         self,
         job_id: str,
         *,
-        status: Optional[str] = None,
-        stage: Optional[str] = None,
-        metadata: Optional[Dict[str, object]] = None,
-        reason: Optional[str] = None,
+        status: str | None = None,
+        stage: str | None = None,
+        metadata: dict[str, object] | None = None,
+        reason: str | None = None,
     ) -> JobLedgerEntry:
         if job_id not in self._entries:
             raise JobLedgerError(f"Job {job_id} not found")
@@ -158,13 +158,15 @@ class JobLedger:
         entry.updated_at = datetime.utcnow()
         return entry
 
-    def update_metadata(self, job_id: str, metadata: Dict[str, object]) -> JobLedgerEntry:
+    def update_metadata(self, job_id: str, metadata: dict[str, object]) -> JobLedgerEntry:
         return self._update(job_id, metadata=metadata)
 
     def mark_processing(self, job_id: str, stage: str) -> JobLedgerEntry:
         return self._update(job_id, status="processing", stage=stage)
 
-    def mark_completed(self, job_id: str, *, metadata: Optional[Dict[str, object]] = None) -> JobLedgerEntry:
+    def mark_completed(
+        self, job_id: str, *, metadata: dict[str, object] | None = None
+    ) -> JobLedgerEntry:
         return self._update(job_id, status="completed", stage="completed", metadata=metadata)
 
     def mark_failed(
@@ -173,7 +175,7 @@ class JobLedger:
         *,
         stage: str,
         reason: str,
-        metadata: Optional[Dict[str, object]] = None,
+        metadata: dict[str, object] | None = None,
     ) -> JobLedgerEntry:
         return self._update(
             job_id,
@@ -183,7 +185,7 @@ class JobLedger:
             reason=reason,
         )
 
-    def mark_cancelled(self, job_id: str, *, reason: Optional[str] = None) -> JobLedgerEntry:
+    def mark_cancelled(self, job_id: str, *, reason: str | None = None) -> JobLedgerEntry:
         return self._update(job_id, status="cancelled", stage="cancelled", reason=reason)
 
     def record_attempt(self, job_id: str) -> int:
@@ -197,11 +199,11 @@ class JobLedger:
     # ------------------------------------------------------------------
     # Query helpers
     # ------------------------------------------------------------------
-    def get(self, job_id: str) -> Optional[JobLedgerEntry]:
+    def get(self, job_id: str) -> JobLedgerEntry | None:
         entry = self._entries.get(job_id)
         return entry.snapshot() if entry else None
 
-    def list(self, *, status: Optional[str] = None) -> List[JobLedgerEntry]:
+    def list(self, *, status: str | None = None) -> builtins.list[JobLedgerEntry]:
         items = (
             entry.snapshot()
             for entry in self._entries.values()
@@ -209,7 +211,7 @@ class JobLedger:
         )
         return sorted(items, key=lambda item: item.created_at)
 
-    def by_doc_key(self, doc_key: str) -> Optional[JobLedgerEntry]:
+    def by_doc_key(self, doc_key: str) -> JobLedgerEntry | None:
         job_id = self._doc_index.get(doc_key)
         return self.get(job_id) if job_id else None
 
@@ -218,4 +220,4 @@ class JobLedger:
             yield entry.snapshot()
 
 
-__all__ = ["JobLedger", "JobLedgerEntry", "JobTransition", "JobLedgerError"]
+__all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]

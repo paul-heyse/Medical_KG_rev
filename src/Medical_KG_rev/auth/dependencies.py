@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, Optional, Sequence
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from .api_keys import APIKeyManager, build_api_key_manager
 from .context import SecurityContext
 from .jwt import AuthenticationError, JWTAuthenticator, build_authenticator
-from .rate_limit import RateLimitExceeded, RateLimiter, build_rate_limiter
+from .rate_limit import RateLimiter, RateLimitExceeded, build_rate_limiter
 
 
 def _get_authenticator() -> JWTAuthenticator:
@@ -27,8 +28,8 @@ def _get_api_key_manager() -> APIKeyManager:
 
 async def get_security_context(
     request: Request,
-    authorization: Optional[str] = Header(default=None, alias="Authorization"),
-    api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    api_key: str | None = Header(default=None, alias="X-API-Key"),
     authenticator: JWTAuthenticator = Depends(_get_authenticator),
     api_keys: APIKeyManager = Depends(_get_api_key_manager),
 ) -> SecurityContext:
@@ -38,7 +39,9 @@ async def get_security_context(
         try:
             key_id, record = api_keys.authenticate(api_key)
         except PermissionError as exc:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key") from exc
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
+            ) from exc
         context = SecurityContext(
             subject=f"api-key:{key_id}",
             tenant_id=record.tenant_id,
@@ -52,15 +55,17 @@ async def get_security_context(
         return context
 
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication"
+        )
 
     token = authorization.split(" ", 1)[1]
-    cache: Dict[str, Dict[str, Any]] = getattr(request.app.state, "jwt_cache", {})
+    cache: dict[str, dict[str, Any]] = getattr(request.app.state, "jwt_cache", {})
     if not hasattr(request.app.state, "jwt_cache"):
         request.app.state.jwt_cache = cache
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cached = cache.get(token)
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     if cached and cached["expires_at"] > now:  # type: ignore[index]
         payload = cached["payload"]  # type: ignore[index]
     else:
@@ -69,7 +74,11 @@ async def get_security_context(
         except AuthenticationError as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
         exp = payload.get("exp")
-        expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if isinstance(exp, (int, float)) else now + timedelta(minutes=5)
+        expires_at = (
+            datetime.fromtimestamp(exp, tz=UTC)
+            if isinstance(exp, (int, float))
+            else now + timedelta(minutes=5)
+        )
         cache[token] = {"payload": payload, "expires_at": expires_at}
     tenant_id = payload.get("tenant_id") or payload.get("tenant")
     if not tenant_id:

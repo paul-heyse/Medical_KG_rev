@@ -1,8 +1,8 @@
 """Cache backend implementations."""
+
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
 
 try:
     from redis.asyncio import Redis
@@ -16,10 +16,10 @@ class InMemoryCache(CacheBackend):
     """Simple in-memory cache with TTL support."""
 
     def __init__(self) -> None:
-        self._data: dict[str, tuple[bytes, Optional[float]]] = {}
+        self._data: dict[str, tuple[bytes, float | None]] = {}
         self._lock = asyncio.Lock()
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         async with self._lock:
             item = self._data.get(key)
             if item is None:
@@ -30,7 +30,7 @@ class InMemoryCache(CacheBackend):
                 return None
             return value
 
-    async def set(self, key: str, value: bytes, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: bytes, ttl: int | None = None) -> None:
         async with self._lock:
             expires_at = None
             if ttl:
@@ -45,16 +45,16 @@ class InMemoryCache(CacheBackend):
 class RedisCache(CacheBackend):
     """Redis backed cache implementation."""
 
-    def __init__(self, client: Optional[Redis] = None) -> None:
+    def __init__(self, client: Redis | None = None) -> None:
         if Redis is None:
             raise RuntimeError("redis dependency is required for RedisCache")
         self._client = client or Redis()
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         value = await self._client.get(key)
         return value
 
-    async def set(self, key: str, value: bytes, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: bytes, ttl: int | None = None) -> None:
         await self._client.set(key, value, ex=ttl)
 
     async def delete(self, key: str) -> None:

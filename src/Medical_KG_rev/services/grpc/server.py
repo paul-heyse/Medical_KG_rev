@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import structlog
 
@@ -119,6 +120,6 @@ class UnaryUnaryLoggingInterceptor(ServerInterceptor):
 
 __all__ = [
     "GrpcServiceState",
-    "UnaryUnaryTracingInterceptor",
     "UnaryUnaryLoggingInterceptor",
+    "UnaryUnaryTracingInterceptor",
 ]

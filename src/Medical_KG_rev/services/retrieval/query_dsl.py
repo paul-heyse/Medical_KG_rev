@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, List, Mapping
 
 
 class QueryValidationError(ValueError):
@@ -14,7 +14,7 @@ class QueryValidationError(ValueError):
 class QueryDSL:
     allowed_filters: Mapping[str, set[str]]
 
-    def parse(self, payload: Mapping[str, object]) -> Dict[str, object]:
+    def parse(self, payload: Mapping[str, object]) -> dict[str, object]:
         filters = payload.get("filters", {})
         facets = payload.get("facets", [])
         if not isinstance(filters, Mapping):
@@ -25,8 +25,8 @@ class QueryDSL:
         validated_facets = self._validate_facets(facets)
         return {"filters": validated_filters, "facets": validated_facets}
 
-    def _validate_filters(self, filters: Mapping[str, object]) -> Dict[str, object]:
-        validated: Dict[str, object] = {}
+    def _validate_filters(self, filters: Mapping[str, object]) -> dict[str, object]:
+        validated: dict[str, object] = {}
         for key, value in filters.items():
             if key not in self.allowed_filters:
                 raise QueryValidationError(f"Unknown filter: {key}")
@@ -36,8 +36,8 @@ class QueryDSL:
             validated[key] = value
         return validated
 
-    def _validate_facets(self, facets: List[object]) -> List[str]:
-        valid: List[str] = []
+    def _validate_facets(self, facets: list[object]) -> list[str]:
+        valid: list[str] = []
         for facet in facets:
             if not isinstance(facet, str):
                 raise QueryValidationError("Facet entries must be strings")

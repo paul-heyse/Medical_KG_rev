@@ -24,7 +24,9 @@ from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
 
 
 def _client(base_url: str, handler: httpx.MockTransport) -> HttpClient:
-    return HttpClient(base_url=base_url, retry=RetryConfig(attempts=2, backoff_factor=0), transport=handler)
+    return HttpClient(
+        base_url=base_url, retry=RetryConfig(attempts=2, backoff_factor=0), transport=handler
+    )
 
 
 def _mock_transport(callback):
@@ -44,9 +46,7 @@ def test_clinical_trials_adapter_maps_metadata():
                     "startDateStruct": {"date": "2024-01-01"},
                 },
                 "designModule": {"studyType": "Interventional", "phase": "Phase 2"},
-                "armsInterventionsModule": {
-                    "interventions": [{"type": "Drug", "name": "Drug A"}]
-                },
+                "armsInterventionsModule": {"interventions": [{"type": "Drug", "name": "Drug A"}]},
                 "outcomesModule": {"primaryOutcomes": [{"measure": "Progression-free survival"}]},
                 "eligibilityModule": {
                     "eligibilityCriteria": "Adults 18-65",
@@ -66,7 +66,9 @@ def test_clinical_trials_adapter_maps_metadata():
         assert request.url.path.endswith("/studies/NCT01234567")
         return httpx.Response(200, json=study_payload)
 
-    adapter = ClinicalTrialsAdapter(client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler)))
+    adapter = ClinicalTrialsAdapter(
+        client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+    )
     result = run_adapter(adapter, parameters={"nct_id": "NCT01234567"})
     assert len(result.documents) == 1
     document = result.documents[0]
@@ -81,7 +83,9 @@ def test_clinical_trials_adapter_validates_identifier():
     def handler(_: httpx.Request) -> httpx.Response:
         raise AssertionError("API should not be called for invalid identifiers")
 
-    adapter = ClinicalTrialsAdapter(client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler)))
+    adapter = ClinicalTrialsAdapter(
+        client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+    )
     with pytest.raises(ValueError):
         run_adapter(adapter, parameters={"nct_id": "bad"})
 
@@ -108,11 +112,16 @@ def test_openfda_drug_label_adapter_parses_spl():
         assert "openfda.package_ndc" in request.url.params["search"]
         return httpx.Response(200, json=payload)
 
-    adapter = OpenFDADrugLabelAdapter(client=_client("https://api.fda.gov", _mock_transport(handler)))
+    adapter = OpenFDADrugLabelAdapter(
+        client=_client("https://api.fda.gov", _mock_transport(handler))
+    )
     result = run_adapter(adapter, parameters={"ndc": "1234-5678-90"})
     document = result.documents[0]
     assert document.metadata["brand_name"] == "DrugName"
-    assert any(block.metadata["section"] == "Indications And Usage" for block in document.sections[0].blocks)
+    assert any(
+        block.metadata["section"] == "Indications And Usage"
+        for block in document.sections[0].blocks
+    )
 
 
 def test_openfda_drug_event_adapter_maps_reactions():
@@ -133,7 +142,9 @@ def test_openfda_drug_event_adapter_maps_reactions():
         assert request.url.params["search"].startswith("patient.drug.medicinalproduct")
         return httpx.Response(200, json=payload)
 
-    adapter = OpenFDADrugEventAdapter(client=_client("https://api.fda.gov", _mock_transport(handler)))
+    adapter = OpenFDADrugEventAdapter(
+        client=_client("https://api.fda.gov", _mock_transport(handler))
+    )
     result = run_adapter(adapter, parameters={"drug": "Acetaminophen"})
     document = result.documents[0]
     assert "Headache" in document.metadata["reactions"]
@@ -280,7 +291,7 @@ def test_pmc_adapter_parses_xml():
     result = run_adapter(adapter, parameters={"pmcid": "PMC123456"})
     document = result.documents[0]
     assert document.metadata["pmcid"] == "PMC123456"
-    assert any("Body paragraph one." == block.text for block in document.sections[0].blocks)
+    assert any(block.text == "Body paragraph one." for block in document.sections[0].blocks)
 
 
 def test_rxnorm_adapter_normalizes_name():
@@ -424,4 +435,3 @@ mapping:
     document = result.documents[0]
     assert document.title == "Example"
     assert document.sections[0].blocks[0].text == "Summary"
-

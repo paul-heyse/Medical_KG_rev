@@ -1,19 +1,19 @@
 """LLM-backed extraction service."""
 
 from .service import (
+    ExtractionGrpcService,
     ExtractionInput,
     ExtractionResult,
     ExtractionService,
     ExtractionSpan,
     PicoSchema,
-    ExtractionGrpcService,
 )
 
 __all__ = [
+    "ExtractionGrpcService",
     "ExtractionInput",
     "ExtractionResult",
     "ExtractionService",
     "ExtractionSpan",
     "PicoSchema",
-    "ExtractionGrpcService",
 ]

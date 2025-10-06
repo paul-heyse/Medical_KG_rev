@@ -1,4 +1,5 @@
 """Data models exposed by the foundation infrastructure layer."""
+
 from .entities import Claim, Entity, Evidence, ExtractionActivity
 from .ir import Block, BlockType, Document, Section, Span, Table, TableCell
 from .organization import Organization, TenantContext

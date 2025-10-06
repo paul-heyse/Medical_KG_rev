@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, Sequence
 
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
@@ -38,9 +38,13 @@ class RetrievalService:
         filters: Mapping[str, object] | None = None,
         k: int = 10,
         rerank: bool = False,
-    ) -> List[RetrievalResult]:
-        bm25_results = self.opensearch.search(index, query, strategy="bm25", filters=filters, size=k)
-        splade_results = self.opensearch.search(index, query, strategy="splade", filters=filters, size=k)
+    ) -> list[RetrievalResult]:
+        bm25_results = self.opensearch.search(
+            index, query, strategy="bm25", filters=filters, size=k
+        )
+        splade_results = self.opensearch.search(
+            index, query, strategy="splade", filters=filters, size=k
+        )
         dense_results = self._dense_search(query, k)
         fused = self._fuse_results([bm25_results, splade_results, dense_results])
         if rerank:
@@ -48,7 +52,7 @@ class RetrievalService:
         fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
         return fused
 
-    def _dense_search(self, query: str, k: int) -> List[Mapping[str, object]]:
+    def _dense_search(self, query: str, k: int) -> list[Mapping[str, object]]:
         if not self.faiss.ids:
             return []
         pseudo_query = [float(hash(token) % 100) for token in query.split()]
@@ -57,7 +61,7 @@ class RetrievalService:
         elif len(pseudo_query) > self.faiss.dimension:
             pseudo_query = pseudo_query[: self.faiss.dimension]
         hits = self.faiss.search(pseudo_query, k=k)
-        results: List[Mapping[str, object]] = []
+        results: list[Mapping[str, object]] = []
         for chunk_id, score, metadata in hits:
             results.append(
                 {
@@ -69,8 +73,10 @@ class RetrievalService:
             )
         return results
 
-    def _fuse_results(self, result_sets: Sequence[Sequence[Mapping[str, object]]]) -> List[RetrievalResult]:
-        aggregated: Dict[str, Dict[str, object]] = {}
+    def _fuse_results(
+        self, result_sets: Sequence[Sequence[Mapping[str, object]]]
+    ) -> list[RetrievalResult]:
+        aggregated: dict[str, dict[str, object]] = {}
         for results in result_sets:
             for rank, result in enumerate(results, start=1):
                 chunk_id = result["_id"]
@@ -84,7 +90,7 @@ class RetrievalService:
                     },
                 )
                 data["rrf"] += 1.0 / (50 + rank)
-        fused: List[RetrievalResult] = []
+        fused: list[RetrievalResult] = []
         for chunk_id, payload in aggregated.items():
             fused.append(
                 RetrievalResult(
@@ -99,14 +105,16 @@ class RetrievalService:
         fused.sort(key=lambda item: item.retrieval_score, reverse=True)
         return fused
 
-    def _apply_rerank(self, query: str, results: Iterable[RetrievalResult]) -> List[RetrievalResult]:
+    def _apply_rerank(
+        self, query: str, results: Iterable[RetrievalResult]
+    ) -> list[RetrievalResult]:
         materialised = list(results)
         candidates = [
             {"id": result.id, "text": result.text, **result.metadata} for result in materialised
         ]
         scored, _metrics = self.reranker.rerank(query, candidates)
         score_map = {item.get("id"): item.get("rerank_score", 0.0) for item in scored}
-        reranked: List[RetrievalResult] = []
+        reranked: list[RetrievalResult] = []
         for result in materialised:
             reranked.append(
                 RetrievalResult(

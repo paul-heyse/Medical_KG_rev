@@ -1,9 +1,9 @@
 """Identifier utilities for deterministic document ids."""
+
 from __future__ import annotations
 
 import hashlib
 import secrets
-from typing import Optional
 
 
 def hash_content(content: str) -> str:
@@ -13,7 +13,9 @@ def hash_content(content: str) -> str:
     return digest[:12]
 
 
-def build_document_id(source: str, source_id: str, version: str = "v1", content: Optional[str] = None) -> str:
+def build_document_id(
+    source: str, source_id: str, version: str = "v1", content: str | None = None
+) -> str:
     """Construct a globally unique identifier following the design convention."""
 
     if content:

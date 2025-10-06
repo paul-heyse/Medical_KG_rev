@@ -1,8 +1,9 @@
 """Domain specific validation helpers."""
+
 from __future__ import annotations
 
 import re
-from typing import Pattern
+from re import Pattern
 
 NCT_ID_PATTERN: Pattern[str] = re.compile(r"^NCT\d{8}$", re.IGNORECASE)
 DOI_PATTERN: Pattern[str] = re.compile(r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$", re.IGNORECASE)

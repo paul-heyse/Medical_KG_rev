@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import dataclass, field
 import heapq
 import time
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple
+from collections import defaultdict
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass, field
 
 
 @dataclass(order=True)
 class KafkaMessage:
     """Internal representation of a Kafka message."""
 
-    sort_key: Tuple[int, float] = field(init=False, repr=False)
+    sort_key: tuple[int, float] = field(init=False, repr=False)
     topic: str
-    value: Dict[str, object]
-    key: Optional[str] = None
-    headers: Dict[str, str] = field(default_factory=dict)
+    value: dict[str, object]
+    key: str | None = None
+    headers: dict[str, str] = field(default_factory=dict)
     timestamp: float = field(default_factory=lambda: time.time())
     attempts: int = 0
     available_at: float = field(default_factory=lambda: time.time())
@@ -32,8 +32,8 @@ class KafkaClient:
     """Small in-memory Kafka façade suitable for unit testing."""
 
     def __init__(self) -> None:
-        self._topics: Dict[str, List[KafkaMessage]] = defaultdict(list)
-        self._health: Dict[str, bool] = {"kafka": True, "zookeeper": True}
+        self._topics: dict[str, list[KafkaMessage]] = defaultdict(list)
+        self._health: dict[str, bool] = {"kafka": True, "zookeeper": True}
 
     # ------------------------------------------------------------------
     # Topic management
@@ -51,11 +51,11 @@ class KafkaClient:
     def publish(
         self,
         topic: str,
-        value: Dict[str, object],
+        value: dict[str, object],
         *,
-        key: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-        available_at: Optional[float] = None,
+        key: str | None = None,
+        headers: dict[str, str] | None = None,
+        available_at: float | None = None,
         attempts: int = 0,
     ) -> KafkaMessage:
         if topic not in self._topics:
@@ -73,12 +73,12 @@ class KafkaClient:
         heapq.heappush(self._topics[topic], message)
         return message
 
-    def consume(self, topic: str, *, max_messages: Optional[int] = None) -> Iterator[KafkaMessage]:
+    def consume(self, topic: str, *, max_messages: int | None = None) -> Iterator[KafkaMessage]:
         if topic not in self._topics:
             raise ValueError(f"Topic '{topic}' has not been created")
         consumed = 0
         now = time.time()
-        buffer: List[KafkaMessage] = []
+        buffer: list[KafkaMessage] = []
         while self._topics[topic] and (max_messages is None or consumed < max_messages):
             message = heapq.heappop(self._topics[topic])
             if message.available_at > now:
@@ -94,7 +94,7 @@ class KafkaClient:
             raise ValueError(f"Topic '{topic}' has not been created")
         return len(self._topics[topic])
 
-    def peek(self, topic: str) -> Optional[KafkaMessage]:
+    def peek(self, topic: str) -> KafkaMessage | None:
         """Return the next message for a topic without consuming it."""
 
         if topic not in self._topics:
@@ -106,7 +106,7 @@ class KafkaClient:
     def discard(self, topic: str, *, key: str) -> int:
         if topic not in self._topics:
             raise ValueError(f"Topic '{topic}' has not been created")
-        buffer: List[KafkaMessage] = []
+        buffer: list[KafkaMessage] = []
         removed = 0
         while self._topics[topic]:
             message = heapq.heappop(self._topics[topic])
@@ -121,13 +121,13 @@ class KafkaClient:
     # ------------------------------------------------------------------
     # Health
     # ------------------------------------------------------------------
-    def set_health(self, *, kafka: Optional[bool] = None, zookeeper: Optional[bool] = None) -> None:
+    def set_health(self, *, kafka: bool | None = None, zookeeper: bool | None = None) -> None:
         if kafka is not None:
             self._health["kafka"] = kafka
         if zookeeper is not None:
             self._health["zookeeper"] = zookeeper
 
-    def health(self) -> Dict[str, bool]:
+    def health(self) -> dict[str, bool]:
         return dict(self._health)
 
 

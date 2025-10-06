@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 
 from ..gateway.models import JobEvent
 from ..gateway.sse.manager import EventStreamManager
@@ -26,14 +26,14 @@ class OrchestrationError(RuntimeError):
 @dataclass
 class PipelineStage:
     name: str
-    handler: Callable[[JobLedgerEntry, Dict[str, object]], Dict[str, object]]
+    handler: Callable[[JobLedgerEntry, dict[str, object]], dict[str, object]]
     emits_mapping_event: bool = False
 
 
 @dataclass
 class Pipeline:
     name: str
-    stages: List[PipelineStage]
+    stages: list[PipelineStage]
 
 
 PRIORITY_HEADERS = {"low": "0", "normal": "1", "high": "2"}
@@ -53,7 +53,7 @@ class Orchestrator:
         self.kafka = kafka
         self.ledger = ledger
         self.events = events
-        self.pipelines: Dict[str, Pipeline] = {}
+        self.pipelines: dict[str, Pipeline] = {}
         self._register_default_pipelines()
 
     # ------------------------------------------------------------------
@@ -78,9 +78,7 @@ class Orchestrator:
                     PipelineStage("metadata", self._handle_metadata),
                     PipelineStage("pdf-fetch", self._handle_pdf_fetch),
                     PipelineStage("mineru", self._handle_mineru_parse),
-                    PipelineStage(
-                        "postpdf", self._handle_post_pdf, emits_mapping_event=True
-                    ),
+                    PipelineStage("postpdf", self._handle_post_pdf, emits_mapping_event=True),
                 ],
             )
         )
@@ -90,9 +88,7 @@ class Orchestrator:
                 stages=[
                     PipelineStage("openalex", self._handle_adapter_chain),
                     PipelineStage("mineru", self._handle_mineru_parse),
-                    PipelineStage(
-                        "postpdf", self._handle_post_pdf, emits_mapping_event=True
-                    ),
+                    PipelineStage("postpdf", self._handle_post_pdf, emits_mapping_event=True),
                 ],
             )
         )
@@ -108,9 +104,9 @@ class Orchestrator:
         *,
         tenant_id: str,
         dataset: str,
-        item: Dict[str, object],
+        item: dict[str, object],
         priority: str = "normal",
-        metadata: Optional[Dict[str, object]] = None,
+        metadata: dict[str, object] | None = None,
     ) -> JobLedgerEntry:
         job_id = f"job-{uuid.uuid4().hex[:12]}"
         doc_key = f"{dataset}:{item.get('id', uuid.uuid4().hex)}"
@@ -147,14 +143,14 @@ class Orchestrator:
     # ------------------------------------------------------------------
     # Execution
     # ------------------------------------------------------------------
-    def execute_pipeline(self, job_id: str, payload: Dict[str, object]) -> Dict[str, object]:
+    def execute_pipeline(self, job_id: str, payload: dict[str, object]) -> dict[str, object]:
         entry = self.ledger.get(job_id)
         if not entry:
             raise OrchestrationError(f"Job {job_id} not found in ledger")
         pipeline = self.pipelines.get(entry.pipeline or "")
         if not pipeline:
             raise OrchestrationError(f"Pipeline {entry.pipeline} not registered")
-        context: Dict[str, object] = dict(payload)
+        context: dict[str, object] = dict(payload)
         for stage in pipeline.stages:
             try:
                 self.ledger.mark_processing(job_id, stage=stage.name)
@@ -163,7 +159,9 @@ class Orchestrator:
                 )
                 context = stage.handler(entry, context)
                 if stage.emits_mapping_event:
-                    self.kafka.publish(MAPPING_EVENTS_TOPIC, {"job_id": job_id, "stage": stage.name})
+                    self.kafka.publish(
+                        MAPPING_EVENTS_TOPIC, {"job_id": job_id, "stage": stage.name}
+                    )
             except Exception as exc:  # pragma: no cover - defensive
                 self._handle_stage_failure(job_id, stage.name, exc, context)
                 raise OrchestrationError(str(exc))
@@ -173,7 +171,7 @@ class Orchestrator:
         )
         return context
 
-    def cancel_job(self, job_id: str, reason: Optional[str] = None) -> Optional[JobLedgerEntry]:
+    def cancel_job(self, job_id: str, reason: str | None = None) -> JobLedgerEntry | None:
         entry = self.ledger.get(job_id)
         if not entry or entry.is_terminal():
             return entry
@@ -192,7 +190,7 @@ class Orchestrator:
         job_id: str,
         stage: str,
         exc: Exception,
-        context: Dict[str, object],
+        context: dict[str, object],
     ) -> None:
         entry = self.ledger.get(job_id)
         attempts = self.ledger.record_attempt(job_id)
@@ -235,46 +233,48 @@ class Orchestrator:
     # Pipeline handlers
     # ------------------------------------------------------------------
     def _handle_metadata(
-        self, entry: JobLedgerEntry, context: Dict[str, object]
-    ) -> Dict[str, object]:
+        self, entry: JobLedgerEntry, context: dict[str, object]
+    ) -> dict[str, object]:
         context = dict(context)
         context.setdefault("metadata_processed", True)
         context["pipeline"] = entry.pipeline
         return context
 
-    def _handle_chunking(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_chunking(self, _: JobLedgerEntry, context: dict[str, object]) -> dict[str, object]:
         context = dict(context)
         context["chunks"] = 4
         return context
 
-    def _handle_embedding(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_embedding(self, _: JobLedgerEntry, context: dict[str, object]) -> dict[str, object]:
         context = dict(context)
         context["embeddings"] = 4
         return context
 
-    def _handle_indexing(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_indexing(self, _: JobLedgerEntry, context: dict[str, object]) -> dict[str, object]:
         context = dict(context)
         context["indexed"] = True
         return context
 
-    def _handle_pdf_fetch(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_pdf_fetch(self, _: JobLedgerEntry, context: dict[str, object]) -> dict[str, object]:
         context = dict(context)
         context["pdf_fetched"] = True
         return context
 
-    def _handle_mineru_parse(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_mineru_parse(
+        self, _: JobLedgerEntry, context: dict[str, object]
+    ) -> dict[str, object]:
         context = dict(context)
         context["mineru_parsed"] = True
         return context
 
-    def _handle_post_pdf(self, _: JobLedgerEntry, context: Dict[str, object]) -> Dict[str, object]:
+    def _handle_post_pdf(self, _: JobLedgerEntry, context: dict[str, object]) -> dict[str, object]:
         context = dict(context)
         context["post_pdf_completed"] = True
         return context
 
     def _handle_adapter_chain(
-        self, entry: JobLedgerEntry, context: Dict[str, object]
-    ) -> Dict[str, object]:
+        self, entry: JobLedgerEntry, context: dict[str, object]
+    ) -> dict[str, object]:
         context = dict(context)
         adapters = ["OpenAlex", "Unpaywall", "CORE", "MinerU"]
         context["adapter_chain"] = adapters
@@ -285,7 +285,7 @@ class Orchestrator:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _resolve_pipeline(self, item: Dict[str, object]) -> str:
+    def _resolve_pipeline(self, item: dict[str, object]) -> str:
         if item.get("adapter_chain"):
             return "adapter-chain"
         if item.get("document_type") == "pdf":
@@ -294,12 +294,12 @@ class Orchestrator:
 
 
 __all__ = [
-    "Orchestrator",
-    "Pipeline",
-    "PipelineStage",
-    "OrchestrationError",
+    "DEAD_LETTER_TOPIC",
     "INGEST_REQUESTS_TOPIC",
     "INGEST_RESULTS_TOPIC",
     "MAPPING_EVENTS_TOPIC",
-    "DEAD_LETTER_TOPIC",
+    "OrchestrationError",
+    "Orchestrator",
+    "Pipeline",
+    "PipelineStage",
 ]

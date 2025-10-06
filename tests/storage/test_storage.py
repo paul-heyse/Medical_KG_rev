@@ -19,7 +19,7 @@ class _FakeS3Client:
     def __init__(self) -> None:
         self._store: dict[str, bytes] = {}
 
-    def put_object(self, Bucket: str, Key: str, Body: bytes, Metadata: dict | None = None) -> None:  # noqa: N803
+    def put_object(self, Bucket: str, Key: str, Body: bytes, Metadata: dict | None = None) -> None:
         self._store[Key] = Body
 
     def get_object(self, Bucket: str, Key: str) -> dict:  # noqa: N803
@@ -64,7 +64,9 @@ async def test_s3_object_store_with_fake_client(monkeypatch):
     from Medical_KG_rev.storage import object_store as obj_module
 
     fake_client = _FakeS3Client()
-    monkeypatch.setattr(obj_module, "boto3", type("Boto", (), {"client": staticmethod(lambda service: fake_client)}))
+    monkeypatch.setattr(
+        obj_module, "boto3", type("Boto", (), {"client": staticmethod(lambda service: fake_client)})
+    )
 
     store = obj_module.S3ObjectStore(bucket="bucket")
     await store.put("key", b"value")

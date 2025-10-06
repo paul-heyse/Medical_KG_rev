@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
 from .schema import GRAPH_SCHEMA, NodeSchema
 
@@ -14,7 +14,9 @@ class CypherTemplates:
 
     node_schema: Mapping[str, NodeSchema]
 
-    def merge_node(self, label: str, properties: Mapping[str, object]) -> tuple[str, dict[str, object]]:
+    def merge_node(
+        self, label: str, properties: Mapping[str, object]
+    ) -> tuple[str, dict[str, object]]:
         schema = self._get_schema(label)
         key_property = schema.key
         if key_property not in properties:
@@ -58,9 +60,7 @@ class CypherTemplates:
             raise ValueError(f"Unknown label: {label}") from exc
 
     def _format_assignments(self, properties: Mapping[str, object]) -> str:
-        assignments: Iterable[str] = (
-            f"n.{key} = $props.{key}" for key in properties
-        )
+        assignments: Iterable[str] = (f"n.{key} = $props.{key}" for key in properties)
         return ", ".join(assignments)
 
 

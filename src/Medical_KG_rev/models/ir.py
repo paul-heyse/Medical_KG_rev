@@ -6,11 +6,13 @@ system. The structure intentionally mirrors the design decisions captured in
 hierarchy of documents, sections, blocks and spans that other modules can
 consume without having to know the underlying source specific formats.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -26,10 +28,10 @@ class Span(IRBaseModel):
 
     start: int = Field(ge=0, description="Inclusive character offset")
     end: int = Field(gt=0, description="Exclusive character offset")
-    text: Optional[str] = Field(default=None, description="Optional resolved text")
+    text: str | None = Field(default=None, description="Optional resolved text")
 
     @model_validator(mode="after")
-    def _validate_range(self) -> "Span":
+    def _validate_range(self) -> Span:
         if self.end <= self.start:
             raise ValueError("Span end must be greater than start")
         if self.text is not None and len(self.text) != self.end - self.start:
@@ -52,9 +54,9 @@ class Block(IRBaseModel):
 
     id: str
     type: BlockType = BlockType.PARAGRAPH
-    text: Optional[str] = Field(default=None, description="Plain-text content")
+    text: str | None = Field(default=None, description="Plain-text content")
     spans: Sequence[Span] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("spans")
     @classmethod
@@ -70,7 +72,7 @@ class TableCell(IRBaseModel):
     row: int = Field(ge=0)
     column: int = Field(ge=0)
     content: str
-    span: Optional[Span] = None
+    span: Span | None = None
 
 
 class Table(IRBaseModel):
@@ -78,7 +80,7 @@ class Table(IRBaseModel):
 
     cells: Sequence[TableCell] = Field(default_factory=list)
     headers: Sequence[str] = Field(default_factory=tuple)
-    caption: Optional[str] = None
+    caption: str | None = None
 
     @field_validator("cells")
     @classmethod
@@ -93,7 +95,7 @@ class Section(IRBaseModel):
     """High-level grouping of blocks."""
 
     id: str
-    title: Optional[str] = None
+    title: str | None = None
     blocks: Sequence[Block] = Field(default_factory=list)
 
     @field_validator("blocks")
@@ -110,11 +112,11 @@ class Document(IRBaseModel):
 
     id: str
     source: str = Field(description="Logical source identifier (e.g. clinicaltrials)")
-    title: Optional[str] = None
+    title: str | None = None
     sections: Sequence[Section] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     version: str = Field(default="v1")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("sections")
     @classmethod
@@ -125,8 +127,8 @@ class Document(IRBaseModel):
         return value
 
     @model_validator(mode="after")
-    def _validate_spans(self) -> "Document":
-        text_lengths: Dict[str, int] = {}
+    def _validate_spans(self) -> Document:
+        text_lengths: dict[str, int] = {}
         for section in self.sections:
             for block in section.blocks:
                 if block.text is not None:
@@ -147,10 +149,10 @@ class Document(IRBaseModel):
             for block in section.blocks:
                 yield block
 
-    def find_spans(self, predicate: Optional[Any] = None) -> List[Span]:
+    def find_spans(self, predicate: Any | None = None) -> list[Span]:
         """Return spans that match the predicate."""
 
-        spans: List[Span] = []
+        spans: list[Span] = []
         for block in self.iter_blocks():
             for span in block.spans:
                 if predicate is None or predicate(span):

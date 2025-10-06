@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 
 class Scopes:
     """Canonical scope names used across the platform."""
@@ -18,7 +16,7 @@ class Scopes:
     AUDIT_READ = "audit:read"
 
 
-SCOPE_DESCRIPTIONS: Dict[str, str] = {
+SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.INGEST_WRITE: "Submit ingestion jobs",
     Scopes.JOBS_READ: "Read job status",
     Scopes.JOBS_WRITE: "Cancel or mutate jobs",

@@ -1,12 +1,12 @@
 """Validation utilities for medical domain data structures."""
 
+from .fhir import FHIRValidationError, FHIRValidator
 from .ucum import UCUMValidator, UnitValidationError, UnitValidationResult
-from .fhir import FHIRValidator, FHIRValidationError
 
 __all__ = [
+    "FHIRValidationError",
+    "FHIRValidator",
     "UCUMValidator",
     "UnitValidationError",
     "UnitValidationResult",
-    "FHIRValidator",
-    "FHIRValidationError",
 ]

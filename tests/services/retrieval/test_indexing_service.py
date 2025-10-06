@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions, ChunkingService
+from Medical_KG_rev.services.retrieval.chunking import ChunkingService
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.indexing_service import IndexingService
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
@@ -21,9 +21,7 @@ class _StubEmbeddingWorker:
     def run(self, request):
         vectors = []
         for chunk_id in request.chunk_ids:
-            vectors.append(
-                _Vector(id=chunk_id, values=[1.0, 0.0, 0.0, 0.0])
-            )
+            vectors.append(_Vector(id=chunk_id, values=[1.0, 0.0, 0.0, 0.0]))
         return type("Response", (), {"vectors": vectors})()
 
 

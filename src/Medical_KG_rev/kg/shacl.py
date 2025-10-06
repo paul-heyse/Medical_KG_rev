@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from importlib import resources
-from typing import Dict, Mapping, MutableMapping, Sequence
 
 from pyshacl import validate
 from rdflib import Graph, Literal, Namespace, URIRef
@@ -42,7 +42,7 @@ class ShaclValidator:
     schema: Mapping[str, NodeSchema] = field(default_factory=lambda: GRAPH_SCHEMA)
 
     @classmethod
-    def default(cls) -> "ShaclValidator":
+    def default(cls) -> ShaclValidator:
         shape_text = resources.files("Medical_KG_rev.kg").joinpath("shapes.ttl").read_text()
         shapes_graph = Graph().parse(data=shape_text, format="turtle")
         namespace = Namespace("http://medical-kg/schema#")
@@ -59,7 +59,7 @@ class ShaclValidator:
         cls,
         schema: Mapping[str, NodeSchema],
         relationships: Mapping[str, RelationshipSchema] | None = None,
-    ) -> "ShaclValidator":
+    ) -> ShaclValidator:
         base = cls.default()
         mapping = cls._build_relationship_predicates(relationships or RELATIONSHIPS)
         return cls(
@@ -75,15 +75,11 @@ class ShaclValidator:
             raise ValidationError(f"Unknown label: {label}")
         key_property = schema.key
         missing = [
-            prop
-            for prop in schema.required_properties()
-            if not self._has_value(properties, prop)
+            prop for prop in schema.required_properties() if not self._has_value(properties, prop)
         ]
         if missing:
             missing.sort()
-            raise ValidationError(
-                "Missing required properties: " + ", ".join(missing)
-            )
+            raise ValidationError("Missing required properties: " + ", ".join(missing))
         identifier = str(properties.get(key_property) or properties.get("id") or key_property)
         node = GraphNodePayload(id=identifier, label=label, properties=properties)
         self.validate_payload([node], [])
@@ -114,8 +110,8 @@ class ShaclValidator:
         graph = Graph()
         ns = self.namespace
         node_uris: MutableMapping[str, URIRef] = {}
-        evidence_to_activity: Dict[str, URIRef] = {}
-        claim_supports: Dict[str, set[str]] = {}
+        evidence_to_activity: dict[str, URIRef] = {}
+        claim_supports: dict[str, set[str]] = {}
         for raw in nodes:
             node = self._coerce_node(raw)
             uri = URIRef(f"{ns}{node.label}/{node.id}")
@@ -227,8 +223,8 @@ class ShaclValidator:
     @staticmethod
     def _build_relationship_predicates(
         relationships: Mapping[str, RelationshipSchema],
-    ) -> Dict[str, str]:
-        mapping: Dict[str, str] = {}
+    ) -> dict[str, str]:
+        mapping: dict[str, str] = {}
         for rel in relationships.values():
             mapping[rel.type] = ShaclValidator._predicate_name(rel.type)
         return mapping
@@ -241,8 +237,8 @@ class ShaclValidator:
 
 
 __all__ = [
+    "GraphEdgePayload",
+    "GraphNodePayload",
     "ShaclValidator",
     "ValidationError",
-    "GraphNodePayload",
-    "GraphEdgePayload",
 ]

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Mapping, MutableMapping, Optional, Set
 
 
 @dataclass(frozen=True)
@@ -13,12 +13,12 @@ class SecurityContext:
 
     subject: str
     tenant_id: str
-    scopes: Set[str] = field(default_factory=set)
-    expires_at: Optional[datetime] = None
+    scopes: set[str] = field(default_factory=set)
+    expires_at: datetime | None = None
     claims: Mapping[str, object] = field(default_factory=dict)
     auth_type: str = "oauth"
-    token: Optional[str] = None
-    key_id: Optional[str] = None
+    token: str | None = None
+    key_id: str | None = None
 
     def has_scope(self, scope: str) -> bool:
         return scope in self.scopes or "*" in self.scopes
@@ -29,8 +29,8 @@ class SecurityContext:
 
         return self.key_id or self.subject
 
-    def with_scope(self, *extra_scopes: str) -> "SecurityContext":
-        merged_scopes: Set[str] = set(self.scopes).union(extra_scopes)
+    def with_scope(self, *extra_scopes: str) -> SecurityContext:
+        merged_scopes: set[str] = set(self.scopes).union(extra_scopes)
         data: MutableMapping[str, object] = {
             "subject": self.subject,
             "tenant_id": self.tenant_id,

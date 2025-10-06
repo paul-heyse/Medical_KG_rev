@@ -1,11 +1,13 @@
 """Logging helpers with OpenTelemetry integration."""
+
 from __future__ import annotations
 
 import json
 import logging
 import sys
+from collections.abc import Iterable
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 try:  # Optional structlog dependency
@@ -38,7 +40,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from Medical_KG_rev.config.settings import LoggingSettings
 
 
-_correlation_id: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
+_correlation_id: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 
 class JsonFormatter(logging.Formatter):
@@ -50,7 +52,10 @@ class JsonFormatter(logging.Formatter):
 
     def _scrub(self, value: object) -> object:
         if isinstance(value, dict):
-            return {k: self._scrub(v) if k.lower() not in self._scrub_fields else "***" for k, v in value.items()}
+            return {
+                k: self._scrub(v) if k.lower() not in self._scrub_fields else "***"
+                for k, v in value.items()
+            }
         if isinstance(value, list):
             return [self._scrub(item) for item in value]
         return value
@@ -122,7 +127,7 @@ def _structlog_scrubber(scrub_fields: Iterable[str] | None):
 def configure_logging(
     level: int | str | None = None,
     *,
-    settings: "LoggingSettings" | None = None,
+    settings: LoggingSettings | None = None,
 ) -> None:
     """Configure global logging for the application."""
 
@@ -220,7 +225,7 @@ def reset_correlation_id(token: Token | None) -> None:
             pass
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Return the currently bound correlation identifier, if any."""
 
     return _correlation_id.get()

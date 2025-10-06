@@ -1,13 +1,15 @@
 """Metadata extraction helpers."""
+
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 
-def flatten_metadata(records: Iterable[Dict[str, Any]], prefix: str = "") -> Dict[str, Any]:
+def flatten_metadata(records: Iterable[dict[str, Any]], prefix: str = "") -> dict[str, Any]:
     """Flatten nested metadata dictionaries."""
 
-    flattened: Dict[str, Any] = {}
+    flattened: dict[str, Any] = {}
     for index, record in enumerate(records):
         for key, value in record.items():
             flattened_key = f"{prefix}{index}.{key}"

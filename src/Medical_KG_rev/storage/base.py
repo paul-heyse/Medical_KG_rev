@@ -1,9 +1,10 @@
 """Abstract storage interfaces."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class StorageError(RuntimeError):
@@ -14,7 +15,7 @@ class StorageError(RuntimeError):
 class ObjectMetadata:
     """Metadata returned by object store operations."""
 
-    content_type: Optional[str]
+    content_type: str | None
     size: int
 
 
@@ -22,7 +23,7 @@ class ObjectStore(ABC):
     """Interface for object storage backends."""
 
     @abstractmethod
-    async def put(self, key: str, data: bytes, *, metadata: Optional[Dict[str, str]] = None) -> None:
+    async def put(self, key: str, data: bytes, *, metadata: dict[str, str] | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -38,11 +39,11 @@ class LedgerStore(ABC):
     """Interface used to track ingestion state."""
 
     @abstractmethod
-    async def record_state(self, job_id: str, state: Dict[str, Any]) -> None:
+    async def record_state(self, job_id: str, state: dict[str, Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    async def get_state(self, job_id: str) -> Optional[Dict[str, Any]]:
+    async def get_state(self, job_id: str) -> dict[str, Any] | None:
         raise NotImplementedError
 
 
@@ -50,11 +51,11 @@ class CacheBackend(ABC):
     """Simple cache interface used by services."""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         raise NotImplementedError
 
     @abstractmethod
-    async def set(self, key: str, value: bytes, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: bytes, ttl: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod

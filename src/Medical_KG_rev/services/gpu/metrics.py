@@ -16,4 +16,4 @@ GPU_MEMORY_USED = Gauge(
     labelnames=("service", "device", "state"),
 )
 
-__all__ = ["GPU_UTILIZATION", "GPU_MEMORY_USED"]
+__all__ = ["GPU_MEMORY_USED", "GPU_UTILIZATION"]

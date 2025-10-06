@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 import httpx
 from jose import JWTError, jwt
@@ -19,10 +20,10 @@ class JWKSCache:
         self._url = url
         self._ttl = ttl
         self._expires_at = 0.0
-        self._keys: Dict[str, Dict[str, Any]] = {}
+        self._keys: dict[str, dict[str, Any]] = {}
         self._lock = asyncio.Lock()
 
-    async def get_key(self, kid: str) -> Optional[Dict[str, Any]]:
+    async def get_key(self, kid: str) -> dict[str, Any] | None:
         await self._ensure_keys()
         return self._keys.get(kid)
 
@@ -56,7 +57,7 @@ class JWTAuthenticator:
         self.algorithms = tuple(algorithms)
         self.cache = JWKSCache(jwks_url, ttl=cache_ttl)
 
-    async def authenticate(self, token: str) -> Dict[str, Any]:
+    async def authenticate(self, token: str) -> dict[str, Any]:
         try:
             header = jwt.get_unverified_header(token)
         except JWTError as exc:  # pragma: no cover - defensive
@@ -84,7 +85,7 @@ class AuthenticationError(RuntimeError):
     """Raised when authentication fails."""
 
 
-def build_authenticator(settings: Optional[AppSettings] = None) -> JWTAuthenticator:
+def build_authenticator(settings: AppSettings | None = None) -> JWTAuthenticator:
     cfg = (settings or get_settings()).security.oauth
     return JWTAuthenticator(
         issuer=cfg.issuer,

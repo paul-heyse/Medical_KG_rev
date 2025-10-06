@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 from time import perf_counter
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
@@ -15,13 +14,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .graphql.schema import graphql_router
-from .models import ProblemDetail
-from .middleware import CachePolicy, CachingMiddleware
-from .rest.router import JSONAPI_CONTENT_TYPE, health_router, router as rest_router
-from .services import GatewayError
-from .sse.routes import router as sse_router
-from .soap.routes import router as soap_router
 from ..config.settings import get_settings
 from ..observability import setup_observability
 from ..services.health import CheckResult, HealthService, success
@@ -31,7 +23,14 @@ from ..utils.logging import (
     get_logger,
     reset_correlation_id,
 )
-from .services import get_gateway_service
+from .graphql.schema import graphql_router
+from .middleware import CachePolicy, CachingMiddleware
+from .models import ProblemDetail
+from .rest.router import JSONAPI_CONTENT_TYPE, health_router
+from .rest.router import router as rest_router
+from .services import GatewayError, get_gateway_service
+from .soap.routes import router as soap_router
+from .sse.routes import router as sse_router
 
 
 class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
@@ -51,16 +50,22 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self._correlation_header = correlation_header
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
-        provided = request.headers.get(self._correlation_header) if self._correlation_header else None
+        provided = (
+            request.headers.get(self._correlation_header) if self._correlation_header else None
+        )
         existing = getattr(request.state, "correlation_id", None) or get_correlation_id()
         correlation_id = provided or existing or str(uuid.uuid4())
-        setattr(request.state, "correlation_id", correlation_id)
+        request.state.correlation_id = correlation_id
         token = bind_correlation_id(correlation_id)
         started = perf_counter()
 
         logger.info(
             "gateway.request",
-            extra={"method": request.method, "path": request.url.path, "correlation_id": correlation_id},
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "correlation_id": correlation_id,
+            },
         )
 
         try:
@@ -109,7 +114,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if forwarded_proto != "https":
                 raise HTTPException(status_code=400, detail="HTTPS is required")
         response = await call_next(request)
-        response.headers.setdefault("Strict-Transport-Security", f"max-age={self._cfg.hsts_max_age}; includeSubDomains")
+        response.headers.setdefault(
+            "Strict-Transport-Security", f"max-age={self._cfg.hsts_max_age}; includeSubDomains"
+        )
         response.headers.setdefault("Content-Security-Policy", self._cfg.content_security_policy)
         response.headers.setdefault("X-Frame-Options", self._cfg.frame_options)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -118,7 +125,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 def create_problem_response(detail: ProblemDetail) -> JSONResponse:
-    payload: Dict[str, Any] = detail.model_dump(mode="json")
+    payload: dict[str, Any] = detail.model_dump(mode="json")
     status = payload.get("status", 500)
     return JSONResponse(payload, status_code=status, media_type="application/problem+json")
 

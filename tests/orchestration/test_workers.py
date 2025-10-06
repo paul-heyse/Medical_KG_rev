@@ -2,18 +2,20 @@ from __future__ import annotations
 
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration import IngestWorker, KafkaClient, MappingWorker, Orchestrator
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.orchestrator import (
     DEAD_LETTER_TOPIC,
     INGEST_REQUESTS_TOPIC,
     INGEST_RESULTS_TOPIC,
     MAPPING_EVENTS_TOPIC,
 )
-from Medical_KG_rev.orchestration.ledger import JobLedger
 
 
 def setup_components():
     kafka = KafkaClient()
-    kafka.create_topics([INGEST_REQUESTS_TOPIC, INGEST_RESULTS_TOPIC, MAPPING_EVENTS_TOPIC, DEAD_LETTER_TOPIC])
+    kafka.create_topics(
+        [INGEST_REQUESTS_TOPIC, INGEST_RESULTS_TOPIC, MAPPING_EVENTS_TOPIC, DEAD_LETTER_TOPIC]
+    )
     ledger = JobLedger()
     events = EventStreamManager()
     orchestrator = Orchestrator(kafka, ledger, events)

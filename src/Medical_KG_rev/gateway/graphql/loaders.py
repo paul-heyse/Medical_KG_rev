@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List
+from collections.abc import Iterable
 
 from strawberry.dataloader import DataLoader
 
@@ -18,8 +18,8 @@ class GraphQLLoaders:
         self.document_loader: DataLoader[str, DocumentSummary] = DataLoader(self._load_documents)
         self.organization_loader: DataLoader[str, dict] = DataLoader(self._load_organizations)
 
-    async def _load_documents(self, identifiers: Iterable[str]) -> List[DocumentSummary]:
-        documents: List[DocumentSummary] = []
+    async def _load_documents(self, identifiers: Iterable[str]) -> list[DocumentSummary]:
+        documents: list[DocumentSummary] = []
         for identifier in identifiers:
             documents.append(
                 DocumentSummary(
@@ -33,7 +33,7 @@ class GraphQLLoaders:
             )
         return documents
 
-    async def _load_organizations(self, identifiers: Iterable[str]) -> List[dict]:
+    async def _load_organizations(self, identifiers: Iterable[str]) -> list[dict]:
         return [
             {
                 "id": identifier,

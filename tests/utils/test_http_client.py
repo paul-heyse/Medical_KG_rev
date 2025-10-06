@@ -21,7 +21,9 @@ def test_http_client_retries():
             return httpx.Response(503)
         return httpx.Response(200, json={"ok": True})
 
-    client = HttpClient(retry=RetryConfig(attempts=3, backoff_factor=0), transport=httpx.MockTransport(handler))
+    client = HttpClient(
+        retry=RetryConfig(attempts=3, backoff_factor=0), transport=httpx.MockTransport(handler)
+    )
     response = client.request("GET", "https://example.com")
     assert response.json()["ok"] is True
     assert calls["count"] == 2
@@ -30,7 +32,10 @@ def test_http_client_retries():
 
 
 def test_http_client_exhausts_retries():
-    client = HttpClient(retry=RetryConfig(attempts=1, backoff_factor=0), transport=httpx.MockTransport(lambda _: httpx.Response(503)))
+    client = HttpClient(
+        retry=RetryConfig(attempts=1, backoff_factor=0),
+        transport=httpx.MockTransport(lambda _: httpx.Response(503)),
+    )
     with pytest.raises(httpx.HTTPStatusError):
         client.request("GET", "https://example.com")
 
@@ -62,8 +67,12 @@ def test_http_client_respects_retry_after(monkeypatch):
             return httpx.Response(429, headers={"Retry-After": "1"})
         return httpx.Response(200, json={"ok": True})
 
-    client = HttpClient(retry=RetryConfig(attempts=2, backoff_factor=0), transport=httpx.MockTransport(handler))
-    monkeypatch.setattr("Medical_KG_rev.utils.http_client.time.sleep", lambda seconds: sleeps.append(seconds))
+    client = HttpClient(
+        retry=RetryConfig(attempts=2, backoff_factor=0), transport=httpx.MockTransport(handler)
+    )
+    monkeypatch.setattr(
+        "Medical_KG_rev.utils.http_client.time.sleep", lambda seconds: sleeps.append(seconds)
+    )
     response = client.request("GET", "https://example.com")
     assert response.json()["ok"] is True
     assert pytest.approx(sleeps[0], rel=1e-3) == 1.0

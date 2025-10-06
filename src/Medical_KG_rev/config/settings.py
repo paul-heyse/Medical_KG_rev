@@ -1,12 +1,14 @@
 """Configuration system for the foundation layer."""
+
 from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,7 +26,7 @@ class TelemetrySettings(BaseModel):
     """Configuration block for OpenTelemetry export."""
 
     exporter: str = Field(default="console", description="Target exporter type")
-    endpoint: Optional[str] = Field(default=None, description="Exporter endpoint")
+    endpoint: str | None = Field(default=None, description="Exporter endpoint")
     sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
 
 
@@ -32,7 +34,9 @@ class LoggingSettings(BaseModel):
     """Structured logging configuration."""
 
     level: str = Field(default="INFO", description="Log level for application output")
-    correlation_id_header: str = Field(default="X-Correlation-ID", description="Header used for trace correlation")
+    correlation_id_header: str = Field(
+        default="X-Correlation-ID", description="Header used for trace correlation"
+    )
     scrub_fields: Sequence[str] = Field(
         default_factory=lambda: ["password", "token", "secret", "authorization"],
         description="Fields that should be redacted in logs",
@@ -49,10 +53,10 @@ class MetricsSettings(BaseModel):
 class SentrySettings(BaseModel):
     """Sentry error tracking configuration."""
 
-    dsn: Optional[str] = Field(default=None, description="Sentry DSN for reporting errors")
+    dsn: str | None = Field(default=None, description="Sentry DSN for reporting errors")
     traces_sample_rate: float = Field(default=0.1, ge=0.0, le=1.0)
     send_default_pii: bool = False
-    environment: Optional[str] = Field(default=None, description="Override environment tag")
+    environment: str | None = Field(default=None, description="Override environment tag")
 
 
 class ObservabilitySettings(BaseModel):
@@ -67,15 +71,15 @@ class VaultSettings(BaseModel):
     """Settings for the optional HashiCorp Vault integration."""
 
     enabled: bool = False
-    address: Optional[str] = None
-    token: Optional[str] = None
-    namespace: Optional[str] = None
+    address: str | None = None
+    token: str | None = None
+    namespace: str | None = None
 
 
 class FeatureFlagSettings(BaseModel):
     """Dynamic feature flag configuration."""
 
-    flags: Dict[str, bool] = Field(default_factory=dict)
+    flags: dict[str, bool] = Field(default_factory=dict)
 
     def is_enabled(self, name: str) -> bool:
         return self.flags.get(name.lower(), False)
@@ -99,11 +103,13 @@ class OAuthClientSettings(BaseModel):
     jwks_url: str = Field(..., description="JWKS endpoint for signature validation")
     client_id: str = Field(..., description="Service client identifier")
     client_secret: SecretStr = Field(..., description="Service client secret")
-    scopes: Sequence[str] = Field(default_factory=lambda: ["ingest:write", "kg:read"])  # default scopes
+    scopes: Sequence[str] = Field(
+        default_factory=lambda: ["ingest:write", "kg:read"]
+    )  # default scopes
 
     @model_validator(mode="before")
     @classmethod
-    def _coerce_scopes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def _coerce_scopes(cls, values: dict[str, Any]) -> dict[str, Any]:
         scopes = values.get("scopes")
         if isinstance(scopes, str):
             candidate = scopes.strip()
@@ -116,11 +122,13 @@ class OAuthClientSettings(BaseModel):
                     if isinstance(parsed, list):
                         values["scopes"] = [str(item) for item in parsed]
                         return values
-            values["scopes"] = [item.strip() for item in scopes.replace(",", " ").split() if item.strip()]
+            values["scopes"] = [
+                item.strip() for item in scopes.replace(",", " ").split() if item.strip()
+            ]
         elif isinstance(scopes, dict):
             values["scopes"] = [str(item) for item in scopes.values()]
         elif isinstance(scopes, Sequence):
-            flattened: List[str] = []
+            flattened: list[str] = []
             for item in scopes:
                 if isinstance(item, str):
                     try:
@@ -142,7 +150,7 @@ class RateLimitSettings(BaseModel):
 
     requests_per_minute: int = Field(default=60, ge=1, description="Default per-subject RPM")
     burst: int = Field(default=10, ge=1, description="Token bucket burst capacity")
-    endpoint_overrides: Dict[str, int] = Field(
+    endpoint_overrides: dict[str, int] = Field(
         default_factory=dict, description="Endpoint specific RPM overrides"
     )
 
@@ -158,10 +166,12 @@ class EndpointCachePolicy(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _coerce_vary(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def _coerce_vary(cls, values: dict[str, Any]) -> dict[str, Any]:
         vary = values.get("vary")
         if isinstance(vary, str):
-            values["vary"] = [item.strip() for item in vary.replace(",", " ").split() if item.strip()]
+            values["vary"] = [
+                item.strip() for item in vary.replace(",", " ").split() if item.strip()
+            ]
         return values
 
 
@@ -169,7 +179,7 @@ class CachingSettings(BaseModel):
     """Configuration for HTTP caching policies."""
 
     default: EndpointCachePolicy = Field(default_factory=EndpointCachePolicy)
-    endpoints: Dict[str, EndpointCachePolicy] = Field(default_factory=dict)
+    endpoints: dict[str, EndpointCachePolicy] = Field(default_factory=dict)
 
     def policy_for(self, path: str) -> EndpointCachePolicy:
         return self.endpoints.get(path, self.default)
@@ -181,11 +191,11 @@ class APIKeyRecord(BaseModel):
     hashed_secret: str = Field(..., description="Hashed API key")
     tenant_id: str = Field(..., description="Tenant the key is scoped to")
     scopes: Sequence[str] = Field(default_factory=list)
-    rotated_at: Optional[str] = Field(default=None, description="ISO timestamp of last rotation")
+    rotated_at: str | None = Field(default=None, description="ISO timestamp of last rotation")
 
     @model_validator(mode="before")
     @classmethod
-    def _coerce_scopes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def _coerce_scopes(cls, values: dict[str, Any]) -> dict[str, Any]:
         scopes = values.get("scopes")
         if isinstance(scopes, str):
             candidate = scopes.strip()
@@ -198,7 +208,9 @@ class APIKeyRecord(BaseModel):
                     if isinstance(parsed, list):
                         values["scopes"] = [str(item) for item in parsed]
                         return values
-            values["scopes"] = [item.strip() for item in scopes.replace(",", " ").split() if item.strip()]
+            values["scopes"] = [
+                item.strip() for item in scopes.replace(",", " ").split() if item.strip()
+            ]
         elif isinstance(scopes, dict):
             values["scopes"] = [str(item) for item in scopes.values()]
         return values
@@ -209,11 +221,11 @@ class APIKeySettings(BaseModel):
 
     enabled: bool = True
     hashing_algorithm: str = Field(default="sha256")
-    secret_store_path: Optional[str] = Field(
+    secret_store_path: str | None = Field(
         default="security/api-keys",
         description="Path used with secret resolver when enabled",
     )
-    keys: Dict[str, APIKeyRecord] = Field(default_factory=dict)
+    keys: dict[str, APIKeyRecord] = Field(default_factory=dict)
 
 
 class SecurityHeaderSettings(BaseModel):
@@ -232,15 +244,19 @@ class CORSSecuritySettings(BaseModel):
 
     allow_origins: Sequence[str] = Field(default_factory=lambda: ["https://localhost"])
     allow_methods: Sequence[str] = Field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
-    allow_headers: Sequence[str] = Field(default_factory=lambda: ["Authorization", "Content-Type", "X-API-Key"])
+    allow_headers: Sequence[str] = Field(
+        default_factory=lambda: ["Authorization", "Content-Type", "X-API-Key"]
+    )
 
     @model_validator(mode="before")
     @classmethod
-    def _normalise_sequences(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalise_sequences(cls, values: dict[str, Any]) -> dict[str, Any]:
         for field in ("allow_origins", "allow_methods", "allow_headers"):
             current = values.get(field)
             if isinstance(current, str):
-                values[field] = [item.strip() for item in current.replace(",", " ").split() if item.strip()]
+                values[field] = [
+                    item.strip() for item in current.replace(",", " ").split() if item.strip()
+                ]
             elif isinstance(current, dict):
                 values[field] = [str(item) for item in current.values()]
         return values
@@ -257,7 +273,7 @@ class SecuritySettings(BaseModel):
     enforce_https: bool = True
 
     @model_validator(mode="after")
-    def validate_cors(self) -> "SecuritySettings":
+    def validate_cors(self) -> SecuritySettings:
         if not self.cors.allow_origins:
             raise ValueError("At least one CORS origin must be configured")
         return self
@@ -273,7 +289,7 @@ class AppSettings(BaseSettings):
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
-    domains_config_path: Optional[Path] = Field(default=None)
+    domains_config_path: Path | None = Field(default=None)
     security: SecuritySettings = Field(
         default_factory=lambda: SecuritySettings(
             oauth=OAuthClientSettings(
@@ -286,20 +302,26 @@ class AppSettings(BaseSettings):
             )
         )
     )
-    caching: CachingSettings = Field(default_factory=lambda: CachingSettings(
-        default=EndpointCachePolicy(ttl=30, scope="private"),
-        endpoints={
-            "/v1/retrieve": EndpointCachePolicy(ttl=300, scope="private", vary=["Accept", "Content-Type"]),
-            "/v1/search": EndpointCachePolicy(ttl=300, scope="private", vary=["Accept", "Content-Type"]),
-            "/v1/jobs": EndpointCachePolicy(ttl=30, scope="private"),
-            "/v1/jobs/{job_id}": EndpointCachePolicy(ttl=15, scope="private"),
-        },
-    ))
+    caching: CachingSettings = Field(
+        default_factory=lambda: CachingSettings(
+            default=EndpointCachePolicy(ttl=30, scope="private"),
+            endpoints={
+                "/v1/retrieve": EndpointCachePolicy(
+                    ttl=300, scope="private", vary=["Accept", "Content-Type"]
+                ),
+                "/v1/search": EndpointCachePolicy(
+                    ttl=300, scope="private", vary=["Accept", "Content-Type"]
+                ),
+                "/v1/jobs": EndpointCachePolicy(ttl=30, scope="private"),
+                "/v1/jobs/{job_id}": EndpointCachePolicy(ttl=15, scope="private"),
+            },
+        )
+    )
 
     model_config = SettingsConfigDict(env_prefix="MK_", env_nested_delimiter="__")
 
 
-ENVIRONMENT_DEFAULTS: Mapping[Environment, Dict[str, Any]] = {
+ENVIRONMENT_DEFAULTS: Mapping[Environment, dict[str, Any]] = {
     Environment.DEV: {"debug": True, "telemetry": {"exporter": "console"}},
     Environment.STAGING: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.25}},
     Environment.PROD: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.05}},
@@ -324,7 +346,7 @@ class SecretResolver:
             except Exception as exc:  # pragma: no cover - defensive logging
                 raise RuntimeError("Failed to initialise Vault client") from exc
 
-    def get_secret(self, path: str) -> Dict[str, Any]:
+    def get_secret(self, path: str) -> dict[str, Any]:
         """Resolve secret either from Vault or environment."""
 
         if self._client is not None:
@@ -340,7 +362,7 @@ class SecretResolver:
             return {"value": raw}
 
 
-def load_settings(environment: Optional[str] = None) -> AppSettings:
+def load_settings(environment: str | None = None) -> AppSettings:
     """Load application settings with environment specific defaults applied."""
 
     env_value = (environment or os.getenv("MK_ENV", "dev")).lower()

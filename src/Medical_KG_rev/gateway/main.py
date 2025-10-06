@@ -6,9 +6,10 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from yaml import safe_dump
+
 from .app import create_app
 from .graphql.schema import schema
-from yaml import safe_dump
 
 ASYNCAPI_TEMPLATE = """
 asyncapi: '2.6.0'

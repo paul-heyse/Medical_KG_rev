@@ -1,7 +1,9 @@
 """Legal domain overlay aligned with LegalDocML concepts."""
+
 from __future__ import annotations
 
-from typing import Literal, Optional, Sequence
+from collections.abc import Sequence
+from typing import Literal
 
 from pydantic import Field, field_validator
 
@@ -12,15 +14,15 @@ class LegalReference(IRBaseModel):
     """Represents a citation to a legal authority."""
 
     target: str
-    locator: Optional[str] = None
-    text: Optional[str] = None
+    locator: str | None = None
+    text: str | None = None
 
 
 class LegalClause(IRBaseModel):
     """Section of a legal document with associated references."""
 
     id: str
-    title: Optional[str] = None
+    title: str | None = None
     references: Sequence[LegalReference] = Field(default_factory=tuple)
 
     @field_validator("references")
@@ -40,12 +42,12 @@ class LegalDocument(Document):
     """Document overlay enriched with LegalDocML specific fields."""
 
     domain: Literal["legal"] = "legal"
-    jurisdiction: Optional[str] = None
+    jurisdiction: str | None = None
     clauses: Sequence[LegalClause] = Field(default_factory=tuple)
 
     @field_validator("jurisdiction")
     @classmethod
-    def _normalize_jurisdiction(cls, value: Optional[str]) -> Optional[str]:
+    def _normalize_jurisdiction(cls, value: str | None) -> str | None:
         if value is None:
             return None
         return value.upper()

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Sequence
 
 import structlog
 
@@ -29,7 +29,7 @@ class EmbeddingVector:
     id: str
     model: str
     kind: str  # "dense" or "sparse"
-    values: List[float]
+    values: list[float]
     dimension: int
 
 
@@ -42,7 +42,7 @@ class EmbeddingBatch:
 
 @dataclass(slots=True)
 class EmbeddingResponse:
-    vectors: List[EmbeddingVector] = field(default_factory=list)
+    vectors: list[EmbeddingVector] = field(default_factory=list)
 
 
 class _BaseModel:
@@ -61,7 +61,7 @@ class _BaseModel:
             logger.info("embedding.model.loaded", model=self.name)
             self._is_loaded = True
 
-    def encode(self, texts: Sequence[str]) -> List[List[float]]:  # pragma: no cover - abstract
+    def encode(self, texts: Sequence[str]) -> list[list[float]]:  # pragma: no cover - abstract
         raise NotImplementedError
 
 
@@ -70,14 +70,16 @@ class SpladeModel(_BaseModel):
     kind = "sparse"
     dimension = 64
 
-    def encode(self, texts: Sequence[str]) -> List[List[float]]:
+    def encode(self, texts: Sequence[str]) -> list[list[float]]:
         self.load()
-        vectors: List[List[float]] = []
+        vectors: list[list[float]] = []
         for text in texts:
             buckets = [0.0] * self.dimension
             tokens = [token for token in text.lower().split() if token]
             for token in tokens:
-                bucket_index = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16) % self.dimension
+                bucket_index = (
+                    int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16) % self.dimension
+                )
                 buckets[bucket_index] += 1.0
             max_value = max(buckets) if buckets else 1.0
             normalized = [value / max_value for value in buckets]
@@ -90,9 +92,9 @@ class QwenDenseModel(_BaseModel):
     kind = "dense"
     dimension = 128
 
-    def encode(self, texts: Sequence[str]) -> List[List[float]]:
+    def encode(self, texts: Sequence[str]) -> list[list[float]]:
         self.load()
-        vectors: List[List[float]] = []
+        vectors: list[list[float]] = []
         for text in texts:
             values = [0.0] * self.dimension
             base_hash = int(hashlib.sha256(text.encode("utf-8")).hexdigest(), 16)
@@ -109,7 +111,7 @@ class EmbeddingModelRegistry:
 
     def __init__(self, gpu: GpuManager) -> None:
         self.gpu = gpu
-        self._cache: Dict[str, _BaseModel] = {}
+        self._cache: dict[str, _BaseModel] = {}
 
     def get(self, name: str) -> _BaseModel:
         if name not in self._cache:
@@ -139,7 +141,7 @@ class EmbeddingWorker:
                     texts=request.texts[start:end],
                 )
 
-    def _normalize(self, vector: List[float]) -> List[float]:
+    def _normalize(self, vector: list[float]) -> list[float]:
         norm = math.sqrt(sum(value * value for value in vector))
         if norm == 0:
             return vector
@@ -150,7 +152,7 @@ class EmbeddingWorker:
         for batch in self._batched(request):
             model = self.registry.get(batch.model)
             vectors = model.encode(batch.texts)
-            for chunk_id, vector_values in zip(batch.chunk_ids, vectors):
+            for chunk_id, vector_values in zip(batch.chunk_ids, vectors, strict=False):
                 if request.normalize:
                     vector_values = self._normalize(vector_values)
                 response.vectors.append(

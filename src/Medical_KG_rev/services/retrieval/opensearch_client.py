@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, MutableMapping, Sequence
 
 
 @dataclass(slots=True)
@@ -23,8 +23,8 @@ class _IndexedDocument:
 
 class OpenSearchClient:
     def __init__(self) -> None:
-        self._indices: MutableMapping[str, Dict[str, _IndexedDocument]] = defaultdict(dict)
-        self._templates: Dict[str, DocumentIndexTemplate] = {}
+        self._indices: MutableMapping[str, dict[str, _IndexedDocument]] = defaultdict(dict)
+        self._templates: dict[str, DocumentIndexTemplate] = {}
 
     def put_index_template(self, template: DocumentIndexTemplate) -> None:
         self._templates[template.name] = template
@@ -32,7 +32,9 @@ class OpenSearchClient:
     def index(self, index: str, doc_id: str, body: Mapping[str, object]) -> None:
         self._indices[index][doc_id] = _IndexedDocument(doc_id=doc_id, body=dict(body))
 
-    def bulk_index(self, index: str, documents: Sequence[Mapping[str, object]], id_field: str) -> None:
+    def bulk_index(
+        self, index: str, documents: Sequence[Mapping[str, object]], id_field: str
+    ) -> None:
         for doc in documents:
             doc_id = str(doc[id_field])
             self.index(index, doc_id, doc)
@@ -45,7 +47,7 @@ class OpenSearchClient:
         filters: Mapping[str, object] | None = None,
         highlight: bool = True,
         size: int = 10,
-    ) -> List[Mapping[str, object]]:
+    ) -> list[Mapping[str, object]]:
         documents = list(self._indices.get(index, {}).values())
         filtered = self._apply_filters(documents, filters or {})
         scored = self._score(filtered, query, strategy)
@@ -58,7 +60,7 @@ class OpenSearchClient:
 
     def _apply_filters(
         self, documents: Iterable[_IndexedDocument], filters: Mapping[str, object]
-    ) -> List[_IndexedDocument]:
+    ) -> list[_IndexedDocument]:
         if not filters:
             return list(documents)
         filtered = []
@@ -73,8 +75,8 @@ class OpenSearchClient:
         documents: Iterable[_IndexedDocument],
         query: str,
         strategy: str,
-    ) -> List[Dict[str, object]]:
-        scores: List[Dict[str, object]] = []
+    ) -> list[dict[str, object]]:
+        scores: list[dict[str, object]] = []
         query_terms = [term for term in query.lower().split() if term]
         for doc in documents:
             text = str(doc.body.get("text", ""))
@@ -95,14 +97,16 @@ class OpenSearchClient:
         k1 = 1.5
         b = 0.75
         avgdl = max(length, 1)
-        return ((term_frequency * (k1 + 1)) / (term_frequency + k1 * (1 - b + b * (length / avgdl))))
+        return (term_frequency * (k1 + 1)) / (term_frequency + k1 * (1 - b + b * (length / avgdl)))
 
-    def _splade(self, term_frequency: int, query_terms: Sequence[str], tokens: Sequence[str]) -> float:
+    def _splade(
+        self, term_frequency: int, query_terms: Sequence[str], tokens: Sequence[str]
+    ) -> float:
         unique_terms = len(set(query_terms) & set(tokens))
         return math.log1p(term_frequency + unique_terms)
 
-    def _highlight(self, text: str, query: str) -> List[Mapping[str, object]]:
-        spans: List[Mapping[str, object]] = []
+    def _highlight(self, text: str, query: str) -> list[Mapping[str, object]]:
+        spans: list[Mapping[str, object]] = []
         lower = text.lower()
         for term in {t for t in query.lower().split() if t}:
             start = lower.find(term)

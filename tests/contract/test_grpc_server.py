@@ -20,8 +20,14 @@ def test_grpc_server_start_registers_services(monkeypatch) -> None:
     monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.extraction_pb2_grpc", None)
     monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.ingestion_pb2_grpc", None)
     mock_health_servicer = mock.Mock()
-    monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.health.HealthServicer", mock.Mock(return_value=mock_health_servicer))
-    monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.health_pb2_grpc.add_HealthServicer_to_server", mock.Mock())
+    monkeypatch.setattr(
+        "Medical_KG_rev.gateway.grpc.server.health.HealthServicer",
+        mock.Mock(return_value=mock_health_servicer),
+    )
+    monkeypatch.setattr(
+        "Medical_KG_rev.gateway.grpc.server.health_pb2_grpc.add_HealthServicer_to_server",
+        mock.Mock(),
+    )
     monkeypatch.setattr(
         "Medical_KG_rev.gateway.grpc.server.health_pb2.HealthCheckResponse",
         mock.Mock(SERVING="SERVING"),

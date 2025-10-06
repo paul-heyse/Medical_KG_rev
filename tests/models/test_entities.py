@@ -24,7 +24,9 @@ def test_entity_alias_deduplication():
 
 
 def test_claim_roundtrip():
-    claim = Claim(id="c1", subject_id="s", predicate="treats", object_id="o", extraction=_activity())
+    claim = Claim(
+        id="c1", subject_id="s", predicate="treats", object_id="o", extraction=_activity()
+    )
     assert claim.predicate == "treats"
 
 

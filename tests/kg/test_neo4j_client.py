@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from Medical_KG_rev.kg import GRAPH_SCHEMA, CypherTemplates, Neo4jClient, ShaclValidator
 
@@ -9,14 +9,14 @@ from Medical_KG_rev.kg import GRAPH_SCHEMA, CypherTemplates, Neo4jClient, ShaclV
 @dataclass
 class _RunCall:
     query: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
 
 
 class _FakeTransaction:
-    def __init__(self, calls: List[_RunCall]):
+    def __init__(self, calls: list[_RunCall]):
         self._calls = calls
 
-    def run(self, query: str, parameters: Dict[str, Any]):
+    def run(self, query: str, parameters: dict[str, Any]):
         self._calls.append(_RunCall(query=query, parameters=parameters))
         return self
 
@@ -25,7 +25,7 @@ class _FakeTransaction:
 
 
 class _FakeSession:
-    def __init__(self, calls: List[_RunCall]):
+    def __init__(self, calls: list[_RunCall]):
         self._calls = calls
 
     def execute_write(self, func):
@@ -38,7 +38,7 @@ class _FakeSession:
 
 class _FakeDriver:
     def __init__(self):
-        self.calls: List[_RunCall] = []
+        self.calls: list[_RunCall] = []
 
     def session(self):
         return _FakeSession(self.calls)
@@ -75,7 +75,7 @@ def test_merge_node_missing_property_raises():
 
     try:
         client.merge_node("Entity", {"entity_id": "e-1"})
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         assert "Missing required properties" in str(exc)
     else:  # pragma: no cover - defensive
         raise AssertionError("Validation should fail")

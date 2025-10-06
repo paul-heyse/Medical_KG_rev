@@ -2,18 +2,18 @@
 
 from .kafka import KafkaClient, KafkaMessage
 from .ledger import JobLedger, JobLedgerEntry, JobTransition
-from .orchestrator import Orchestrator, OrchestrationError
+from .orchestrator import OrchestrationError, Orchestrator
 from .worker import IngestWorker, MappingWorker, WorkerBase
 
 __all__ = [
-    "KafkaClient",
-    "KafkaMessage",
+    "IngestWorker",
     "JobLedger",
     "JobLedgerEntry",
     "JobTransition",
-    "Orchestrator",
-    "OrchestrationError",
-    "WorkerBase",
-    "IngestWorker",
+    "KafkaClient",
+    "KafkaMessage",
     "MappingWorker",
+    "OrchestrationError",
+    "Orchestrator",
+    "WorkerBase",
 ]

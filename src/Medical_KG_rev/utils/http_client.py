@@ -1,16 +1,15 @@
 """Shared HTTP client with retry, backoff and rate limiting."""
-from __future__ import annotations
 
 from __future__ import annotations
 
 import asyncio
 import threading
 import time
+from collections.abc import AsyncIterator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import AsyncIterator, Dict, Iterable, Iterator, Optional
 
 import httpx
 from opentelemetry import trace
@@ -119,7 +118,7 @@ class HttpClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         retry: RetryConfig | None = None,
         transport: httpx.BaseTransport | None = None,
         rate_limiter: SyncRateLimiter | None = None,
@@ -148,7 +147,7 @@ class HttpClient:
                 span.set_attribute("http.url", url)
                 try:
                     response = self._client.request(method, url, **kwargs)
-                except httpx.HTTPError as exc:
+                except httpx.HTTPError:
                     if self._circuit_breaker:
                         self._circuit_breaker.record_failure()
                     if attempt == self._retry.attempts:
@@ -173,7 +172,7 @@ class HttpClient:
         self._client.close()
 
     @contextmanager
-    def lifespan(self) -> Iterator["HttpClient"]:
+    def lifespan(self) -> Iterator[HttpClient]:
         try:
             yield self
         finally:
@@ -192,8 +191,8 @@ def _compute_retry_after(response: httpx.Response) -> float:
         except (TypeError, ValueError):
             return 0.0
         if retry_at.tzinfo is None:
-            retry_at = retry_at.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
+            retry_at = retry_at.replace(tzinfo=UTC)
+        now = datetime.now(UTC)
         delta = (retry_at - now).total_seconds()
         return max(delta, 0.0)
 
@@ -203,7 +202,7 @@ class AsyncHttpClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         retry: RetryConfig | None = None,
         rate_limiter: RateLimiter | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -245,7 +244,7 @@ class AsyncHttpClient:
         await self._client.aclose()
 
     @asynccontextmanager
-    async def lifespan(self) -> AsyncIterator["AsyncHttpClient"]:
+    async def lifespan(self) -> AsyncIterator[AsyncHttpClient]:
         try:
             yield self
         finally:

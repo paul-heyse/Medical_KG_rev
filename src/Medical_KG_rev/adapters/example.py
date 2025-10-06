@@ -1,9 +1,10 @@
 """Example adapter implementation used for tests and documentation."""
+
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
-from Medical_KG_rev.models import Document, Section, Block
+from Medical_KG_rev.models import Block, Document, Section
 
 from .base import AdapterContext, BaseAdapter
 
@@ -23,7 +24,9 @@ class ExampleAdapter(BaseAdapter):
             block = Block(id="b1", text="Example block", spans=[])
             section = Section(id="s1", title="Intro", blocks=[block])
             documents.append(
-                Document(id=payload["id"], source="example", title=payload["title"], sections=[section])
+                Document(
+                    id=payload["id"], source="example", title=payload["title"], sections=[section]
+                )
             )
         return documents
 

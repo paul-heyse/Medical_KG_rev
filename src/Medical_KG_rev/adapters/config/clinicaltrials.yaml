@@ -1,0 +1,21 @@
+name: clinicaltrials-yaml
+source: clinicaltrials
+base_url: https://clinicaltrials.gov/api/v2
+rate_limit:
+  requests: 10
+  per_seconds: 1
+request:
+  method: GET
+  path: /studies/{nct_id}
+  params:
+    format: json
+response:
+  items_path: study
+mapping:
+  id: protocolSection.identificationModule.nctId
+  title: protocolSection.identificationModule.briefTitle
+  summary: protocolSection.descriptionModule.briefSummary
+  metadata:
+    overall_status: protocolSection.statusModule.overallStatus
+    phase: protocolSection.designModule.phase
+    start_date: protocolSection.statusModule.startDateStruct.date

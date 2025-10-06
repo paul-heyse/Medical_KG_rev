@@ -1,0 +1,21 @@
+name: openfda-drug-event-yaml
+source: openfda-drug-event
+base_url: https://api.fda.gov
+rate_limit:
+  requests: 240
+  per_seconds: 60
+request:
+  method: GET
+  path: /drug/event.json
+  params:
+    search: patient.drug.medicinalproduct:"{drug}"
+    limit: 5
+response:
+  items_path: results
+mapping:
+  id: safetyreportid
+  title: patient.reaction[0].reactionmeddrapt
+  summary: patient.drug[0].drugindication
+  metadata:
+    received: receivedate
+    reactions: patient.reaction

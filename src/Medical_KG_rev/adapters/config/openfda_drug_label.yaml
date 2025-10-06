@@ -1,0 +1,22 @@
+name: openfda-drug-label-yaml
+source: openfda-drug-label
+base_url: https://api.fda.gov
+rate_limit:
+  requests: 240
+  per_seconds: 60
+request:
+  method: GET
+  path: /drug/label.json
+  params:
+    search: openfda.package_ndc:"{ndc}"
+    limit: 1
+response:
+  items_path: results
+mapping:
+  id: set_id
+  title: openfda.brand_name[0]
+  summary: indications_and_usage
+  metadata:
+    manufacturer: openfda.manufacturer_name[0]
+    generic_name: openfda.generic_name[0]
+    warnings: warnings

@@ -1,0 +1,22 @@
+name: openalex-yaml
+source: openalex
+base_url: https://api.openalex.org
+rate_limit:
+  requests: 1000
+  per_seconds: 86400
+request:
+  method: GET
+  path: /works
+  params:
+    search: "{query}"
+    per-page: 5
+response:
+  items_path: results
+mapping:
+  id: id
+  title: display_name
+  summary: abstract
+  metadata:
+    doi: doi
+    publication_year: publication_year
+    cited_by_count: cited_by_count

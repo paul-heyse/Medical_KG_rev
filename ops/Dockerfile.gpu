@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.6
+# GPU-enabled container image for the GPU microservices.
+
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    CUDA_VISIBLE_DEVICES=0
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        python3 \
+        python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pyproject.toml poetry.lock* requirements*.txt ./
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && pip install -r requirements-dev.txt || true
+
+COPY . .
+
+EXPOSE 7000 7001 7002
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
+    CMD python -m Medical_KG_rev.scripts.healthcheck --service gpu
+
+CMD ["python", "-m", "Medical_KG_rev.scripts.serve_gpu"]

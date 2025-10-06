@@ -1,22 +1,35 @@
 name: CI
+
 on:
   push:
+    branches: ["main"]
   pull_request:
 
 jobs:
-  test:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up micromamba
-        uses: mamba-org/setup-micromamba@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          environment-file: environment.yml
-          environment-name: ci
-          cache-downloads: true
-          cache-env: true
-      - name: Run tests
-        shell: bash -l {0}
+          python-version: "3.12"
+      - name: Install dependencies
         run: |
-          python -V
-          pytest -q
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          source .venv/bin/activate
+          ruff check .
+          black --check .
+      - name: Type check
+        run: |
+          source .venv/bin/activate
+          mypy src
+      - name: Tests
+        run: |
+          source .venv/bin/activate
+          pytest

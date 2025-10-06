@@ -19,6 +19,12 @@ class ProblemDetail(BaseModel):
     extensions: Dict[str, Any] = Field(default_factory=dict)
 
 
+class BatchError(BaseModel):
+    code: str
+    message: str
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
 class OperationStatus(BaseModel):
     """Represents the state of a submitted operation across protocols."""
 
@@ -27,6 +33,8 @@ class OperationStatus(BaseModel):
     submitted_at: datetime = Field(default_factory=datetime.utcnow)
     message: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    http_status: int = Field(default=202, ge=100, le=599)
+    error: Optional[BatchError] = None
 
 
 class BatchOperationResult(BaseModel):
@@ -34,6 +42,8 @@ class BatchOperationResult(BaseModel):
 
     operations: Sequence[OperationStatus]
     total: int
+    succeeded: int
+    failed: int
 
 
 class DocumentChunk(BaseModel):
@@ -41,6 +51,7 @@ class DocumentChunk(BaseModel):
     chunk_index: int
     content: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    token_count: int = Field(default=0, ge=0)
 
 
 class EmbeddingVector(BaseModel):
@@ -63,6 +74,7 @@ class RetrievalResult(BaseModel):
     query: str
     documents: Sequence[DocumentSummary]
     total: int
+    rerank_metrics: Dict[str, Any] = Field(default_factory=dict)
 
 
 class EntityLinkResult(BaseModel):
@@ -84,6 +96,19 @@ class KnowledgeGraphWriteResult(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class GraphNode(BaseModel):
+    id: str
+    label: str
+    properties: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    type: str
+    start: str
+    end: str
+    properties: Dict[str, Any] = Field(default_factory=dict)
+
+
 class IngestionRequest(BaseModel):
     tenant_id: str
     items: Sequence[Dict[str, Any]]
@@ -94,8 +119,10 @@ class IngestionRequest(BaseModel):
 class ChunkRequest(BaseModel):
     tenant_id: str
     document_id: str
-    strategy: Literal["semantic", "fixed"] = "semantic"
-    chunk_size: int = Field(ge=128, le=4096, default=1024)
+    strategy: Literal["semantic", "section", "paragraph", "table", "sliding-window"] = "section"
+    chunk_size: int = Field(ge=64, le=4096, default=512)
+    overlap: float = Field(default=0.1, ge=0.0, lt=1.0)
+    options: Dict[str, Any] = Field(default_factory=dict)
 
 
 class EmbedRequest(BaseModel):
@@ -110,6 +137,9 @@ class RetrieveRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
     filters: Dict[str, Any] = Field(default_factory=dict)
+    rerank: bool = True
+    rerank_top_k: int = Field(default=10, ge=1, le=200)
+    rerank_overflow: bool = False
 
 
 class EntityLinkRequest(BaseModel):
@@ -126,8 +156,8 @@ class ExtractionRequest(BaseModel):
 
 class KnowledgeGraphWriteRequest(BaseModel):
     tenant_id: str
-    nodes: Sequence[Dict[str, Any]] = Field(default_factory=list)
-    edges: Sequence[Dict[str, Any]] = Field(default_factory=list)
+    nodes: Sequence[GraphNode] = Field(default_factory=list)
+    edges: Sequence[GraphEdge] = Field(default_factory=list)
     transactional: bool = True
 
 
@@ -180,4 +210,6 @@ class SearchArguments(BaseModel):
 
 def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationResult:
     items = list(statuses)
-    return BatchOperationResult(operations=items, total=len(items))
+    succeeded = sum(1 for status in items if status.error is None and 200 <= status.http_status < 300)
+    failed = len(items) - succeeded
+    return BatchOperationResult(operations=items, total=len(items), succeeded=succeeded, failed=failed)

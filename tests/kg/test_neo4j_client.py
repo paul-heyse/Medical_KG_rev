@@ -57,6 +57,8 @@ def test_merge_node_enforces_validation():
             "document_id": "doc-1",
             "title": "A",
             "ingested_at": "2024-01-01T00:00:00Z",
+            "tenant_id": "tenant-1",
+            "source": "synthetic",
         },
     )
 

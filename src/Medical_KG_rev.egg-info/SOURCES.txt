@@ -29,6 +29,7 @@ src/Medical_KG_rev/config/settings.py
 src/Medical_KG_rev/gateway/__init__.py
 src/Medical_KG_rev/gateway/app.py
 src/Medical_KG_rev/gateway/main.py
+src/Medical_KG_rev/gateway/middleware.py
 src/Medical_KG_rev/gateway/models.py
 src/Medical_KG_rev/gateway/services.py
 src/Medical_KG_rev/gateway/graphql/__init__.py
@@ -49,6 +50,7 @@ src/Medical_KG_rev/kg/cypher_templates.py
 src/Medical_KG_rev/kg/neo4j_client.py
 src/Medical_KG_rev/kg/schema.py
 src/Medical_KG_rev/kg/shacl.py
+src/Medical_KG_rev/kg/shapes.ttl
 src/Medical_KG_rev/models/__init__.py
 src/Medical_KG_rev/models/entities.py
 src/Medical_KG_rev/models/ir.py
@@ -71,10 +73,12 @@ src/Medical_KG_rev/scripts/__init__.py
 src/Medical_KG_rev/scripts/healthcheck.py
 src/Medical_KG_rev/scripts/serve_gpu.py
 src/Medical_KG_rev/services/__init__.py
+src/Medical_KG_rev/services/health.py
 src/Medical_KG_rev/services/embedding/__init__.py
 src/Medical_KG_rev/services/embedding/service.py
 src/Medical_KG_rev/services/extraction/__init__.py
 src/Medical_KG_rev/services/extraction/service.py
+src/Medical_KG_rev/services/extraction/templates.py
 src/Medical_KG_rev/services/gpu/manager.py
 src/Medical_KG_rev/services/gpu/metrics.py
 src/Medical_KG_rev/services/grpc/__init__.py
@@ -104,4 +108,7 @@ src/Medical_KG_rev/utils/spans.py
 src/Medical_KG_rev/utils/time.py
 src/Medical_KG_rev/utils/validation.py
 src/Medical_KG_rev/utils/versioning.py
+src/Medical_KG_rev/validation/__init__.py
+src/Medical_KG_rev/validation/fhir.py
+src/Medical_KG_rev/validation/ucum.py
 tests/test_basic.py

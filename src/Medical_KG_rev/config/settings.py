@@ -6,7 +6,7 @@ import os
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Literal
 
 from pydantic import BaseModel, Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -147,6 +147,34 @@ class RateLimitSettings(BaseModel):
     )
 
 
+class EndpointCachePolicy(BaseModel):
+    """Cache policy per endpoint for ETag middleware."""
+
+    ttl: int = Field(default=60, ge=0)
+    scope: Literal["public", "private", "no-store"] = "private"
+    vary: Sequence[str] = Field(default_factory=lambda: ["Accept"])
+    etag: bool = True
+    last_modified: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_vary(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        vary = values.get("vary")
+        if isinstance(vary, str):
+            values["vary"] = [item.strip() for item in vary.replace(",", " ").split() if item.strip()]
+        return values
+
+
+class CachingSettings(BaseModel):
+    """Configuration for HTTP caching policies."""
+
+    default: EndpointCachePolicy = Field(default_factory=EndpointCachePolicy)
+    endpoints: Dict[str, EndpointCachePolicy] = Field(default_factory=dict)
+
+    def policy_for(self, path: str) -> EndpointCachePolicy:
+        return self.endpoints.get(path, self.default)
+
+
 class APIKeyRecord(BaseModel):
     """Metadata associated with an API key stored in configuration or Vault."""
 
@@ -258,6 +286,15 @@ class AppSettings(BaseSettings):
             )
         )
     )
+    caching: CachingSettings = Field(default_factory=lambda: CachingSettings(
+        default=EndpointCachePolicy(ttl=30, scope="private"),
+        endpoints={
+            "/v1/retrieve": EndpointCachePolicy(ttl=300, scope="private", vary=["Accept", "Content-Type"]),
+            "/v1/search": EndpointCachePolicy(ttl=300, scope="private", vary=["Accept", "Content-Type"]),
+            "/v1/jobs": EndpointCachePolicy(ttl=30, scope="private"),
+            "/v1/jobs/{job_id}": EndpointCachePolicy(ttl=15, scope="private"),
+        },
+    ))
 
     model_config = SettingsConfigDict(env_prefix="MK_", env_nested_delimiter="__")
 

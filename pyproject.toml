@@ -38,6 +38,11 @@ dependencies = [
     # Data Validation & Models
     "pydantic>=2.6.0",
     "pydantic-settings>=2.1.0",
+    "pint>=0.23",
+    "jsonschema>=4.21.1",
+    "pyshacl>=0.23.1",
+    "rdflib>=7.0.0",
+    "tiktoken>=0.7.0",
 
     # GraphQL
     "strawberry-graphql[fastapi]>=0.219.0",
@@ -186,6 +191,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"Medical_KG_rev.kg" = ["*.ttl"]
 
 [tool.black]
 line-length = 100

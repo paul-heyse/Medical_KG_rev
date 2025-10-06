@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+message ProcessPdfRequest {
+  string tenant_id = 1;
+  string document_id = 2;
+  bytes content = 3;
+}
+
+message Chunk {
+  string document_id = 1;
+  int32 index = 2;
+  string text = 3;
+}
+
+message ProcessPdfResponse {
+  repeated Chunk chunks = 1;
+}
+
+service MineruService {
+  rpc ProcessPdf (ProcessPdfRequest) returns (ProcessPdfResponse);
+}

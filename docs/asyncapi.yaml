@@ -1,0 +1,33 @@
+asyncapi: '2.6.0'
+info:
+  title: Medical KG Job Streams
+  version: '0.1.0'
+  description: Server-sent event channels for gateway job updates.
+servers:
+  development:
+    url: http://localhost:8000
+    protocol: sse
+channels:
+  jobs/{jobId}:
+    parameters:
+      jobId:
+        description: Identifier of the job to subscribe to.
+        schema:
+          type: string
+    subscribe:
+      summary: Receive job status updates.
+      message:
+        name: JobEvent
+        payload:
+          type: object
+          properties:
+            job_id:
+              type: string
+            type:
+              type: string
+              enum: [jobs.started, jobs.progress, jobs.completed, jobs.failed]
+            payload:
+              type: object
+            emitted_at:
+              type: string
+              format: date-time

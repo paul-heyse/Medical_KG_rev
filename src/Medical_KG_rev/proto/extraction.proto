@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+message ExtractionRequest {
+  string tenant_id = 1;
+  string document_id = 2;
+  string kind = 3;
+}
+
+message ExtractionResult {
+  string kind = 1;
+  string document_id = 2;
+  string value = 3;
+}
+
+message ExtractionResponse {
+  repeated ExtractionResult results = 1;
+}
+
+service ExtractionService {
+  rpc Extract (ExtractionRequest) returns (ExtractionResponse);
+}

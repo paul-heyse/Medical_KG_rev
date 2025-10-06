@@ -1,0 +1,148 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  document(id: ID!): Document!
+  organization(id: ID!): Organization!
+  search(arguments: SearchInput!): RetrievalResult!
+}
+
+type Mutation {
+  ingest(dataset: String!, input: IngestionInput!): BatchOperation!
+  chunk(input: ChunkInput!): [DocumentChunk!]!
+  embed(input: EmbedInput!): [EmbeddingVector!]!
+  retrieve(input: RetrieveInput!): RetrievalResult!
+  entity_link(input: EntityLinkInput!): BatchOperation!
+  extract(kind: String!, input: ExtractionInput!): ExtractionResult!
+  write_kg(input: KnowledgeGraphWriteInput!): KnowledgeGraphWriteResult!
+}
+
+type BatchOperation {
+  total: Int!
+  operations: [OperationStatus!]!
+}
+
+type OperationStatus {
+  job_id: ID!
+  status: String!
+  message: String
+  metadata: JSON
+}
+
+type Document {
+  id: ID!
+  title: String!
+  score: Float!
+  summary: String
+  source: String!
+  metadata: JSON
+  organization(id: ID): Organization!
+  claims: [Claim!]!
+}
+
+type Claim {
+  id: ID!
+  predicate: String!
+  object_id: ID!
+}
+
+type Organization {
+  id: ID!
+  name: String!
+  country: String!
+}
+
+type RetrievalResult {
+  query: String!
+  total: Int!
+  documents: [Document!]!
+}
+
+type EmbeddingVector {
+  id: ID!
+  vector: [Float!]!
+  model: String!
+  metadata: JSON
+}
+
+type DocumentChunk {
+  document_id: ID!
+  chunk_index: Int!
+  content: String!
+  metadata: JSON
+}
+
+type ExtractionResult {
+  kind: String!
+  document_id: ID!
+  results: JSON
+}
+
+type KnowledgeGraphWriteResult {
+  nodes_written: Int!
+  edges_written: Int!
+  metadata: JSON
+}
+
+scalar JSON
+
+input SearchInput {
+  query: String!
+  filters: JSON
+  pagination: PaginationInput
+}
+
+input PaginationInput {
+  after: String
+  first: Int = 10
+}
+
+input IngestionInput {
+  tenant_id: ID!
+  items: JSON
+  priority: String = "normal"
+  metadata: JSON
+}
+
+input ChunkInput {
+  tenant_id: ID!
+  document_id: ID!
+  strategy: String = "semantic"
+  chunk_size: Int = 1024
+}
+
+input EmbedInput {
+  tenant_id: ID!
+  inputs: [String!]!
+  model: String!
+  normalize: Boolean = true
+}
+
+input RetrieveInput {
+  tenant_id: ID!
+  query: String!
+  top_k: Int = 5
+  filters: JSON
+}
+
+input EntityLinkInput {
+  tenant_id: ID!
+  mentions: [String!]!
+  context: String
+}
+
+input ExtractionInput {
+  tenant_id: ID!
+  document_id: ID!
+  options: JSON
+}
+
+input KnowledgeGraphWriteInput {
+  tenant_id: ID!
+  nodes: JSON
+  edges: JSON
+  transactional: Boolean = true
+}
+

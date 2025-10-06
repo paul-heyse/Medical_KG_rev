@@ -28,6 +28,41 @@ class TelemetrySettings(BaseModel):
     sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
 
 
+class LoggingSettings(BaseModel):
+    """Structured logging configuration."""
+
+    level: str = Field(default="INFO", description="Log level for application output")
+    correlation_id_header: str = Field(default="X-Correlation-ID", description="Header used for trace correlation")
+    scrub_fields: Sequence[str] = Field(
+        default_factory=lambda: ["password", "token", "secret", "authorization"],
+        description="Fields that should be redacted in logs",
+    )
+
+
+class MetricsSettings(BaseModel):
+    """Prometheus metrics configuration."""
+
+    enabled: bool = True
+    path: str = Field(default="/metrics", description="HTTP path for Prometheus metrics")
+
+
+class SentrySettings(BaseModel):
+    """Sentry error tracking configuration."""
+
+    dsn: Optional[str] = Field(default=None, description="Sentry DSN for reporting errors")
+    traces_sample_rate: float = Field(default=0.1, ge=0.0, le=1.0)
+    send_default_pii: bool = False
+    environment: Optional[str] = Field(default=None, description="Override environment tag")
+
+
+class ObservabilitySettings(BaseModel):
+    """Aggregate observability configuration."""
+
+    logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    metrics: MetricsSettings = Field(default_factory=MetricsSettings)
+    sentry: SentrySettings = Field(default_factory=SentrySettings)
+
+
 class VaultSettings(BaseModel):
     """Settings for the optional HashiCorp Vault integration."""
 
@@ -207,6 +242,7 @@ class AppSettings(BaseSettings):
     debug: bool = False
     service_name: str = "medical-kg"
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
+    observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
     domains_config_path: Optional[Path] = Field(default=None)

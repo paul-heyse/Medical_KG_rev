@@ -1,0 +1,21 @@
+groups:
+  - name: api-latency
+    rules:
+      - alert: HighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket[5m])) by (le, path)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected for {{ $labels.path }}"
+          description: "P95 latency for {{ $labels.path }} exceeds 500ms"
+  - name: error-rates
+    rules:
+      - alert: ElevatedErrorRate
+        expr: sum(rate(api_requests_total{status!~"2.."}[5m])) / sum(rate(api_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate above 5%"
+          description: "Investigate failing requests across the gateway"

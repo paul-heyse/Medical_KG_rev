@@ -14,13 +14,18 @@ API_TEST_KEY = "test-api-key"
 
 def pytest_addoption(parser):  # pragma: no cover - option wiring only
     group = parser.getgroup("cov")
-    group.addoption("--cov", action="append", default=[], help="Ignored test coverage option")
-    group.addoption(
-        "--cov-report",
-        action="append",
-        default=[],
-        help="Ignored coverage report option",
+    options = (
+        ("--cov", {"action": "append", "default": [], "help": "Ignored test coverage option"}),
+        (
+            "--cov-report",
+            {"action": "append", "default": [], "help": "Ignored coverage report option"},
+        ),
     )
+    for name, kwargs in options:
+        try:
+            group.addoption(name, **kwargs)
+        except ValueError:
+            continue
     parser.addini("asyncio_mode", "Asyncio mode stub", default="auto")
 
 

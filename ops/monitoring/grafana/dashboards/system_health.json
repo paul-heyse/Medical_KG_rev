@@ -1,0 +1,42 @@
+{
+  "title": "System Health",
+  "uid": "system-health",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Request Rate",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(api_requests_total[5m]))",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "(sum(rate(api_requests_total{status!~\"2..\"}[5m])) / sum(rate(api_requests_total[5m]))) * 100",
+          "legendFormat": "error %"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Gateway Latency (P95)",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ]
+    }
+  ]
+}

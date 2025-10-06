@@ -1,0 +1,28 @@
+site_name: Medical KG Documentation
+repo_url: https://github.com/example/medical_kg_rev
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - content.code.copy
+nav:
+  - Home: index.md
+  - Architecture:
+      - Overview: architecture/overview.md
+  - DevOps & Observability:
+      - CI/CD Pipeline: devops/ci-cd.md
+      - Local Environments: devops/local-environments.md
+      - Observability: devops/observability.md
+      - Kubernetes: devops/kubernetes.md
+  - API Contracts:
+      - REST OpenAPI: openapi.yaml
+      - GraphQL SDL: schema.graphql
+      - AsyncAPI: asyncapi.yaml
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_signature_annotations: true

@@ -4,22 +4,27 @@ package medicalkg.gateway.v1;
 
 option go_package = "github.com/your-org/medicalkg/gateway/v1";
 
-message EmbedRequest {
+message EmbedChunksRequest {
   string tenant_id = 1;
-  repeated string inputs = 2;
-  string model = 3;
+  repeated string chunk_ids = 2;
+  repeated string texts = 3;
   bool normalize = 4;
+  int32 batch_size = 5;
+  repeated string models = 6;
 }
 
 message EmbeddingVector {
-  string id = 1;
-  repeated float values = 2;
+  string chunk_id = 1;
+  string model = 2;
+  string kind = 3;
+  int32 dimension = 4;
+  repeated float values = 5;
 }
 
-message EmbedResponse {
-  repeated EmbeddingVector embeddings = 1;
+message EmbedChunksResponse {
+  repeated EmbeddingVector vectors = 1;
 }
 
 service EmbeddingService {
-  rpc Embed (EmbedRequest) returns (EmbedResponse);
+  rpc EmbedChunks (EmbedChunksRequest) returns (EmbedChunksResponse);
 }

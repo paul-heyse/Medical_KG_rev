@@ -10,14 +10,30 @@ message ProcessPdfRequest {
   bytes content = 3;
 }
 
-message Chunk {
-  string document_id = 1;
-  int32 index = 2;
-  string text = 3;
+message BoundingBox {
+  float x0 = 1;
+  float y0 = 2;
+  float x1 = 3;
+  float y1 = 4;
+}
+
+message Block {
+  string id = 1;
+  int32 page = 2;
+  string kind = 3;
+  string text = 4;
+  BoundingBox bbox = 5;
+  float confidence = 6;
+}
+
+message Document {
+  string tenant_id = 1;
+  string document_id = 2;
+  repeated Block blocks = 3;
 }
 
 message ProcessPdfResponse {
-  repeated Chunk chunks = 1;
+  Document document = 1;
 }
 
 service MineruService {

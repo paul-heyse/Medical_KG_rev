@@ -23,7 +23,7 @@ class OperationStatus(BaseModel):
     """Represents the state of a submitted operation across protocols."""
 
     job_id: str = Field(default_factory=lambda: "job-unknown")
-    status: Literal["queued", "processing", "completed", "failed"] = "queued"
+    status: Literal["queued", "processing", "completed", "failed", "cancelled"] = "queued"
     submitted_at: datetime = Field(default_factory=datetime.utcnow)
     message: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -141,6 +141,28 @@ class JobEvent(BaseModel):
     ]
     payload: Dict[str, Any] = Field(default_factory=dict)
     emitted_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class JobHistoryEntry(BaseModel):
+    from_status: str
+    to_status: str
+    stage: str
+    reason: Optional[str] = None
+    timestamp: datetime
+
+
+class JobStatus(BaseModel):
+    job_id: str
+    doc_key: str
+    tenant_id: str
+    status: str
+    stage: str
+    pipeline: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    attempts: int = 0
+    created_at: datetime
+    updated_at: datetime
+    history: Sequence[JobHistoryEntry] = Field(default_factory=list)
 
 
 class Pagination(BaseModel):

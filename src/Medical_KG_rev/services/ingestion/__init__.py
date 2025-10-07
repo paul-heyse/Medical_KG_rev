@@ -1,15 +1,6 @@
-"""Document ingestion pipeline integrating chunking, embeddings, and storage."""
+"""Ingestion service exports."""
 
-from .service import (
-    EmbeddingBatchMetrics,
-    IngestionOptions,
-    IngestionResult,
-    IngestionService,
-)
+from .vector_ingestion import VectorIngestionService
 
-__all__ = [
-    "EmbeddingBatchMetrics",
-    "IngestionOptions",
-    "IngestionResult",
-    "IngestionService",
-]
+__all__ = ["VectorIngestionService"]
+

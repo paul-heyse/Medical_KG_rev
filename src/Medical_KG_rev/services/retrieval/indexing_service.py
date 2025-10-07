@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
+from Medical_KG_rev.services.reranking.pipeline.cache import RerankCacheManager
 
 from .chunking import Chunk, ChunkingOptions, ChunkingService
 from .faiss_index import FAISSIndex
@@ -24,14 +25,16 @@ class IndexingService:
         chunking: ChunkingService,
         embedding_worker: EmbeddingWorker,
         opensearch: OpenSearchClient,
-        faiss: FAISSIndex,
+        faiss: FAISSIndex | None,
         chunk_index: str = "chunks",
+        rerank_cache: RerankCacheManager | None = None,
     ) -> None:
         self.chunking = chunking
         self.embedding_worker = embedding_worker
         self.opensearch = opensearch
         self.faiss = faiss
         self.chunk_index = chunk_index
+        self.rerank_cache = rerank_cache
 
     def index_document(
         self,
@@ -49,15 +52,14 @@ class IndexingService:
             tenant_id=tenant_id,
         )
         if incremental:
-            chunks = [chunk for chunk in chunks if getattr(chunk, "chunk_id", getattr(chunk, "id", "")) not in self.faiss.ids]
+            chunks = [chunk for chunk in chunks if chunk.id not in self.faiss.ids]
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
         self._embed_and_index(tenant_id, chunks)
-        return IndexingResult(
-            document_id=document_id,
-            chunk_ids=[getattr(chunk, "chunk_id", getattr(chunk, "id", "")) for chunk in chunks],
-        )
+        if self.rerank_cache is not None:
+            self.rerank_cache.invalidate(tenant_id, [document_id])
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
@@ -77,13 +79,8 @@ class IndexingService:
         self.opensearch.bulk_index(self.chunk_index, documents, id_field="id")
 
     def _embed_and_index(self, tenant_id: str, chunks: Sequence[Chunk]) -> None:
-        chunk_metadata = []
-        for chunk in chunks:
-            base_meta = dict(getattr(chunk, "meta", None) or getattr(chunk, "metadata", {}) or {})
-            base_meta.setdefault("text", chunk.body)
-            base_meta.setdefault("granularity", chunk.granularity)
-            base_meta.setdefault("chunker", chunk.chunker)
-            chunk_metadata.append(base_meta)
+        if self.faiss is None:
+            return
         request = EmbeddingRequest(
             tenant_id=tenant_id,
             chunk_ids=[chunk.chunk_id for chunk in chunks],
@@ -102,18 +99,23 @@ class IndexingService:
             chunk = chunk_lookup.get(vector.id)
             if chunk is None:
                 continue
-            if not vector.vectors:
+            payload = getattr(vector, "vectors", None)
+            if payload:
+                base_values = payload[0]
+            else:
+                base_values = getattr(vector, "values", None)
+            if base_values is None:
                 continue
-            metadata = dict(vector.metadata)
+            values = [float(value) for value in base_values]
+            if len(values) < self.faiss.dimension:
+                values = values + [0.0] * (self.faiss.dimension - len(values))
+            elif len(values) > self.faiss.dimension:
+                values = values[: self.faiss.dimension]
+            metadata = dict(chunk.meta)
             metadata.setdefault("text", chunk.body)
             metadata.setdefault("granularity", chunk.granularity)
             metadata.setdefault("chunker", chunk.chunker)
-            values = vector.vectors[0]
-            if len(values) < self.faiss.dimension:
-                padded = list(values) + [0.0] * (self.faiss.dimension - len(values))
-            else:
-                padded = values[: self.faiss.dimension]
-            self.faiss.add(vector.id, padded, metadata)
+            self.faiss.add(vector.id, values, metadata)
 
     def refresh(self) -> None:
         """Placeholder for compatibility with production implementation."""

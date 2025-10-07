@@ -3,14 +3,26 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
+import json
+import time
 
 import numpy as np
 
 from ..errors import BackendUnavailableError, NamespaceNotFoundError, VectorStoreError
 from ..gpu import GPUResourceManager
-from ..models import CompressionPolicy, IndexParams, VectorMatch, VectorQuery, VectorRecord
+from ..models import (
+    CompressionPolicy,
+    HealthStatus,
+    IndexParams,
+    RebuildReport,
+    SnapshotInfo,
+    VectorMatch,
+    VectorQuery,
+    VectorRecord,
+)
 from ..types import VectorStorePort
 
 
@@ -329,6 +341,191 @@ class MilvusVectorStore(VectorStorePort):
         if not self._client.has_collection(name):
             return 0
         return self._client.delete(name, vector_ids)
+
+    def create_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        destination: str,
+        include_payloads: bool = True,
+    ) -> SnapshotInfo:
+        name = _collection_name(tenant_id, namespace)
+        if not self._client.has_collection(name):
+            raise NamespaceNotFoundError(namespace, tenant_id=tenant_id)
+        path = self._resolve_snapshot_path(destination, tenant_id, namespace)
+        state = self._collections.get(name)
+        records: list[dict[str, object]] = []
+        if state:
+            for payload in state.records.values():
+                record: dict[str, object] = {
+                    "vector_id": payload["id"],
+                    "metadata": dict(payload.get("metadata", {})),
+                }
+                if include_payloads:
+                    record["values"] = list(payload.get("vector", []))
+                    if payload.get("named_vectors"):
+                        record["named_vectors"] = payload.get("named_vectors")
+                records.append(record)
+        payload = {
+            "tenant_id": tenant_id,
+            "namespace": namespace,
+            "created_at": time.time(),
+            "params": asdict(state.params) if state else {},
+            "compression": asdict(state.compression) if state else {"kind": "none"},
+            "collection_metadata": dict(state.metadata) if state else {},
+            "named_vector_params": {
+                name: asdict(params)
+                for name, params in (state.named_vectors or {}).items()
+            }
+            if state
+            else {},
+            "records": records,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, sort_keys=True))
+        stats = path.stat()
+        return SnapshotInfo(
+            namespace=namespace,
+            path=str(path),
+            size_bytes=stats.st_size,
+            created_at=time.time(),
+            metadata={"records": len(records), "include_payloads": include_payloads},
+        )
+
+    def restore_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        source: str,
+        overwrite: bool = False,
+    ) -> RebuildReport:
+        payload = json.loads(Path(source).read_text())
+        params_payload = payload.get("params") or {}
+        compression_payload = payload.get("compression") or {"kind": "none"}
+        named_params_payload = payload.get("named_vector_params") or {}
+        params = IndexParams(**params_payload)
+        compression = CompressionPolicy(**compression_payload)
+        name = _collection_name(tenant_id, namespace)
+        if overwrite:
+            self._collections.pop(name, None)
+            if isinstance(self._client, InMemoryMilvusClient):
+                self._client.collections.pop(name, None)
+        self.create_or_update_collection(
+            tenant_id=tenant_id,
+            namespace=namespace,
+            params=params,
+            compression=compression,
+            metadata=payload.get("collection_metadata"),
+            named_vectors={key: IndexParams(**value) for key, value in named_params_payload.items()} if named_params_payload else None,
+        )
+        records_payload = payload.get("records", [])
+        records: list[VectorRecord] = []
+        for record in records_payload:
+            values = record.get("values") or []
+            named_vectors = record.get("named_vectors") or None
+            if not values and not named_vectors:
+                continue
+            records.append(
+                VectorRecord(
+                    vector_id=str(record["vector_id"]),
+                    values=values,
+                    metadata=record.get("metadata", {}),
+                    named_vectors=named_vectors,
+                )
+            )
+        if records:
+            self.upsert(tenant_id=tenant_id, namespace=namespace, records=records)
+        return RebuildReport(
+            namespace=namespace,
+            rebuilt=bool(records),
+            details={"restored_records": len(records)},
+        )
+
+    def rebuild_index(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        force: bool = False,
+    ) -> RebuildReport:
+        name = _collection_name(tenant_id, namespace)
+        if not self._client.has_collection(name):
+            raise NamespaceNotFoundError(namespace, tenant_id=tenant_id)
+        state = self._collections.get(name)
+        if not state:
+            return RebuildReport(namespace=namespace, rebuilt=True, details={"records": 0})
+        index_params = {
+            "index_type": _index_type(state.params),
+            "metric_type": _metric(state.params.metric),
+            "params": {key: value for key, value in state.metadata.get("indexes", {}).get("vector", {}).get("params", {}).items()} if state.metadata.get("indexes") else {},
+        }
+        if not index_params["params"]:
+            index_params["params"] = {
+                key: value
+                for key, value in {
+                    "nlist": state.params.nlist,
+                    "m": state.params.m,
+                    "efConstruction": state.params.ef_construct,
+                    "search_k": state.params.nprobe,
+                }.items()
+                if value is not None
+            }
+        self._client.create_index(name, field_name="vector", params=index_params)
+        if state.named_vectors:
+            for vector_name, vector_params in state.named_vectors.items():
+                nv_params = {
+                    "index_type": _index_type(vector_params),
+                    "metric_type": _metric(vector_params.metric),
+                    "params": {
+                        key: value
+                        for key, value in {
+                            "nlist": vector_params.nlist,
+                            "m": vector_params.m,
+                            "efConstruction": vector_params.ef_construct,
+                            "search_k": vector_params.nprobe,
+                        }.items()
+                        if value is not None
+                    },
+                }
+                self._client.create_index(name, field_name=vector_name, params=nv_params)
+        return RebuildReport(
+            namespace=namespace,
+            rebuilt=True,
+            details={"records": len(state.records)},
+        )
+
+    def check_health(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str | None = None,
+    ) -> Mapping[str, HealthStatus]:
+        if namespace is not None:
+            name = _collection_name(tenant_id, namespace)
+            healthy = self._client.has_collection(name)
+            state = self._collections.get(name)
+            details = {"records": len(state.records) if state else 0}
+            return {namespace: HealthStatus(name=namespace, healthy=healthy, details=details)}
+        statuses: dict[str, HealthStatus] = {}
+        for key in self._client.list_collections():
+            if not key.startswith(f"{tenant_id}__"):
+                continue
+            namespace_name = key.split("__", 1)[1]
+            state = self._collections.get(key)
+            statuses[namespace_name] = HealthStatus(
+                name=namespace_name,
+                healthy=True,
+                details={"records": len(state.records) if state else 0},
+            )
+        return statuses
+
+    def _resolve_snapshot_path(self, destination: str, tenant_id: str, namespace: str) -> Path:
+        path = Path(destination)
+        if path.suffix:
+            return path
+        return path / f"{tenant_id}__{namespace}.milvus-snapshot.json"
 
 
 __all__ = ["MilvusVectorStore", "InMemoryMilvusClient", "MilvusLikeClient"]

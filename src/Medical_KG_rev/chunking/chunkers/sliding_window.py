@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from ..base import ContextualChunker, Segment
+from ..base import ContextualChunker
 from ..provenance import BlockContext
+from ..segmentation import Segment, SlidingWindowSegmenter
 from ..tokenization import TokenCounter
 
 
@@ -22,35 +23,21 @@ class SlidingWindowChunker(ContextualChunker):
         target_tokens: int = 512,
         overlap_ratio: float = 0.25,
         min_tokens: int = 128,
+        segmenter: SlidingWindowSegmenter | None = None,
     ) -> None:
-        if not (0.0 <= overlap_ratio < 1.0):
-            raise ValueError("overlap_ratio must be between 0 and 1")
-        super().__init__(token_counter=token_counter)
-        self.target_tokens = target_tokens
-        self.overlap_ratio = overlap_ratio
-        self.min_tokens = min_tokens
+        strategy = segmenter or SlidingWindowSegmenter(
+            target_tokens=target_tokens,
+            overlap_ratio=overlap_ratio,
+            min_tokens=min_tokens,
+        )
+        super().__init__(token_counter=token_counter, segmenter=strategy)
+        self._segmenter = strategy
+        self.target_tokens = strategy.target_tokens
+        self.overlap_ratio = strategy.overlap_ratio
+        self.min_tokens = strategy.min_tokens
 
     def segment_contexts(self, contexts: Iterable[BlockContext]) -> Iterable[Segment]:
-        contexts_list = list(contexts)
-        if not contexts_list:
-            return []
-        segments: list[Segment] = []
-        index = 0
-        length = len(contexts_list)
-        while index < length:
-            window: list[BlockContext] = []
-            token_total = 0
-            j = index
-            while j < length and token_total < self.target_tokens:
-                window.append(contexts_list[j])
-                token_total += contexts_list[j].token_count
-                j += 1
-            if not window:
-                break
-            segments.append(Segment(contexts=list(window)))
-            step = max(1, int(len(window) * (1 - self.overlap_ratio)))
-            index += step
-        return self._merge_short_segments(segments)
+        return self._segmenter.plan(list(contexts))
 
     def explain(self) -> dict[str, object]:
         return {

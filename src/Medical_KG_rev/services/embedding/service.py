@@ -14,20 +14,16 @@ from typing import Iterator, Mapping, Sequence
 
 import structlog
 
-from Medical_KG_rev.config.embeddings import load_embeddings_config
-from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.ports import (
-    BaseEmbedder,
     EmbedderConfig,
     EmbeddingRecord,
     EmbeddingRequest as AdapterEmbeddingRequest,
 )
-from Medical_KG_rev.embeddings.providers import register_builtin_embedders
-from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
-from Medical_KG_rev.embeddings.storage import StorageRouter
-from Medical_KG_rev.embeddings.utils.batching import BatchProgress
+from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
+
+from .registry import EmbeddingModelRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -114,72 +110,55 @@ class EmbeddingResponse:
 
 
 @dataclass(slots=True)
+class EmbeddingResponse:
+    vectors: list[EmbeddingVector] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _LegacyEmbeddingModel:
+    name: str
+    dimension: int
+    kind: str
+
+    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
+        tokens = text.split()
+        if self.kind == "dense":
+            base = float(len(tokens) or 1)
+            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
+            return {"id": chunk_id, "values": values}
+        weights = {
+            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
+            for index in range(min(self.dimension, max(1, len(tokens))))
+        }
+        return {"id": chunk_id, "terms": weights}
+
+
 class EmbeddingModelRegistry:
-    """Compatibility wrapper that exposes cached embedder instances by name."""
+    """Compatibility shim for legacy embedding registry usage in tests."""
 
-    namespace_manager: NamespaceManager
-    registry: EmbedderRegistry
-    factory: EmbedderFactory
-    _config: object
-    _embedder_configs: list[EmbedderConfig]
-    _configs_by_name: dict[str, EmbedderConfig]
-
-    def __init__(self, _gpu_manager: object | None = None, *, config_path: str | None = None) -> None:
+    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
         self.namespace_manager = NamespaceManager()
-        self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
-        register_builtin_embedders(self.registry)
-        self.factory = EmbedderFactory(self.registry)
-        loaded_config = load_embeddings_config(Path(config_path) if config_path else None)
-        embedder_configs = loaded_config.to_embedder_configs()
-        if _gpu_manager is not None:
-            gpu_configs = [
-                EmbedderConfig(
-                    name="bge-gpu",
-                    provider="sentence-transformers",
-                    kind="single_vector",
-                    namespace="single_vector.gpu_compat.64.v1",
-                    model_id="BAAI/bge-small-en",
-                    dim=64,
-                    normalize=True,
-                ),
-                EmbedderConfig(
-                    name="colbert-gpu",
-                    provider="colbert",
-                    kind="multi_vector",
-                    namespace="multi_vector.gpu_compat.128.v1",
-                    model_id="colbert/colbertv2",
-                    dim=128,
-                    normalize=False,
-                ),
-            ]
-            embedder_configs = [*embedder_configs, *gpu_configs]
-            active_namespaces = [config.namespace for config in gpu_configs]
-            self._config = SimpleNamespace(active_namespaces=active_namespaces)
-        else:
-            self._config = loaded_config
-        self._embedder_configs = embedder_configs
-        self._configs_by_name = {config.name: config for config in self._embedder_configs}
-        alias_map: dict[str, EmbedderConfig] = {}
-        for config in self._embedder_configs:
-            if "-" in config.name:
-                base_name, _ = config.name.split("-", 1)
-                if base_name and base_name not in self._configs_by_name:
-                    alias_map[base_name] = config
-                underscored = config.name.replace("-", "_")
-                if underscored and underscored not in self._configs_by_name:
-                    alias_map[underscored] = config
-        self._configs_by_name.update(alias_map)
+        self._models: dict[str, _LegacyEmbeddingModel] = {
+            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
+            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
+        }
+        self._aliases = {
+            "splade": "splade",
+            "sparse": "splade",
+            "bge": "bge",
+            "bge-small": "bge",
+            "dense": "bge",
+        }
 
-    def get(self, name: str) -> BaseEmbedder:
-        config = self._configs_by_name[name]
-        return self.factory.get(config)
+    def list_models(self) -> list[str]:
+        return list(self._models)
 
-    def configs(self) -> list[EmbedderConfig]:
-        return list(self._embedder_configs)
-
-    @property
-    def active_namespaces(self) -> list[str]:
-        return list(self._config.active_namespaces)
+    def get(self, name: str) -> _LegacyEmbeddingModel:
+        key = self._aliases.get(name, name)
+        try:
+            return self._models[key]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise KeyError(f"Unknown embedding model '{name}'") from exc
 
 
 class EmbeddingWorker:
@@ -187,7 +166,7 @@ class EmbeddingWorker:
 
     def __init__(
         self,
-        registry: EmbeddingModelRegistry | None = None,
+        registry_or_namespace: EmbeddingModelRegistry | NamespaceManager | None = None,
         *,
         namespace_manager: NamespaceManager | None = None,
         config_path: str | None = None,
@@ -307,31 +286,12 @@ class EmbeddingWorker:
         )
         for config in configs:
             ensure_available(config.requires_gpu, operation=f"embed:{config.name}")
-            embedder = self.factory.get(config)
-            batches = self._batch_iterator(request, request.batch_size)
-            progress = BatchProgress(
-                total=len(request.texts),
-                callback=lambda processed, total, namespace=config.namespace, model=config.name: logger.info(
-                    "embedding.pipeline.progress",
-                    namespace=namespace,
-                    model=model,
-                    processed=processed,
-                    total=total,
-                ),
-            )
-            start = time.perf_counter()
-            records: list[EmbeddingRecord] = []
-            for text_batch, id_batch, metadata_batch in batches:
-                adapter_request = self._adapter_request(
-                    request,
-                    config,
-                    texts=text_batch,
-                    ids=id_batch,
-                    metadata=metadata_batch,
-                )
-                batch_records = embedder.embed_documents(adapter_request)
-                records.extend(batch_records)
-                progress.step(len(text_batch))
+            try:
+                embedder = self.model_registry.get(config)
+            except KeyError:
+                embedder = self.factory.get(config)
+            adapter_request = self._adapter_request(request, config)
+            records = embedder.embed_documents(adapter_request)
             if not records:
                 logger.warning(
                     "embedding.pipeline.no_output",

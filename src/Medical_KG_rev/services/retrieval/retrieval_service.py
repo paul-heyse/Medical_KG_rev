@@ -10,10 +10,19 @@ from typing import Any
 import structlog
 
 from Medical_KG_rev.auth.context import SecurityContext
-from Medical_KG_rev.services.embedding.service import (
-    EmbeddingRequest as QueryEmbeddingRequest,
-    EmbeddingVector,
-    EmbeddingWorker,
+from Medical_KG_rev.config import RerankingSettings
+from Medical_KG_rev.services.reranking import (
+    BatchProcessor,
+    CircuitBreaker,
+    FusionService,
+    FusionSettings,
+    FusionStrategy,
+    NormalizationStrategy,
+    PipelineSettings,
+    RerankCacheManager,
+    RerankerFactory,
+    RerankingEngine,
+    ScoredDocument,
 )
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
@@ -48,9 +57,10 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        embedding_worker: EmbeddingWorker | None = None,
-        active_namespaces: Sequence[str] | None = None,
-        namespace_weights: Mapping[str, float] | None = None,
+        fusion_service: FusionService | None = None,
+        pipeline_settings: PipelineSettings | None = None,
+        reranking_engine: RerankingEngine | None = None,
+        reranking_settings: RerankingSettings | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -89,9 +99,11 @@ class RetrievalService:
         filters: Mapping[str, object] | None = None,
         k: int = 10,
         rerank: bool = False,
+        embedding_kind: str | None = None,
         *,
         reranker_id: str | None = None,
         context: SecurityContext | None = None,
+        explain: bool = False,
     ) -> list[RetrievalResult]:
         security_context = context or (
             self._context_factory()

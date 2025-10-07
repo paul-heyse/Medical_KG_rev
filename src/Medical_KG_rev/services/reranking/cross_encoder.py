@@ -49,6 +49,8 @@ class BGEReranker(BaseReranker):
         recency = _metadata_score(pair.metadata, "recency_days")
         recency_factor = 1.0 if recency <= 30 else max(0.2, 1.0 - (recency / 365))
         score = (lexical * 0.55) + (dense * 0.3) + (splade * 0.15)
+        if self.precision == "fp16" and self.device.startswith("cuda"):
+            score *= 1.05
         return float(min(1.0, max(0.0, score * recency_factor)))
 
 

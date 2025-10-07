@@ -42,6 +42,13 @@ def test_ingestion_job_lifecycle(api_key: str) -> None:
     assert job_data["status"] == "completed"
     assert job_data["pipeline"] == "two-phase"
 
+    events_response = client.get(
+        f"/v1/jobs/{job_id}/events", headers={"X-API-Key": api_key}
+    )
+    assert events_response.status_code == 200
+    events = events_response.json()["data"]
+    assert any(event["type"] == "jobs.completed" for event in events)
+
     list_response = client.get("/v1/jobs", headers={"X-API-Key": api_key})
     assert list_response.status_code == 200
     job_ids = [item["job_id"] for item in list_response.json()["data"]]
@@ -66,6 +73,26 @@ def test_cancel_job_before_processing(api_key: str) -> None:
     assert cancel_response.status_code == 202
     cancel_data = cancel_response.json()["data"]
     assert cancel_data["status"] == "cancelled"
+
+
+def test_pipeline_ingest_endpoint(api_key: str) -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    payload = {
+        "dataset": "pmc",
+        "tenant_id": "tenant",
+        "items": [{"id": "pipeline-1"}],
+        "profile": "pmc",
+    }
+
+    response = client.post(
+        "/v1/pipelines/ingest", json=payload, headers={"X-API-Key": api_key}
+    )
+    assert response.status_code == 207
+    body = response.json()
+    assert body["meta"]["dataset"] == "pmc"
+    assert body["meta"]["profile"] == "pmc"
 
 
 def test_concurrent_job_processing() -> None:
@@ -116,3 +143,61 @@ def test_retry_logic_with_transient_failure() -> None:
     assert status.attempts >= 1
 
     orchestrator.pipelines["auto"].stages[1] = original_stage
+
+
+def test_query_pipeline_endpoint(api_key: str) -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    payload = {
+        "tenant_id": "tenant",
+        "query": "hypertension",
+        "top_k": 3,
+        "profile": "pmc",
+        "explain": True,
+    }
+
+    response = client.post(
+        "/v1/pipelines/query", json=payload, headers={"X-API-Key": api_key}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["pipeline_version"].startswith("hybrid")
+    assert body["data"]["documents"]
+    assert body["data"]["documents"][0]["explain"] is not None
+    assert body["meta"]["profile"] == "pmc"
+
+
+def test_graphql_retrieve_mutation(api_key: str) -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    mutation = """
+        mutation Retrieve($input: RetrieveInput!) {
+            retrieve(input: $input) {
+                pipelineVersion
+                partial
+                degraded
+                documents { id explain }
+            }
+        }
+    """
+    variables = {
+        "input": {
+            "tenantId": "tenant",
+            "query": "graph query",
+            "topK": 2,
+            "profile": "pmc",
+            "explain": True,
+        }
+    }
+
+    response = client.post(
+        "/graphql", json={"query": mutation, "variables": variables}, headers={"X-API-Key": api_key}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert "errors" not in payload
+    result = payload["data"]["retrieve"]
+    assert result["pipelineVersion"].startswith("hybrid")
+    assert result["documents"][0]["explain"] is not None

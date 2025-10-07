@@ -444,6 +444,58 @@ class ChunkingService:
             return False
         return True
 
+    def _fallback_chunks(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
+        chunks: list[Chunk] = []
+        cursor = 0
+        for idx, segment in enumerate(text.splitlines(keepends=True)):
+            body = segment.strip()
+            length = len(segment)
+            if not body:
+                cursor += length
+                continue
+            start_offset = segment.index(body)
+            start = cursor + start_offset
+            end = start + len(body)
+            chunk_id = f"{document_id}-fallback-{idx}"
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    body=body,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="paragraph",
+                    chunker="fallback",
+                    chunker_version="v1",
+                    meta={},
+                )
+            )
+            cursor += length
+        if not chunks and text.strip():
+            stripped = text.strip()
+            start = text.index(stripped)
+            end = start + len(stripped)
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{document_id}-fallback-0",
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    body=stripped,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="document",
+                    chunker="fallback",
+                    chunker_version="v1",
+                    meta={},
+                )
+            )
+        return chunks
+
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:
             return None

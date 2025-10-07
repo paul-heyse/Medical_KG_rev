@@ -66,19 +66,24 @@ def default_registry() -> ChunkerRegistry:
         UnstructuredChunker,
     )
     from .chunkers import (
-        ClinicalRoleChunker,
-        TextTilingChunker,
-        C99Chunker,
         BayesSegChunker,
-        LDATopicChunker,
-        LayoutHeuristicChunker,
-        SemanticClusterChunker,
+        C99Chunker,
+        ClinicalRoleChunker,
+        DiscourseSegmenterChunker,
         GraphPartitionChunker,
+        GraphRAGChunker,
+        GrobidSectionChunker,
+        LDATopicChunker,
+        LayoutAwareChunker,
+        LayoutHeuristicChunker,
         SectionAwareChunker,
+        SemanticClusterChunker,
         SemanticSplitterChunker,
         SlidingWindowChunker,
         TableChunker,
+        TextTilingChunker,
     )
+    from .chunkers.llm import LLMChapteringChunker
 
     registry = ChunkerRegistry()
     registry.register("section_aware", SectionAwareChunker)
@@ -89,10 +94,15 @@ def default_registry() -> ChunkerRegistry:
     registry.register("layout_heuristic", LayoutHeuristicChunker)
     registry.register("semantic_cluster", SemanticClusterChunker, experimental=True)
     registry.register("graph_partition", GraphPartitionChunker, experimental=True)
+    registry.register("graph_rag", GraphRAGChunker, experimental=True)
     registry.register("text_tiling", TextTilingChunker, experimental=True)
     registry.register("c99", C99Chunker, experimental=True)
     registry.register("bayes_seg", BayesSegChunker, experimental=True)
     registry.register("lda_topic", LDATopicChunker, experimental=True)
+    registry.register("discourse_segmenter", DiscourseSegmenterChunker, experimental=True)
+    registry.register("grobid_section", GrobidSectionChunker, experimental=True)
+    registry.register("layout_aware", LayoutAwareChunker, experimental=True)
+    registry.register("llm_chaptering", LLMChapteringChunker, experimental=True)
     registry.register("langchain.recursive_character", LangChainSplitterChunker)
     registry.register("langchain.token", LangChainTokenSplitterChunker)
     registry.register("langchain.markdown", LangChainMarkdownChunker)

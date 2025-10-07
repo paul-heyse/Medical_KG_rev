@@ -75,6 +75,32 @@ def test_sentence_transformers_embedder_generates_vectors() -> None:
     assert len(records) == 1
     assert len(records[0].vectors or []) == 1
     assert pytest.approx(sum(v * v for v in records[0].vectors[0]), rel=1e-3) == pytest.approx(1.0, rel=1e-3)
+    assert records[0].metadata["onnx_optimized"] is False
+
+
+def test_sentence_transformers_respects_request_metadata() -> None:
+    config = EmbedderConfig(
+        name="bge-small",
+        provider="sentence-transformers",
+        kind="single_vector",
+        namespace="single_vector.bge_small.384.v1",
+        model_id="BAAI/bge-small-en",
+        model_version="v1",
+        dim=384,
+        normalize=True,
+        batch_size=2,
+    )
+    embedder = SentenceTransformersEmbedder(config)
+    request = EmbeddingRequest(
+        tenant_id="tenant-x",
+        namespace=config.namespace,
+        texts=["metadata test"],
+        ids=["chunk-1"],
+        metadata=[{"source": "ingestion"}],
+    )
+    record = embedder.embed_documents(request)[0]
+    assert record.metadata["source"] == "ingestion"
+    assert record.metadata["provider"] == config.provider
 
 
 def test_embedding_worker_runs_with_default_config() -> None:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
+from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalRouter, RetrievalService
 
 
 def _setup_clients():

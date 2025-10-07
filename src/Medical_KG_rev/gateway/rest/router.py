@@ -22,6 +22,8 @@ from ..models import (
     IngestionRequest,
     JobStatus,
     KnowledgeGraphWriteRequest,
+    PipelineIngestionRequest,
+    PipelineQueryRequest,
     RetrievalResult,
     RetrieveRequest,
 )
@@ -132,6 +134,36 @@ async def ingest_dataset(
     return json_api_response(result.operations, status_code=207, meta=meta)
 
 
+@router.post("/pipelines/ingest", status_code=207, response_model=None)
+async def ingest_pipeline(
+    request: PipelineIngestionRequest,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/pipelines/ingest")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    ingest_request = IngestionRequest.model_validate(
+        request.model_dump(exclude={"dataset"})
+    )
+    result: BatchOperationResult = service.ingest(request.dataset, ingest_request)
+    meta = {
+        "total": result.total,
+        "dataset": request.dataset,
+        "profile": request.profile,
+    }
+    get_audit_trail().record(
+        context=security,
+        action="ingest_pipeline",
+        resource=f"dataset:{request.dataset}",
+        metadata={
+            "items": len(request.items),
+            "profile": request.profile,
+        },
+    )
+    return json_api_response(result.operations, status_code=207, meta=meta)
+
+
 @router.get("/jobs/{job_id}", status_code=200, response_model=JobStatus)
 async def get_job(
     job_id: str,
@@ -150,15 +182,33 @@ async def get_job(
 async def list_job_events(
     job_id: str,
     *,
-    since: datetime = Query(
-        ..., description="Return events emitted after this timestamp", alias="since"
+    since: datetime | None = Query(
+        None,
+        description="Return events emitted after this timestamp",
+        alias="since",
     ),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}/events")
     ),
+    service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    meta = {"job_id": job_id, "since": since.isoformat()}
-    return json_api_response([], meta=meta)
+    job = service.get_job(job_id, tenant_id=security.tenant_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    events = service.events.history(job_id, since=since)
+    data = [
+        {
+            "job_id": event.job_id,
+            "type": event.type,
+            "payload": event.payload,
+            "emitted_at": event.emitted_at.isoformat(),
+        }
+        for event in events
+    ]
+    meta = {"job_id": job_id, "count": len(data)}
+    if since is not None:
+        meta["since"] = since.isoformat()
+    return json_api_response(data, meta=meta)
 
 
 @router.get("/jobs", status_code=200, response_model=list[JobStatus])
@@ -222,7 +272,7 @@ async def ingest_pmc(
 async def chunk_document(
     request: ChunkRequest,
     security: SecurityContext = Depends(
-        secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/chunk")
+        secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/chunk")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
@@ -275,6 +325,38 @@ async def retrieve(
         "select": odata.select,
         "expand": odata.expand,
         "rerank": result.rerank_metrics,
+        "pipeline_version": result.pipeline_version,
+        "partial": result.partial,
+        "degraded": result.degraded,
+        "stage_timings": result.stage_timings,
+        "errors": [error.model_dump(mode="json") for error in result.errors],
+    }
+    return json_api_response(result, meta=meta)
+
+
+@router.post("/pipelines/query", status_code=200)
+async def query_pipeline(
+    request: PipelineQueryRequest,
+    http_request: Request,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="POST /v1/pipelines/query")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    odata = ODataParams.from_request(http_request)
+    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    result: RetrievalResult = service.retrieve(request)
+    meta = {
+        "total": result.total,
+        "select": odata.select,
+        "expand": odata.expand,
+        "rerank": result.rerank_metrics,
+        "pipeline_version": result.pipeline_version,
+        "partial": result.partial,
+        "degraded": result.degraded,
+        "stage_timings": result.stage_timings,
+        "errors": [error.model_dump(mode="json") for error in result.errors],
+        "profile": request.profile,
     }
     return json_api_response(result, meta=meta)
 
@@ -304,6 +386,11 @@ async def search(
         "select": odata.select,
         "expand": odata.expand,
         "rerank": result.rerank_metrics,
+        "pipeline_version": result.pipeline_version,
+        "partial": result.partial,
+        "degraded": result.degraded,
+        "stage_timings": result.stage_timings,
+        "errors": [error.model_dump(mode="json") for error in result.errors],
     }
     return json_api_response(result, meta=meta)
 

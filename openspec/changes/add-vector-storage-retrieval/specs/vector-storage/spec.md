@@ -10,6 +10,147 @@
 
 ## ADDED Requirements
 
+### Requirement: Security & Multi-Tenant Integration
+
+The vector storage system SHALL integrate with OAuth 2.0 authentication and enforce strict multi-tenant isolation.
+
+#### Scenario: Tenant isolation in vector storage
+
+- **WHEN** vectors are upserted or queried
+- **THEN** all operations SHALL be scoped by tenant_id from authenticated context
+- **AND** tenant_id SHALL be included in all payloads and filters
+- **AND** cross-tenant access SHALL be prevented at storage layer
+
+#### Scenario: Scope-based access control
+
+- **WHEN** vector storage operations are invoked
+- **THEN** the system SHALL verify `index:write` scope for upsert/delete operations
+- **AND** verify `index:read` scope for KNN queries
+- **AND** return 403 Forbidden if scope is missing
+
+#### Scenario: Audit logging for storage operations
+
+- **WHEN** storage operations execute
+- **THEN** the system SHALL log: user_id, tenant_id, namespace, operation, vector_count, duration
+- **AND** include correlation_id for distributed tracing
+- **AND** log security events (unauthorized access attempts)
+
+---
+
+### Requirement: Error Handling & Status Codes
+
+The vector storage system SHALL provide comprehensive error handling with RFC 7807 Problem Details.
+
+#### Scenario: Dimension mismatch error
+
+- **WHEN** vector dimensions don't match namespace configuration
+- **THEN** the system SHALL return 422 Unprocessable Entity
+- **AND** include Problem Details with expected vs actual dimensions
+
+#### Scenario: Index not found error
+
+- **WHEN** operations reference non-existent namespace
+- **THEN** the system SHALL return 404 Not Found
+- **AND** list available namespaces in error response
+
+#### Scenario: Resource exhaustion error
+
+- **WHEN** storage backend reaches capacity limits
+- **THEN** the system SHALL return 507 Insufficient Storage
+- **AND** include capacity metrics in response
+
+#### Scenario: Backend unavailable error
+
+- **WHEN** vector store backend is unreachable
+- **THEN** the system SHALL return 503 Service Unavailable
+- **AND** trigger circuit breaker after repeated failures
+
+---
+
+### Requirement: Versioning & Backward Compatibility
+
+The vector storage system SHALL support index versioning and migration strategies.
+
+#### Scenario: Index version tracking
+
+- **WHEN** collections are created
+- **THEN** each collection SHALL include index_version metadata (e.g., "hnsw:v1.0")
+- **AND** version SHALL be immutable after creation
+
+#### Scenario: Schema evolution
+
+- **WHEN** index schema changes (new metadata fields)
+- **THEN** new fields SHALL be optional
+- **AND** existing vectors SHALL remain queryable
+- **AND** reindexing strategy SHALL be documented
+
+#### Scenario: Deprecated index migration
+
+- **WHEN** index type is deprecated (e.g., IVF → HNSW)
+- **THEN** migration tool SHALL be provided
+- **AND** old index supported for 2 major versions
+- **AND** migration path documented with downtime estimates
+
+---
+
+### Requirement: Performance SLOs & Circuit Breakers
+
+The vector storage system SHALL enforce strict performance SLOs for KNN queries.
+
+#### Scenario: KNN latency SLO
+
+- **WHEN** KNN query executes
+- **THEN** P95 latency SHALL be <50ms for top_k=10
+- **AND** P95 latency SHALL be <200ms for top_k=1000
+- **AND** operations exceeding 5× SLO SHALL trigger alerts
+
+#### Scenario: Upsert throughput SLO
+
+- **WHEN** vectors are bulk upserted
+- **THEN** throughput SHALL be >1000 vectors/second
+- **AND** batch operations SHALL be preferred over individual upserts
+
+#### Scenario: Circuit breaker on backend failures
+
+- **WHEN** storage backend fails 5 consecutive times
+- **THEN** circuit breaker SHALL open
+- **AND** subsequent requests SHALL fail-fast with 503
+- **AND** health checks SHALL attempt recovery
+
+#### Scenario: Resource monitoring
+
+- **WHEN** storage operations execute
+- **THEN** the system SHALL monitor memory, disk, and network usage
+- **AND** emit metrics for query latency, index size, vector count
+
+---
+
+### Requirement: Comprehensive Testing Requirements
+
+The vector storage system SHALL include comprehensive test coverage.
+
+#### Scenario: Contract tests for VectorStorePort
+
+- **WHEN** new storage backend is implemented
+- **THEN** contract tests SHALL verify VectorStorePort protocol compliance
+- **AND** test CRUD operations, filtering, pagination
+
+#### Scenario: Performance regression tests
+
+- **WHEN** storage implementation changes
+- **THEN** performance tests SHALL verify KNN latency within SLO
+- **AND** measure indexing throughput
+- **AND** test large-scale scenarios (1M+ vectors)
+
+#### Scenario: Integration tests with embedding service
+
+- **WHEN** embeddings are generated
+- **THEN** integration tests SHALL verify embeddings are storable
+- **AND** verify KNN returns correct neighbors
+- **AND** test end-to-end (embed → index → retrieve)
+
+---
+
 ### Requirement: Universal Vector Store Interface
 
 The system SHALL provide a `VectorStorePort` protocol that defines a uniform interface for all vector storage backends.
@@ -481,3 +622,115 @@ The system SHALL provide health checks and metrics per vector store backend.
 - **Upstream**: `add-universal-embedding-system` (embeddings must be generated)
 - **Downstream**: `add-reranking-fusion-system` (reranking consumes retrieval results)
 - **Python packages**: `qdrant-client`, `faiss-cpu` or `faiss-gpu`, `pymilvus`, `opensearch-py`, `weaviate-client`, `pgvector`, `hnswlib`, `nmslib`, `annoy`, `scann`
+
+---
+
+## Implementation Notes
+
+### Monitoring & Alerting Thresholds
+
+**Prometheus Metrics** (all labeled by namespace, backend, operation, tenant_id):
+
+- `vector_store_operations_total` (counter) - Total operations
+- `vector_store_knn_duration_seconds` (histogram) - KNN query latency with buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1]
+- `vector_store_upsert_duration_seconds` (histogram) - Upsert latency
+- `vector_store_errors_total` (counter) - Errors by error_type
+- `vector_store_index_size_bytes` (gauge) - Index size per namespace
+- `vector_store_vector_count` (gauge) - Total vectors per namespace
+- `vector_store_circuit_breaker_state` (gauge) - Circuit breaker states
+
+**Alert Rules**:
+
+- `VectorStoreHighLatency`: KNN P95 > 100ms for 5 minutes → Page on-call
+- `VectorStoreHighErrorRate`: Error rate > 5% for 5 minutes → Page on-call
+- `VectorStoreCircuitBreakerOpen`: Circuit breaker open > 1 minute → Notify team
+- `VectorStoreDiskFull`: Disk usage > 80% → Warning, > 90% → Page
+- `VectorStoreIndexCorruption`: Health check failures > 3 → Page on-call
+
+### Data Validation Rules
+
+**Vector Validation**:
+
+- `vector_id` format: `^[a-z0-9_-]+:[a-z0-9_-]+:[a-z_]+:\d+$` (matches chunk_id)
+- `namespace` format: `^[a-z0-9_.]+\.[a-z0-9_-]+\.\d+\.v\d+$`
+- `tenant_id` format: `^[a-z0-9-]{8,64}$`
+- `vector` dimensions: match namespace `dim` exactly
+- `payload` size: ≤ 10KB per vector
+
+**Index Parameters Validation**:
+
+- `dim`: 128 ≤ value ≤ 4096
+- `m` (HNSW links): 4 ≤ value ≤ 128
+- `ef_construct`: 100 ≤ value ≤ 1000
+- `ef_search`: 10 ≤ value ≤ 500
+- `nlist` (IVF): 100 ≤ value ≤ 100,000
+- `nprobe`: 1 ≤ value ≤ nlist
+
+### API Versioning
+
+**Vector Storage API Endpoints**:
+
+- `/v1/vectors/{namespace}` - Current stable API
+- `/v2/vectors/{namespace}` - Future breaking changes (reserved)
+
+**Version Headers**:
+
+- Request: `Accept: application/vnd.medkg.vector.v1+json`
+- Response: `Content-Type: application/vnd.medkg.vector.v1+json`
+- Response: `X-API-Version: 1.0`
+
+**Breaking Change Policy**:
+
+- Index format changes require new major version
+- Reindexing required for major version upgrades
+- Old indexes supported read-only for 12 months
+- Migration tools provided with downtime estimates
+
+### Security Considerations
+
+**Input Validation**:
+
+- Reject batch upserts > 50MB
+- Validate all vector IDs against format regex
+- Sanitize metadata payloads (no code execution)
+- Verify namespace exists before operations
+
+**Rate Limiting**:
+
+- Per-tenant: 1000 KNN queries/minute, 500 upserts/minute
+- Per-user: 500 KNN queries/minute, 200 upserts/minute
+- Burst: 100 operations
+- Return 429 with Retry-After header when exceeded
+
+**Secrets Management**:
+
+- Backend credentials: Environment variables or Vault
+- TLS certificates: Mounted from secure storage
+- API keys: Rotated every 90 days
+
+### Performance Tuning
+
+**HNSW Parameters** (Qdrant, recommended):
+
+```yaml
+hnsw:
+  m: 64              # More links = better recall, higher memory
+  ef_construct: 400  # Higher = better index quality, slower build
+  ef_search: 128     # Higher = better recall, slower query
+```
+
+**IVF+PQ Parameters** (FAISS, for scale):
+
+```yaml
+ivf_pq:
+  nlist: 32768       # Voronoi cells (sqrt to 4x of data size)
+  nprobe: 64         # Cells to search (2-10% of nlist)
+  pq_m: 64           # PQ subquantizers (divisor of dim)
+  pq_nbits: 8        # Bits per subquantizer
+```
+
+**Compression Trade-offs**:
+
+- `scalar_int8`: 4× smaller, <2% recall loss, 2× faster
+- `pq`: 8-32× smaller, 5-10% recall loss, 1.5× faster
+- `binary`: 32× smaller, 10-15% recall loss, 5× faster

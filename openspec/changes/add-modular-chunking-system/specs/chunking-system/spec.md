@@ -2,6 +2,148 @@
 
 ## ADDED Requirements
 
+### Requirement: Security & Multi-Tenant Integration
+
+The chunking system SHALL integrate with the existing OAuth 2.0 authentication and multi-tenant isolation infrastructure.
+
+#### Scenario: Tenant isolation in chunk metadata
+
+- **WHEN** chunks are created from a document
+- **THEN** each Chunk SHALL include tenant_id extracted from authenticated context
+- **AND** tenant_id SHALL be validated against the document's tenant_id
+- **AND** tenant_id SHALL be immutable after chunk creation
+
+#### Scenario: Scope-based access control
+
+- **WHEN** chunking service is invoked
+- **THEN** the system SHALL verify `ingest:write` scope in JWT token
+- **AND** return 403 Forbidden if scope is missing
+- **AND** log unauthorized access attempts
+
+#### Scenario: Audit logging for chunking operations
+
+- **WHEN** chunking operations complete
+- **THEN** the system SHALL log: user_id, tenant_id, doc_id, chunker_strategy, chunk_count, duration
+- **AND** include correlation_id for distributed tracing
+- **AND** scrub PII from log messages
+
+---
+
+### Requirement: Error Handling & Status Codes
+
+The chunking system SHALL provide comprehensive error handling with standardized HTTP status codes and RFC 7807 Problem Details.
+
+#### Scenario: Invalid document format error
+
+- **WHEN** chunker receives malformed document
+- **THEN** the system SHALL return 400 Bad Request
+- **AND** include RFC 7807 Problem Details with type, title, detail, instance
+- **AND** log error with correlation_id
+
+#### Scenario: Chunker configuration error
+
+- **WHEN** invalid chunker strategy or parameters specified
+- **THEN** the system SHALL return 422 Unprocessable Entity
+- **AND** include validation errors in Problem Details
+- **AND** suggest valid alternatives
+
+#### Scenario: Resource exhaustion error
+
+- **WHEN** chunking operation exceeds memory or time limits
+- **THEN** the system SHALL return 503 Service Unavailable
+- **AND** include Retry-After header
+- **AND** trigger circuit breaker after repeated failures
+
+#### Scenario: GPU unavailable for semantic chunking
+
+- **WHEN** semantic chunker requires GPU but none available
+- **THEN** the system SHALL return 503 Service Unavailable
+- **AND** include clear error message about GPU requirement
+- **AND** fail-fast without CPU fallback (as per design)
+
+---
+
+### Requirement: Versioning & Backward Compatibility
+
+The chunking system SHALL support versioning for chunker implementations and output schemas.
+
+#### Scenario: Chunker version tracking
+
+- **WHEN** chunks are created
+- **THEN** each Chunk SHALL include chunker_version field (e.g., "semantic_splitter:v1.2")
+- **AND** version SHALL be immutable after creation
+- **AND** enable querying by chunker version
+
+#### Scenario: Schema evolution
+
+- **WHEN** Chunk model schema changes (new fields added)
+- **THEN** new fields SHALL be optional with defaults
+- **AND** existing chunks SHALL remain queryable
+- **AND** migration scripts SHALL handle schema updates
+
+#### Scenario: Deprecated chunker migration
+
+- **WHEN** chunker implementation is deprecated
+- **THEN** deprecation warning SHALL be logged
+- **AND** migration path SHALL be documented
+- **AND** deprecated chunker SHALL remain functional for 2 major versions
+
+---
+
+### Requirement: Performance SLOs & Circuit Breakers
+
+The chunking system SHALL enforce performance SLOs and implement circuit breakers for failing operations.
+
+#### Scenario: Chunking latency SLO
+
+- **WHEN** chunking operation executes
+- **THEN** P95 latency SHALL be <500ms for documents <10K tokens
+- **AND** P95 latency SHALL be <2s for documents <100K tokens
+- **AND** operations exceeding 5× SLO SHALL trigger alerts
+
+#### Scenario: Circuit breaker on repeated failures
+
+- **WHEN** chunker fails 5 consecutive times
+- **THEN** circuit breaker SHALL open
+- **AND** subsequent requests SHALL fail-fast with 503
+- **AND** circuit SHALL attempt recovery after exponential backoff
+
+#### Scenario: Resource monitoring
+
+- **WHEN** chunking operations execute
+- **THEN** the system SHALL monitor memory usage per operation
+- **AND** reject operations exceeding 2GB memory limit
+- **AND** emit metrics for memory usage, CPU time, GPU utilization
+
+---
+
+### Requirement: Comprehensive Testing Requirements
+
+The chunking system SHALL include comprehensive test coverage with contract, performance, and integration tests.
+
+#### Scenario: Contract tests for chunker interface
+
+- **WHEN** new chunker is implemented
+- **THEN** contract tests SHALL verify BaseChunker protocol compliance
+- **AND** validate Chunk output schema
+- **AND** test granularity parameter handling
+
+#### Scenario: Performance regression tests
+
+- **WHEN** chunker implementation changes
+- **THEN** performance tests SHALL verify latency within SLO
+- **AND** measure throughput (chunks/second)
+- **AND** compare against baseline to detect regressions
+
+#### Scenario: Integration tests with downstream services
+
+- **WHEN** chunking completes
+- **THEN** integration tests SHALL verify chunks are indexable by embedding service
+- **AND** verify chunks are queryable by retrieval service
+- **AND** test end-to-end pipeline (doc → chunk → embed → index → retrieve)
+
+---
+
 ### Requirement: BaseChunker Interface
 
 The system SHALL provide a universal `BaseChunker` protocol interface that all chunking adapters must implement, enabling pluggable chunking strategies without modifying core ingestion logic.
@@ -513,3 +655,93 @@ The system SHALL provide comprehensive documentation for chunking system usage, 
 - **THEN** documentation SHALL explain how to create gold standard annotations
 - **AND** documentation SHALL provide commands to run evaluation
 - **AND** documentation SHALL explain metric interpretation and leaderboard usage
+
+---
+
+## Implementation Notes
+
+### Monitoring & Alerting Thresholds
+
+**Prometheus Metrics** (all labeled by chunker_strategy, granularity, tenant_id):
+
+- `chunking_operations_total` (counter) - Total chunking operations
+- `chunking_operations_duration_seconds` (histogram) - Operation latency with buckets: [0.1, 0.5, 1, 2, 5, 10]
+- `chunking_errors_total` (counter) - Errors by error_type
+- `chunking_chunks_produced_total` (counter) - Total chunks created
+- `chunking_memory_bytes` (gauge) - Memory usage per operation
+- `chunking_gpu_utilization_percent` (gauge) - GPU utilization for semantic chunking
+- `chunking_circuit_breaker_state` (gauge) - Circuit breaker states (0=closed, 1=open, 2=half-open)
+
+**Alert Rules**:
+
+- `ChunkingHighLatency`: P95 > 1s for 5 minutes → Page on-call
+- `ChunkingHighErrorRate`: Error rate > 5% for 5 minutes → Page on-call
+- `ChunkingCircuitBreakerOpen`: Circuit breaker open > 1 minute → Notify team
+- `ChunkingMemoryHigh`: Memory usage > 1.5GB → Warning
+- `ChunkingGPUUnavailable`: GPU required but unavailable > 2 minutes → Page on-call
+
+### Data Validation Rules
+
+**Chunk Validation**:
+
+- `chunk_id` format: `^[a-z0-9_-]+:[a-z0-9_-]+:[a-z_]+:\d+$`
+- `doc_id` format: `^[a-z]+:[A-Za-z0-9_-]+#[a-z0-9]+:[a-f0-9]{12}$`
+- `tenant_id` format: `^[a-z0-9-]{8,64}$`
+- `body` length: 10 ≤ len ≤ 50,000 characters
+- `start_char` < `end_char` and both ≥ 0
+- `granularity` ∈ {"window", "paragraph", "section", "document", "table"}
+
+**Configuration Validation**:
+
+- `target_tokens`: 100 ≤ value ≤ 4096
+- `overlap_ratio`: 0.0 ≤ value ≤ 0.5
+- `tau_coh` (semantic coherence): 0.5 ≤ value ≤ 1.0
+- `delta_drift` (embedding drift): 0.1 ≤ value ≤ 0.8
+
+### API Versioning
+
+**Chunking API Endpoints**:
+
+- `/v1/chunk` - Current stable API
+- `/v2/chunk` - Future breaking changes (reserved)
+
+**Version Headers**:
+
+- Request: `Accept: application/vnd.medkg.chunk.v1+json`
+- Response: `Content-Type: application/vnd.medkg.chunk.v1+json`
+- Response: `X-API-Version: 1.0`
+
+**Breaking Change Policy**:
+
+- Breaking changes require new major version
+- Old version supported for 12 months after new version release
+- Deprecation warnings logged 6 months before sunset
+- Migration guide published with new version
+
+### Security Considerations
+
+**Input Validation**:
+
+- Reject documents > 100MB uncompressed
+- Sanitize all text content (remove control characters, validate UTF-8)
+- Validate all IDs against format regex before processing
+
+**Rate Limiting**:
+
+- Per-tenant: 100 chunking operations/minute
+- Per-user: 50 chunking operations/minute
+- Burst: 20 operations
+- Return 429 with Retry-After header when exceeded
+
+**Secrets Management**:
+
+- GPU service endpoints: Environment variables or Vault
+- Model paths: Configuration files (not hardcoded)
+- API keys: Rotate every 90 days
+
+### Dependencies
+
+- **Upstream**: `add-foundation-infrastructure` (Document, Block models), `add-security-auth` (OAuth, multi-tenant)
+- **Downstream**: `add-universal-embedding-system` (consumes chunks), `add-retrieval-pipeline-orchestration` (integrates chunking stage)
+- **Python packages**: `spacy`, `nltk`, `torch` (GPU), `transformers`, `langchain`, `llama-index`, `haystack-ai`, `unstructured`
+- **Models**: `en_core_web_sm` (spaCy), `BAAI/bge-small-en-v1.5` (semantic splitting)

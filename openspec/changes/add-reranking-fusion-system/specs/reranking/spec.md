@@ -10,6 +10,119 @@
 
 ## ADDED Requirements
 
+### Requirement: Security & Multi-Tenant Integration
+
+The reranking system SHALL integrate with OAuth 2.0 authentication and enforce multi-tenant isolation.
+
+#### Scenario: Tenant isolation in reranking
+
+- **WHEN** reranking operations execute
+- **THEN** all query-document pairs SHALL be scoped by tenant_id
+- **AND** cross-tenant document access SHALL be prevented
+
+#### Scenario: Scope-based access control
+
+- **WHEN** reranking service is invoked
+- **THEN** the system SHALL verify `retrieve:read` scope in JWT token
+- **AND** return 403 Forbidden if scope is missing
+
+#### Scenario: Audit logging for reranking
+
+- **WHEN** reranking operations complete
+- **THEN** the system SHALL log: user_id, tenant_id, reranker_id, pair_count, duration
+- **AND** include correlation_id for distributed tracing
+
+---
+
+### Requirement: Error Handling & Status Codes
+
+The reranking system SHALL provide comprehensive error handling with RFC 7807 Problem Details.
+
+#### Scenario: Invalid pair format error
+
+- **WHEN** query-document pairs are malformed
+- **THEN** the system SHALL return 400 Bad Request
+- **AND** include Problem Details with validation errors
+
+#### Scenario: Model not found error
+
+- **WHEN** invalid reranker_id specified
+- **THEN** the system SHALL return 422 Unprocessable Entity
+- **AND** list available rerankers
+
+#### Scenario: GPU unavailable error
+
+- **WHEN** reranker requires GPU but none available
+- **THEN** the system SHALL return 503 Service Unavailable
+- **AND** fail-fast without CPU fallback (for GPU-only models)
+
+---
+
+### Requirement: Versioning & Backward Compatibility
+
+The reranking system SHALL support model versioning and result reproducibility.
+
+#### Scenario: Reranker version tracking
+
+- **WHEN** reranking completes
+- **THEN** results SHALL include reranker_version (e.g., "bge-reranker-v2-m3:v1.0")
+- **AND** version SHALL be immutable
+
+#### Scenario: Schema evolution
+
+- **WHEN** reranking output schema changes
+- **THEN** new fields SHALL be optional with defaults
+- **AND** existing clients SHALL remain compatible
+
+---
+
+### Requirement: Performance SLOs & Circuit Breakers
+
+The reranking system SHALL enforce strict performance SLOs.
+
+#### Scenario: Reranking latency SLO
+
+- **WHEN** reranking 100 pairs
+- **THEN** P95 latency SHALL be <50ms on GPU
+- **AND** operations exceeding 5× SLO SHALL trigger alerts
+
+#### Scenario: Throughput SLO
+
+- **WHEN** reranking batches
+- **THEN** throughput SHALL be >2000 pairs/second on GPU
+
+#### Scenario: Circuit breaker on failures
+
+- **WHEN** reranker fails 5 consecutive times
+- **THEN** circuit breaker SHALL open
+- **AND** subsequent requests SHALL fail-fast with 503
+
+---
+
+### Requirement: Comprehensive Testing Requirements
+
+The reranking system SHALL include comprehensive test coverage.
+
+#### Scenario: Contract tests for RerankerPort
+
+- **WHEN** new reranker is implemented
+- **THEN** contract tests SHALL verify RerankerPort protocol compliance
+- **AND** validate score ranges and ordering
+
+#### Scenario: Performance regression tests
+
+- **WHEN** reranker implementation changes
+- **THEN** performance tests SHALL verify latency within SLO
+- **AND** measure nDCG@10 quality vs baseline
+
+#### Scenario: Integration tests with retrieval
+
+- **WHEN** reranking completes
+- **THEN** integration tests SHALL verify reranked results improve nDCG
+- **AND** test end-to-end (retrieve → rerank → return)
+
+---
+
 ### Requirement: Universal Reranker Interface
 
 The system SHALL provide a `RerankerPort` protocol that defines a uniform interface for all reranking methods.
@@ -395,3 +508,82 @@ pipeline:
 - **Upstream**: `add-vector-storage-retrieval` (retrieval provides candidates for reranking)
 - **Downstream**: `add-retrieval-pipeline-orchestration` (orchestration integrates reranking)
 - **Python packages**: `sentence-transformers`, `transformers`, `ragatouille`, `onnxruntime`, OpenSearch LTR plugin, Vespa client
+
+---
+
+## Implementation Notes
+
+### Monitoring & Alerting Thresholds
+
+**Prometheus Metrics** (all labeled by reranker_id, batch_size, tenant_id):
+
+- `reranking_operations_total` (counter) - Total reranking operations
+- `reranking_duration_seconds` (histogram) - Latency with buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1]
+- `reranking_errors_total` (counter) - Errors by error_type
+- `reranking_pairs_processed_total` (counter) - Total query-doc pairs scored
+- `reranking_gpu_utilization_percent` (gauge) - GPU utilization
+- `reranking_circuit_breaker_state` (gauge) - Circuit breaker states
+
+**Alert Rules**:
+
+- `RerankingHighLatency`: P95 > 100ms for 5 minutes → Page on-call
+- `RerankingHighErrorRate`: Error rate > 5% for 5 minutes → Page on-call
+- `RerankingCircuitBreakerOpen`: Circuit breaker open > 1 minute → Notify team
+- `RerankingGPUUnavailable`: GPU required but unavailable > 2 minutes → Page on-call
+
+### Data Validation Rules
+
+**Input Validation**:
+
+- `query` length: 1 ≤ len ≤ 1000 characters
+- `document` length: 10 ≤ len ≤ 10,000 characters
+- `batch_size`: 1 ≤ value ≤ 128
+- `top_k`: 1 ≤ value ≤ 1000
+
+**Output Validation**:
+
+- `score`: 0.0 ≤ value ≤ 1.0 (normalized)
+- Score ordering: descending by default
+- Pair count: output matches input count
+
+### API Versioning
+
+**Reranking API Endpoints**:
+
+- `/v1/rerank` - Current stable API
+- `/v2/rerank` - Future breaking changes (reserved)
+
+**Version Headers**:
+
+- Request: `Accept: application/vnd.medkg.rerank.v1+json`
+- Response: `Content-Type: application/vnd.medkg.rerank.v1+json`
+- Response: `X-API-Version: 1.0`
+
+### Security Considerations
+
+**Input Validation**:
+
+- Reject batches > 5MB total text
+- Sanitize query and document texts
+- Validate tenant_id scope
+
+**Rate Limiting**:
+
+- Per-tenant: 500 reranking operations/minute
+- Per-user: 200 reranking operations/minute
+- Burst: 50 operations
+- Return 429 with Retry-After header when exceeded
+
+### Performance Tuning
+
+**Batch Sizes** (GPU):
+
+- Cross-encoder: 32-64 pairs optimal
+- ColBERT: 16-32 pairs optimal
+- LLM reranker: 4-8 pairs optimal
+
+**Model Selection**:
+
+- Fast: `ms-marco-MiniLM-L6-v2` (40ms P95, good quality)
+- Balanced: `bge-reranker-v2-m3` (50ms P95, best quality)
+- Specialized: `medcpt-reranker` (biomedical queries)

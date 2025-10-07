@@ -96,6 +96,8 @@ dependencies = [
     # Note: OpenCV wheels from PyPI conflict with NumPy >=2.3. Use conda-forge's
     # `py-opencv` build when GPU PDF processing (MinerU) requires OpenCV.
     "pillow>=11.3.0",
+    # MinerU GPU CLI integration
+    "mineru[gpu]>=2.5.4",
 
     # Biomedical API Clients
     "pyalex>=0.18",  # OpenAlex

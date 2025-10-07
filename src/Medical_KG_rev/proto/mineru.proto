@@ -4,12 +4,6 @@ package medicalkg.gateway.v1;
 
 option go_package = "github.com/your-org/medicalkg/gateway/v1";
 
-message ProcessPdfRequest {
-  string tenant_id = 1;
-  string document_id = 2;
-  bytes content = 3;
-}
-
 message BoundingBox {
   float x0 = 1;
   float y0 = 2;
@@ -24,18 +18,97 @@ message Block {
   string text = 4;
   BoundingBox bbox = 5;
   float confidence = 6;
+  int32 reading_order = 7;
+}
+
+message TableCell {
+  int32 row = 1;
+  int32 column = 2;
+  string content = 3;
+  int32 rowspan = 4;
+  int32 colspan = 5;
+  BoundingBox bbox = 6;
+  float confidence = 7;
+}
+
+message TableStructure {
+  string id = 1;
+  int32 page = 2;
+  repeated TableCell cells = 3;
+  repeated string headers = 4;
+  string caption = 5;
+  BoundingBox bbox = 6;
+}
+
+message FigureMetadata {
+  string id = 1;
+  int32 page = 2;
+  string image_path = 3;
+  string caption = 4;
+  string figure_type = 5;
+  string mime_type = 6;
+  int32 width = 7;
+  int32 height = 8;
+  BoundingBox bbox = 9;
+}
+
+message EquationData {
+  string id = 1;
+  int32 page = 2;
+  string latex = 3;
+  string mathml = 4;
+  bool display = 5;
+  BoundingBox bbox = 6;
+}
+
+message DocumentMetadata {
+  map<string, string> entries = 1;
 }
 
 message Document {
   string tenant_id = 1;
   string document_id = 2;
   repeated Block blocks = 3;
+  repeated TableStructure tables = 4;
+  repeated FigureMetadata figures = 5;
+  repeated EquationData equations = 6;
+  DocumentMetadata metadata = 7;
+}
+
+message ProcessingMetadata {
+  string document_id = 1;
+  string mineru_version = 2;
+  map<string, string> model_names = 3;
+  string gpu_id = 4;
+  string worker_id = 5;
+  string started_at = 6;
+  string completed_at = 7;
+  double duration_seconds = 8;
+  string cli_stdout = 9;
+  string cli_stderr = 10;
+}
+
+message ProcessPdfRequest {
+  string tenant_id = 1;
+  string document_id = 2;
+  bytes content = 3;
+}
+
+message BatchProcessPdfRequest {
+  repeated ProcessPdfRequest requests = 1;
 }
 
 message ProcessPdfResponse {
   Document document = 1;
+  ProcessingMetadata metadata = 2;
+}
+
+message BatchProcessPdfResponse {
+  repeated Document documents = 1;
+  repeated ProcessingMetadata metadata = 2;
 }
 
 service MineruService {
   rpc ProcessPdf (ProcessPdfRequest) returns (ProcessPdfResponse);
+  rpc BatchProcessPdf (BatchProcessPdfRequest) returns (BatchProcessPdfResponse);
 }

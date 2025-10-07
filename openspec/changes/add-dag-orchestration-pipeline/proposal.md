@@ -139,12 +139,26 @@ This creates technical debt and operational friction, especially as we scale to 
 - **BREAKING**: Stage handlers now receive typed `StageContext` instead of raw `dict[str, object]`
 - **BREAKING**: Resilience policies must be defined in config; hardcoded retries removed
 
-### Migration Path
+### Implementation Strategy
 
-1. **Phase 1**: Add Dagster alongside existing orchestration (feature flag `MK_USE_DAGSTER=false`)
-2. **Phase 2**: Migrate non-PDF pipelines to Dagster, validate with integration tests
-3. **Phase 3**: Migrate PDF two-phase pipeline with sensor-based gate
-4. **Phase 4**: Remove legacy orchestration code (v0.3.0 release)
+**Hard Cutover** - No legacy compatibility, complete replacement:
+
+1. **Phase 1 (Week 1-2)**: Implement new architecture on feature branch
+   - Build Dagster jobs, Haystack wrappers, stage contracts
+   - Complete unit tests with respx mocks
+   - Delete legacy orchestration code in same commits
+
+2. **Phase 2 (Week 3-4)**: Integration testing and validation
+   - End-to-end tests for auto pipeline and PDF two-phase
+   - Performance benchmarks meet requirements
+   - No legacy code remains in codebase
+
+3. **Phase 3 (Week 5-6)**: Production deployment
+   - Deploy to production with new architecture only
+   - Monitor CloudEvents, Prometheus metrics
+   - Rollback = revert entire feature branch if critical issues
+
+**Legacy Code Elimination**: All legacy orchestration removed in Phase 1 commits
 
 ### Benefits
 

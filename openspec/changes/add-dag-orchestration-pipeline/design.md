@@ -487,43 +487,38 @@ class HaystackEmbedder(EmbedStage):
 
 ---
 
-## Migration Plan
+## Implementation Plan (Hard Cutover)
 
-### Phase 1: Add Dagster Alongside Legacy (Week 1-2)
+### Phase 1: Build New Architecture (Week 1-2)
 
-1. Add Dagster dependencies to requirements.txt
-2. Implement stage contracts (Python Protocols)
-3. Create auto.yaml and pdf-two-phase.yaml topology files
-4. Implement Dagster jobs with all ops
-5. Add feature flag `MK_USE_DAGSTER=false` (default off)
-6. Deploy to dev environment
-7. Validate with integration tests (non-production tenant)
+1. **Audit & Delete Plan**: Create `LEGACY_DECOMMISSION_CHECKLIST.md`
+2. **Add Dependencies**: dagster, haystack-ai, tenacity, pybreaker, aiolimiter to requirements.txt
+3. **Implement Stage Contracts**: Python Protocols for all 8 stage types
+4. **Create YAML Topologies**: auto.yaml, pdf-two-phase.yaml with resilience policies
+5. **Implement Dagster Jobs**: auto_pipeline_job, pdf_two_phase_job, pdf_ir_ready_sensor
+6. **Build Haystack Wrappers**: HaystackChunker, HaystackEmbedder, HaystackIndexWriter
+7. **Atomic Deletions**: Delete legacy code in same commits as new implementations
+   - Commit 1: Add Dagster jobs + delete `orchestrator.py`, `worker.py`
+   - Commit 2: Add HaystackChunker + delete custom chunkers
+   - Commit 3: Add resilience decorators + delete custom retry/circuit breaker logic
+8. **Test Migration**: Delete legacy tests, create new Dagster/Haystack tests
 
-### Phase 2: Migrate Non-PDF Pipelines (Week 3-4)
+### Phase 2: Integration Testing (Week 3-4)
 
-1. Enable feature flag for ClinicalTrials.gov adapter (non-PDF)
-2. Monitor CloudEvents stream, Prometheus metrics
-3. Validate output matches legacy orchestration (IR documents, chunks, embeddings)
-4. Performance comparison (throughput, latency, resource usage)
-5. Gradually enable for all non-PDF sources (OpenAlex, OpenFDA, etc.)
+1. **End-to-End Tests**: Auto pipeline (ClinicalTrials) and PDF two-phase (PMC)
+2. **Performance Benchmarks**: Validate throughput ≥100 docs/sec, P95 latency <500ms
+3. **GPU Fail-Fast**: Verify no CPU fallback for GPU-required stages
+4. **CloudEvents Validation**: Confirm all stage lifecycle events emitted
+5. **Sensor Testing**: Verify pdf_ir_ready_sensor triggers post-PDF stages
+6. **Codebase Validation**: Verify ≥30% code reduction, no dead legacy code
 
-### Phase 3: Migrate PDF Two-Phase Pipeline (Week 5-6)
+### Phase 3: Production Deployment (Week 5-6)
 
-1. Implement `pdf_ir_ready_sensor` with Job Ledger polling
-2. Enable for PMC full-text source (PDF pipeline)
-3. Validate sensor triggers correctly when MinerU completes
-4. Test gate halt/resume behavior
-5. Monitor for stalled jobs, adjust sensor polling interval if needed
-6. Enable for all PDF sources (Unpaywall, CORE)
-
-### Phase 4: Full Rollout & Deprecation (Week 7-8)
-
-1. Enable `MK_USE_DAGSTER=true` for 100% of production traffic
-2. Monitor for 1 week, collect feedback from team
-3. Add deprecation warnings to legacy `Orchestrator.execute_pipeline`
-4. Schedule legacy code removal for v0.3.0 release
-5. Update all documentation to reference Dagster as primary orchestration
-6. Conduct retrospective, document lessons learned
+1. **Deploy to Production**: Single feature branch merge, no legacy code remains
+2. **Monitor Observability**: CloudEvents stream, Prometheus metrics, Grafana dashboards
+3. **Validate Operations**: Dagster UI accessible, sensors running, jobs completing
+4. **Emergency Rollback**: Revert entire feature branch if critical issues (no legacy to fall back to)
+5. **Retrospective**: Document lessons learned, codebase reduction achieved
 
 ---
 
@@ -638,63 +633,6 @@ class PipelineConfigLoader:
         config = PipelineTopologyConfig(**data)
         self._cache[pipeline_name] = config
         return config
-```
-
----
-
-## Backward Compatibility & Testing Strategy
-
-### Test Migration Approach
-
-```python
-# tests/orchestration/test_dagster_compatibility.py
-import pytest
-from Medical_KG_rev.orchestration import Orchestrator
-from Medical_KG_rev.orchestration.dagster import DagsterOrchestrator
-
-@pytest.mark.parametrize("use_dagster", [False, True])
-def test_orchestration_output_parity(use_dagster: bool, monkeypatch):
-    """Ensure Dagster produces identical outputs to legacy orchestration."""
-    monkeypatch.setenv("MK_USE_DAGSTER", str(use_dagster))
-
-    # Submit job
-    job_id = submit_test_job(tenant_id="test", dataset="clinicaltrials", item={"id": "NCT04267848"})
-
-    # Wait for completion
-    wait_for_job_completion(job_id, timeout=30)
-
-    # Validate outputs
-    document = get_document(job_id)
-    chunks = get_chunks(job_id)
-    embeddings = get_embeddings(job_id)
-
-    # Compare with expected baseline (same for both paths)
-    assert document.id == "clinicaltrials:NCT04267848"
-    assert len(chunks) >= 10  # At least 10 chunks expected
-    assert all(e.dimension == 512 for e in embeddings)  # Qwen dimension
-
-@pytest.fixture
-def legacy_orchestrator():
-    """Legacy orchestration for comparison."""
-    return Orchestrator(kafka, ledger, events)
-
-@pytest.fixture
-def dagster_orchestrator():
-    """Dagster-based orchestration."""
-    return DagsterOrchestrator(kafka, ledger, events)
-
-def test_stage_timing_parity(legacy_orchestrator, dagster_orchestrator):
-    """Ensure Dagster stage timings are within acceptable range of legacy."""
-    job_id_legacy = legacy_orchestrator.submit_job(...)
-    job_id_dagster = dagster_orchestrator.submit_job(...)
-
-    # Measure timings
-    legacy_timings = measure_stage_timings(job_id_legacy)
-    dagster_timings = measure_stage_timings(job_id_dagster)
-
-    # Allow 10% overhead for Dagster
-    for stage in ["chunk", "embed", "index"]:
-        assert dagster_timings[stage] <= legacy_timings[stage] * 1.1
 ```
 
 ---

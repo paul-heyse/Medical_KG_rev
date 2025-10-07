@@ -1,6 +1,144 @@
 # Implementation Tasks: DAG-Based Orchestration Pipeline
 
-## 1. Foundation & Dependencies
+## CRITICAL: Hard Cutover Strategy
+
+**No Legacy Compatibility** - This is a complete replacement, not a migration:
+
+- ❌ No feature flags (`MK_USE_DAGSTER` removed from scope)
+- ❌ No compatibility shims or legacy code preservation
+- ❌ No gradual rollout or A/B testing
+- ✅ Delete legacy orchestration in same commits as new implementation
+- ✅ Single feature branch with full replacement
+- ✅ Rollback = revert entire branch (not toggle back to legacy)
+
+---
+
+## 1. Legacy Code Decommissioning Plan
+
+**Purpose**: Systematically eliminate all bespoke orchestration code being replaced by Dagster/Haystack
+
+### 1.1 Legacy Code Inventory (Audit Phase)
+
+- [ ] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
+  - [ ] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
+  - [ ] `worker.py` (lines 62-110) - Replace with Dagster ops
+  - [ ] `pipeline.py` - Replace with YAML topology configs
+  - [ ] `profiles.py` - Replace with per-pipeline YAML configs
+- [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
+  - [ ] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
+  - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
+  - [ ] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
+- [ ] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
+  - File paths to delete
+  - Imports to update
+  - Tests to delete/replace
+  - Documentation to update
+
+### 1.2 Dependency Analysis (Pre-Delete Validation)
+
+- [ ] 1.2.1 Run `grep -r "from.*orchestrator import" src/` to find all imports of legacy orchestrator
+- [ ] 1.2.2 Run `grep -r "Orchestrator\(" src/` to find all instantiations
+- [ ] 1.2.3 Run `grep -r "execute_pipeline" src/` to find all calls to legacy API
+- [ ] 1.2.4 Run `grep -r "IngestWorker\|MappingWorker" src/` to find worker usage
+- [ ] 1.2.5 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
+
+### 1.3 Delegation to Open-Source Libraries (Validation)
+
+- [ ] 1.3.1 **Chunking**: Verify all chunking logic moved to Haystack `DocumentSplitter`
+  - [ ] Audit: `src/Medical_KG_rev/services/retrieval/chunking.py` - which methods stay?
+  - [ ] Decision: Keep profile detection, delegate splitting to Haystack
+  - [ ] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
+  - [ ] Verify: All chunking tests pass with Haystack backend
+- [ ] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
+  - [ ] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
+  - [ ] Decision: Keep namespace management, delegate embedding to Haystack
+  - [ ] Delete: Custom embedding loops, batch processing logic (Haystack handles)
+  - [ ] Verify: GPU fail-fast preserved in Haystack wrapper
+- [ ] 1.3.3 **Retry Logic**: Verify all retries use tenacity decorators
+  - [ ] Audit: Search for `for attempt in range(max_retries)` patterns
+  - [ ] Decision: Delete all custom retry loops
+  - [ ] Replace: With `@retry_on_failure` decorator from resilience policies
+  - [ ] Verify: Retry behavior identical (exponential backoff, jitter)
+- [ ] 1.3.4 **Circuit Breakers**: Verify all failure handling uses pybreaker
+  - [ ] Audit: Search for custom failure counting logic
+  - [ ] Decision: Delete all bespoke circuit breaker implementations
+  - [ ] Replace: With `@circuit_breaker` decorator from resilience policies
+  - [ ] Verify: Circuit state transitions match expected behavior
+- [ ] 1.3.5 **Rate Limiting**: Verify all throttling uses aiolimiter
+  - [ ] Audit: Search for `time.sleep()` or custom rate limit logic
+  - [ ] Decision: Delete all bespoke rate limiting
+  - [ ] Replace: With `@rate_limit` decorator from resilience policies
+  - [ ] Verify: Request rates honor configured limits
+
+### 1.4 Atomic Deletion (Commit Strategy)
+
+- [ ] 1.4.1 Create commit plan with atomic deletions:
+  - [ ] Commit 1: Add Dagster jobs + delete `orchestrator.py` + delete `worker.py`
+  - [ ] Commit 2: Add HaystackChunker + delete custom chunker implementations
+  - [ ] Commit 3: Add HaystackEmbedder + delete custom embedding loops
+  - [ ] Commit 4: Add resilience decorators + delete all custom retry/circuit breaker logic
+  - [ ] Commit 5: Add HaystackIndexWriter + delete `indexing_service.py`
+  - [ ] Commit 6: Update all imports to point to new implementations
+  - [ ] Commit 7: Delete all legacy tests, add new Dagster/Haystack tests
+- [ ] 1.4.2 Run full test suite after each commit to ensure no regressions
+- [ ] 1.4.3 Document deleted code statistics in commit messages (lines removed, files deleted)
+
+### 1.5 Import Cleanup (Post-Delete)
+
+- [ ] 1.5.1 Update `src/Medical_KG_rev/orchestration/__init__.py`:
+  - [ ] Remove: `from .orchestrator import Orchestrator, OrchestrationError`
+  - [ ] Remove: `from .worker import IngestWorker, MappingWorker`
+  - [ ] Add: `from .dagster import DagsterOrchestrator, submit_to_dagster`
+- [ ] 1.5.2 Update `src/Medical_KG_rev/gateway/services.py`:
+  - [ ] Remove: `self.orchestrator = Orchestrator(...)`
+  - [ ] Add: `self.orchestrator = DagsterOrchestrator(...)`
+- [ ] 1.5.3 Run `ruff check --select F401` to find unused imports
+- [ ] 1.5.4 Run `mypy src/` to verify no type errors from deletions
+
+### 1.6 Test Migration (Delete and Replace)
+
+- [ ] 1.6.1 Delete legacy orchestration tests:
+  - [ ] `tests/orchestration/test_orchestrator.py` (legacy API tests)
+  - [ ] `tests/orchestration/test_workers.py` (worker-specific tests)
+  - [ ] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
+- [ ] 1.6.2 Create new Dagster tests:
+  - [ ] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
+  - [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
+  - [ ] `tests/orchestration/test_stage_contracts.py` (Protocol compliance)
+- [ ] 1.6.3 Verify test coverage ≥90% for new orchestration code
+- [ ] 1.6.4 Delete all references to `Orchestrator` in test fixtures
+
+### 1.7 Documentation Updates (Reflect Deletions)
+
+- [ ] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+  - [ ] Remove: Section 6.2 "Legacy Pipeline Stages"
+  - [ ] Add: Section 6.2 "Dagster Job Definitions"
+  - [ ] Remove: All references to `Orchestrator.execute_pipeline`
+  - [ ] Add: All references to `submit_to_dagster`
+- [ ] 1.7.2 Update `docs/guides/orchestration-pipelines.md`:
+  - [ ] Remove: Legacy examples with hardcoded stages
+  - [ ] Add: YAML topology examples with Dagster
+- [ ] 1.7.3 Update `README.md`:
+  - [ ] Remove: "Start background workers" (no longer needed)
+  - [ ] Add: "Start Dagster daemon" command
+- [ ] 1.7.4 Create `DELETED_CODE.md` documenting what was removed and why
+
+### 1.8 Codebase Size Validation
+
+- [ ] 1.8.1 Measure codebase before changes:
+  - [ ] Run `cloc src/Medical_KG_rev/orchestration/ src/Medical_KG_rev/services/` (baseline)
+  - [ ] Record: Total lines of Python code, number of files
+- [ ] 1.8.2 Measure codebase after changes:
+  - [ ] Run `cloc` on same paths (post-deletion)
+  - [ ] Record: Lines removed, files deleted, net reduction
+- [ ] 1.8.3 Validate codebase shrinkage:
+  - [ ] Assert: Total lines reduced by ≥30% (bespoke → library delegation)
+  - [ ] Assert: Number of files reduced by ≥20% (consolidation)
+  - [ ] Document: Actual numbers in `CODEBASE_REDUCTION_REPORT.md`
+
+---
+
+## 2. Foundation & Dependencies
 
 - [ ] 1.1 Add **dagster>=1.5.0** to `requirements.txt` and `pyproject.toml`
 - [ ] 1.2 Add **haystack-ai>=2.0.0** with OpenSearch and FAISS extras
@@ -247,18 +385,18 @@
 - [ ] 15.5 Update CI/CD to run Dagster tests
 - [ ] 15.6 Create runbook for Dagster operations (start/stop, scaling, troubleshooting)
 
-## 16. Rollout & Validation
+## 16. Production Deployment
 
-- [ ] 16.1 Phase 1: Enable Dagster for non-production tenant (feature flag on)
+- [ ] 16.1 Deploy to production with feature branch merge (no legacy code remains)
 - [ ] 16.2 Validate auto pipeline end-to-end with ClinicalTrials.gov adapter
 - [ ] 16.3 Validate PDF two-phase pipeline with PMC full-text source
-- [ ] 16.4 Performance comparison: legacy vs Dagster (throughput, latency, resource usage)
-- [ ] 16.5 Phase 2: Enable Dagster for 50% of production traffic (canary deployment)
-- [ ] 16.6 Monitor CloudEvents stream, Prometheus metrics, error rates
-- [ ] 16.7 Phase 3: Enable Dagster for 100% of production traffic
-- [ ] 16.8 Phase 4: Deprecate legacy orchestration (v0.3.0 release)
-- [ ] 16.9 Remove legacy code after 1 release cycle of Dagster stability
-- [ ] 16.10 Conduct retrospective and document lessons learned
+- [ ] 16.4 Monitor CloudEvents stream, Prometheus metrics, error rates for 24 hours
+- [ ] 16.5 Verify Dagster UI accessible, sensors running, jobs completing
+- [ ] 16.6 Performance validation: throughput ≥100 docs/sec, P95 latency <500ms
+- [ ] 16.7 Codebase validation: confirm ≥30% code reduction achieved
+- [ ] 16.8 Emergency rollback plan: revert entire feature branch if critical issues within 48 hours
+- [ ] 16.9 Conduct retrospective and document lessons learned
+- [ ] 16.10 Update `CODEBASE_REDUCTION_REPORT.md` with final metrics
 
 ## 17. Dependency Management & Version Pinning
 
@@ -292,57 +430,44 @@
 - [ ] 18.7 Create error runbook with troubleshooting steps for common failures
 - [ ] 18.8 Write tests for each error scenario (timeout, GPU OOM, gate timeout)
 
-## 19. Rollback Procedures
+## 19. Operational Runbook
 
-- [ ] 19.1 Document step-by-step rollback from Dagster to legacy orchestration:
-  - [ ] 19.1.1 Set feature flag `MK_USE_DAGSTER=false`
-  - [ ] 19.1.2 Restart gateway and worker services
-  - [ ] 19.1.3 Verify legacy orchestration resumes processing queued jobs
-  - [ ] 19.1.4 Stop Dagster daemon and webserver (no data loss)
-- [ ] 19.2 Test rollback procedure in staging environment
-- [ ] 19.3 Define rollback triggers (error rate >5%, P95 latency >2x baseline)
-- [ ] 19.4 Create automated rollback script (`scripts/rollback_to_legacy.sh`)
-- [ ] 19.5 Document data consistency checks post-rollback
-- [ ] 19.6 Test rollback with jobs in-flight (graceful termination)
-- [ ] 19.7 Create communication plan for stakeholders during rollback
+- [ ] 19.1 Create `docs/runbooks/dagster-operations.md` with sections:
+  - [ ] 19.1.1 Starting/stopping Dagster services (webserver, daemon)
+  - [ ] 19.1.2 Checking Dagster health (UI, API, Prometheus metrics)
+  - [ ] 19.1.3 Investigating failed jobs (UI logs, CloudEvents, ledger state)
+  - [ ] 19.1.4 Manually triggering post-PDF stages (sensor override)
+  - [ ] 19.1.5 Draining job queue before maintenance
+  - [ ] 19.1.6 Recovering from Dagster database corruption
+  - [ ] 19.1.7 Emergency rollback: reverting feature branch (Git revert procedure)
+- [ ] 19.2 Create troubleshooting decision tree for common issues:
+  - [ ] 19.2.1 Job stuck at PDF gate → Check MinerU status, ledger state, sensor logs
+  - [ ] 19.2.2 High retry rates → Check circuit breaker state, upstream API health
+  - [ ] 19.2.3 CloudEvents not appearing → Check Kafka topic, consumer lag
+  - [ ] 19.2.4 GPU stage failures → Check GPU availability, vLLM endpoint health
+- [ ] 19.3 Define on-call escalation paths for Dagster issues
+- [ ] 19.4 Create runbook for Dagster version upgrades
+- [ ] 19.5 Document backup/restore procedures for Dagster PostgreSQL
+- [ ] 19.6 Create runbook for Dagster UI access control (adding/removing users)
 
-## 20. Operational Runbook
+## 20. Monitoring & Alerting Specifications
 
-- [ ] 20.1 Create `docs/runbooks/dagster-operations.md` with sections:
-  - [ ] 20.1.1 Starting/stopping Dagster services (webserver, daemon)
-  - [ ] 20.1.2 Checking Dagster health (UI, API, Prometheus metrics)
-  - [ ] 20.1.3 Investigating failed jobs (UI logs, CloudEvents, ledger state)
-  - [ ] 20.1.4 Manually triggering post-PDF stages (sensor override)
-  - [ ] 20.1.5 Draining job queue before maintenance
-  - [ ] 20.1.6 Recovering from Dagster database corruption
-- [ ] 20.2 Create troubleshooting decision tree for common issues:
-  - [ ] 20.2.1 Job stuck at PDF gate → Check MinerU status, ledger state, sensor logs
-  - [ ] 20.2.2 High retry rates → Check circuit breaker state, upstream API health
-  - [ ] 20.2.3 CloudEvents not appearing → Check Kafka topic, consumer lag
-  - [ ] 20.2.4 GPU stage failures → Check GPU availability, vLLM endpoint health
-- [ ] 20.3 Define on-call escalation paths for Dagster issues
-- [ ] 20.4 Create runbook for Dagster version upgrades
-- [ ] 20.5 Document backup/restore procedures for Dagster PostgreSQL
-- [ ] 20.6 Create runbook for Dagster UI access control (adding/removing users)
+- [ ] 20.1 Create Grafana dashboard `Medical_KG_Dagster_Overview.json`:
+  - [ ] 20.1.1 Panel: Job throughput (jobs/second) by pipeline
+  - [ ] 20.1.2 Panel: P50/P95/P99 latency per stage
+  - [ ] 20.1.3 Panel: Retry rate by stage
+  - [ ] 20.1.4 Panel: Circuit breaker state (open/closed/half-open)
+  - [ ] 20.1.5 Panel: Sensor activity (poll rate, trigger count)
+  - [ ] 20.1.6 Panel: Job Ledger state distribution
+- [ ] 20.2 Define Prometheus alerting rules:
+  - [ ] 20.2.1 Alert: `DagsterJobFailureRateHigh` (>5% over 5 minutes)
+  - [ ] 20.2.2 Alert: `DagsterStageLatencyHigh` (P95 > SLO for 10 minutes)
+  - [ ] 20.2.3 Alert: `DagsterSensorStalled` (no triggers for 5 minutes)
+  - [ ] 20.2.4 Alert: `DagsterCircuitBreakerOpen` (any circuit open for >5 minutes)
+  - [ ] 20.2.5 Alert: `DagsterJobQueueBacklog` (>100 jobs queued)
+- [ ] 20.3 Integrate CloudEvents with existing log aggregation (Loki)
+- [ ] 20.4 Create CloudEvent-based alerts for critical failures
+- [ ] 20.5 Set up PagerDuty integration for critical Dagster alerts
+- [ ] 20.6 Define SLO dashboards for Dagster orchestration (99.9% availability)
 
-## 21. Monitoring & Alerting Specifications
-
-- [ ] 21.1 Create Grafana dashboard `Medical_KG_Dagster_Overview.json`:
-  - [ ] 21.1.1 Panel: Job throughput (jobs/second) by pipeline
-  - [ ] 21.1.2 Panel: P50/P95/P99 latency per stage
-  - [ ] 21.1.3 Panel: Retry rate by stage
-  - [ ] 21.1.4 Panel: Circuit breaker state (open/closed/half-open)
-  - [ ] 21.1.5 Panel: Sensor activity (poll rate, trigger count)
-  - [ ] 21.1.6 Panel: Job Ledger state distribution
-- [ ] 21.2 Define Prometheus alerting rules:
-  - [ ] 21.2.1 Alert: `DagsterJobFailureRateHigh` (>5% over 5 minutes)
-  - [ ] 21.2.2 Alert: `DagsterStageLatencyHigh` (P95 > SLO for 10 minutes)
-  - [ ] 21.2.3 Alert: `DagsterSensorStalled` (no triggers for 5 minutes)
-  - [ ] 21.2.4 Alert: `DagsterCircuitBreakerOpen` (any circuit open for >5 minutes)
-  - [ ] 21.2.5 Alert: `DagsterJobQueueBacklog` (>100 jobs queued)
-- [ ] 21.3 Integrate CloudEvents with existing log aggregation (Loki)
-- [ ] 21.4 Create CloudEvent-based alerts for critical failures
-- [ ] 21.5 Set up PagerDuty integration for critical Dagster alerts
-- [ ] 21.6 Define SLO dashboards for Dagster orchestration (99.9% availability)
-
-**Total Tasks**: 228 across 21 work streams
+**Total Tasks**: 215 across 20 work streams

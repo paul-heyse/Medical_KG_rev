@@ -17,6 +17,9 @@ from ..utils.records import RecordBuilder
 logger = structlog.get_logger(__name__)
 
 
+logger = structlog.get_logger(__name__)
+
+
 def _token_vectors(tokens: list[str], dim: int) -> tuple[list[list[float]], list[int]]:
     vectors: list[list[float]] = []
     positions: list[int] = []

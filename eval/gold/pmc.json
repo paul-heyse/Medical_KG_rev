@@ -1,0 +1,282 @@
+[
+  {
+    "doc_id": "pmc-001",
+    "source": "pmc",
+    "title": "Pmc Sample 1",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-002",
+    "source": "pmc",
+    "title": "Pmc Sample 2",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-003",
+    "source": "pmc",
+    "title": "Pmc Sample 3",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-004",
+    "source": "pmc",
+    "title": "Pmc Sample 4",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-005",
+    "source": "pmc",
+    "title": "Pmc Sample 5",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-006",
+    "source": "pmc",
+    "title": "Pmc Sample 6",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-007",
+    "source": "pmc",
+    "title": "Pmc Sample 7",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-008",
+    "source": "pmc",
+    "title": "Pmc Sample 8",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-009",
+    "source": "pmc",
+    "title": "Pmc Sample 9",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "pmc-010",
+    "source": "pmc",
+    "title": "Pmc Sample 10",
+    "text": "Introduction outlines oncology background and unmet need.\nMethods describe cohort selection and dosing schedule.\nResults highlight response rates and biomarker shifts.\nDiscussion interprets findings for clinical translation.",
+    "boundaries": [
+      0,
+      58,
+      113,
+      168
+    ],
+    "queries": [
+      {
+        "text": "response rate",
+        "keywords": [
+          "response",
+          "rates"
+        ]
+      },
+      {
+        "text": "dosing schedule",
+        "keywords": [
+          "dosing",
+          "schedule"
+        ]
+      }
+    ]
+  }
+]

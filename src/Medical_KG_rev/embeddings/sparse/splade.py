@@ -31,6 +31,23 @@ def build_rank_features_mapping(namespace: str) -> Mapping[str, object]:
     }
 
 
+logger = structlog.get_logger(__name__)
+
+
+def build_rank_features_mapping(namespace: str) -> Mapping[str, object]:
+    """Generate OpenSearch rank_features mapping for a namespace."""
+
+    field_name = namespace.replace(".", "_")
+    return {
+        "properties": {
+            field_name: {
+                "type": "rank_features",
+                "positive_score_impact": True,
+            }
+        }
+    }
+
+
 @dataclass(slots=True)
 class SPLADEDocEmbedder:
     config: EmbedderConfig

@@ -15,6 +15,9 @@ from ..utils.records import RecordBuilder
 logger = structlog.get_logger(__name__)
 
 
+logger = structlog.get_logger(__name__)
+
+
 @dataclass(slots=True)
 class OpenSearchNeuralSparseEmbedder:
     config: EmbedderConfig

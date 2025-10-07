@@ -78,6 +78,8 @@ class SentenceTransformersEmbedder:
         self,
         request: EmbeddingRequest,
         vectors: list[list[float]],
+        *,
+        offset: int = 0,
     ) -> list[EmbeddingRecord]:
         builder = RecordBuilder(self.config, normalized_override=self._normalize)
         return builder.dense(
@@ -86,6 +88,28 @@ class SentenceTransformersEmbedder:
             dim=self._dim,
             extra_metadata={"onnx_optimized": self._onnx_enabled},
         )
+
+    def _log_progress(self, processed: int, total: int) -> None:
+        if self._progress_interval <= 0:
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
+            )
+            return
+        if processed in self._progress_history:
+            return
+        if processed % self._progress_interval == 0 or processed == total:
+            self._progress_history.append(processed)
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
+            )
 
     def _log_progress(self, processed: int, total: int) -> None:
         if self._progress_interval <= 0:

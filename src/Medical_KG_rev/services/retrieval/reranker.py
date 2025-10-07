@@ -1,17 +1,37 @@
-"""Cross-encoder reranking with graceful fallback."""
+"""Compatibility wrapper around the new reranking engine."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass, field
+
+from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.services.reranking import (
+    BatchProcessor,
+    CircuitBreaker,
+    RerankCacheManager,
+    RerankerFactory,
+    RerankingEngine,
+    ScoredDocument,
+)
 
 
 @dataclass(slots=True)
 class CrossEncoderReranker:
-    model_name: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"
-    batch_size: int = 16
-    _model: object | None = field(default=None, init=False, repr=False)
-    _load_error: str | None = field(default=None, init=False, repr=False)
+    """Thin adapter preserving the historical API used by the gateway."""
+
+    reranker_id: str = "cross_encoder:bge"
+    batch_size: int = 32
+    cache_ttl: int = 3600
+    _engine: RerankingEngine = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._engine = RerankingEngine(
+            factory=RerankerFactory(),
+            cache=RerankCacheManager(ttl_seconds=self.cache_ttl),
+            batch_processor=BatchProcessor(max_batch_size=self.batch_size),
+            circuit_breaker=CircuitBreaker(),
+        )
 
     def rerank(
         self,
@@ -20,60 +40,62 @@ class CrossEncoderReranker:
         *,
         text_field: str = "text",
         top_k: int = 10,
+        context: SecurityContext | None = None,
     ) -> tuple[list[Mapping[str, object]], MutableMapping[str, object]]:
         items = [dict(candidate) for candidate in candidates]
         if not items:
-            return [], {"model": self.model_name, "evaluated": 0, "applied": False}
-        top_k = min(top_k, len(items))
-        evaluated = items[:top_k]
-        scores = self._predict(query, evaluated, text_field)
-        for item, score in zip(evaluated, scores, strict=False):
-            item["rerank_score"] = float(score)
-        evaluated.sort(key=lambda entry: entry.get("rerank_score", 0.0), reverse=True)
-        remainder = items[top_k:]
-        ranked = evaluated + remainder
-        metrics: MutableMapping[str, object] = {
-            "model": (
-                self.model_name if self._model else f"fallback:{self._load_error or 'lexical'}"
-            ),
-            "evaluated": len(evaluated),
-            "applied": True,
-        }
+            return [], {"model": self.reranker_id, "evaluated": 0, "applied": False}
+
+        security_context = context or SecurityContext(
+            subject="system",
+            tenant_id="system",
+            scopes={"*", "retrieve:read"},
+        )
+
+        documents: list[ScoredDocument] = []
+        for item in items:
+            doc_id = str(item.get("id") or item.get("doc_id") or len(documents))
+            text = str(item.get(text_field, ""))
+            metadata = dict(item)
+            metadata.pop(text_field, None)
+            score = float(item.get("score", 0.0))
+            tenant = str(metadata.get("tenant_id", security_context.tenant_id))
+            documents.append(
+                ScoredDocument(
+                    doc_id=doc_id,
+                    content=text,
+                    tenant_id=tenant,
+                    source=str(metadata.get("source", "candidate")),
+                    strategy_scores={"initial": score},
+                    metadata=metadata,
+                    highlights=list(metadata.get("highlights", []))
+                    if isinstance(metadata.get("highlights"), list)
+                    else [],
+                    score=score,
+                )
+            )
+
+        response = self._engine.rerank(
+            context=security_context,
+            query=query,
+            documents=documents,
+            reranker_id=self.reranker_id,
+            top_k=top_k,
+        )
+        score_map = {result.doc_id: result.score for result in response.results}
+
+        ranked: list[Mapping[str, object]] = []
+        for document in documents:
+            payload = dict(document.metadata)
+            payload.setdefault("id", document.doc_id)
+            payload.setdefault("text", document.content)
+            payload.setdefault("score", document.score)
+            if document.doc_id in score_map:
+                payload["rerank_score"] = score_map[document.doc_id]
+            ranked.append(payload)
+        ranked.sort(key=lambda entry: entry.get("rerank_score", entry.get("score", 0.0)), reverse=True)
+
+        metrics: MutableMapping[str, object] = dict(response.metrics)
+        metrics.setdefault("model", self.reranker_id)
+        metrics.setdefault("applied", True)
         return ranked, metrics
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _predict(
-        self, query: str, candidates: Sequence[Mapping[str, object]], text_field: str
-    ) -> list[float]:
-        model = self._ensure_model()
-        if model is None:
-            return self._lexical_overlap(query, candidates, text_field)
-        pairs = [(query, str(candidate.get(text_field, ""))) for candidate in candidates]
-        predictions = model.predict(pairs, batch_size=self.batch_size)
-        return [float(score) for score in predictions]
-
-    def _lexical_overlap(
-        self, query: str, candidates: Sequence[Mapping[str, object]], text_field: str
-    ) -> list[float]:
-        query_terms = set(query.lower().split())
-        scores: list[float] = []
-        for candidate in candidates:
-            text = str(candidate.get(text_field, ""))
-            terms = set(text.lower().split())
-            overlap = len(query_terms & terms)
-            scores.append(overlap / max(len(query_terms), 1))
-        return scores
-
-    def _ensure_model(self):
-        if self._model is not None or self._load_error:
-            return self._model
-        try:
-            from sentence_transformers import CrossEncoder  # type: ignore
-
-            self._model = CrossEncoder(self.model_name)
-        except Exception as exc:  # pragma: no cover - model download not required in tests
-            self._load_error = str(exc)
-            self._model = None
-        return self._model

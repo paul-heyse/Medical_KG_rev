@@ -45,3 +45,21 @@ class SlidingWindowChunker(ContextualChunker):
             "overlap_ratio": self.overlap_ratio,
             "min_tokens": self.min_tokens,
         }
+
+    def _merge_short_segments(self, segments: list[Segment]) -> list[Segment]:
+        if self.min_tokens <= 0 or len(segments) <= 1:
+            return segments
+        merged: list[Segment] = []
+        for segment in segments:
+            token_total = sum(ctx.token_count for ctx in segment.contexts)
+            if merged and token_total < self.min_tokens:
+                previous = merged.pop()
+                merged.append(
+                    Segment(
+                        contexts=list(previous.contexts) + list(segment.contexts),
+                        metadata=previous.metadata,
+                    )
+                )
+            else:
+                merged.append(segment)
+        return merged

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from typing import Mapping
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
@@ -121,6 +122,136 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+ORCHESTRATION_OPERATIONS = Counter(
+    "orchestration_operations_total",
+    "Total orchestration operations grouped by operation/tenant/status",
+    labelnames=("operation", "tenant", "status"),
+)
+ORCHESTRATION_END_TO_END_DURATION = Histogram(
+    "orchestration_end_to_end_duration_seconds",
+    "Distribution of end-to-end orchestration latency",
+    labelnames=("operation", "pipeline"),
+    buckets=(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
+)
+ORCHESTRATION_STAGE_DURATION = Histogram(
+    "orchestration_stage_duration_seconds",
+    "Latency distribution per orchestration stage",
+    labelnames=("operation", "stage"),
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5),
+)
+ORCHESTRATION_ERRORS = Counter(
+    "orchestration_errors_total",
+    "Total orchestration errors grouped by operation/stage/type",
+    labelnames=("operation", "stage", "error_type"),
+)
+ORCHESTRATION_QUEUE_DEPTH = Gauge(
+    "orchestration_job_queue_depth",
+    "Number of queued jobs per orchestration stage",
+    labelnames=("stage",),
+)
+ORCHESTRATION_CIRCUIT_STATE = Gauge(
+    "orchestration_circuit_breaker_state",
+    "Circuit breaker state for orchestration dependencies",
+    labelnames=("service",),
+)
+ORCHESTRATION_DLQ_EVENTS = Counter(
+    "orchestration_dead_letter_total",
+    "Total messages routed to orchestration dead letter queue",
+    labelnames=("stage", "error_type"),
+)
+ORCHESTRATION_DLQ_DEPTH = Gauge(
+    "orchestration_dead_letter_queue_depth",
+    "Depth of the orchestration dead letter queue",
+)
+INGESTION_DOCUMENTS = Counter(
+    "orchestration_ingestion_documents_total",
+    "Total documents submitted to ingestion pipelines",
+    labelnames=("pipeline",),
+)
+INGESTION_STAGE_LATENCY = Histogram(
+    "orchestration_ingestion_stage_latency_seconds",
+    "Latency per ingestion stage",
+    labelnames=("stage",),
+    buckets=(0.01, 0.05, 0.1, 0.5, 1, 2, 5),
+)
+INGESTION_STAGE_ERRORS = Counter(
+    "orchestration_ingestion_stage_errors_total",
+    "Errors observed per ingestion stage",
+    labelnames=("stage", "error_type"),
+)
+QUERY_OPERATIONS = Counter(
+    "orchestration_query_operations_total",
+    "Count of query pipeline operations by status",
+    labelnames=("pipeline", "tenant", "status"),
+)
+QUERY_LATENCY = Histogram(
+    "orchestration_query_latency_seconds",
+    "End-to-end query latency",
+    labelnames=("pipeline",),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1, 2),
+)
+JOB_STATUS = Gauge(
+    "orchestration_jobs_total",
+    "Job ledger counts per status",
+    labelnames=("status",),
+)
+ORCHESTRATION_TIMEOUTS = Counter(
+    "orchestration_stage_timeouts_total",
+    "Number of stages exceeding timeout",
+    labelnames=("operation", "stage"),
+)
+RERANK_OPERATIONS = Counter(
+    "reranking_operations_total",
+    "Total reranking invocations",
+    labelnames=("reranker", "tenant", "batch_size"),
+)
+RERANK_DURATION = Histogram(
+    "reranking_duration_seconds",
+    "Distribution of reranking latencies",
+    labelnames=("reranker", "tenant"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
+RERANK_ERRORS = Counter(
+    "reranking_errors_total",
+    "Number of reranking failures grouped by type",
+    labelnames=("reranker", "error_type"),
+)
+RERANK_PAIRS = Counter(
+    "reranking_pairs_processed_total",
+    "Number of query/document pairs scored",
+    labelnames=("reranker",),
+)
+RERANK_CIRCUIT = Gauge(
+    "reranking_circuit_breaker_state",
+    "Circuit breaker state per reranker (1=open)",
+    labelnames=("reranker", "tenant"),
+)
+RERANK_GPU = Gauge(
+    "reranking_gpu_utilization_percent",
+    "GPU utilisation while reranking",
+    labelnames=("reranker",),
+)
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: "Request") -> str:
@@ -190,6 +321,30 @@ def register_metrics(app: "FastAPI", settings: AppSettings) -> None:
 
         if token is not None:
             reset_correlation_id(token)
+
+
+def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
+    labelled = metric.labels(*labels)
+    correlation_id = get_correlation_id()
+    kwargs: dict[str, object] = {}
+    if correlation_id:
+        try:  # pragma: no cover - exemplar support optional
+            kwargs["exemplar"] = {"correlation_id": correlation_id}
+        except TypeError:
+            kwargs = {}
+    labelled.observe(max(value, 0.0), **kwargs)
+
+
+def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.0) -> None:
+    labelled = metric.labels(*labels)
+    correlation_id = get_correlation_id()
+    kwargs: dict[str, object] = {}
+    if correlation_id:
+        try:  # pragma: no cover - exemplar support optional
+            kwargs["exemplar"] = {"correlation_id": correlation_id}
+        except TypeError:
+            kwargs = {}
+    labelled.inc(amount, **kwargs)
         return response
 
     @app.get(path, include_in_schema=False)

@@ -97,6 +97,27 @@ RERANK_GPU = Gauge(
     "GPU utilisation while reranking",
     labelnames=("reranker",),
 )
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: Request) -> str:
@@ -172,22 +193,13 @@ def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
 
 
-def record_reranking_operation(
-    reranker: str,
-    tenant: str,
-    batch_size: int,
-    duration_seconds: float,
-    pairs: int,
-    circuit_state: str,
-    gpu_utilisation: float | None = None,
-) -> None:
-    RERANK_OPERATIONS.labels(reranker, tenant, str(batch_size)).inc()
-    RERANK_DURATION.labels(reranker, tenant).observe(max(duration_seconds, 0.0))
-    RERANK_PAIRS.labels(reranker).inc(max(pairs, 0))
-    RERANK_CIRCUIT.labels(reranker, tenant).set(1.0 if circuit_state == "open" else 0.0)
-    if gpu_utilisation is not None:
-        RERANK_GPU.labels(reranker).set(max(gpu_utilisation, 0.0))
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
 
 
-def record_reranking_error(reranker: str, error_type: str) -> None:
-    RERANK_ERRORS.labels(reranker, error_type).inc()
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
+
+
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

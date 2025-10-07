@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
+from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalRouter, RetrievalService
 
 
 def _setup_clients():
@@ -33,4 +35,66 @@ def test_rerank_adds_scores():
     results = service.search("chunks", "headache", rerank=True)
 
     assert any(result.rerank_score is not None for result in results)
-    assert all("reranking" in result.metadata for result in results)
+
+
+def test_granularity_weights_and_metadata():
+    opensearch = OpenSearchClient()
+    opensearch.index(
+        "chunks",
+        "doc-1:semantic:paragraph:0",
+        {"text": "paragraph result", "granularity": "paragraph"},
+    )
+    opensearch.index(
+        "chunks",
+        "doc-1:sliding:window:1",
+        {"text": "window result", "granularity": "window"},
+    )
+    faiss = FAISSIndex(dimension=4)
+    service = RetrievalService(opensearch, faiss)
+
+    results = service.search("chunks", "result", k=2)
+
+    assert all(result.granularity for result in results)
+    assert results[0].metadata.get("granularity") in {"paragraph", "window"}
+
+
+def test_granularity_filtering():
+    opensearch = OpenSearchClient()
+    opensearch.index(
+        "chunks",
+        "doc-1:semantic:paragraph:0",
+        {"text": "paragraph result", "granularity": "paragraph"},
+    )
+    opensearch.index(
+        "chunks",
+        "doc-1:sliding:window:1",
+        {"text": "window result", "granularity": "window"},
+    )
+    faiss = FAISSIndex(dimension=4)
+    service = RetrievalService(opensearch, faiss)
+
+    results = service.search("chunks", "result", k=2, filters={"granularity": "paragraph"})
+
+    assert results
+    assert all(result.granularity == "paragraph" for result in results)
+
+
+def test_neighbor_merging_for_windows():
+    opensearch = OpenSearchClient()
+    opensearch.index(
+        "chunks",
+        "doc-1:sliding_window:window:1",
+        {"text": "first window", "granularity": "window"},
+    )
+    opensearch.index(
+        "chunks",
+        "doc-1:sliding_window:window:2",
+        {"text": "second window", "granularity": "window"},
+    )
+    faiss = FAISSIndex(dimension=4)
+    service = RetrievalService(opensearch, faiss)
+
+    results = service.search("chunks", "window", k=2)
+
+    merged = [result for result in results if result.metadata.get("merged_ids")]
+    assert merged

@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from Medical_KG_rev.config.vector_store import load_vector_store_config
+from Medical_KG_rev.config.vector_store import (
+    detect_backend_capabilities,
+    load_vector_store_config,
+    migrate_vector_store_config,
+)
+from Medical_KG_rev.services.vector_store.stores.memory import InMemoryVectorStore
 
 
 def test_load_vector_store_config(tmp_path: Path) -> None:
@@ -57,3 +62,23 @@ tenants:
     )
     with pytest.raises(ValueError):
         load_vector_store_config(config_path)
+
+
+
+def test_migrate_legacy_structure() -> None:
+    raw = {
+        "vector_store": {
+            "default_driver": "memory",
+            "namespaces": [
+                {"name": "default", "params": {"dimension": 64}},
+            ],
+        }
+    }
+    migrated = migrate_vector_store_config(raw)
+    assert migrated["tenants"][0]["namespaces"][0]["driver"] == "memory"
+
+
+def test_detect_backend_capabilities_from_delegate() -> None:
+    store = InMemoryVectorStore()
+    capabilities = detect_backend_capabilities(store)
+    assert capabilities["supports_hybrid"] is True

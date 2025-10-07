@@ -88,3 +88,32 @@ class UpsertResult:
     namespace: str
     upserted: int
     version: str
+
+
+@dataclass(slots=True, frozen=True)
+class SnapshotInfo:
+    """Metadata describing a created snapshot or backup artifact."""
+
+    namespace: str
+    path: str
+    size_bytes: int | None = None
+    created_at: float | None = None
+    metadata: Mapping[str, object] | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RebuildReport:
+    """Details returned when a namespace index is retrained or rebuilt."""
+
+    namespace: str
+    rebuilt: bool
+    details: Mapping[str, object] | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class HealthStatus:
+    """Represents readiness information for a namespace or backend."""
+
+    name: str
+    healthy: bool
+    details: Mapping[str, object] | None = None

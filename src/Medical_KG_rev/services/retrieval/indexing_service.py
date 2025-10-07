@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
+from Medical_KG_rev.services.reranking.pipeline.cache import RerankCacheManager
 
 from .chunking import Chunk, ChunkingOptions, ChunkingService
 from .faiss_index import FAISSIndex
@@ -26,12 +27,14 @@ class IndexingService:
         opensearch: OpenSearchClient,
         faiss: FAISSIndex,
         chunk_index: str = "chunks",
+        rerank_cache: RerankCacheManager | None = None,
     ) -> None:
         self.chunking = chunking
         self.embedding_worker = embedding_worker
         self.opensearch = opensearch
         self.faiss = faiss
         self.chunk_index = chunk_index
+        self.rerank_cache = rerank_cache
 
     def index_document(
         self,
@@ -49,15 +52,14 @@ class IndexingService:
             tenant_id=tenant_id,
         )
         if incremental:
-            chunks = [chunk for chunk in chunks if getattr(chunk, "chunk_id", getattr(chunk, "id", "")) not in self.faiss.ids]
+            chunks = [chunk for chunk in chunks if chunk.chunk_id not in self.faiss.ids]
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
         self._embed_and_index(tenant_id, chunks)
-        return IndexingResult(
-            document_id=document_id,
-            chunk_ids=[getattr(chunk, "chunk_id", getattr(chunk, "id", "")) for chunk in chunks],
-        )
+        if self.rerank_cache is not None:
+            self.rerank_cache.invalidate(tenant_id, [document_id])
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []

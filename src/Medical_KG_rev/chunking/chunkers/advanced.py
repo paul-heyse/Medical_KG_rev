@@ -1,4 +1,4 @@
-"""Advanced and discourse oriented chunkers."""
+"""Advanced chunkers that build on contextual chunking abstractions."""
 
 from __future__ import annotations
 
@@ -8,14 +8,12 @@ import math
 from typing import Iterable, Sequence
 import xml.etree.ElementTree as ET
 
-from Medical_KG_rev.models.ir import BlockType, Document
+from Medical_KG_rev.models.ir import Block, BlockType, Document
 
-from ..assembly import ChunkAssembler
+from ..base import ContextualChunker, Segment
 from ..exceptions import ChunkerConfigurationError
-from ..models import Chunk, Granularity
-from ..ports import BaseChunker
-from ..provenance import BlockContext, ProvenanceNormalizer
-from ..tokenization import TokenCounter, default_token_counter
+from ..provenance import BlockContext
+from ..tokenization import TokenCounter
 
 
 @dataclass(slots=True)
@@ -24,11 +22,13 @@ class _Community:
     score: float
 
 
-class DiscourseSegmenterChunker(BaseChunker):
+class DiscourseSegmenterChunker(ContextualChunker):
     """Chunker that approximates EDU segmentation using rhetorical connectives."""
 
     name = "discourse_segmenter"
     version = "v1"
+    default_granularity = "paragraph"
+    segment_type = "discourse"
 
     def __init__(
         self,
@@ -36,6 +36,7 @@ class DiscourseSegmenterChunker(BaseChunker):
         connectives: Sequence[str] | None = None,
         token_counter: TokenCounter | None = None,
     ) -> None:
+        super().__init__(token_counter=token_counter)
         self.connectives = [
             "however",
             "therefore",
@@ -48,37 +49,24 @@ class DiscourseSegmenterChunker(BaseChunker):
         ]
         if connectives:
             self.connectives.extend(connective.lower() for connective in connectives)
-        self.counter = token_counter or default_token_counter()
-        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
 
-    def chunk(
-        self,
-        document: Document,
-        *,
-        tenant_id: str,
-        granularity: Granularity | None = None,
-        blocks: Iterable | None = None,
-    ) -> list[Chunk]:
-        contexts = list(self.normalizer.iter_block_contexts(document))
-        if not contexts:
+    def segment_contexts(self, contexts: Iterable[BlockContext]) -> Iterable[Segment]:
+        sequence = list(contexts)
+        if not sequence:
             return []
-        assembler = ChunkAssembler(
-            document,
-            tenant_id=tenant_id,
-            chunker_name=self.name,
-            chunker_version=self.version,
-            granularity=granularity or "paragraph",
-            token_counter=self.counter,
-        )
-        boundaries = self._detect_boundaries(contexts)
-        chunks: list[Chunk] = []
+        boundaries = self._detect_boundaries(sequence)
+        segments: list[Segment] = []
         for start, end in zip(boundaries[:-1], boundaries[1:], strict=False):
-            window = contexts[start:end]
+            window = sequence[start:end]
             if not window:
                 continue
-            metadata = {"segment_type": "discourse", "connectives": self.connectives[:5]}
-            chunks.append(assembler.build(window, metadata=metadata))
-        return chunks
+            segments.append(
+                Segment(
+                    contexts=list(window),
+                    metadata={"connectives": list(self.connectives[:5])},
+                )
+            )
+        return segments
 
     def explain(self) -> dict[str, object]:
         return {"connectives": list(self.connectives)}
@@ -104,52 +92,55 @@ class DiscourseSegmenterChunker(BaseChunker):
         return sorted(set(boundaries))
 
 
-class GrobidSectionChunker(BaseChunker):
+class GrobidSectionChunker(ContextualChunker):
     """Chunker that aligns MinerU output with Grobid TEI XML sections."""
 
     name = "grobid_section"
     version = "v1"
+    default_granularity = "section"
+    segment_type = "grobid"
+    include_tables = True
 
     def __init__(self, *, token_counter: TokenCounter | None = None) -> None:
-        self.counter = token_counter or default_token_counter()
-        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
+        super().__init__(token_counter=token_counter)
 
-    def chunk(
+    def segment_document(
         self,
         document: Document,
+        contexts: Sequence[BlockContext],
         *,
-        tenant_id: str,
-        granularity: Granularity | None = None,
-        blocks: Iterable | None = None,
-    ) -> list[Chunk]:
-        tei_xml = str(document.metadata.get("tei_xml", ""))
+        blocks: Sequence[Block] | None = None,
+    ) -> Iterable[Segment]:
+        metadata = document.metadata or {}
+        tei_xml = str(metadata.get("tei_xml", ""))
         if not tei_xml.strip():
             raise ChunkerConfigurationError("Document does not provide TEI XML metadata")
         try:
             root = ET.fromstring(tei_xml)
         except ET.ParseError as exc:  # pragma: no cover - invalid TEI is rare
             raise ChunkerConfigurationError("Invalid TEI XML payload") from exc
-        sequence = list(self.normalizer.iter_block_contexts(document))
-        if not sequence:
-            return []
         section_map = self._tei_section_titles(root)
-        assembler = ChunkAssembler(
-            document,
-            tenant_id=tenant_id,
-            chunker_name=self.name,
-            chunker_version=self.version,
-            granularity=granularity or "section",
-            token_counter=self.counter,
-        )
         grouped: dict[str, list[BlockContext]] = defaultdict(list)
-        for ctx in sequence:
-            key = section_map.get(ctx.section_title.lower(), ctx.section_title.lower())
-            grouped[key].append(ctx)
-        chunks: list[Chunk] = []
-        for title, contexts in grouped.items():
-            metadata = {"segment_type": "grobid", "tei_title": title}
-            chunks.append(assembler.build(contexts, metadata=metadata))
-        return chunks
+        for ctx in contexts:
+            key = ctx.section_title.lower()
+            normalized = section_map.get(key, key)
+            grouped[normalized].append(ctx)
+        segments: list[Segment] = []
+        for title, bucket in grouped.items():
+            if not bucket:
+                continue
+            segments.append(
+                Segment(
+                    contexts=list(bucket),
+                    metadata={"tei_title": title},
+                )
+            )
+        return segments
+
+    def segment_contexts(self, contexts: Sequence[BlockContext]) -> Iterable[Segment]:
+        if not contexts:
+            return []
+        return [Segment(contexts=list(contexts))]
 
     def explain(self) -> dict[str, object]:
         return {"strategy": "grobid-tei-alignment"}
@@ -163,11 +154,14 @@ class GrobidSectionChunker(BaseChunker):
         return mapping
 
 
-class LayoutAwareChunker(BaseChunker):
+class LayoutAwareChunker(ContextualChunker):
     """Chunker that groups blocks using layout metadata from DocTR/Docling."""
 
     name = "layout_aware"
     version = "v1"
+    default_granularity = "section"
+    segment_type = "layout"
+    include_tables = True
 
     def __init__(
         self,
@@ -175,35 +169,22 @@ class LayoutAwareChunker(BaseChunker):
         token_counter: TokenCounter | None = None,
         overlap_threshold: float = 0.3,
     ) -> None:
-        self.counter = token_counter or default_token_counter()
-        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
+        super().__init__(token_counter=token_counter)
         self.overlap_threshold = overlap_threshold
 
-    def chunk(
-        self,
-        document: Document,
-        *,
-        tenant_id: str,
-        granularity: Granularity | None = None,
-        blocks: Iterable | None = None,
-    ) -> list[Chunk]:
-        contexts = list(self.normalizer.iter_block_contexts(document))
-        if not contexts:
-            return []
-        assembler = ChunkAssembler(
-            document,
-            tenant_id=tenant_id,
-            chunker_name=self.name,
-            chunker_version=self.version,
-            granularity=granularity or "section",
-            token_counter=self.counter,
-        )
-        groups = self._group_by_layout(contexts)
-        chunks: list[Chunk] = []
-        for _, bucket in sorted(groups.items()):
-            metadata = {"segment_type": "layout", "region_count": len(bucket)}
-            chunks.append(assembler.build(bucket, metadata=metadata))
-        return chunks
+    def segment_contexts(self, contexts: Iterable[BlockContext]) -> Iterable[Segment]:
+        grouped = self._group_by_layout(list(contexts))
+        segments: list[Segment] = []
+        for region_id, bucket in sorted(grouped.items()):
+            if not bucket:
+                continue
+            metadata = {
+                "region_id": region_id,
+                "region_count": len(bucket),
+                "overlap_threshold": self.overlap_threshold,
+            }
+            segments.append(Segment(contexts=list(bucket), metadata=metadata))
+        return segments
 
     def explain(self) -> dict[str, object]:
         return {"overlap_threshold": self.overlap_threshold}
@@ -211,16 +192,22 @@ class LayoutAwareChunker(BaseChunker):
     def _group_by_layout(self, contexts: Sequence[BlockContext]) -> dict[str, list[BlockContext]]:
         buckets: dict[str, list[BlockContext]] = defaultdict(list)
         for ctx in contexts:
-            region_id = str(ctx.block.metadata.get("layout_region") or ctx.section.id)
+            metadata = ctx.block.metadata or {}
+            overlap = float(metadata.get("layout_overlap", 1.0))
+            if overlap < self.overlap_threshold:
+                continue
+            region_id = str(metadata.get("layout_region") or ctx.section.id)
             buckets[region_id].append(ctx)
         return buckets
 
 
-class GraphRAGChunker(BaseChunker):
+class GraphRAGChunker(ContextualChunker):
     """Chunker that builds a lexical graph and emits community based chunks."""
 
     name = "graph_rag"
     version = "v1"
+    default_granularity = "section"
+    segment_type = "graph"
 
     def __init__(
         self,
@@ -228,47 +215,28 @@ class GraphRAGChunker(BaseChunker):
         similarity_threshold: float = 0.18,
         token_counter: TokenCounter | None = None,
     ) -> None:
+        super().__init__(token_counter=token_counter)
         self.similarity_threshold = similarity_threshold
-        self.counter = token_counter or default_token_counter()
-        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
 
-    def chunk(
-        self,
-        document: Document,
-        *,
-        tenant_id: str,
-        granularity: Granularity | None = None,
-        blocks: Iterable | None = None,
-    ) -> list[Chunk]:
-        contexts = [
-            ctx
-            for ctx in self.normalizer.iter_block_contexts(document)
-            if ctx.text and not ctx.is_table
-        ]
-        if not contexts:
+    def segment_contexts(self, contexts: Iterable[BlockContext]) -> Iterable[Segment]:
+        sequence = [ctx for ctx in contexts if ctx.text]
+        if not sequence:
             return []
-        graph = self._build_graph(contexts)
+        graph = self._build_graph(sequence)
         communities = self._community_detection(graph)
-        assembler = ChunkAssembler(
-            document,
-            tenant_id=tenant_id,
-            chunker_name=self.name,
-            chunker_version=self.version,
-            granularity=granularity or "section",
-            token_counter=self.counter,
-        )
-        chunks: list[Chunk] = []
+        segments: list[Segment] = []
         for community in communities:
-            window = [contexts[index] for index in community.nodes]
+            window = [sequence[index] for index in community.nodes if 0 <= index < len(sequence)]
+            if not window:
+                continue
             summary = window[0].text.split(".", 1)[0]
             metadata = {
-                "segment_type": "graph",
                 "community_score": round(community.score, 3),
                 "nodes": len(window),
                 "summary": summary,
             }
-            chunks.append(assembler.build(window, metadata=metadata))
-        return chunks
+            segments.append(Segment(contexts=list(window), metadata=metadata))
+        return segments
 
     def explain(self) -> dict[str, object]:
         return {"similarity_threshold": self.similarity_threshold}

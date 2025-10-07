@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Sequence
 
-from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.models.ir import Block, Document
 
 from .assembly import ChunkAssembler
 from .exceptions import ChunkerConfigurationError
@@ -41,7 +41,7 @@ class ContextualChunker(BaseChunker, ABC):
         *,
         tenant_id: str,
         granularity: Granularity | None = None,
-        blocks: Sequence | None = None,
+        blocks: Sequence[Block] | None = None,
     ) -> list[Chunk]:
         contexts = self.collect_contexts(document, blocks=blocks)
         if not contexts:
@@ -55,7 +55,9 @@ class ContextualChunker(BaseChunker, ABC):
             token_counter=self.counter,
         )
         chunks: list[Chunk] = []
-        for segment in self.segment_contexts(contexts):
+        for segment in self.segment_document(
+            document, contexts, blocks=blocks
+        ):
             if not segment.contexts:
                 continue
             metadata = self._merge_metadata(segment.metadata)
@@ -68,13 +70,32 @@ class ContextualChunker(BaseChunker, ABC):
         self,
         document: Document,
         *,
-        blocks: Sequence | None = None,
+        blocks: Sequence[Block] | None = None,
     ) -> list[BlockContext]:
+        allowed_blocks: set[str] | None = None
+        if blocks is not None:
+            allowed_blocks = {
+                str(getattr(block, "id", index) or index)
+                for index, block in enumerate(blocks)
+            }
         contexts: list[BlockContext] = []
         for context in self.normalizer.iter_block_contexts(document):
+            if allowed_blocks is not None and str(context.block.id) not in allowed_blocks:
+                continue
             if self._accept_context(context):
                 contexts.append(context)
         return contexts
+
+    def segment_document(
+        self,
+        document: Document,
+        contexts: Sequence[BlockContext],
+        *,
+        blocks: Sequence[Block] | None = None,
+    ) -> Iterable[Segment]:
+        """Segment the document after context normalization."""
+
+        return self.segment_contexts(contexts)
 
     def _accept_context(self, context: BlockContext) -> bool:
         if not context.text:

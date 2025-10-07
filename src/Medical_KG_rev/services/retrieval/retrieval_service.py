@@ -31,7 +31,7 @@ from Medical_KG_rev.services.vector_store.service import VectorStoreService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
 from .reranker import CrossEncoderReranker
-from .router import RetrievalRouter, RetrievalStrategy, RouterMatch, RoutingRequest
+from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
 
 
 logger = structlog.get_logger(__name__)
@@ -60,8 +60,10 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        router: RetrievalRouter | None = None,
-        namespace_map: Mapping[str, str] | None = None,
+        fusion_service: FusionService | None = None,
+        pipeline_settings: PipelineSettings | None = None,
+        reranking_engine: RerankingEngine | None = None,
+        reranking_settings: RerankingSettings | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -71,7 +73,57 @@ class RetrievalService:
         self.router = router or RetrievalRouter()
         self._namespace_map = dict(namespace_map or {})
 
-    # ------------------------------------------------------------------
+        fusion_cfg = reranking_settings.fusion if reranking_settings else None
+        fusion_settings = FusionSettings(
+            strategy=FusionStrategy(fusion_cfg.strategy)
+            if fusion_cfg
+            else FusionStrategy.RRF,
+            rrf_k=fusion_cfg.rrf_k if fusion_cfg else 60,
+            weights=fusion_cfg.weights if fusion_cfg else {},
+            normalization=NormalizationStrategy(fusion_cfg.normalization)
+            if fusion_cfg
+            else NormalizationStrategy.MIN_MAX,
+            deduplicate=fusion_cfg.deduplicate if fusion_cfg else True,
+        )
+        self._fusion = fusion_service or FusionService(fusion_settings)
+
+        ttl = reranking_settings.cache_ttl if reranking_settings else 3600
+        failure_threshold = (
+            reranking_settings.circuit_breaker_failures if reranking_settings else 5
+        )
+        reset_timeout = (
+            reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
+        )
+        batch_size = (
+            reranking_settings.model.batch_size if reranking_settings else 64
+        )
+        self._reranking_engine = reranking_engine or RerankingEngine(
+            factory=RerankerFactory(),
+            cache=RerankCacheManager(ttl_seconds=ttl),
+            batch_processor=BatchProcessor(max_batch_size=batch_size),
+            circuit_breaker=CircuitBreaker(
+                failure_threshold=failure_threshold, reset_timeout=reset_timeout
+            ),
+        )
+        pipeline_cfg = reranking_settings.pipeline if reranking_settings else None
+        pipeline_settings = pipeline_settings or PipelineSettings(
+            retrieve_candidates=pipeline_cfg.retrieve_candidates if pipeline_cfg else 1000,
+            rerank_candidates=pipeline_cfg.rerank_candidates if pipeline_cfg else 100,
+            return_top_k=pipeline_cfg.return_top_k if pipeline_cfg else 10,
+        )
+        self._pipeline = TwoStagePipeline(
+            fusion=self._fusion,
+            reranking=self._reranking_engine,
+            settings=pipeline_settings,
+        )
+        # Backwards compatible attribute
+        self.reranker = reranker or CrossEncoderReranker()
+        self._default_reranker = (
+            reranking_settings.model.reranker_id
+            if reranking_settings
+            else "cross_encoder:bge"
+        )
+
     def search(
         self,
         index: str,
@@ -98,23 +150,55 @@ class RetrievalService:
             namespace=namespace,
             context=security_context,
         )
-        strategies = self._build_strategies(index, security_context, namespace)
-        fused_matches = self.router.execute(request, strategies)
-        fused = [
-            RetrievalResult(
-                id=match.id,
-                text=str(match.metadata.get("text", "")),
-                retrieval_score=match.score,
-                rerank_score=None,
-                highlights=list(match.metadata.get("highlights", [])),
-                metadata={key: value for key, value in match.metadata.items() if key != "highlights"},
+        dense_results = self._dense_search(query, k, security_context)
+
+        default_reranker = reranker_id or self._default_reranker
+        candidate_lists = {
+            "bm25": self._materialise_documents(
+                bm25_results, security_context, strategy="bm25"
+            ),
+            "splade": self._materialise_documents(
+                splade_results, security_context, strategy="splade"
+            ),
+            "dense": self._materialise_documents(
+                dense_results, security_context, strategy="dense"
+            ),
+        }
+        fused, metrics = self._pipeline.execute(
+            security_context,
+            query,
+            candidate_lists,
+            reranker_id=default_reranker,
+            top_k=k,
+            rerank=rerank,
+            explain=explain,
+        )
+        results: list[RetrievalResult] = []
+        for rank, document in enumerate(fused, start=1):
+            retrieval_score = float(document.metadata.get("retrieval_score", document.score))
+            results.append(
+                RetrievalResult(
+                    id=document.doc_id,
+                    text=document.content,
+                    retrieval_score=retrieval_score,
+                    rerank_score=document.score if rerank else None,
+                    highlights=list(document.highlights),
+                    metadata=dict(document.metadata),
+                )
             )
-            for match in fused_matches
-        ]
         if rerank:
-            fused = self._apply_rerank(query, fused)
-        fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
-        return fused
+            for result in results:
+                result.metadata.setdefault("reranking", metrics.get("reranking", {}))
+        if explain:
+            for result, document in zip(results, fused, strict=False):
+                result.metadata.setdefault("pipeline_metrics", metrics)
+                result.metadata.setdefault("fusion", metrics.get("fusion", {}))
+                result.metadata.setdefault("timing", metrics.get("timing", {}))
+                result.metadata.setdefault(
+                    "strategy_scores",
+                    dict(document.strategy_scores),
+                )
+        return results
 
     def _dense_strategy(
         self, namespace: str, query: str, k: int, context: SecurityContext
@@ -189,11 +273,36 @@ class RetrievalService:
             )
             return [self._opensearch_to_match(hit, "bm25") for hit in hits]
 
-        def splade_handler(request: RoutingRequest) -> list[RouterMatch]:
-            hits = self.opensearch.search(
-                index, request.query, strategy="splade", filters=request.filters, size=request.top_k
+    def _materialise_documents(
+        self,
+        results: Sequence[Mapping[str, object]],
+        context: SecurityContext,
+        *,
+        strategy: str,
+    ) -> list[ScoredDocument]:
+        documents: list[ScoredDocument] = []
+        for result in results:
+            doc_id = str(result.get("_id"))
+            source = result.get("_source", {})
+            if not isinstance(source, Mapping):
+                source = {}
+            metadata = dict(source)
+            metadata.setdefault("strategy", strategy)
+            tenant = str(metadata.get("tenant_id", context.tenant_id))
+            text = str(metadata.get("text", ""))
+            score = float(result.get("_score", 0.0))
+            document = ScoredDocument(
+                doc_id=doc_id,
+                content=text,
+                tenant_id=tenant,
+                source=str(metadata.get("source", strategy)),
+                strategy_scores={strategy: score},
+                metadata=metadata,
+                highlights=list(result.get("highlight", [])),
+                score=score,
             )
-            return [self._opensearch_to_match(hit, "splade") for hit in hits]
+            documents.append(document)
+        return documents
 
         def dense_handler(request: RoutingRequest) -> list[RouterMatch]:
             return self._dense_strategy(namespace, request.query, request.top_k, context)

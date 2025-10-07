@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import sqrt
 from time import monotonic, perf_counter
-from typing import Callable, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
 
 import structlog
 
 from .base import BaseReranker
 from .errors import RerankingError
 from .models import QueryDocumentPair, RerankResult, RerankingResponse
+from .utils import FeatureView, clamp
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +28,16 @@ def _cosine_similarity(vec_a: Iterable[float], vec_b: Iterable[float]) -> float:
     if sum_a == 0 or sum_b == 0:
         return 0.0
     return numerator / (sqrt(sum_a) * sqrt(sum_b))
+
+
+def _normalise_vectors(raw: Sequence[Any]) -> list[list[float]]:
+    vectors: list[list[float]] = []
+    for vector in raw:
+        if isinstance(vector, Sequence) and not isinstance(vector, (str, bytes, bytearray)):
+            numeric = [float(value) for value in vector if isinstance(value, (int, float))]
+            if numeric:
+                vectors.append(numeric)
+    return vectors
 
 
 @dataclass(slots=True)
@@ -80,13 +91,11 @@ class ColBERTReranker(BaseReranker):
         duration = perf_counter() - started
         results = []
         for idx, (doc_id, raw_score, rank, metadata) in enumerate(evaluated):
-            score_value = (
-                normalised[idx] if normalize and idx < len(normalised) else raw_score
-            )
+            score_value = normalised[idx] if normalize and idx < len(normalised) else raw_score
             results.append(
                 RerankResult(
                     doc_id=doc_id,
-                    score=float(score_value),
+                    score=float(clamp(score_value)),
                     rank=rank,
                     metadata=dict(metadata) | {"maxsim_raw": raw_score},
                 )
@@ -116,32 +125,30 @@ class ColBERTReranker(BaseReranker):
             tuple[QueryDocumentPair, Sequence[Sequence[float]], Sequence[Sequence[float]]]
         ] = []
         for pair in pairs:
-            query_vectors = self._query_vectors_from_metadata(pair.metadata)
-            doc_vectors = self._doc_vectors_from_metadata(pair.doc_id, pair.metadata)
+            view = FeatureView(pair.metadata)
+            query_vectors = self._query_vectors_from_metadata(view)
+            doc_vectors = self._doc_vectors_from_metadata(pair.doc_id, view)
             prepared.append((pair, query_vectors, doc_vectors))
         return prepared
 
     # ------------------------------------------------------------------
     def _query_vectors_from_metadata(
-        self, metadata: Mapping[str, object]
+        self, view: FeatureView
     ) -> Sequence[Sequence[float]]:
-        query_vectors = metadata.get("query_vectors")
-        if not isinstance(query_vectors, list):
+        raw = view.get_sequence("query_vectors")
+        if not raw:
             return []
-        return [vector for vector in query_vectors if isinstance(vector, list)]
+        return _normalise_vectors(raw)
 
     # ------------------------------------------------------------------
     def _doc_vectors_from_metadata(
-        self, doc_id: str, metadata: Mapping[str, object]
+        self, doc_id: str, view: FeatureView
     ) -> Sequence[Sequence[float]]:
         cached = self._vector_cache.get(doc_id)
         now = monotonic()
         if cached and cached.expires_at > now:
             return cached.vectors
-        doc_vectors = metadata.get("doc_vectors")
-        if not isinstance(doc_vectors, list):
-            doc_vectors = []
-        vectors = [vector for vector in doc_vectors if isinstance(vector, list)]
+        vectors = _normalise_vectors(view.get_sequence("doc_vectors"))
         self._vector_cache[doc_id] = _CacheEntry(
             expires_at=now + float(self.cache_ttl),
             vectors=vectors,
@@ -164,7 +171,7 @@ class ColBERTReranker(BaseReranker):
             ]
             if similarities:
                 max_sim += max(similarities)
-        return float(min(1.0, max(0.0, max_sim / len(query_vectors))))
+        return clamp(max_sim / len(query_vectors))
 
 
 class RagatouilleColBERTReranker(ColBERTReranker):
@@ -199,7 +206,9 @@ class RagatouilleColBERTReranker(ColBERTReranker):
         ] = []
         for pair, query_vectors in zip(pairs, encoded, strict=False):
             doc_vectors = self._cached_fetch(pair.doc_id, self._index.get_document_vectors)
-            prepared.append((pair, query_vectors, doc_vectors))
+            prepared.append(
+                (pair, _normalise_vectors(query_vectors), _normalise_vectors(doc_vectors))
+            )
         return prepared
 
     def _cached_fetch(
@@ -214,9 +223,9 @@ class RagatouilleColBERTReranker(ColBERTReranker):
         vectors = loader(doc_id)
         self._vector_cache[doc_id] = _CacheEntry(
             expires_at=now + float(self.cache_ttl),
-            vectors=vectors,
+            vectors=_normalise_vectors(vectors),
         )
-        return vectors
+        return self._vector_cache[doc_id].vectors
 
 
 class QdrantColBERTReranker(ColBERTReranker):
@@ -260,12 +269,9 @@ class QdrantColBERTReranker(ColBERTReranker):
             if record is not None:
                 vectors = getattr(record, "vectors", None)
                 if isinstance(vectors, Mapping):
-                    doc_vectors = [
-                        value
-                        for value in vectors.values()
-                        if isinstance(value, Sequence)
-                    ]
-            query_vectors = self._query_vectors_from_metadata(pair.metadata)
+                    doc_vectors = _normalise_vectors(list(vectors.values()))
+            view = FeatureView(pair.metadata)
+            query_vectors = self._query_vectors_from_metadata(view)
             if not query_vectors:
                 logger.debug("qdrant.colbert.missing_query_vectors", doc=pair.doc_id)
             prepared.append((pair, query_vectors, doc_vectors))

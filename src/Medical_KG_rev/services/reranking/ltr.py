@@ -24,14 +24,11 @@ except Exception:  # pragma: no cover - xgboost optional
 from .base import BaseReranker, BatchScore
 from .features import FeaturePipeline, FeatureVector
 from .models import QueryDocumentPair
+from .utils import clamp
 
 
 def _sigmoid(value: float) -> float:
     return 1.0 / (1.0 + exp(-value))
-
-
-def _bounded(value: float) -> float:
-    return max(0.0, min(1.0, value))
 
 
 @dataclass(slots=True)
@@ -52,7 +49,7 @@ class LambdaMARTModel:
         if self.booster is not None and xgboost is not None:
             dmatrix = xgboost.DMatrix(features, feature_names=list(self.feature_order))
             predictions = self.booster.predict(dmatrix)
-            return [_bounded(float(value)) for value in predictions.tolist()]
+            return [clamp(float(value)) for value in predictions.tolist()]
         return [self._fallback_score(vector) for vector in vectors]
 
     def score_with_contributions(
@@ -74,7 +71,7 @@ class LambdaMARTModel:
         value = self.intercept
         for feature, weight in self.coefficients.items():
             value += float(vector.values.get(feature, 0.0)) * weight
-        return _bounded(_sigmoid(value))
+        return clamp(_sigmoid(value))
 
 
 @dataclass(slots=True)

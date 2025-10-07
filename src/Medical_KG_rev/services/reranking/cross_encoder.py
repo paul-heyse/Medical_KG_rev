@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from math import tanh
-from statistics import mean
-from typing import Mapping, Sequence
 
 from .base import BaseReranker
 from .models import QueryDocumentPair
+from .utils import FeatureView, clamp, mean_or_default
 
 
 def _lexical_overlap(query: str, document: str) -> float:
@@ -19,14 +18,8 @@ def _lexical_overlap(query: str, document: str) -> float:
     return intersection / max(len(query_terms), 1)
 
 
-def _metadata_score(metadata: Mapping[str, object], key: str) -> float:
-    value = metadata.get(key)
-    if value is None:
-        return 0.0
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
+def _metadata_score(view: FeatureView, key: str) -> float:
+    return view.get_float(key)
 
 
 class BGEReranker(BaseReranker):
@@ -43,15 +36,16 @@ class BGEReranker(BaseReranker):
         self.device = device
 
     def _score_pair(self, pair: QueryDocumentPair) -> float:
+        view = FeatureView(pair.metadata)
         lexical = _lexical_overlap(pair.query, pair.text)
-        dense = _metadata_score(pair.metadata, "dense_score")
-        splade = _metadata_score(pair.metadata, "splade_score")
-        recency = _metadata_score(pair.metadata, "recency_days")
+        dense = _metadata_score(view, "dense_score")
+        splade = _metadata_score(view, "splade_score")
+        recency = _metadata_score(view, "recency_days")
         recency_factor = 1.0 if recency <= 30 else max(0.2, 1.0 - (recency / 365))
         score = (lexical * 0.55) + (dense * 0.3) + (splade * 0.15)
         if self.precision == "fp16" and self.device.startswith("cuda"):
             score *= 1.05
-        return float(min(1.0, max(0.0, score * recency_factor)))
+        return clamp(score * recency_factor)
 
 
 class MiniLMReranker(BaseReranker):
@@ -71,12 +65,13 @@ class MiniLMReranker(BaseReranker):
         self.quantization = "int8"
 
     def _score_pair(self, pair: QueryDocumentPair) -> float:
+        view = FeatureView(pair.metadata)
         lexical = _lexical_overlap(pair.query, pair.text)
-        bm25 = _metadata_score(pair.metadata, "bm25_score")
-        dense = _metadata_score(pair.metadata, "dense_score")
+        bm25 = _metadata_score(view, "bm25_score")
+        dense = _metadata_score(view, "dense_score")
         penalty = 0.05 if len(pair.text) > 2000 else 0.0
         score = (lexical * 0.6) + (bm25 * 0.25) + (dense * 0.2) - penalty
-        return float(min(1.0, max(0.0, score)))
+        return clamp(score)
 
 
 class MonoT5Reranker(BaseReranker):
@@ -92,11 +87,12 @@ class MonoT5Reranker(BaseReranker):
         self.device = device
 
     def _score_pair(self, pair: QueryDocumentPair) -> float:
+        view = FeatureView(pair.metadata)
         lexical = _lexical_overlap(pair.query, pair.text)
-        dense = _metadata_score(pair.metadata, "dense_score")
+        dense = _metadata_score(view, "dense_score")
         prompt_bias = 0.1 if "relevant" in pair.text.lower() else 0.0
         combined = lexical * 0.4 + dense * 0.4 + prompt_bias
-        return float(min(1.0, max(0.0, tanh(combined) * 0.8 + 0.2)))
+        return clamp(tanh(combined) * 0.8 + 0.2)
 
 
 class QwenReranker(BaseReranker):
@@ -112,12 +108,12 @@ class QwenReranker(BaseReranker):
         self.endpoint = endpoint
 
     def _score_pair(self, pair: QueryDocumentPair) -> float:
+        view = FeatureView(pair.metadata)
         lexical = _lexical_overlap(pair.query, pair.text)
-        semantic = mean(
-            value
-            for key, value in pair.metadata.items()
-            if isinstance(value, (int, float)) and key.endswith("_score")
-        ) if pair.metadata else 0.0
-        diversity_penalty = 0.1 if pair.metadata.get("is_duplicate") else 0.0
+        semantic = mean_or_default(
+            [value for key, value in pair.metadata.items() if key.endswith("_score")],
+            default=0.0,
+        )
+        diversity_penalty = 0.1 if view.flag("is_duplicate") else 0.0
         score = (lexical * 0.5) + (semantic * 0.4) - diversity_penalty + 0.1
-        return float(min(1.0, max(0.0, score)))
+        return clamp(score)

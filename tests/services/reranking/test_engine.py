@@ -162,6 +162,9 @@ def test_health_reports_registered_rerankers():
     engine = _build_engine()
     status = engine.health()
     assert "cross_encoder:bge" in status
+    entry = status["cross_encoder:bge"]
+    assert entry["available"] is True
+    assert entry["identifier"] == "bge-reranker-v2-m3"
 
 
 def test_gpu_reranker_requires_gpu():

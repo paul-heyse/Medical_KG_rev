@@ -52,3 +52,59 @@ class SectionAwareChunker(ContextualChunker):
             "max_tokens": self.max_tokens,
             "preserve_tables": self.preserve_tables,
         }
+
+    def _segment_section(self, contexts: list[BlockContext]) -> list[Segment]:
+        buffer: list[BlockContext] = []
+        token_budget = 0
+        text_segments: list[list[BlockContext]] = []
+        result: list[Segment] = []
+
+        def flush_buffer() -> None:
+            nonlocal buffer, token_budget
+            if buffer:
+                text_segments.append(buffer)
+                buffer = []
+                token_budget = 0
+
+        def flush_text_segments() -> None:
+            nonlocal text_segments
+            if not text_segments:
+                return
+            for segment in self._merge_small_tail(text_segments):
+                result.append(Segment(contexts=list(segment)))
+            text_segments = []
+
+        for ctx in contexts:
+            if ctx.is_table and self.preserve_tables:
+                flush_buffer()
+                flush_text_segments()
+                result.append(
+                    Segment(
+                        contexts=[ctx],
+                        metadata={"segment_type": "table", "is_table": True},
+                    )
+                )
+                continue
+            buffer.append(ctx)
+            token_budget += ctx.token_count
+            if token_budget >= self.target_tokens:
+                flush_buffer()
+        flush_buffer()
+        flush_text_segments()
+        return result
+
+    def _merge_small_tail(
+        self, segments: list[list[BlockContext]]
+    ) -> list[list[BlockContext]]:
+        if not segments:
+            return []
+        if len(segments) == 1:
+            return segments
+        last = segments[-1]
+        last_tokens = sum(ctx.token_count for ctx in last)
+        if last_tokens < self.min_tokens:
+            penultimate = segments[-2]
+            combined = penultimate + last
+            if sum(ctx.token_count for ctx in combined) <= self.max_tokens:
+                segments = segments[:-2] + [combined]
+        return segments

@@ -32,6 +32,23 @@ class NamespaceRegistry:
                 config.params.dimension,
                 namespace=config.name,
             )
+        if config.named_vectors:
+            for vector_name, vector_params in config.named_vectors.items():
+                if not 16 <= vector_params.dimension <= 4096:
+                    raise InvalidNamespaceConfigError(
+                        config.name,
+                        detail=(
+                            f"Named vector '{vector_name}' must have a dimension between 16 and 4096."
+                        ),
+                    )
+                if existing and existing.named_vectors:
+                    existing_params = existing.named_vectors.get(vector_name)
+                    if existing_params and existing_params.dimension != vector_params.dimension:
+                        raise DimensionMismatchError(
+                            existing_params.dimension,
+                            vector_params.dimension,
+                            namespace=f"{config.name}:{vector_name}",
+                        )
         tenant_namespaces[config.name] = config
 
     def get(self, *, tenant_id: str, namespace: str) -> NamespaceConfig:
@@ -46,11 +63,21 @@ class NamespaceRegistry:
         tenant_id: str,
         namespace: str,
         vector_length: int,
+        vector_name: str | None = None,
     ) -> None:
         config = self.get(tenant_id=tenant_id, namespace=namespace)
-        if config.params.dimension != vector_length:
+        if vector_name:
+            named = (config.named_vectors or {}).get(vector_name)
+            if not named:
+                raise NamespaceNotFoundError(f"{namespace}:{vector_name}", tenant_id=tenant_id)
+            expected = named.dimension
+            target_namespace = f"{namespace}:{vector_name}"
+        else:
+            expected = config.params.dimension
+            target_namespace = namespace
+        if expected != vector_length:
             raise DimensionMismatchError(
-                config.params.dimension, vector_length, namespace=namespace
+                expected, vector_length, namespace=target_namespace
             )
 
     def list(self, *, tenant_id: str) -> Mapping[str, NamespaceConfig]:

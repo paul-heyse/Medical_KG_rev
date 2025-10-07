@@ -24,7 +24,7 @@ from Medical_KG_rev.services.vector_store.service import VectorStoreService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
 from .reranker import CrossEncoderReranker
-from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
+from .router import RetrievalRouter, RetrievalStrategy, RouterMatch, RoutingRequest
 
 
 logger = structlog.get_logger(__name__)
@@ -51,22 +51,16 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        granularity_weights: Mapping[str, float] | None = None,
+        router: RetrievalRouter | None = None,
+        namespace_map: Mapping[str, str] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self._granularity_weights = {
-            "document": 0.6,
-            "section": 1.0,
-            "paragraph": 1.2,
-            "window": 0.9,
-            "table": 0.8,
-        }
-        if granularity_weights:
-            self._granularity_weights.update(granularity_weights)
+        self.router = router or RetrievalRouter()
+        self._namespace_map = dict(namespace_map or {})
 
     def search(
         self,
@@ -75,6 +69,7 @@ class RetrievalService:
         filters: Mapping[str, object] | None = None,
         k: int = 10,
         rerank: bool = False,
+        embedding_kind: str | None = None,
         *,
         reranker_id: str | None = None,
         context: SecurityContext | None = None,
@@ -84,35 +79,77 @@ class RetrievalService:
             if self._context_factory
             else SecurityContext(subject="system", tenant_id="system", scopes={"*"})
         )
+        namespace = self._resolve_namespace(embedding_kind)
         request = RoutingRequest(
             query=query,
             top_k=k,
             filters=filters or {},
-            namespace=self.vector_namespace,
+            namespace=namespace,
             context=security_context,
         )
-        dense_results = self._dense_search(query, k, security_context)
-        fused = self._fuse_results([bm25_results, splade_results, dense_results])
-        if filters and "granularity" in filters:
-            allowed = filters["granularity"]
-            if isinstance(allowed, str):
-                allowed_set = {allowed}
-            elif isinstance(allowed, Sequence):
-                allowed_set = {str(value) for value in allowed}
-            else:
-                allowed_set = {str(allowed)}
-            fused = [result for result in fused if result.granularity in allowed_set]
-        fused = self._merge_neighbors(fused)
+        strategies = self._build_strategies(index, security_context, namespace)
+        fused_matches = self.router.execute(request, strategies)
+        fused = [
+            RetrievalResult(
+                id=match.id,
+                text=str(match.metadata.get("text", "")),
+                retrieval_score=match.score,
+                rerank_score=None,
+                highlights=list(match.metadata.get("highlights", [])),
+                metadata={key: value for key, value in match.metadata.items() if key != "highlights"},
+            )
+            for match in fused_matches
+        ]
         if rerank:
             for result in results:
                 result.metadata.setdefault("reranking", metrics.get("reranking", {}))
         return results
 
     def _dense_strategy(
-        self, query: str, k: int, context: SecurityContext
-    ) -> list[Mapping[str, object]]:
-        if self.vector_store is not None and self.embedding_worker is not None:
-            return self._vector_store_search(query, k, context)
+        self, namespace: str, query: str, k: int, context: SecurityContext
+    ) -> list[RouterMatch]:
+        pseudo_query = [float(hash(token) % 100) for token in query.split()]
+        results: list[RouterMatch] = []
+        if self.vector_store is not None:
+            try:
+                dimension = self.vector_store.registry.get(
+                    tenant_id=context.tenant_id, namespace=namespace
+                ).params.dimension
+                if len(pseudo_query) < dimension:
+                    pseudo_query.extend([0.0] * (dimension - len(pseudo_query)))
+                elif len(pseudo_query) > dimension:
+                    pseudo_query = pseudo_query[:dimension]
+                matches = self.vector_store.query(
+                    context=context,
+                    namespace=namespace,
+                    query=VectorQuery(values=pseudo_query, top_k=k),
+                )
+            except VectorStoreError as exc:
+                logger.warning(
+                    "retrieval.vector_search.failed",
+                    namespace=namespace,
+                    error=str(exc),
+                )
+                return []
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning(
+                    "retrieval.vector_search.failed",
+                    namespace=namespace,
+                    error=str(exc),
+                )
+                return []
+            for match in matches:
+                metadata = dict(match.metadata)
+                metadata.setdefault("namespace", namespace)
+                results.append(
+                    RouterMatch(
+                        id=match.vector_id,
+                        score=float(match.score),
+                        metadata=metadata,
+                        source="vector",
+                    )
+                )
+            return results
         if not self.faiss or not self.faiss.ids:
             return []
         if len(pseudo_query) < self.faiss.dimension:
@@ -132,143 +169,46 @@ class RetrievalService:
             )
         return results
 
-    def _vector_store_search(
-        self, query: str, k: int, context: SecurityContext
-    ) -> list[Mapping[str, object]]:
-        cached = self._query_cache_get(query)
-        if cached is not None:
-            return cached
-        embeddings = self._encode_query(query, context)
-        namespace = self.vector_namespace
-        try:
-            results: list[Mapping[str, object]] = []
-            for embedding in embeddings:
-                if not embedding.vectors:
-                    continue
-                dimension = self.vector_store.registry.get(
-                    tenant_id=context.tenant_id, namespace=embedding.namespace
-                ).params.dimension
-                values = list(embedding.vectors[0])
-                if len(values) < dimension:
-                    values.extend([0.0] * (dimension - len(values)))
-                elif len(values) > dimension:
-                    values = values[:dimension]
-                matches = self.vector_store.query(
-                    context=context,
-                    namespace=embedding.namespace,
-                    query=VectorQuery(values=values, top_k=k),
-                )
-                results.extend(
-                    {
-                        "_id": match.vector_id,
-                        "_score": match.score * self.namespace_weights.get(embedding.namespace, 1.0),
-                        "_source": {"text": str(match.metadata.get("text", "")), **match.metadata},
-                        "highlight": [],
-                    }
-                    for match in matches
-                )
-        except VectorStoreError as exc:
-            logger.warning(
-                "retrieval.vector_search.failed",
-                namespace=namespace,
-                error=str(exc),
+    def _build_strategies(
+        self, index: str, context: SecurityContext, namespace: str
+    ) -> list[RetrievalStrategy]:
+        def bm25_handler(request: RoutingRequest) -> list[RouterMatch]:
+            hits = self.opensearch.search(
+                index, request.query, strategy="bm25", filters=request.filters, size=request.top_k
             )
-            return []
-        except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning(
-                "retrieval.vector_search.failed",
-                namespace=namespace,
-                error=str(exc),
+            return [self._opensearch_to_match(hit, "bm25") for hit in hits]
+
+        def splade_handler(request: RoutingRequest) -> list[RouterMatch]:
+            hits = self.opensearch.search(
+                index, request.query, strategy="splade", filters=request.filters, size=request.top_k
             )
-            return []
-        if results:
-            self._query_cache_set(query, results)
-        return results
+            return [self._opensearch_to_match(hit, "splade") for hit in hits]
 
-    def _fuse_results(
-        self, result_sets: Sequence[Sequence[Mapping[str, object]]]
-    ) -> list[RetrievalResult]:
-        aggregated: dict[str, dict[str, object]] = {}
-        for results in result_sets:
-            for rank, result in enumerate(results, start=1):
-                chunk_id = result["_id"]
-                data = aggregated.setdefault(
-                    chunk_id,
-                    {
-                        "text": result["_source"].get("text", ""),
-                        "metadata": result["_source"],
-                        "highlights": list(result.get("highlight", [])),
-                        "rrf": 0.0,
-                    },
-                )
-                weight = self._granularity_weights.get(
-                    str(result["_source"].get("granularity", "paragraph")),
-                    1.0,
-                )
-                data["rrf"] += weight * (1.0 / (50 + rank))
-        fused: list[RetrievalResult] = []
-        for chunk_id, payload in aggregated.items():
-            metadata = dict(payload["metadata"])
-            granularity = str(metadata.get("granularity", "paragraph"))
-            fused.append(
-                RetrievalResult(
-                    id=chunk_id,
-                    text=str(payload["text"]),
-                    retrieval_score=float(payload["rrf"]),
-                    rerank_score=None,
-                    highlights=list(payload["highlights"]),
-                    metadata=metadata,
-                    granularity=granularity,
-                )
-            )
-            documents.append(document)
-        return documents
+        def dense_handler(request: RoutingRequest) -> list[RouterMatch]:
+            return self._dense_strategy(namespace, request.query, request.top_k, context)
 
-    def _merge_neighbors(self, results: Iterable[RetrievalResult]) -> list[RetrievalResult]:
-        merged: list[RetrievalResult] = []
-        buffer: dict[tuple[str, str], RetrievalResult] = {}
-        for result in results:
-            if result.granularity != "window":
-                merged.append(result)
-                continue
-            doc_key, chunker, index = self._parse_chunk_id(result.id)
-            key = (doc_key, chunker)
-            existing = buffer.get(key)
-            if existing is None:
-                buffer[key] = result
-                continue
-            prev_doc, prev_chunker, prev_index = self._parse_chunk_id(existing.id)
-            if prev_doc == doc_key and prev_chunker == chunker and index == prev_index + 1:
-                combined_text = existing.text + "\n" + result.text
-                combined_score = max(existing.retrieval_score, result.retrieval_score)
-                metadata = dict(existing.metadata)
-                metadata.setdefault("merged_ids", [existing.id])
-                metadata["merged_ids"].append(result.id)
-                metadata["text"] = combined_text
-                merged_result = RetrievalResult(
-                    id=result.id,
-                    text=combined_text,
-                    retrieval_score=combined_score,
-                    rerank_score=None,
-                    highlights=existing.highlights,
-                    metadata=metadata,
-                    granularity=result.granularity,
-                )
-                buffer[key] = merged_result
-            else:
-                merged.append(existing)
-                buffer[key] = result
-        merged.extend(buffer.values())
-        return merged
+        strategies = [
+            RetrievalStrategy(name="bm25", handler=bm25_handler),
+            RetrievalStrategy(name="splade", handler=splade_handler),
+            RetrievalStrategy(name="dense", handler=dense_handler, fusion="linear", weight=2.0),
+        ]
+        return strategies
 
-    def _parse_chunk_id(self, chunk_id: str) -> tuple[str, str, int]:
-        parts = chunk_id.split(":")
-        if len(parts) < 4:
-            return chunk_id, "unknown", 0
-        try:
-            return parts[0], parts[1], int(parts[-1])
-        except ValueError:
-            return parts[0], parts[1], 0
+    def _resolve_namespace(self, embedding_kind: str | None) -> str:
+        if embedding_kind and embedding_kind in self._namespace_map:
+            return self._namespace_map[embedding_kind]
+        return self.vector_namespace
+
+    def _opensearch_to_match(self, hit: Mapping[str, object], source: str) -> RouterMatch:
+        metadata = dict(hit.get("_source", {}))
+        metadata.setdefault("highlights", hit.get("highlight", []))
+        metadata.setdefault("text", metadata.get("text", ""))
+        return RouterMatch(
+            id=str(hit.get("_id")),
+            score=float(hit.get("_score", 0.0)),
+            metadata=metadata,
+            source=source,
+        )
 
     def _apply_rerank(
         self, query: str, results: Iterable[RetrievalResult]

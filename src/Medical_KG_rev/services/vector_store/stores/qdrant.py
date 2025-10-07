@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+import json
+import time
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qm
@@ -17,7 +20,16 @@ from ..errors import (
     NamespaceNotFoundError,
     ResourceExhaustedError,
 )
-from ..models import CompressionPolicy, IndexParams, VectorMatch, VectorQuery, VectorRecord
+from ..models import (
+    CompressionPolicy,
+    HealthStatus,
+    IndexParams,
+    RebuildReport,
+    SnapshotInfo,
+    VectorMatch,
+    VectorQuery,
+    VectorRecord,
+)
 from ..types import VectorStorePort
 
 
@@ -180,6 +192,113 @@ class QdrantVectorStore(VectorStorePort):
         except UnexpectedResponse as exc:
             self._raise_for_error(exc, namespace, tenant_id)
         return getattr(result, "deleted", len(vector_ids))
+
+    def create_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        destination: str,
+        include_payloads: bool = True,
+    ) -> SnapshotInfo:
+        self._ensure_namespace_known(tenant_id, namespace)
+        path = self._resolve_snapshot_path(destination, tenant_id, namespace)
+        try:
+            snapshot = self._client.create_snapshot(collection_name=namespace)
+        except UnexpectedResponse as exc:
+            raise BackendUnavailableError("Failed to create Qdrant snapshot") from exc
+        metadata = {
+            "name": getattr(snapshot, "name", None),
+            "size": getattr(snapshot, "size", None),
+            "location": getattr(snapshot, "location", None),
+            "include_payloads": include_payloads,
+        }
+        payload = {
+            "tenant_id": tenant_id,
+            "namespace": namespace,
+            "created_at": time.time(),
+            "snapshot": metadata,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, sort_keys=True))
+        stats = path.stat()
+        return SnapshotInfo(
+            namespace=namespace,
+            path=str(path),
+            size_bytes=stats.st_size,
+            created_at=time.time(),
+            metadata=metadata,
+        )
+
+    def restore_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        source: str,
+        overwrite: bool = False,
+    ) -> RebuildReport:
+        # Qdrant snapshots are immutable; overwrite flag is informational
+        self._ensure_namespace_known(tenant_id, namespace)
+        payload = json.loads(Path(source).read_text())
+        metadata = payload.get("snapshot", {})
+        try:
+            self._client.recover_snapshot(
+                collection_name=namespace,
+                location=metadata.get("location"),
+                snapshot_name=metadata.get("name"),
+            )
+        except UnexpectedResponse as exc:
+            raise BackendUnavailableError("Failed to restore Qdrant snapshot") from exc
+        return RebuildReport(namespace=namespace, rebuilt=True, details=metadata)
+
+    def rebuild_index(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        force: bool = False,
+    ) -> RebuildReport:
+        self._ensure_namespace_known(tenant_id, namespace)
+        try:
+            self._client.update_collection(
+                collection_name=namespace,
+                optimizer_config=qm.OptimizersConfigDiff(indexing_threshold=0 if force else None),
+            )
+        except UnexpectedResponse as exc:
+            raise BackendUnavailableError("Failed to trigger Qdrant index rebuild") from exc
+        return RebuildReport(namespace=namespace, rebuilt=True, details={"force": force})
+
+    def check_health(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str | None = None,
+    ) -> Mapping[str, HealthStatus]:
+        namespaces = (
+            [namespace]
+            if namespace
+            else sorted(self._tenant_namespaces.get(tenant_id, set()))
+        )
+        statuses: dict[str, HealthStatus] = {}
+        for ns in namespaces:
+            healthy = False
+            details: dict[str, object] = {}
+            try:
+                info = self._client.get_collection(collection_name=ns)
+            except UnexpectedResponse as exc:
+                details["error"] = getattr(exc, "reason_phrase", str(exc))
+            else:
+                healthy = True
+                details["vector_count"] = getattr(info, "points_count", None)
+            statuses[ns] = HealthStatus(name=ns, healthy=healthy, details=details)
+        return statuses
+
+    def _resolve_snapshot_path(self, destination: str, tenant_id: str, namespace: str) -> Path:
+        path = Path(destination)
+        if path.suffix:
+            return path
+        return path / f"{tenant_id}__{namespace}.qdrant-snapshot.json"
 
     # ------------------------------------------------------------------
     # Internal helpers

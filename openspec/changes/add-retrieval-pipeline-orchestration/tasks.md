@@ -226,9 +226,9 @@
 - [x] 8.2 Integrate EmbeddingService via orchestration
 - [x] 8.3 Integrate VectorStoreService via orchestration
 - [x] 8.4 Integrate RerankerService via orchestration
-- [ ] 8.5 Add REST API endpoints for ingestion and query pipelines
-- [ ] 8.6 Add GraphQL resolvers for pipelines
-- [ ] 8.7 Implement SSE streaming for ingestion job progress
+- [x] 8.5 Add REST API endpoints for ingestion and query pipelines
+- [x] 8.6 Add GraphQL resolvers for pipelines
+- [x] 8.7 Implement SSE streaming for ingestion job progress
 
 ## 9. Configuration Management
 
@@ -241,20 +241,20 @@
 ## 10. Testing
 
 - [x] 10.1 Unit tests for each orchestrator
-- [ ] 10.2 Integration tests for ingestion pipeline (end-to-end)
-- [ ] 10.3 Integration tests for query pipeline (end-to-end)
-- [ ] 10.4 Performance tests (latency, throughput)
-- [ ] 10.5 Chaos tests (service failures, timeouts)
-- [ ] 10.6 Profile-based tests (PMC, DailyMed, ClinicalTrials.gov)
+- [x] 10.2 Integration tests for ingestion pipeline (end-to-end)
+- [x] 10.3 Integration tests for query pipeline (end-to-end)
+- [x] 10.4 Performance tests (latency, throughput)
+- [x] 10.5 Chaos tests (service failures, timeouts)
+- [x] 10.6 Profile-based tests (PMC, DailyMed, ClinicalTrials.gov)
 
 ## 11. Documentation
 
-- [ ] 11.1 Document pipeline architecture and flow
-- [ ] 11.2 Create configuration guide (all YAML options)
-- [ ] 11.3 Document profile creation and customization
-- [ ] 11.4 Add troubleshooting guide (common errors, debugging)
-- [ ] 11.5 Document evaluation harness usage
-- [ ] 11.6 Create operational runbook (deployment, monitoring, alerting)
+- [x] 11.1 Document pipeline architecture and flow
+- [x] 11.2 Create configuration guide (all YAML options)
+- [x] 11.3 Document profile creation and customization
+- [x] 11.4 Add troubleshooting guide (common errors, debugging)
+- [x] 11.5 Document evaluation harness usage
+- [x] 11.6 Create operational runbook (deployment, monitoring, alerting)
 
 ## Dependencies
 

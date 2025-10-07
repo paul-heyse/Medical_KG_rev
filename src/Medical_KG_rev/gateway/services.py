@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from time import perf_counter
+
+from typing import Any
 
 import structlog
 
@@ -17,7 +20,22 @@ from Medical_KG_rev.chunking.exceptions import (
 )
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
-from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
+from ..orchestration import (
+    FinalSelectorOrchestrator,
+    FusionOrchestrator,
+    JobLedger,
+    JobLedgerEntry,
+    Orchestrator,
+    ParallelExecutor,
+    PipelineConfigManager,
+    PipelineContext,
+    ProfileDetector,
+    ProfileManager,
+    QueryPipelineExecutor,
+    RetrievalOrchestrator,
+    RetrievalStrategy,
+    RerankCache,
+)
 from ..orchestration.kafka import KafkaClient
 from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
 from ..services.extraction.templates import TemplateValidationError, validate_template
@@ -25,6 +43,7 @@ from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
+from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from .models import (
     BatchError,
     BatchOperationResult,
@@ -76,10 +95,135 @@ class GatewayService:
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
+    config_manager: PipelineConfigManager | None = None
+    profile_manager: ProfileManager | None = None
+    profile_detector: ProfileDetector | None = None
+    query_executor: QueryPipelineExecutor | None = None
+    _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def __post_init__(self) -> None:
+        self._ensure_pipeline_components()
+
+    def _ensure_pipeline_components(self) -> None:
+        if self.config_manager is None:
+            self.config_manager = PipelineConfigManager(Path("config/orchestration/pipelines.yaml"))
+        if self._parallel_executor is None:
+            self._parallel_executor = ParallelExecutor(max_workers=4)
+        if self.profile_manager is None:
+            config = self.config_manager.config
+            self.profile_manager = ProfileManager(config, config.profiles)
+        if self.profile_detector is None:
+            profiles = self.profile_manager.list_profiles()
+            default_profile = profiles[0] if profiles else "default"
+            self.profile_detector = ProfileDetector(
+                self.profile_manager,
+                default_profile=default_profile,
+            )
+        if self.query_executor is None:
+            self.query_executor = self._build_query_executor()
+
+    def _default_query_pipeline_name(self) -> str:
+        if self.profile_detector:
+            try:
+                profile = self.profile_detector.manager.get(self.profile_detector.default_profile)
+                return profile.query
+            except KeyError:
+                pass
+        config = self.config_manager.config if self.config_manager else None
+        if config and config.query:
+            return next(iter(config.query))
+        return "query"
+
+    def _build_query_executor(self) -> QueryPipelineExecutor:
+        assert self._parallel_executor is not None
+        strategies = [
+            RetrievalStrategy(
+                name="bm25",
+                executor=self._synthetic_strategy("bm25", 0.92),
+                timeout_ms=50,
+            ),
+            RetrievalStrategy(
+                name="dense",
+                executor=self._synthetic_strategy("dense", 0.88),
+                timeout_ms=60,
+            ),
+            RetrievalStrategy(
+                name="splade",
+                executor=self._synthetic_strategy("splade", 0.86),
+                timeout_ms=60,
+            ),
+        ]
+        retrieval = RetrievalOrchestrator(strategies=strategies, fanout=self._parallel_executor)
+        fusion = FusionOrchestrator()
+        rerank = RerankOrchestrator(
+            rerank=self._rerank_candidates,
+            cache=RerankCache(ttl_seconds=120.0),
+        )
+        final = FinalSelectorOrchestrator()
+        return QueryPipelineExecutor(
+            [retrieval, fusion, rerank, final],
+            pipeline_name=self._default_query_pipeline_name(),
+            profile_detector=self.profile_detector,
+        )
+
+    def _synthetic_strategy(
+        self, name: str, base_score: float
+    ) -> Callable[[PipelineContext], Sequence[dict[str, Any]]]:
+        def run(context: PipelineContext) -> list[dict[str, Any]]:
+            query = str(context.data.get("query", ""))
+            profile = str(
+                context.data.get("profile")
+                or (self.profile_detector.default_profile if self.profile_detector else "default")
+            )
+            results: list[dict[str, Any]] = []
+            for index in range(3):
+                score = max(base_score - index * 0.08, 0.0)
+                doc_id = f"doc-{index + 1}"
+                document = {
+                    "id": doc_id,
+                    "title": f"{query.title() or 'Result'} ({name.upper()}) #{index + 1}",
+                    "summary": f"Synthetic {name} summary for '{query}' (profile: {profile})",
+                    "source": name,
+                    "metadata": {"strategy": name, "rank": index + 1, "profile": profile},
+                }
+                results.append({"id": doc_id, "score": score, "document": document})
+            return results
+
+        return run
+
+    def _rerank_candidates(
+        self, context: PipelineContext, candidates: Sequence[dict[str, Any]], top_n: int
+    ) -> list[dict[str, Any]]:
+        reranked: list[dict[str, Any]] = []
+        query = str(context.data.get("query", ""))
+        for rank, candidate in enumerate(candidates[:top_n], start=1):
+            updated = dict(candidate)
+            document = dict(candidate.get("document", {}))
+            document.setdefault("summary", f"Candidate for '{query}'")
+            document.setdefault("source", document.get("source", "hybrid"))
+            updated["document"] = document
+            updated["score"] = float(candidate.get("score", 0.0)) + (top_n - rank) * 0.01
+            reranked.append(updated)
+        return reranked
+
+    def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
+        payload = problem.to_response()
+        extensions = payload.pop("extra", {})
+        payload.setdefault("extensions", extensions)
+        return ProblemDetail.model_validate(payload)
+
+    def _stage_config_map(self, definition) -> dict[str, dict[str, Any]]:
+        config: dict[str, dict[str, Any]] = {}
+        for stage in definition.stages:
+            stage_config = dict(stage.options)
+            if stage.timeout_ms is not None:
+                stage_config.setdefault("timeout_ms", stage.timeout_ms)
+            config[stage.name] = stage_config
+        return config
+
     def _to_job_status(self, entry: JobLedgerEntry) -> JobStatus:
         history = [
             JobHistoryEntry(
@@ -136,12 +280,15 @@ class GatewayService:
         started = perf_counter()
         statuses: list[OperationStatus] = []
         for item in request.items:
+            metadata = dict(request.metadata)
+            if request.profile:
+                metadata.setdefault("profile", request.profile)
             entry = self.orchestrator.submit_job(
                 tenant_id=request.tenant_id,
                 dataset=dataset,
                 item=item,
                 priority=request.priority,
-                metadata=request.metadata,
+                metadata=metadata,
             )
             duplicate = bool(entry.metadata.get("duplicate"))
             message = (
@@ -310,56 +457,130 @@ class GatewayService:
         return embeddings
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
+        self._ensure_pipeline_components()
         started = perf_counter()
         job_id = self._new_job(request.tenant_id, "retrieve")
-        documents = [
-            DocumentSummary(
-                id=f"doc-{i}",
-                title=f"Synthetic Document {i}",
-                score=1.0 - (i * 0.1),
-                source="synthetic",
-                summary=f"Summary for {request.query} #{i}",
-                metadata=request.filters,
+        metadata: dict[str, Any] = {"filters": request.filters, **request.metadata}
+        if request.profile:
+            metadata["profile"] = request.profile
+        try:
+            profile = (
+                self.profile_detector.detect(explicit=request.profile, metadata=metadata)
+                if self.profile_detector
+                else None
             )
-            for i in range(min(request.top_k, 3))
-        ]
-        rerank_metrics = {}
-        if request.rerank and documents:
-            candidates = []
-            for doc in documents:
-                payload = doc.model_dump(mode="python")
-                payload["text"] = doc.summary or doc.title
-                candidates.append(payload)
-            ranked, metrics = self.reranker.rerank(
-                request.query,
-                candidates,
-                text_field="text",
-                top_k=request.rerank_top_k,
+        except KeyError as exc:
+            detail = ProblemDetail(
+                title="Unknown profile",
+                status=400,
+                type="https://httpstatuses.com/400",
+                detail=str(exc),
             )
-            rerank_metrics = dict(metrics)
-            documents = [
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+
+        definition = (
+            profile.query_definition(self.config_manager.config)
+            if profile is not None
+            else next(iter(self.config_manager.config.query.values()))
+        )
+        stage_config = self._stage_config_map(definition)
+        context = PipelineContext(
+            tenant_id=request.tenant_id,
+            operation="retrieve",
+            data={
+                "query": request.query,
+                "filters": request.filters,
+                "metadata": metadata,
+                "profile": profile.name if profile else request.profile,
+                "config": stage_config,
+                "explain": request.explain,
+                "top_k": request.top_k,
+            },
+        )
+        context.pipeline_version = (
+            f"{definition.name}:{self.config_manager.config.version}"
+            if self.config_manager
+            else definition.name
+        )
+        if self.query_executor:
+            if definition.name != self.query_executor.pipeline_name:
+                self.query_executor.pipeline_name = definition.name
+                self.query_executor.executor.pipeline = definition.name
+            result_context = self.query_executor.run(context)
+        else:
+            result_context = context
+
+        documents: list[DocumentSummary] = []
+        for item in result_context.data.get("results", [])[: request.top_k]:
+            document_payload = dict(item.get("document", {}))
+            doc_id = str(document_payload.get("id") or item.get("id"))
+            metadata_payload = {
+                key: value
+                for key, value in document_payload.items()
+                if key not in {"id", "title", "summary", "source"}
+            }
+            documents.append(
                 DocumentSummary(
-                    id=item["id"],
-                    title=item["title"],
+                    id=doc_id,
+                    title=str(document_payload.get("title", doc_id)),
                     score=float(item.get("score", 0.0)),
-                    summary=item.get("summary"),
-                    source=item.get("source", "synthetic"),
-                    metadata=item.get("metadata", {}),
+                    summary=document_payload.get("summary"),
+                    source=document_payload.get("source", definition.name),
+                    metadata=metadata_payload,
+                    explain=item.get("strategies") if request.explain else None,
                 )
-                for item in ranked
-            ]
+            )
+
+        errors = [self._convert_problem(problem) for problem in result_context.errors]
+        rerank_metrics = {
+            "stage_timings_ms": {
+                name: round(duration * 1000, 3)
+                for name, duration in result_context.stage_timings.items()
+            }
+        }
         result = RetrievalResult(
             query=request.query,
             documents=documents,
             total=len(documents),
             rerank_metrics=rerank_metrics,
+            pipeline_version=result_context.data.get("pipeline_version") or context.pipeline_version,
+            partial=result_context.partial,
+            degraded=result_context.data.get("degraded", False),
+            errors=errors,
+            stage_timings={
+                name: round(duration, 6)
+                for name, duration in result_context.stage_timings.items()
+            },
         )
-        self.ledger.update_metadata(job_id, {"documents": result.total})
-        self._complete_job(job_id, payload={"documents": result.total})
-        observe_job_duration("retrieve", perf_counter() - started)
+
+        duration = perf_counter() - started
+        observe_job_duration("retrieve", duration)
         record_business_event("retrieval_requests")
         if result.total:
             record_business_event("documents_retrieved", result.total)
+
+        ledger_metadata = {
+            "documents": result.total,
+            "pipeline_version": result.pipeline_version,
+            "partial": result.partial,
+            "degraded": result.degraded,
+        }
+        if result_context.degradation_events:
+            ledger_metadata["degradation_events"] = list(result_context.degradation_events)
+
+        if not result.documents and errors:
+            problem = errors[0]
+            self._fail_job(job_id, problem.detail or problem.title)
+            raise GatewayError(problem)
+
+        self.ledger.update_metadata(job_id, ledger_metadata)
+        if result.partial:
+            partial_payload = dict(ledger_metadata)
+            partial_payload["status"] = "partial"
+            self._complete_job(job_id, payload=partial_payload)
+        else:
+            self._complete_job(job_id, payload=ledger_metadata)
         return result
 
     def entity_link(self, request: EntityLinkRequest) -> Sequence[EntityLinkResult]:

@@ -3,12 +3,12 @@
 ## 1. Dependency Management & Setup
 
 - [x] 1.1 Add `mineru[gpu]>=2.5.4` to `pyproject.toml` dependencies
-- [ ] 1.2 Add MinerU-specific dependencies to `requirements.txt` (automatically handled by mineru[gpu])
+- [x] 1.2 Add MinerU-specific dependencies to `requirements.txt` (automatically handled by mineru[gpu])
 - [x] 1.3 Create `scripts/setup_mineru.sh` for model downloads and initialization
 - [x] 1.4 Update `.env.example` with MinerU configuration variables
-- [ ] 1.5 Document GPU requirements (CUDA 12.8, RTX 5090 32GB VRAM - 4 workers @ 7GB each)
-- [ ] 1.6 Configure Python environment for multi-core CPU utilization (multiprocessing settings)
-- [ ] 1.7 Verify CUDA 12.8 installation and compatibility
+- [x] 1.5 Document GPU requirements (CUDA 12.8, RTX 5090 32GB VRAM - 4 workers @ 7GB each)
+- [x] 1.6 Configure Python environment for multi-core CPU utilization (multiprocessing settings)
+- [x] 1.7 Verify CUDA 12.8 installation and compatibility
 
 ## 2. Core MinerU CLI Integration
 
@@ -28,13 +28,13 @@
   - [x] 2.2.5 Parse equation blocks with LaTeX/MathML representation
   - [x] 2.2.6 Handle parsing errors and incomplete outputs gracefully
 
-- [ ] 2.3 Update `src/Medical_KG_rev/services/mineru/service.py`
-  - [ ] 2.3.1 Remove stub `_decode_pdf` and `_infer_blocks` methods
-  - [ ] 2.3.2 Integrate `MineruCLI` for PDF processing
-  - [ ] 2.3.3 Integrate `MineruOutputParser` for result parsing
-  - [ ] 2.3.4 Add fail-fast GPU availability check on startup
-  - [ ] 2.3.5 Implement batch request handling
-  - [ ] 2.3.6 Add GPU memory monitoring and OOM detection
+- [x] 2.3 Update `src/Medical_KG_rev/services/mineru/service.py`
+  - [x] 2.3.1 Remove stub `_decode_pdf` and `_infer_blocks` methods
+  - [x] 2.3.2 Integrate `MineruCLI` for PDF processing
+  - [x] 2.3.3 Integrate `MineruOutputParser` for result parsing
+  - [x] 2.3.4 Add fail-fast GPU availability check on startup
+  - [x] 2.3.5 Implement batch request handling
+  - [x] 2.3.6 Add GPU memory monitoring and OOM detection
 
 ## 3. Parallel Worker Architecture
 

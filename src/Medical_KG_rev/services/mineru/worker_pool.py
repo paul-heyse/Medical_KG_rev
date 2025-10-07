@@ -57,6 +57,8 @@ class WorkerPool:
                 cli=cli_factory(settings),
                 parser=MineruOutputParser(),
                 min_memory_mb=allocation.vram_limit_mb,
+                worker_id=f"worker-{worker_id}",
+                fail_fast=False,
             )
             self._workers.append(
                 Worker(worker_id=worker_id, gpu_allocation=allocation, processor=processor)

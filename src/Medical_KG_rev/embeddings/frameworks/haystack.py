@@ -8,6 +8,8 @@ from importlib import import_module
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.normalization import normalize_batch
+from ..utils.offsets import batch_offsets
+from ..utils.records import RecordBuilder
 
 
 @dataclass(slots=True)
@@ -15,22 +17,31 @@ class HaystackEmbedderAdapter:
     config: EmbedderConfig
     _delegate: object | None = None
     _normalize: bool = False
+    _offsets: bool = True
+    _builder: RecordBuilder | None = None
     name: str = ""
     kind: str = ""
 
     def __post_init__(self) -> None:
         params = self.config.parameters
-        target = params.get("class_path")
-        if not target:
-            raise ValueError("Haystack adapter requires 'class_path' parameter")
+        self._validate_parameters(params)
+        target = params["class_path"]
         module_name, _, class_name = str(target).rpartition(".")
         module = import_module(module_name)
         cls = getattr(module, class_name)
         init_kwargs = params.get("init", {})
+        if not isinstance(init_kwargs, dict):
+            raise ValueError("Haystack adapter 'init' parameter must be a mapping")
         self._delegate = cls(**init_kwargs)
         self._normalize = bool(self.config.normalize)
+        self._offsets = bool(params.get("include_offsets", True))
+        self._builder = RecordBuilder(self.config, normalized_override=self._normalize)
         self.name = self.config.name
         self.kind = self.config.kind
+
+    def _validate_parameters(self, params: dict[str, object]) -> None:
+        if "class_path" not in params:
+            raise ValueError("Haystack adapter requires 'class_path' parameter")
 
     def _call(self, texts: list[str]) -> list[list[float]]:
         if hasattr(self._delegate, "embed_documents"):
@@ -41,29 +52,21 @@ class HaystackEmbedderAdapter:
             vectors = normalize_batch(vectors)
         return [list(map(float, vector)) for vector in vectors]
 
-    def _records(self, request: EmbeddingRequest, vectors: list[list[float]]) -> list[EmbeddingRecord]:
-        ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(vectors))])
-        records: list[EmbeddingRecord] = []
-        for chunk_id, vector in zip(ids, vectors, strict=False):
-            records.append(
-                EmbeddingRecord(
-                    id=chunk_id,
-                    tenant_id=request.tenant_id,
-                    namespace=request.namespace,
-                    model_id=self.config.model_id,
-                    model_version=self.config.model_version,
-                    kind=self.config.kind,
-                    dim=len(vector),
-                    vectors=[vector],
-                    normalized=self._normalize,
-                    metadata={"provider": self.config.provider},
-                    correlation_id=request.correlation_id,
-                )
-            )
-        return records
+    def _records(
+        self, request: EmbeddingRequest, vectors: list[list[float]], texts: list[str]
+    ) -> list[EmbeddingRecord]:
+        assert self._builder is not None
+        offsets = batch_offsets(texts) if self._offsets else None
+        return self._builder.dense(
+            request,
+            vectors,
+            dim=len(vectors[0]) if vectors else None,
+            offsets=offsets,
+        )
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        return self._records(request, self._call(list(request.texts)))
+        texts = list(request.texts)
+        return self._records(request, self._call(texts), texts)
 
     def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
         if hasattr(self._delegate, "embed_query"):
@@ -72,7 +75,7 @@ class HaystackEmbedderAdapter:
             vectors = self._call(list(request.texts))
         if self._normalize:
             vectors = normalize_batch(vectors)
-        return self._records(request, vectors)
+        return self._records(request, vectors, list(request.texts))
 
 
 def register_haystack(registry: EmbedderRegistry) -> None:

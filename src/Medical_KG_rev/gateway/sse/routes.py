@@ -5,22 +5,20 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
+from ...auth import Scopes, SecurityContext, secure_endpoint
 from ..models import JobEvent
 from ..services import GatewayService, get_gateway_service
 
 router = APIRouter(prefix="/v1", tags=["sse"])
 
 
-async def _authenticate(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
-    if x_api_key != "public-demo-key":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
-
-
 def _format_event(event: JobEvent) -> str:
     payload = event.model_dump(mode="json")
+    payload.setdefault("payload", event.payload)
+    payload["emitted_at"] = event.emitted_at.isoformat()
     return "".join(
         [
             f"id: {event.job_id}\n",
@@ -39,8 +37,15 @@ async def _event_iterator(service: GatewayService, job_id: str) -> AsyncIterator
 async def stream_job_events(
     job_id: str,
     service: GatewayService = Depends(get_gateway_service),
-    _: None = Depends(_authenticate),
+    security: SecurityContext = Depends(
+        secure_endpoint(
+            scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}/events/stream"
+        )
+    ),
 ) -> StreamingResponse:
+    job = service.get_job(job_id, tenant_id=security.tenant_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return StreamingResponse(
         _event_iterator(service, job_id),
         status_code=status.HTTP_200_OK,

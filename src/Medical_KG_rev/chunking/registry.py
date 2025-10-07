@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import importlib
 from typing import Any, Type
 
 from .exceptions import ChunkerConfigurationError, ChunkerRegistryError
@@ -51,67 +52,72 @@ class ChunkerRegistry:
         return {name: entry for name, entry in self._entries.items() if not entry.experimental}
 
 
+def _maybe_register(
+    registry: ChunkerRegistry,
+    module_path: str,
+    attribute: str,
+    name: str,
+    *,
+    experimental: bool = False,
+) -> None:
+    try:
+        module = importlib.import_module(module_path)
+        factory = getattr(module, attribute)
+    except Exception:
+        return
+    registry.register(name, factory, experimental=experimental)
+
+
 def default_registry() -> ChunkerRegistry:
-    from .adapters import (
-        HaystackPreprocessorChunker,
-        LangChainHTMLChunker,
-        LangChainMarkdownChunker,
-        LangChainNLTKChunker,
-        LangChainSpacyChunker,
-        LangChainSplitterChunker,
-        LangChainTokenSplitterChunker,
-        LlamaIndexHierarchicalChunker,
-        LlamaIndexNodeParserChunker,
-        LlamaIndexSentenceChunker,
-        UnstructuredChunker,
-    )
-    from .chunkers import (
-        BayesSegChunker,
-        C99Chunker,
-        ClinicalRoleChunker,
-        DiscourseSegmenterChunker,
-        GraphPartitionChunker,
-        GraphRAGChunker,
-        GrobidSectionChunker,
-        LDATopicChunker,
-        LayoutAwareChunker,
-        LayoutHeuristicChunker,
-        SectionAwareChunker,
-        SemanticClusterChunker,
-        SemanticSplitterChunker,
-        SlidingWindowChunker,
-        TableChunker,
-        TextTilingChunker,
-    )
-    from .chunkers.llm import LLMChapteringChunker
+    from .chunkers.clinical_role import ClinicalRoleChunker
+    from .chunkers.layout import LayoutHeuristicChunker
+    from .chunkers.section import SectionAwareChunker
+    from .chunkers.sliding_window import SlidingWindowChunker
+    from .chunkers.table import TableChunker
 
     registry = ChunkerRegistry()
     registry.register("section_aware", SectionAwareChunker)
     registry.register("sliding_window", SlidingWindowChunker)
     registry.register("table", TableChunker)
-    registry.register("semantic_splitter", SemanticSplitterChunker)
     registry.register("clinical_role", ClinicalRoleChunker)
     registry.register("layout_heuristic", LayoutHeuristicChunker)
-    registry.register("semantic_cluster", SemanticClusterChunker, experimental=True)
-    registry.register("graph_partition", GraphPartitionChunker, experimental=True)
-    registry.register("graph_rag", GraphRAGChunker, experimental=True)
-    registry.register("text_tiling", TextTilingChunker, experimental=True)
-    registry.register("c99", C99Chunker, experimental=True)
-    registry.register("bayes_seg", BayesSegChunker, experimental=True)
-    registry.register("lda_topic", LDATopicChunker, experimental=True)
-    registry.register("discourse_segmenter", DiscourseSegmenterChunker, experimental=True)
-    registry.register("grobid_section", GrobidSectionChunker, experimental=True)
-    registry.register("layout_aware", LayoutAwareChunker, experimental=True)
-    registry.register("llm_chaptering", LLMChapteringChunker, experimental=True)
-    registry.register("langchain.recursive_character", LangChainSplitterChunker)
-    registry.register("langchain.token", LangChainTokenSplitterChunker)
-    registry.register("langchain.markdown", LangChainMarkdownChunker)
-    registry.register("langchain.html", LangChainHTMLChunker)
-    registry.register("langchain.nltk", LangChainNLTKChunker)
-    registry.register("langchain.spacy", LangChainSpacyChunker)
-    registry.register("llama_index.semantic_splitter", LlamaIndexNodeParserChunker, experimental=True)
-    registry.register("llama_index.hierarchical", LlamaIndexHierarchicalChunker, experimental=True)
-    registry.register("llama_index.sentence", LlamaIndexSentenceChunker, experimental=True)
-    registry.register("haystack.preprocessor", HaystackPreprocessorChunker, experimental=True)
-    registry.register("unstructured.adapter", UnstructuredChunker, experimental=True)
+
+    optional_specs = [
+        ("Medical_KG_rev.chunking.chunkers.semantic", "SemanticSplitterChunker", "semantic_splitter", False),
+        ("Medical_KG_rev.chunking.chunkers.semantic", "SemanticClusterChunker", "semantic_cluster", True),
+        ("Medical_KG_rev.chunking.chunkers.semantic", "GraphPartitionChunker", "graph_partition", True),
+        ("Medical_KG_rev.chunking.chunkers.advanced", "GraphRAGChunker", "graph_rag", True),
+        ("Medical_KG_rev.chunking.chunkers.advanced", "DiscourseSegmenterChunker", "discourse_segmenter", True),
+        ("Medical_KG_rev.chunking.chunkers.advanced", "GrobidSectionChunker", "grobid_section", True),
+        ("Medical_KG_rev.chunking.chunkers.advanced", "LayoutAwareChunker", "layout_aware", True),
+        ("Medical_KG_rev.chunking.chunkers.classical", "TextTilingChunker", "text_tiling", True),
+        ("Medical_KG_rev.chunking.chunkers.classical", "C99Chunker", "c99", True),
+        ("Medical_KG_rev.chunking.chunkers.classical", "BayesSegChunker", "bayes_seg", True),
+        ("Medical_KG_rev.chunking.chunkers.classical", "LDATopicChunker", "lda_topic", True),
+        ("Medical_KG_rev.chunking.chunkers.llm", "LLMChapteringChunker", "llm_chaptering", True),
+    ]
+
+    optional_adapters = [
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainSplitterChunker", "langchain.recursive_character", False),
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainTokenSplitterChunker", "langchain.token", False),
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainMarkdownChunker", "langchain.markdown", False),
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainHTMLChunker", "langchain.html", False),
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainNLTKChunker", "langchain.nltk", False),
+        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainSpacyChunker", "langchain.spacy", False),
+        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexNodeParserChunker", "llama_index.semantic_splitter", True),
+        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexHierarchicalChunker", "llama_index.hierarchical", True),
+        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexSentenceChunker", "llama_index.sentence", True),
+        ("Medical_KG_rev.chunking.adapters.haystack", "HaystackPreprocessorChunker", "haystack.preprocessor", True),
+        ("Medical_KG_rev.chunking.adapters.unstructured_adapter", "UnstructuredChunker", "unstructured.adapter", True),
+    ]
+
+    for module_path, attribute, name, experimental in [*optional_specs, *optional_adapters]:
+        _maybe_register(
+            registry,
+            module_path,
+            attribute,
+            name,
+            experimental=experimental,
+        )
+
     return registry

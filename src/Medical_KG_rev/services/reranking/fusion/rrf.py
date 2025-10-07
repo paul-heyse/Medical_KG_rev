@@ -26,6 +26,12 @@ def rrf(
             contributions.setdefault(document.doc_id, 0.0)
             contributions[document.doc_id] += score
     fused = [doc for doc in aggregated.values()]
-    fused.sort(key=lambda doc: doc.score, reverse=True)
+    fused.sort(
+        key=lambda doc: (
+            doc.score,
+            float(doc.metadata.get("retrieval_score", 0.0)),
+        ),
+        reverse=True,
+    )
     metrics = {"contributions": contributions, "strategy_count": len(ranked_lists)}
     return FusionResponse(documents=fused, metrics=metrics)

@@ -6,20 +6,23 @@ import uuid
 from collections.abc import Callable
 from typing import Mapping
 from time import perf_counter
+from typing import TYPE_CHECKING, Any
 
 try:  # pragma: no cover - optional dependency
     import torch
 except Exception:  # pragma: no cover - torch is optional in CPU-only environments
     torch = None  # type: ignore
 
-from fastapi import FastAPI, Request, Response
-from prometheus_client import (  # type: ignore
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from fastapi import FastAPI, Request, Response
+else:  # pragma: no cover - optional dependency handling
+    try:
+        from fastapi import FastAPI, Request, Response
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+        FastAPI = Request = Response = Any  # type: ignore[assignment]
+        _FASTAPI_IMPORT_ERROR: ModuleNotFoundError | None = exc
+    else:
+        _FASTAPI_IMPORT_ERROR = None
 
 from Medical_KG_rev.config.settings import AppSettings
 from Medical_KG_rev.observability.alerts import get_alert_manager
@@ -177,9 +180,30 @@ RERANK_GPU = Gauge(
     "GPU utilisation while reranking",
     labelnames=("reranker",),
 )
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
+)
 
 
-def _normalise_path(request: Request) -> str:
+def _normalise_path(request: "Request") -> str:
     route = request.scope.get("route")
     return getattr(route, "path", request.url.path)
 
@@ -196,7 +220,16 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
-def register_metrics(app: FastAPI, settings: AppSettings) -> None:
+def register_metrics(app: "FastAPI", settings: AppSettings) -> None:
+    if "_FASTAPI_IMPORT_ERROR" in globals() and _FASTAPI_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "FastAPI is required to register metrics. Install the 'fastapi' extra."
+        ) from _FASTAPI_IMPORT_ERROR
+    if "_APP_SETTINGS_IMPORT_ERROR" in globals() and _APP_SETTINGS_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "Medical_KG_rev configuration settings are unavailable. Install project dependencies."
+        ) from _APP_SETTINGS_IMPORT_ERROR
+
     if not settings.observability.metrics.enabled:
         return
 
@@ -264,7 +297,7 @@ def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.
         return response
 
     @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> Response:
+    async def metrics_endpoint() -> "Response":
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

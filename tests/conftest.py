@@ -3,9 +3,16 @@ from __future__ import annotations
 import hashlib
 
 import pytest
-from fastapi.testclient import TestClient
 
-from Medical_KG_rev.config.settings import get_settings
+try:  # pragma: no cover - optional dependency for API tests
+    from fastapi.testclient import TestClient
+except Exception:  # pragma: no cover - optional dependency or missing extras
+    TestClient = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - optional dependency for non-chunking tests
+    from Medical_KG_rev.config.settings import get_settings
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - optional dependency
+    get_settings = None  # type: ignore[assignment]
 
 API_TEST_KEY = "test-api-key"
 
@@ -55,6 +62,10 @@ def _configure_security(monkeypatch):
         "MK_SECURITY__OAUTH__SCOPES",
         '["ingest:write", "kg:read", "jobs:read", "jobs:write", "process:write", "kg:write", "audit:read"]',
     )
+    if get_settings is None:
+        yield
+        return
+
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -67,6 +78,9 @@ def api_key() -> str:
 
 @pytest.fixture(autouse=True)
 def _inject_api_key_header(monkeypatch, api_key: str):
+    if TestClient is None:
+        return
+
     original_request = TestClient.request
 
     def _request(self, method, url, *args, **kwargs):  # type: ignore[override]

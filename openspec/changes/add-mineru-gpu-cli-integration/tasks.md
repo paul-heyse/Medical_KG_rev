@@ -2,31 +2,31 @@
 
 ## 1. Dependency Management & Setup
 
-- [ ] 1.1 Add `mineru[gpu]>=2.5.4` to `pyproject.toml` dependencies
+- [x] 1.1 Add `mineru[gpu]>=2.5.4` to `pyproject.toml` dependencies
 - [ ] 1.2 Add MinerU-specific dependencies to `requirements.txt` (automatically handled by mineru[gpu])
-- [ ] 1.3 Create `scripts/setup_mineru.sh` for model downloads and initialization
-- [ ] 1.4 Update `.env.example` with MinerU configuration variables
+- [x] 1.3 Create `scripts/setup_mineru.sh` for model downloads and initialization
+- [x] 1.4 Update `.env.example` with MinerU configuration variables
 - [ ] 1.5 Document GPU requirements (CUDA 12.8, RTX 5090 32GB VRAM - 4 workers @ 7GB each)
 - [ ] 1.6 Configure Python environment for multi-core CPU utilization (multiprocessing settings)
 - [ ] 1.7 Verify CUDA 12.8 installation and compatibility
 
 ## 2. Core MinerU CLI Integration
 
-- [ ] 2.1 Create `src/Medical_KG_rev/services/mineru/cli_wrapper.py`
-  - [ ] 2.1.1 Implement wrapper for built-in `mineru` CLI command (leverage existing CLI, don't build custom)
-  - [ ] 2.1.2 Implement subprocess management with timeout handling and cleanup
-  - [ ] 2.1.3 Implement stdout/stderr capture and logging
-  - [ ] 2.1.4 Add GPU device assignment per worker (`CUDA_VISIBLE_DEVICES`)
-  - [ ] 2.1.5 Configure per-worker VRAM limit (7GB max via MinerU CLI options)
-  - [ ] 2.1.6 Support batch processing (multiple PDFs per invocation)
+- [x] 2.1 Create `src/Medical_KG_rev/services/mineru/cli_wrapper.py`
+  - [x] 2.1.1 Implement wrapper for built-in `mineru` CLI command (leverage existing CLI, don't build custom)
+  - [x] 2.1.2 Implement subprocess management with timeout handling and cleanup
+  - [x] 2.1.3 Implement stdout/stderr capture and logging
+  - [x] 2.1.4 Add GPU device assignment per worker (`CUDA_VISIBLE_DEVICES`)
+  - [x] 2.1.5 Configure per-worker VRAM limit (7GB max via MinerU CLI options)
+  - [x] 2.1.6 Support batch processing (multiple PDFs per invocation)
 
-- [ ] 2.2 Create `src/Medical_KG_rev/services/mineru/output_parser.py`
-  - [ ] 2.2.1 Implement JSON output parser for MinerU structured format
-  - [ ] 2.2.2 Implement Markdown output parser with metadata extraction
-  - [ ] 2.2.3 Parse table structures with cell coordinates and content
-  - [ ] 2.2.4 Parse figure metadata with image paths and captions
-  - [ ] 2.2.5 Parse equation blocks with LaTeX/MathML representation
-  - [ ] 2.2.6 Handle parsing errors and incomplete outputs gracefully
+- [x] 2.2 Create `src/Medical_KG_rev/services/mineru/output_parser.py`
+  - [x] 2.2.1 Implement JSON output parser for MinerU structured format
+  - [x] 2.2.2 Implement Markdown output parser with metadata extraction
+  - [x] 2.2.3 Parse table structures with cell coordinates and content
+  - [x] 2.2.4 Parse figure metadata with image paths and captions
+  - [x] 2.2.5 Parse equation blocks with LaTeX/MathML representation
+  - [x] 2.2.6 Handle parsing errors and incomplete outputs gracefully
 
 - [ ] 2.3 Update `src/Medical_KG_rev/services/mineru/service.py`
   - [ ] 2.3.1 Remove stub `_decode_pdf` and `_infer_blocks` methods

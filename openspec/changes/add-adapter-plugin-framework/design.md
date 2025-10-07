@@ -38,7 +38,7 @@ The system needs to scale to:
 
 ### Decision 1: Pluggy vs importlib.metadata
 
-**Choice**: Use **Pluggy** (https://pluggy.readthedocs.io/) version 1.3.0+ with `importlib.metadata.entry_points` for hybrid approach
+**Choice**: Use **Pluggy** (<https://pluggy.readthedocs.io/>) version 1.3.0+ with `importlib.metadata.entry_points` for hybrid approach
 
 **Rationale**:
 
@@ -79,7 +79,7 @@ hookimpl = pluggy.HookimplMarker("medical_kg")
 
 class AdapterHookSpec:
     """Pluggy hook specifications for adapter plugins."""
-    
+
     @hookspec
     def get_metadata(self) -> AdapterMetadata:
         """Return adapter metadata."""
@@ -104,7 +104,7 @@ for ep in entry_points(group="medical_kg.adapters"):
 
 ### Decision 2: Tenacity vs Custom Retry Logic
 
-**Choice**: Replace custom retry logic with **Tenacity** (https://tenacity.readthedocs.io/) version 8.2.0+
+**Choice**: Replace custom retry logic with **Tenacity** (<https://tenacity.readthedocs.io/>) version 8.2.0+
 
 **Rationale**:
 
@@ -155,15 +155,16 @@ async def fetch_with_retry(self, url: str) -> httpx.Response:
 
 ### Decision 3: Pydantic Settings vs YAML Config
 
-**Choice**: Migrate to `pydantic-settings` with environment variables
+**Choice**: Migrate to **pydantic-settings** (<https://docs.pydantic.dev/latest/concepts/pydantic_settings/>) version 2.0.0+ with environment variables
 
 **Rationale**:
 
-- Type-safe configuration with validation
+- Type-safe configuration with automatic validation via Pydantic v2
 - 12-factor app compliance (config via environment)
 - Secret management via Vault or env vars (no secrets in code)
-- Hot-reload support via settings refresh
+- Hot-reload support via settings refresh mechanism
 - Auto-generated documentation from Pydantic schemas
+- JSON Schema export for API documentation
 
 **Alternatives Considered**:
 

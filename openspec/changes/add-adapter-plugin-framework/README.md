@@ -36,18 +36,21 @@ openspec/changes/add-adapter-plugin-framework/
 - Self-registering adapters via entry points
 - Structured metadata (domain, capabilities, auth)
 - Dynamic loading with dependency injection
+- **Library**: Pluggy 1.3.0+ (<https://pluggy.readthedocs.io/>) - The same plugin framework used by pytest
 
 ### 2. Unified Resilience Layer
 
 - Centralized retry policies using `tenacity`
 - Circuit breaker pattern for failing services
 - Consolidated rate limiting
+- **Library**: Tenacity 8.2.0+ (<https://tenacity.readthedocs.io/>)
 
 ### 3. Configuration & Validation
 
 - Pydantic models for all adapter I/O
 - Environment-based configuration with `pydantic-settings`
 - HashiCorp Vault integration for secrets
+- **Library**: pydantic-settings 2.0.0+ (<https://docs.pydantic.dev/latest/concepts/pydantic_settings/>)
 
 ### 4. Domain-Specific Namespaces
 

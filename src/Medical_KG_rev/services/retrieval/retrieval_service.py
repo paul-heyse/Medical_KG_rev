@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from __future__ import annotations
+
+from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
 from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.services.embedding.service import (
+    EmbeddingRequest as QueryEmbeddingRequest,
+    EmbeddingVector,
+    EmbeddingWorker,
+)
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
@@ -29,6 +38,7 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
+    granularity: str
 
 
 class RetrievalService:
@@ -192,6 +202,52 @@ class RetrievalService:
             source=source,
         )
 
+    def _merge_neighbors(self, results: Iterable[RetrievalResult]) -> list[RetrievalResult]:
+        merged: list[RetrievalResult] = []
+        buffer: dict[tuple[str, str], RetrievalResult] = {}
+        for result in results:
+            if result.granularity != "window":
+                merged.append(result)
+                continue
+            doc_key, chunker, index = self._parse_chunk_id(result.id)
+            key = (doc_key, chunker)
+            existing = buffer.get(key)
+            if existing is None:
+                buffer[key] = result
+                continue
+            prev_doc, prev_chunker, prev_index = self._parse_chunk_id(existing.id)
+            if prev_doc == doc_key and prev_chunker == chunker and index == prev_index + 1:
+                combined_text = existing.text + "\n" + result.text
+                combined_score = max(existing.retrieval_score, result.retrieval_score)
+                metadata = dict(existing.metadata)
+                metadata.setdefault("merged_ids", [existing.id])
+                metadata["merged_ids"].append(result.id)
+                metadata["text"] = combined_text
+                merged_result = RetrievalResult(
+                    id=result.id,
+                    text=combined_text,
+                    retrieval_score=combined_score,
+                    rerank_score=None,
+                    highlights=existing.highlights,
+                    metadata=metadata,
+                    granularity=result.granularity,
+                )
+                buffer[key] = merged_result
+            else:
+                merged.append(existing)
+                buffer[key] = result
+        merged.extend(buffer.values())
+        return merged
+
+    def _parse_chunk_id(self, chunk_id: str) -> tuple[str, str, int]:
+        parts = chunk_id.split(":")
+        if len(parts) < 4:
+            return chunk_id, "unknown", 0
+        try:
+            return parts[0], parts[1], int(parts[-1])
+        except ValueError:
+            return parts[0], parts[1], 0
+
     def _apply_rerank(
         self, query: str, results: Iterable[RetrievalResult]
     ) -> list[RetrievalResult]:
@@ -211,6 +267,35 @@ class RetrievalService:
                     rerank_score=score_map.get(result.id),
                     highlights=result.highlights,
                     metadata=result.metadata,
+                    granularity=result.granularity,
                 )
             )
         return reranked
+
+    def _encode_query(self, query: str, context: SecurityContext) -> Sequence[EmbeddingVector]:
+        if not self.embedding_worker:
+            return []
+        namespaces = self.active_namespaces or [self.vector_namespace]
+        request = QueryEmbeddingRequest(
+            tenant_id=context.tenant_id,
+            chunk_ids=[f"query:{index}" for index in range(len(namespaces))],
+            texts=[query] * len(namespaces),
+            namespaces=namespaces,
+            batch_size=1,
+        )
+        response = self.embedding_worker.encode_queries(request)
+        return response.vectors
+
+    def _query_cache_get(self, query: str) -> list[Mapping[str, object]] | None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        if key in self._query_cache:
+            value = self._query_cache.pop(key)
+            self._query_cache[key] = value
+            return value
+        return None
+
+    def _query_cache_set(self, query: str, results: list[Mapping[str, object]]) -> None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        self._query_cache[key] = results
+        if len(self._query_cache) > self._cache_size:
+            self._query_cache.popitem(last=False)

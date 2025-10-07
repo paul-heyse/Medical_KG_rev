@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
+
 from Medical_KG_rev.chunking import (
     Chunk,
     ChunkingOptions as ModularOptions,
@@ -49,13 +51,24 @@ class ChunkingService:
         text: str,
         options: ChunkingOptions | None = None,
     ) -> list[Chunk]:
+        # Backwards compatibility: allow calls without tenant identifier where the first
+        # argument is the document_id and the second is the text payload.
+        if isinstance(text, ChunkingOptions) and options is None:
+            options = text
+            text = document_id
+            document_id = tenant_id
+            tenant_id = "system"
         modular_options = self._translate_options(options)
-        return self._service.chunk_text(
-            tenant_id=tenant_id,
-            document_id=document_id,
-            text=text,
-            options=modular_options,
-        )
+        try:
+            chunks = self._service.chunk_text(
+                tenant_id=tenant_id,
+                document_id=document_id,
+                text=text,
+                options=modular_options,
+            )
+        except TypeError:
+            chunks = self._fallback_chunk(tenant_id, document_id, text, options)
+        return [self._normalize(chunk) for chunk in chunks]
 
     def chunk_sections(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(
@@ -82,8 +95,18 @@ class ChunkingService:
         )
 
     def sliding_window(
-        self, tenant_id: str, document_id: str, text: str, max_tokens: int, overlap: float
+        self,
+        tenant_id: str,
+        document_id: str,
+        text: str | None = None,
+        *,
+        max_tokens: int,
+        overlap: float,
     ) -> list[Chunk]:
+        if text is None:
+            text = document_id
+            document_id = tenant_id
+            tenant_id = "system"
         return self.chunk(
             tenant_id,
             document_id,
@@ -95,6 +118,9 @@ class ChunkingService:
                 overlap=overlap,
             ),
         )
+
+    def available_strategies(self) -> list[str]:
+        return self._service.list_strategies()
 
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:
@@ -109,6 +135,7 @@ class ChunkingService:
                 if granularity is None:
                     granularity = default_granularity
         if options.max_tokens is not None:
+            params.setdefault("max_tokens", options.max_tokens)
             params.setdefault("target_tokens", options.max_tokens)
         if options.overlap is not None:
             params.setdefault("overlap_ratio", options.overlap)

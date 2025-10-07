@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 
 import structlog
 
@@ -15,6 +15,9 @@ from Medical_KG_rev.observability.metrics import (
     record_query_operation,
 )
 from Medical_KG_rev.utils.errors import ProblemDetail
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from Medical_KG_rev.services.retrieval.router import RetrievalRouter, RetrievalStrategy
 
 from .pipeline import ParallelExecutor, PipelineContext, PipelineExecutor, PipelineStage, StageFailure
 from .profiles import ProfileDetector, apply_profile_overrides
@@ -63,6 +66,57 @@ class StrategySpec:
 
     def execute(self, context: PipelineContext, options: Mapping[str, Any]) -> ResultList:
         return self.runner(context, options)
+
+    @classmethod
+    def from_router(
+        cls,
+        router: "RetrievalRouter",
+        strategy: "RetrievalStrategy",
+        *,
+        timeout_ms: int | None = None,
+    ) -> StrategySpec:
+        """Adapt a retrieval router strategy into a pipeline-aware spec."""
+
+        from Medical_KG_rev.services.retrieval.router import RoutingRequest
+
+        def _run(context: PipelineContext, options: Mapping[str, Any]) -> list[dict[str, Any]]:
+            top_k = int(options.get("top_k", context.data.get("top_k", 10)))
+            request = RoutingRequest(
+                query=str(context.data.get("query", "")),
+                top_k=top_k,
+                filters=context.data.get("filters"),
+                namespace=options.get("namespace"),
+                context=context.data.get("metadata"),
+            )
+            matches = router.execute(request, [strategy])
+            results: list[dict[str, Any]] = []
+            for match in matches:
+                metadata = dict(getattr(match, "metadata", {}) or {})
+                document = metadata.get("document")
+                if isinstance(document, Mapping):
+                    document_payload = dict(document)
+                else:
+                    document_payload = {
+                        "id": match.id,
+                        "title": metadata.get("title", match.id),
+                        "summary": metadata.get("summary"),
+                        "source": metadata.get("source", strategy.name),
+                    }
+                document_payload.setdefault("id", match.id)
+                document_payload.setdefault("title", metadata.get("title", document_payload["id"]))
+                document_payload.setdefault("source", metadata.get("source", strategy.name))
+                if metadata:
+                    document_payload.setdefault("metadata", metadata)
+                results.append(
+                    {
+                        "id": match.id,
+                        "score": float(getattr(match, "score", 0.0)),
+                        "document": document_payload,
+                    }
+                )
+            return results
+
+        return cls(name=strategy.name, runner=_run, timeout_ms=timeout_ms)
 
 
 @dataclass(slots=True)

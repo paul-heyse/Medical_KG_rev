@@ -24,6 +24,7 @@ from .retrieval_pipeline import (
     RetrievalOrchestrator,
     StrategySpec,
 )
+from .stages import StageRegistry
 
 
 def _default_cache_factory() -> RerankCache:
@@ -45,7 +46,12 @@ class QueryPipelineBuilder:
     circuit_breaker: CircuitBreaker | None = None
     rerank_cache_factory: Callable[[], RerankCache] = _default_cache_factory
     total_timeout_ms: int = 100
+    stage_registry: StageRegistry | None = None
     _executors: dict[str, QueryPipelineExecutor] = field(default_factory=dict, init=False)
+
+    def __post_init__(self) -> None:
+        if self.stage_registry is None:
+            self.stage_registry = self._default_stage_registry()
 
     def invalidate(self) -> None:
         """Clear cached executors so the next request rebuilds them."""
@@ -90,36 +96,49 @@ class QueryPipelineBuilder:
         return stages
 
     def _build_stage(self, stage: StageConfig, options: Mapping[str, Any]):
-        if stage.kind == "retrieval":
-            return RetrievalOrchestrator(
+        assert self.stage_registry is not None
+        return self.stage_registry.build(stage, options)
+
+    def _default_stage_registry(self) -> StageRegistry:
+        registry = StageRegistry()
+        registry.register(
+            "retrieval",
+            lambda stage, options, self=self: RetrievalOrchestrator(
                 name=stage.name,
                 timeout_ms=stage.timeout_ms,
                 base_options=options,
                 strategies=self.strategies,
                 fanout=self.parallel_executor,
-            )
-        if stage.kind == "fusion":
-            return FusionOrchestrator(
+            ),
+        )
+        registry.register(
+            "fusion",
+            lambda stage, options: FusionOrchestrator(
                 name=stage.name,
                 timeout_ms=stage.timeout_ms,
                 base_options=options,
-            )
-        if stage.kind == "rerank":
-            return RerankOrchestrator(
+            ),
+        )
+        registry.register(
+            "rerank",
+            lambda stage, options, self=self: RerankOrchestrator(
                 name=stage.name,
                 timeout_ms=stage.timeout_ms,
                 base_options=options,
                 rerank=self.rerank_runner,
                 cache=self.rerank_cache_factory(),
                 circuit_breaker=self.circuit_breaker,
-            )
-        if stage.kind == "final":
-            return FinalSelectorOrchestrator(
+            ),
+        )
+        registry.register(
+            "final",
+            lambda stage, options: FinalSelectorOrchestrator(
                 name=stage.name,
                 timeout_ms=stage.timeout_ms,
                 base_options=options,
-            )
-        raise ValueError(f"Unsupported stage kind '{stage.kind}' in query pipeline")
+            ),
+        )
+        return registry
 
 
 __all__ = ["QueryPipelineBuilder", "Runner"]

@@ -317,10 +317,15 @@ class ParallelExecutor:
     """Executes callables concurrently while propagating correlation IDs."""
 
     def __init__(self, *, max_workers: int = 8) -> None:
+        self._max_workers = max_workers
         self._pool = ThreadPoolExecutor(max_workers=max_workers)
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=True)
+
+    @property
+    def max_workers(self) -> int:
+        return self._max_workers
 
     @overload
     def run(

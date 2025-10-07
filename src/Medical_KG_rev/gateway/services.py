@@ -38,6 +38,7 @@ from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
+from ..services.retrieval.router import RetrievalRouter, RetrievalStrategy, RouterMatch, RoutingRequest
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
@@ -96,6 +97,7 @@ class GatewayService:
     profile_manager: ProfileManager | None = None
     profile_detector: ProfileDetector | None = None
     query_pipeline_builder: QueryPipelineBuilder | None = None
+    retrieval_router: RetrievalRouter | None = None
     _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
@@ -119,6 +121,9 @@ class GatewayService:
                 self.profile_manager,
                 default_profile=default_profile,
             )
+        if self.retrieval_router is None:
+            max_workers = getattr(self._parallel_executor, "max_workers", 4)
+            self.retrieval_router = RetrievalRouter(max_workers=max(1, max_workers))
         if self.query_pipeline_builder is None:
             self.query_pipeline_builder = self._build_query_builder()
 
@@ -135,6 +140,8 @@ class GatewayService:
             if self.profile_detector and self.profile_detector.default_profile in profiles
             else (profiles[0] if profiles else "default")
         )
+        max_workers = getattr(self._parallel_executor, "max_workers", 4)
+        self.retrieval_router = RetrievalRouter(max_workers=max(1, max_workers))
         self.profile_detector = ProfileDetector(self.profile_manager, default_profile=default_profile)
         self.query_pipeline_builder = self._build_query_builder()
 
@@ -151,20 +158,21 @@ class GatewayService:
         )
 
     def _strategy_registry(self) -> dict[str, StrategySpec]:
+        assert self.retrieval_router is not None
         return {
-            "bm25": StrategySpec(
-                name="bm25",
-                runner=self._synthetic_strategy("bm25", 0.92),
+            "bm25": StrategySpec.from_router(
+                self.retrieval_router,
+                self._synthetic_strategy("bm25", 0.92),
                 timeout_ms=50,
             ),
-            "dense": StrategySpec(
-                name="dense",
-                runner=self._synthetic_strategy("dense", 0.88),
+            "dense": StrategySpec.from_router(
+                self.retrieval_router,
+                self._synthetic_strategy("dense", 0.88),
                 timeout_ms=60,
             ),
-            "splade": StrategySpec(
-                name="splade",
-                runner=self._synthetic_strategy("splade", 0.86),
+            "splade": StrategySpec.from_router(
+                self.retrieval_router,
+                self._synthetic_strategy("splade", 0.86),
                 timeout_ms=60,
             ),
         }
@@ -187,31 +195,31 @@ class GatewayService:
         default_name = profiles[0] if profiles else "default"
         return self.profile_manager.get(default_name)
 
-    def _synthetic_strategy(
-        self, name: str, base_score: float
-    ) -> Callable[[PipelineContext, Mapping[str, Any]], Sequence[dict[str, Any]]]:
-        def run(context: PipelineContext, options: Mapping[str, Any]) -> list[dict[str, Any]]:
-            query = str(context.data.get("query", ""))
-            profile = str(
-                context.data.get("profile")
-                or (self.profile_detector.default_profile if self.profile_detector else "default")
-            )
-            limit = int(options.get("top_k", 3))
-            results: list[dict[str, Any]] = []
-            for index in range(limit):
-                score = max(base_score - index * 0.08, 0.0)
-                doc_id = f"doc-{index + 1}"
-                document = {
-                    "id": doc_id,
-                    "title": f"{query.title() or 'Result'} ({name.upper()}) #{index + 1}",
-                    "summary": f"Synthetic {name} summary for '{query}' (profile: {profile})",
-                    "source": name,
-                    "metadata": {"strategy": name, "rank": index + 1, "profile": profile},
-                }
-                results.append({"id": doc_id, "score": score, "document": document})
-            return results
+    def _synthetic_strategy(self, name: str, base_score: float) -> RetrievalStrategy:
+        def handler(request: RoutingRequest) -> list[RouterMatch]:
+            query = request.query or ""
+            metadata = request.context if isinstance(request.context, Mapping) else {}
+            profile = str(metadata.get("profile") or metadata.get("dataset") or "default")
+            limit = max(1, int(request.top_k))
+            matches: list[RouterMatch] = []
+            for index in range(1, limit + 1):
+                score = max(base_score - (index - 1) * 0.05, 0.0)
+                doc_id = f"{name}-{profile}-{index}"
+                matches.append(
+                    RouterMatch(
+                        id=doc_id,
+                        score=score,
+                        metadata={
+                            "title": f"{name.upper()} result {index}",
+                            "summary": f"Synthetic {name} result for '{query}'",
+                            "source": name,
+                            "profile": profile,
+                        },
+                    )
+                )
+            return matches
 
-        return run
+        return RetrievalStrategy(name=name, handler=handler)
 
     def _rerank_candidates(
         self,

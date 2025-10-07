@@ -24,6 +24,7 @@ from .retrieval_pipeline import (
     RetrievalOrchestrator,
     StrategySpec,
 )
+from .stages import StageRegistry
 from .worker import (
     ChunkingWorker,
     EmbeddingPipelineWorker,
@@ -65,6 +66,7 @@ __all__ = [
     "Runner",
     "RerankCache",
     "RerankOrchestrator",
+    "StageRegistry",
     "OrchestrationError",
     "Orchestrator",
     "RetrievalOrchestrator",

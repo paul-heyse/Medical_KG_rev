@@ -17,6 +17,7 @@ from Medical_KG_rev.orchestration.retrieval_pipeline import (
     RerankOrchestrator,
     RetrievalOrchestrator,
 )
+from Medical_KG_rev.services.retrieval.router import RetrievalRouter, RetrievalStrategy, RouterMatch, RoutingRequest
 
 
 def test_retrieval_pipeline_returns_results() -> None:
@@ -137,3 +138,30 @@ def test_query_pipeline_applies_profile_overrides() -> None:
 
     assert result.data["results"][0]["id"] == "dense-doc"
     assert result.pipeline_version == "hybrid:1.0"
+
+
+def test_strategy_spec_from_router_adapts_results() -> None:
+    router = RetrievalRouter(max_workers=1)
+
+    def handler(request: RoutingRequest) -> list[RouterMatch]:
+        return [
+            RouterMatch(
+                id="doc-1",
+                score=0.75,
+                metadata={"title": "Router Doc", "summary": "Summary", "source": "router"},
+            )
+        ]
+
+    strategy = RetrievalStrategy(name="router", handler=handler)
+    spec = StrategySpec.from_router(router, strategy)
+
+    context = PipelineContext(
+        tenant_id="tenant",
+        operation="retrieve",
+        data={"query": "oncology", "top_k": 1},
+    )
+
+    results = spec.execute(context, {})
+
+    assert results[0]["id"] == "doc-1"
+    assert results[0]["document"]["title"] == "Router Doc"

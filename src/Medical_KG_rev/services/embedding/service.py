@@ -6,7 +6,8 @@ import time
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from pathlib import Path
-from typing import Iterator, Sequence
+from types import SimpleNamespace
+from typing import Iterator, Mapping, Sequence
 
 import structlog
 
@@ -40,6 +41,8 @@ class EmbeddingRequest:
     models: Sequence[str] | None = None
     namespaces: Sequence[str] | None = None
     correlation_id: str | None = None
+    metadatas: Sequence[Mapping[str, object]] | None = None
+    actor: str | None = None
 
 
 @dataclass(slots=True)
@@ -50,91 +53,79 @@ class EmbeddingVector:
     kind: str
     vectors: list[list[float]] | None
     terms: dict[str, float] | None
-    dimension: int
+    neural_fields: dict[str, object] | None = None
+    dimension: int = 0
+    model_version: str | None = None
     metadata: dict[str, object] = field(default_factory=dict)
+    record: EmbeddingRecord | None = None
+
+    @classmethod
+    def from_record(
+        cls,
+        record: EmbeddingRecord,
+        *,
+        storage_router: StorageRouter | None = None,
+    ) -> "EmbeddingVector":
+        if record.dim is not None:
+            dimension = record.dim
+        elif record.vectors:
+            dimension = len(record.vectors[0])
+        elif record.terms:
+            dimension = len(record.terms)
+        else:
+            dimension = 0
+        metadata = dict(record.metadata)
+        if storage_router is not None:
+            try:
+                target = storage_router.route(record.kind).name
+            except KeyError:  # pragma: no cover - defensive guard
+                target = "unmapped"
+            metadata.setdefault("storage_target", target)
+        metadata.setdefault("model_version", record.model_version)
+        return cls(
+            id=record.id,
+            model=record.model_id,
+            namespace=record.namespace,
+            kind=record.kind,
+            vectors=record.vectors,
+            terms=record.terms,
+            neural_fields=record.neural_fields,
+            dimension=dimension,
+            model_version=record.model_version,
+            metadata=metadata,
+            record=record,
+        )
 
 
 @dataclass(slots=True)
 class EmbeddingResponse:
     vectors: list[EmbeddingVector] = field(default_factory=list)
 
+    def extend_from_records(
+        self,
+        records: Sequence[EmbeddingRecord],
+        *,
+        storage_router: StorageRouter | None = None,
+    ) -> None:
+        for record in records:
+            self.vectors.append(
+                EmbeddingVector.from_record(record, storage_router=storage_router)
+            )
+
 
 @dataclass(slots=True)
-class _LegacyEmbeddingModel:
-    name: str
-    dimension: int
-    kind: str
-
-    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
-        tokens = text.split()
-        if self.kind == "dense":
-            base = float(len(tokens) or 1)
-            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
-            return {"id": chunk_id, "values": values}
-        weights = {
-            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
-            for index in range(min(self.dimension, max(1, len(tokens))))
-        }
-        return {"id": chunk_id, "terms": weights}
-
-
 class EmbeddingModelRegistry:
-    """Compatibility shim for legacy embedding registry usage in tests."""
+    """Compatibility wrapper that exposes cached embedder instances by name."""
 
-    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
+    namespace_manager: NamespaceManager
+    registry: EmbedderRegistry
+    factory: EmbedderFactory
+    _config: object
+    _embedder_configs: list[EmbedderConfig]
+    _configs_by_name: dict[str, EmbedderConfig]
+
+    def __init__(self, _gpu_manager: object | None = None, *, config_path: str | None = None) -> None:
         self.namespace_manager = NamespaceManager()
-        self._models: dict[str, _LegacyEmbeddingModel] = {
-            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
-            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
-        }
-        self._aliases = {
-            "splade": "splade",
-            "sparse": "splade",
-            "bge": "bge",
-            "bge-small": "bge",
-            "dense": "bge",
-        }
-
-    def list_models(self) -> list[str]:
-        return list(self._models)
-
-    def get(self, name: str) -> _LegacyEmbeddingModel:
-        key = self._aliases.get(name, name)
-        try:
-            return self._models[key]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise KeyError(f"Unknown embedding model '{name}'") from exc
-
-
-class EmbeddingWorker:
-    """Coordinates config-driven embedding generation and validation."""
-
-    def __init__(
-        self,
-        registry_or_namespace: EmbeddingModelRegistry | NamespaceManager | None = None,
-        *,
-        namespace_manager: NamespaceManager | None = None,
-        config_path: str | None = None,
-    ) -> None:
-        self._legacy_registry: EmbeddingModelRegistry | None = None
-        if isinstance(registry_or_namespace, EmbeddingModelRegistry):
-            self._legacy_registry = registry_or_namespace
-            self.namespace_manager = registry_or_namespace.namespace_manager
-            self.registry = None
-            self.factory = None
-            self.storage_router = StorageRouter()
-            self._config = None
-            self._embedder_configs: list[EmbedderConfig] = []
-            self._configs_by_name: dict[str, EmbedderConfig] = {}
-            self._configs_by_namespace: dict[str, EmbedderConfig] = {}
-            return
-
-        if isinstance(registry_or_namespace, NamespaceManager) and namespace_manager is not None:
-            raise TypeError("namespace_manager should not be provided twice")
-        effective_namespace = namespace_manager
-        if effective_namespace is None and isinstance(registry_or_namespace, NamespaceManager):
-            effective_namespace = registry_or_namespace
-        self.namespace_manager = effective_namespace or NamespaceManager()
         self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
         register_builtin_embedders(self.registry)
         self.factory = EmbedderFactory(self.registry)
@@ -200,6 +191,7 @@ class EmbeddingWorker:
         *,
         namespace_manager: NamespaceManager | None = None,
         config_path: str | None = None,
+        storage_router: StorageRouter | None = None,
     ) -> None:
         if registry is not None:
             self.namespace_manager = registry.namespace_manager
@@ -214,7 +206,7 @@ class EmbeddingWorker:
             self.factory = EmbedderFactory(self.registry)
             self._config = load_embeddings_config(Path(config_path) if config_path else None)
             self._embedder_configs = self._config.to_embedder_configs()
-        self.storage_router = StorageRouter()
+        self.storage_router = storage_router or StorageRouter()
         self._configs_by_name = {config.name: config for config in self._embedder_configs}
         self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
         self.vector_store = vector_store
@@ -240,6 +232,7 @@ class EmbeddingWorker:
         *,
         texts: Sequence[str],
         ids: Sequence[str],
+        metadata: Sequence[Mapping[str, object]],
     ) -> AdapterEmbeddingRequest:
         return AdapterEmbeddingRequest(
             tenant_id=request.tenant_id,
@@ -247,6 +240,7 @@ class EmbeddingWorker:
             texts=list(texts),
             ids=list(ids),
             correlation_id=request.correlation_id,
+            metadata=[dict(item) for item in metadata],
         )
 
     def _dimension_from_record(self, record: EmbeddingRecord) -> int:
@@ -260,17 +254,23 @@ class EmbeddingWorker:
 
     def _batch_iterator(
         self, request: EmbeddingRequest, batch_size: int
-    ) -> Iterator[tuple[list[str], list[str]]]:
+    ) -> Iterator[tuple[list[str], list[str], list[dict[str, object]]]]:
         texts = list(request.texts)
         ids = list(request.chunk_ids or [])
         if len(ids) < len(texts):
             ids.extend(f"{request.tenant_id}:{index}" for index in range(len(ids), len(texts)))
         else:
             ids = ids[: len(texts)]
+        metadata_list = [
+            dict(item) for item in list(request.metadatas or [])[: len(texts)]
+        ]
+        while len(metadata_list) < len(texts):
+            metadata_list.append({})
         for start in range(0, len(texts), batch_size):
             yield (
                 texts[start : start + batch_size],
                 ids[start : start + batch_size],
+                metadata_list[start : start + batch_size],
             )
 
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
@@ -281,6 +281,7 @@ class EmbeddingWorker:
         logger.info(
             "embedding.pipeline.start",
             tenant_id=request.tenant_id,
+            actor=request.actor,
             chunks=len(request.texts),
             models=[config.name for config in configs],
         )
@@ -300,12 +301,13 @@ class EmbeddingWorker:
             )
             start = time.perf_counter()
             records: list[EmbeddingRecord] = []
-            for text_batch, id_batch in batches:
+            for text_batch, id_batch, metadata_batch in batches:
                 adapter_request = self._adapter_request(
                     request,
                     config,
                     texts=text_batch,
                     ids=id_batch,
+                    metadata=metadata_batch,
                 )
                 batch_records = embedder.embed_documents(adapter_request)
                 records.extend(batch_records)
@@ -326,52 +328,42 @@ class EmbeddingWorker:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
                 self.storage_router.persist(record)
-                response.vectors.append(
-                    EmbeddingVector(
-                        id=record.id,
-                        model=record.model_id,
-                        namespace=record.namespace,
-                        kind=record.kind,
-                        vectors=record.vectors,
-                        terms=record.terms,
-                        dimension=dim,
-                        metadata=metadata,
-                    )
-                )
-                if self.vector_store and record.vectors:
-                    named_vectors: dict[str, list[float]] | None = None
-                    if len(record.vectors) > 1:
-                        named_vectors = {
-                            f"segment_{idx}": list(vector)
-                            for idx, vector in enumerate(record.vectors[1:], start=1)
-                        }
-                    vector_records.append(
-                        VectorRecord(
-                            vector_id=record.id,
-                            values=list(record.vectors[0]),
-                            metadata=metadata,
-                            named_vectors=named_vectors,
-                        )
-                    )
-            if self.vector_store and vector_records:
-                context = SecurityContext(
-                    subject="embedding-worker",
-                    tenant_id=request.tenant_id,
-                    scopes={"index:write"},
-                )
-                self.vector_store.upsert(
-                    context=context,
-                    namespace=config.namespace,
-                    records=vector_records,
-                )
+            response.extend_from_records(records, storage_router=self.storage_router)
             logger.info(
                 "embedding.pipeline.completed",
                 namespace=config.namespace,
                 model=config.name,
+                actor=request.actor,
                 total=len(records),
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
-        logger.info("embedding.pipeline.finish", total=len(response.vectors))
+        logger.info(
+            "embedding.pipeline.finish",
+            total=len(response.vectors),
+            actor=request.actor,
+            tenant_id=request.tenant_id,
+        )
+        return response
+
+    def encode_queries(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        configs = self._resolve_configs(request)
+        response = EmbeddingResponse()
+        for config in configs:
+            ensure_available(config.requires_gpu, operation=f"embed-query:{config.name}")
+            embedder = self.factory.get(config)
+            adapter_request = self._adapter_request(
+                request,
+                config,
+                texts=request.texts,
+                ids=request.chunk_ids
+                or [f"query:{index}" for index in range(len(request.texts))],
+                metadata=request.metadatas or [{} for _ in request.texts],
+            )
+            records = embedder.embed_queries(adapter_request)
+            for record in records:
+                dim = self._dimension_from_record(record)
+                self.namespace_manager.validate_record(config.namespace, dim)
+            response.extend_from_records(records, storage_router=self.storage_router)
         return response
 
     def _run_legacy(self, request: EmbeddingRequest) -> EmbeddingResponse:

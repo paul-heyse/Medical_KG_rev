@@ -12,19 +12,10 @@ from typing import Any
 import structlog
 
 from Medical_KG_rev.auth.context import SecurityContext
-from Medical_KG_rev.config import RerankingSettings
-from Medical_KG_rev.services.reranking import (
-    BatchProcessor,
-    CircuitBreaker,
-    FusionService,
-    FusionSettings,
-    FusionStrategy,
-    NormalizationStrategy,
-    PipelineSettings,
-    RerankCacheManager,
-    RerankerFactory,
-    RerankingEngine,
-    ScoredDocument,
+from Medical_KG_rev.services.embedding.service import (
+    EmbeddingRequest as QueryEmbeddingRequest,
+    EmbeddingVector,
+    EmbeddingWorker,
 )
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
@@ -60,76 +51,20 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        fusion_service: FusionService | None = None,
-        pipeline_settings: PipelineSettings | None = None,
-        reranking_engine: RerankingEngine | None = None,
-        reranking_settings: RerankingSettings | None = None,
+        embedding_worker: EmbeddingWorker | None = None,
+        active_namespaces: Sequence[str] | None = None,
+        namespace_weights: Mapping[str, float] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self._granularity_weights = {
-            "document": 0.6,
-            "section": 1.0,
-            "paragraph": 1.2,
-            "window": 0.9,
-            "table": 0.8,
-        }
-        if granularity_weights:
-            self._granularity_weights.update(granularity_weights)
-
-        fusion_cfg = reranking_settings.fusion if reranking_settings else None
-        fusion_settings = FusionSettings(
-            strategy=FusionStrategy(fusion_cfg.strategy)
-            if fusion_cfg
-            else FusionStrategy.RRF,
-            rrf_k=fusion_cfg.rrf_k if fusion_cfg else 60,
-            weights=fusion_cfg.weights if fusion_cfg else {},
-            normalization=NormalizationStrategy(fusion_cfg.normalization)
-            if fusion_cfg
-            else NormalizationStrategy.MIN_MAX,
-            deduplicate=fusion_cfg.deduplicate if fusion_cfg else True,
-        )
-        self._fusion = fusion_service or FusionService(fusion_settings)
-
-        ttl = reranking_settings.cache_ttl if reranking_settings else 3600
-        failure_threshold = (
-            reranking_settings.circuit_breaker_failures if reranking_settings else 5
-        )
-        reset_timeout = (
-            reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
-        )
-        batch_size = (
-            reranking_settings.model.batch_size if reranking_settings else 64
-        )
-        self._reranking_engine = reranking_engine or RerankingEngine(
-            factory=RerankerFactory(),
-            cache=RerankCacheManager(ttl_seconds=ttl),
-            batch_processor=BatchProcessor(max_batch_size=batch_size),
-            circuit_breaker=CircuitBreaker(
-                failure_threshold=failure_threshold, reset_timeout=reset_timeout
-            ),
-        )
-        pipeline_cfg = reranking_settings.pipeline if reranking_settings else None
-        pipeline_settings = pipeline_settings or PipelineSettings(
-            retrieve_candidates=pipeline_cfg.retrieve_candidates if pipeline_cfg else 1000,
-            rerank_candidates=pipeline_cfg.rerank_candidates if pipeline_cfg else 100,
-            return_top_k=pipeline_cfg.return_top_k if pipeline_cfg else 10,
-        )
-        self._pipeline = TwoStagePipeline(
-            fusion=self._fusion,
-            reranking=self._reranking_engine,
-            settings=pipeline_settings,
-        )
-        # Backwards compatible attribute
-        self.reranker = reranker or CrossEncoderReranker()
-        self._default_reranker = (
-            reranking_settings.model.reranker_id
-            if reranking_settings
-            else "cross_encoder:bge"
-        )
+        self.embedding_worker = embedding_worker
+        self.active_namespaces = list(active_namespaces or [vector_namespace])
+        self.namespace_weights = dict(namespace_weights or {vector_namespace: 1.0})
+        self._query_cache: OrderedDict[tuple[str, tuple[str, ...]], list[Mapping[str, Any]]] = OrderedDict()
+        self._cache_size = 32
 
     def search(
         self,
@@ -336,6 +271,7 @@ class RetrievalService:
             texts=[query] * len(namespaces),
             namespaces=namespaces,
             batch_size=1,
+            actor=context.subject,
         )
         response = self.embedding_worker.encode_queries(request)
         return response.vectors

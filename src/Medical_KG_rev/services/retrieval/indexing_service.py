@@ -77,25 +77,43 @@ class IndexingService:
         self.opensearch.bulk_index(self.chunk_index, documents, id_field="id")
 
     def _embed_and_index(self, tenant_id: str, chunks: Sequence[Chunk]) -> None:
+        chunk_metadata = []
+        for chunk in chunks:
+            base_meta = dict(getattr(chunk, "meta", None) or getattr(chunk, "metadata", {}) or {})
+            base_meta.setdefault("text", chunk.body)
+            base_meta.setdefault("granularity", chunk.granularity)
+            base_meta.setdefault("chunker", chunk.chunker)
+            chunk_metadata.append(base_meta)
         request = EmbeddingRequest(
             tenant_id=tenant_id,
             chunk_ids=[chunk.chunk_id for chunk in chunks],
             texts=[chunk.body for chunk in chunks],
             normalize=True,
+            metadatas=chunk_metadata,
         )
         response = self.embedding_worker.run(request)
-        dense_vectors = [vector for vector in response.vectors if vector.kind == "dense"]
+        dense_vectors = [
+            vector
+            for vector in response.vectors
+            if vector.kind in {"single_vector", "multi_vector"}
+        ]
         chunk_lookup = {chunk.chunk_id: chunk for chunk in chunks}
         for vector in dense_vectors:
             chunk = chunk_lookup.get(vector.id)
             if chunk is None:
                 continue
-            chunk_meta = getattr(chunk, "meta", None) or getattr(chunk, "metadata", {})
-            metadata = dict(chunk_meta)
+            if not vector.vectors:
+                continue
+            metadata = dict(vector.metadata)
             metadata.setdefault("text", chunk.body)
             metadata.setdefault("granularity", chunk.granularity)
             metadata.setdefault("chunker", chunk.chunker)
-            self.faiss.add(vector.id, vector.values[: self.faiss.dimension], metadata)
+            values = vector.vectors[0]
+            if len(values) < self.faiss.dimension:
+                padded = list(values) + [0.0] * (self.faiss.dimension - len(values))
+            else:
+                padded = values[: self.faiss.dimension]
+            self.faiss.add(vector.id, padded, metadata)
 
     def refresh(self) -> None:
         """Placeholder for compatibility with production implementation."""

@@ -1,7 +1,8 @@
 import httpx
 import pytest
 
-from Medical_KG_rev.adapters import (
+from Medical_KG_rev.adapters import AdapterDomain, AdapterRequest, create_adapter_from_config, load_adapter_config
+from Medical_KG_rev.adapters.biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
     COREAdapter,
@@ -16,10 +17,25 @@ from Medical_KG_rev.adapters import (
     RxNormAdapter,
     SemanticScholarAdapter,
     UnpaywallAdapter,
-    create_adapter_from_config,
-    load_adapter_config,
 )
-from Medical_KG_rev.adapters.testing import run_adapter
+from Medical_KG_rev.adapters.plugins.domains.biomedical import (
+    ChEMBLAdapterPlugin,
+    ClinicalTrialsAdapterPlugin,
+    COREAdapterPlugin,
+    CrossrefAdapterPlugin,
+    ICD11AdapterPlugin,
+    MeSHAdapterPlugin,
+    OpenAlexAdapterPlugin,
+    OpenFDADeviceAdapterPlugin,
+    OpenFDADrugEventAdapterPlugin,
+    OpenFDADrugLabelAdapterPlugin,
+    PMCAdapterPlugin,
+    RxNormAdapterPlugin,
+    SemanticScholarAdapterPlugin,
+    UnpaywallAdapterPlugin,
+)
+from Medical_KG_rev.adapters.plugins.models import AdapterResponse
+from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
 from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
 
 
@@ -31,6 +47,22 @@ def _client(base_url: str, handler: httpx.MockTransport) -> HttpClient:
 
 def _mock_transport(callback):
     return httpx.MockTransport(callback)
+
+
+def _run_plugin(
+    plugin: BaseAdapterPlugin, *, parameters: dict[str, object], domain: AdapterDomain = AdapterDomain.BIOMEDICAL
+) -> AdapterResponse:
+    request = AdapterRequest(
+        tenant_id="tenant",
+        correlation_id="corr",
+        domain=domain,
+        parameters=parameters,
+    )
+    response = plugin.fetch(request)
+    response = plugin.parse(response, request)
+    outcome = plugin.validate(response, request)
+    assert outcome.valid
+    return response
 
 
 def test_clinical_trials_adapter_maps_metadata():
@@ -66,12 +98,14 @@ def test_clinical_trials_adapter_maps_metadata():
         assert request.url.path.endswith("/studies/NCT01234567")
         return httpx.Response(200, json=study_payload)
 
-    adapter = ClinicalTrialsAdapter(
-        client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+    plugin = ClinicalTrialsAdapterPlugin(
+        adapter=ClinicalTrialsAdapter(
+            client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+        )
     )
-    result = run_adapter(adapter, parameters={"nct_id": "NCT01234567"})
-    assert len(result.documents) == 1
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"nct_id": "NCT01234567"})
+    assert len(response.items) == 1
+    document = response.items[0]
     assert document.id == "NCT01234567"
     assert document.metadata["overall_status"] == "Recruiting"
     assert document.metadata["phase"] == "Phase 2"
@@ -83,11 +117,13 @@ def test_clinical_trials_adapter_validates_identifier():
     def handler(_: httpx.Request) -> httpx.Response:
         raise AssertionError("API should not be called for invalid identifiers")
 
-    adapter = ClinicalTrialsAdapter(
-        client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+    plugin = ClinicalTrialsAdapterPlugin(
+        adapter=ClinicalTrialsAdapter(
+            client=_client("https://clinicaltrials.gov/api/v2", _mock_transport(handler))
+        )
     )
     with pytest.raises(ValueError):
-        run_adapter(adapter, parameters={"nct_id": "bad"})
+        _run_plugin(plugin, parameters={"nct_id": "bad"})
 
 
 def test_openfda_drug_label_adapter_parses_spl():
@@ -112,11 +148,13 @@ def test_openfda_drug_label_adapter_parses_spl():
         assert "openfda.package_ndc" in request.url.params["search"]
         return httpx.Response(200, json=payload)
 
-    adapter = OpenFDADrugLabelAdapter(
-        client=_client("https://api.fda.gov", _mock_transport(handler))
+    plugin = OpenFDADrugLabelAdapterPlugin(
+        adapter=OpenFDADrugLabelAdapter(
+            client=_client("https://api.fda.gov", _mock_transport(handler))
+        )
     )
-    result = run_adapter(adapter, parameters={"ndc": "1234-5678-90"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"ndc": "1234-5678-90"})
+    document = response.items[0]
     assert document.metadata["brand_name"] == "DrugName"
     assert any(
         block.metadata["section"] == "Indications And Usage"
@@ -142,11 +180,13 @@ def test_openfda_drug_event_adapter_maps_reactions():
         assert request.url.params["search"].startswith("patient.drug.medicinalproduct")
         return httpx.Response(200, json=payload)
 
-    adapter = OpenFDADrugEventAdapter(
-        client=_client("https://api.fda.gov", _mock_transport(handler))
+    plugin = OpenFDADrugEventAdapterPlugin(
+        adapter=OpenFDADrugEventAdapter(
+            client=_client("https://api.fda.gov", _mock_transport(handler))
+        )
     )
-    result = run_adapter(adapter, parameters={"drug": "Acetaminophen"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"drug": "Acetaminophen"})
+    document = response.items[0]
     assert "Headache" in document.metadata["reactions"]
     assert "Adverse event report" in document.title
 
@@ -168,9 +208,13 @@ def test_openfda_device_adapter_handles_definition():
         assert request.url.params["search"].startswith("product_code:")
         return httpx.Response(200, json=payload)
 
-    adapter = OpenFDADeviceAdapter(client=_client("https://api.fda.gov", _mock_transport(handler)))
-    result = run_adapter(adapter, parameters={"device_id": "ABC"})
-    document = result.documents[0]
+    plugin = OpenFDADeviceAdapterPlugin(
+        adapter=OpenFDADeviceAdapter(
+            client=_client("https://api.fda.gov", _mock_transport(handler))
+        )
+    )
+    response = _run_plugin(plugin, parameters={"device_id": "ABC"})
+    document = response.items[0]
     assert document.metadata["medical_specialty"] == "Cardiology"
     assert document.sections[0].blocks[0].text == "Device description"
 
@@ -195,9 +239,13 @@ def test_openalex_adapter_flattens_abstract():
         assert request.url.path == "/works"
         return httpx.Response(200, json=payload)
 
-    adapter = OpenAlexAdapter(client=_client("https://api.openalex.org", _mock_transport(handler)))
-    result = run_adapter(adapter, parameters={"query": "lung cancer"})
-    document = result.documents[0]
+    plugin = OpenAlexAdapterPlugin(
+        adapter=OpenAlexAdapter(
+            client=_client("https://api.openalex.org", _mock_transport(handler))
+        )
+    )
+    response = _run_plugin(plugin, parameters={"query": "lung cancer"})
+    document = response.items[0]
     assert document.metadata["doi"] == "10.1000/example"
     assert document.sections[0].blocks[0].text == "Immune therapy"
 
@@ -211,14 +259,16 @@ def test_unpaywall_adapter_returns_metadata():
         "best_oa_location": {"url": "https://example.com/paper.pdf"},
     }
 
-    adapter = UnpaywallAdapter(
-        client=_client(
-            "https://api.unpaywall.org/v2",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = UnpaywallAdapterPlugin(
+        adapter=UnpaywallAdapter(
+            client=_client(
+                "https://api.unpaywall.org/v2",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"doi": "10.1000/example"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
+    document = response.items[0]
     assert document.metadata["oa_status"] == "gold"
 
 
@@ -233,14 +283,16 @@ def test_crossref_adapter_extracts_references():
         }
     }
 
-    adapter = CrossrefAdapter(
-        client=_client(
-            "https://api.crossref.org",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = CrossrefAdapterPlugin(
+        adapter=CrossrefAdapter(
+            client=_client(
+                "https://api.crossref.org",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"doi": "10.1000/example"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
+    document = response.items[0]
     assert document.metadata["references"] == ["10.1000/ref1", "10.1000/ref2"]
 
 
@@ -257,14 +309,16 @@ def test_core_adapter_handles_multiple_entries():
         ]
     }
 
-    adapter = COREAdapter(
-        client=_client(
-            "https://core.ac.uk/api-v3",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = COREAdapterPlugin(
+        adapter=COREAdapter(
+            client=_client(
+                "https://core.ac.uk/api-v3",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"doi": "10.1000/example"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
+    document = response.items[0]
     assert document.metadata["download_url"] == "https://core.example/download.pdf"
 
 
@@ -282,14 +336,16 @@ def test_pmc_adapter_parses_xml():
     </article>
     """
 
-    adapter = PMCAdapter(
-        client=_client(
-            "https://www.ebi.ac.uk/europepmc",
-            _mock_transport(lambda request: httpx.Response(200, text=xml_payload)),
+    plugin = PMCAdapterPlugin(
+        adapter=PMCAdapter(
+            client=_client(
+                "https://www.ebi.ac.uk/europepmc",
+                _mock_transport(lambda request: httpx.Response(200, text=xml_payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"pmcid": "PMC123456"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"pmcid": "PMC123456"})
+    document = response.items[0]
     assert document.metadata["pmcid"] == "PMC123456"
     assert any(block.text == "Body paragraph one." for block in document.sections[0].blocks)
 
@@ -301,14 +357,16 @@ def test_rxnorm_adapter_normalizes_name():
         ]
     }
 
-    adapter = RxNormAdapter(
-        client=_client(
-            "https://rxnav.nlm.nih.gov",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = RxNormAdapterPlugin(
+        adapter=RxNormAdapter(
+            client=_client(
+                "https://rxnav.nlm.nih.gov",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"drug_name": "Atorvastatin"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"drug_name": "Atorvastatin"})
+    document = response.items[0]
     assert document.id == "RXCUI:83367"
 
 
@@ -323,14 +381,16 @@ def test_icd11_adapter_searches_term():
         ]
     }
 
-    adapter = ICD11Adapter(
-        client=_client(
-            "https://id.who.int/icd/release/11",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = ICD11AdapterPlugin(
+        adapter=ICD11Adapter(
+            client=_client(
+                "https://id.who.int/icd/release/11",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"term": "diabetes"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"term": "diabetes"})
+    document = response.items[0]
     assert document.metadata["code"] == "5A11"
 
 
@@ -345,14 +405,16 @@ def test_mesh_adapter_descriptor_lookup():
         ]
     }
 
-    adapter = MeSHAdapter(
-        client=_client(
-            "https://id.nlm.nih.gov/mesh",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = MeSHAdapterPlugin(
+        adapter=MeSHAdapter(
+            client=_client(
+                "https://id.nlm.nih.gov/mesh",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"term": "Calcimycin"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"term": "Calcimycin"})
+    document = response.items[0]
     assert document.metadata["mesh_id"] == "D000001"
 
 
@@ -364,14 +426,16 @@ def test_chembl_adapter_fetches_by_identifier():
         "molecule_structures": {"canonical_smiles": "CC(=O)OC1=CC=CC=C1C(=O)O"},
     }
 
-    adapter = ChEMBLAdapter(
-        client=_client(
-            "https://www.ebi.ac.uk/chembl/api/data",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = ChEMBLAdapterPlugin(
+        adapter=ChEMBLAdapter(
+            client=_client(
+                "https://www.ebi.ac.uk/chembl/api/data",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"chembl_id": "CHEMBL25"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"chembl_id": "CHEMBL25"})
+    document = response.items[0]
     assert document.metadata["canonical_smiles"] == "CC(=O)OC1=CC=CC=C1C(=O)O"
 
 
@@ -385,14 +449,16 @@ def test_semantic_scholar_adapter_enriches_citations():
         "references": [{"title": "Ref 1"}, {"paperId": "xyz"}],
     }
 
-    adapter = SemanticScholarAdapter(
-        client=_client(
-            "https://api.semanticscholar.org/graph/v1",
-            _mock_transport(lambda request: httpx.Response(200, json=payload)),
+    plugin = SemanticScholarAdapterPlugin(
+        adapter=SemanticScholarAdapter(
+            client=_client(
+                "https://api.semanticscholar.org/graph/v1",
+                _mock_transport(lambda request: httpx.Response(200, json=payload)),
+            )
         )
     )
-    result = run_adapter(adapter, parameters={"doi": "10.1000/example"})
-    document = result.documents[0]
+    response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
+    document = response.items[0]
     assert document.metadata["citation_count"] == 42
 
 
@@ -431,7 +497,8 @@ mapping:
             _mock_transport(lambda request: httpx.Response(200, json=payload)),
         ),
     )
-    result = run_adapter(adapter, parameters={"nct_id": "NCT00000001"})
-    document = result.documents[0]
+    plugin = ClinicalTrialsAdapterPlugin(adapter=adapter)
+    response = _run_plugin(plugin, parameters={"nct_id": "NCT00000001"})
+    document = response.items[0]
     assert document.title == "Example"
     assert document.sections[0].blocks[0].text == "Summary"

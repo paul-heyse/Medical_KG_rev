@@ -135,6 +135,25 @@ RERANK_GPU_MEMORY_ALERTS = Counter(
     labelnames=("reranker",),
 )
 
+RESILIENCE_RETRY_ATTEMPTS = Counter(
+    "orchestration_resilience_retry_total",
+    "Number of retry attempts triggered by resilience policies",
+    labelnames=("policy", "stage"),
+)
+
+RESILIENCE_CIRCUIT_STATE = Gauge(
+    "orchestration_circuit_breaker_state",
+    "Circuit breaker state per resilience policy (0=closed, 1=open, 2=half-open)",
+    labelnames=("policy", "stage"),
+)
+
+RESILIENCE_RATE_LIMIT_WAIT = Histogram(
+    "orchestration_rate_limit_wait_seconds",
+    "Time spent waiting for rate limiter tokens per policy",
+    labelnames=("policy", "stage"),
+    buckets=(0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0),
+)
+
 
 def _normalise_path(request: "Request") -> str:
     route = request.scope.get("route")
@@ -216,6 +235,25 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: igno
     @app.get(path, include_in_schema=False)
     async def metrics_endpoint() -> "Response":
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+def record_resilience_retry(policy: str, stage: str) -> None:
+    """Increment retry counter for the supplied policy and stage."""
+
+    RESILIENCE_RETRY_ATTEMPTS.labels(policy, stage).inc()
+
+
+def record_resilience_circuit_state(policy: str, stage: str, state: str) -> None:
+    """Update gauge with the numeric circuit breaker state."""
+
+    mapping = {"closed": 0.0, "open": 1.0, "half-open": 2.0}
+    RESILIENCE_CIRCUIT_STATE.labels(policy, stage).set(mapping.get(state.lower(), -1.0))
+
+
+def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: float) -> None:
+    """Observe rate limit wait duration."""
+
+    RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
 
 
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
@@ -412,6 +450,25 @@ ORCHESTRATION_OPERATIONS = Counter(
     "orchestration_operations_total",
     "Total number of orchestration operations",
     labelnames=("operation", "status"),
+)
+
+ADAPTER_PLUGIN_INVOCATIONS = Counter(
+    "adapter_plugin_invocations_total",
+    "Total number of adapter plugin executions",
+    labelnames=("adapter", "domain"),
+)
+
+ADAPTER_PLUGIN_FAILURES = Counter(
+    "adapter_plugin_failures_total",
+    "Total number of adapter plugin failures",
+    labelnames=("adapter", "domain"),
+)
+
+ADAPTER_PIPELINE_STAGE_DURATION = Histogram(
+    "adapter_pipeline_stage_duration_seconds",
+    "Latency distribution for adapter plugin pipeline stages",
+    labelnames=("adapter", "stage"),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0, 2.0),
 )
 
 TIMEOUT_BREACHES = Counter(

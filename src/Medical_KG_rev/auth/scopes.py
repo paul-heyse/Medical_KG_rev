@@ -14,6 +14,7 @@ class Scopes:
     KG_WRITE = "kg:write"
     PROCESS_WRITE = "process:write"
     AUDIT_READ = "audit:read"
+    ADAPTERS_READ = "adapters:read"
 
 
 SCOPE_DESCRIPTIONS: dict[str, str] = {
@@ -25,4 +26,5 @@ SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.KG_WRITE: "Write to the knowledge graph",
     Scopes.PROCESS_WRITE: "Execute processing utilities (chunking, extraction)",
     Scopes.AUDIT_READ: "Read audit logs",
+    Scopes.ADAPTERS_READ: "List and inspect adapter plugins",
 }

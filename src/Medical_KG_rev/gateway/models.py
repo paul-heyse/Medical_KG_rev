@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from Medical_KG_rev.adapters import AdapterDomain
+
 
 class ProblemDetail(BaseModel):
     """RFC 7807 compliant problem details payload."""
@@ -45,6 +47,30 @@ class BatchOperationResult(BaseModel):
     total: int
     succeeded: int
     failed: int
+
+
+class AdapterMetadataView(BaseModel):
+    """REST response model representing adapter metadata."""
+
+    name: str
+    version: str
+    domain: AdapterDomain
+    summary: str
+    capabilities: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
+    dataset: str | None = None
+    config_schema: dict[str, Any] = Field(default_factory=dict)
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdapterHealthView(BaseModel):
+    name: str
+    healthy: bool
+
+
+class AdapterConfigSchemaView(BaseModel):
+    name: str
+    schema: dict[str, Any]
 
 
 class DocumentChunk(BaseModel):

@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from Medical_KG_rev.utils.errors import ProblemDetail
 
-from .types import PipelineStage, StageConfig
+from ..types import PipelineStage, StageConfig
 
 
 class StageBuilder(Protocol):

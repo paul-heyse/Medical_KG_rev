@@ -184,20 +184,25 @@ class GatewayService:
                 "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
             )
         options = ChunkingOptions(
-            strategy=request.strategy, max_tokens=request.chunk_size, overlap=request.overlap
+            strategy=request.strategy,
+            max_tokens=request.chunk_size,
+            overlap=request.overlap,
         )
-        raw_chunks = self.chunker.chunk(request.document_id, sample_text, options)
+        raw_chunks = self.chunker.chunk(
+            request.tenant_id, request.document_id, sample_text, options
+        )
         chunks: list[DocumentChunk] = []
         for index, chunk in enumerate(raw_chunks):
-            metadata = dict(chunk.metadata)
-            metadata.setdefault("strategy", request.strategy)
+            metadata = dict(chunk.meta)
+            metadata.setdefault("granularity", chunk.granularity)
+            metadata.setdefault("chunker", chunk.chunker)
             chunks.append(
                 DocumentChunk(
                     document_id=request.document_id,
                     chunk_index=index,
-                    content=chunk.text,
+                    content=chunk.body,
                     metadata=metadata,
-                    token_count=chunk.token_count,
+                    token_count=metadata.get("token_count", 0),
                 )
             )
         self.ledger.update_metadata(job_id, {"chunks": len(chunks)})

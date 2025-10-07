@@ -42,7 +42,7 @@ class IndexingService:
         chunk_options: ChunkingOptions | None = None,
         incremental: bool = False,
     ) -> IndexingResult:
-        chunks = self.chunking.chunk(document_id, text, chunk_options)
+        chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
         if incremental:
             chunks = [chunk for chunk in chunks if chunk.id not in self.faiss.ids]
         if not chunks:
@@ -54,7 +54,14 @@ class IndexingService:
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
         for chunk in chunks:
-            doc = {"id": chunk.id, "text": chunk.text, **chunk.metadata}
+            doc = {
+                "id": chunk.chunk_id,
+                "text": chunk.body,
+                "doc_id": chunk.doc_id,
+                "granularity": chunk.granularity,
+                "chunker": chunk.chunker,
+                **chunk.meta,
+            }
             if metadata:
                 doc.update(metadata)
             documents.append(doc)
@@ -63,19 +70,21 @@ class IndexingService:
     def _embed_and_index(self, tenant_id: str, chunks: Sequence[Chunk]) -> None:
         request = EmbeddingRequest(
             tenant_id=tenant_id,
-            chunk_ids=[chunk.id for chunk in chunks],
-            texts=[chunk.text for chunk in chunks],
+            chunk_ids=[chunk.chunk_id for chunk in chunks],
+            texts=[chunk.body for chunk in chunks],
             normalize=True,
         )
         response = self.embedding_worker.run(request)
         dense_vectors = [vector for vector in response.vectors if vector.kind == "dense"]
-        chunk_lookup = {chunk.id: chunk for chunk in chunks}
+        chunk_lookup = {chunk.chunk_id: chunk for chunk in chunks}
         for vector in dense_vectors:
             chunk = chunk_lookup.get(vector.id)
             if chunk is None:
                 continue
-            metadata = dict(chunk.metadata)
-            metadata.setdefault("text", chunk.text)
+            metadata = dict(chunk.meta)
+            metadata.setdefault("text", chunk.body)
+            metadata.setdefault("granularity", chunk.granularity)
+            metadata.setdefault("chunker", chunk.chunker)
             self.faiss.add(vector.id, vector.values[: self.faiss.dimension], metadata)
 
     def refresh(self) -> None:

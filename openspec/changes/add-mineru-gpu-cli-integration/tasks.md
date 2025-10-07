@@ -2,103 +2,103 @@
 
 ## 1. Dependency Management & Setup
 
-- [ ] 1.1 Add `mineru[gpu]>=2.5.4` to `pyproject.toml` dependencies
-- [ ] 1.2 Add MinerU-specific dependencies to `requirements.txt` (automatically handled by mineru[gpu])
-- [ ] 1.3 Create `scripts/setup_mineru.sh` for model downloads and initialization
-- [ ] 1.4 Update `.env.example` with MinerU configuration variables
-- [ ] 1.5 Document GPU requirements (CUDA 12.8, RTX 5090 32GB VRAM - 4 workers @ 7GB each)
-- [ ] 1.6 Configure Python environment for multi-core CPU utilization (multiprocessing settings)
-- [ ] 1.7 Verify CUDA 12.8 installation and compatibility
+- [x] 1.1 Add `mineru[gpu]>=2.5.4` to `pyproject.toml` dependencies
+- [x] 1.2 Add MinerU-specific dependencies to `requirements.txt` (automatically handled by mineru[gpu])
+- [x] 1.3 Create `scripts/setup_mineru.sh` for model downloads and initialization
+- [x] 1.4 Update `.env.example` with MinerU configuration variables
+- [x] 1.5 Document GPU requirements (CUDA 12.8, RTX 5090 32GB VRAM - 4 workers @ 7GB each)
+- [x] 1.6 Configure Python environment for multi-core CPU utilization (multiprocessing settings)
+- [x] 1.7 Verify CUDA 12.8 installation and compatibility
 
 ## 2. Core MinerU CLI Integration
 
-- [ ] 2.1 Create `src/Medical_KG_rev/services/mineru/cli_wrapper.py`
-  - [ ] 2.1.1 Implement wrapper for built-in `mineru` CLI command (leverage existing CLI, don't build custom)
-  - [ ] 2.1.2 Implement subprocess management with timeout handling and cleanup
-  - [ ] 2.1.3 Implement stdout/stderr capture and logging
-  - [ ] 2.1.4 Add GPU device assignment per worker (`CUDA_VISIBLE_DEVICES`)
-  - [ ] 2.1.5 Configure per-worker VRAM limit (7GB max via MinerU CLI options)
-  - [ ] 2.1.6 Support batch processing (multiple PDFs per invocation)
+- [x] 2.1 Create `src/Medical_KG_rev/services/mineru/cli_wrapper.py`
+  - [x] 2.1.1 Implement wrapper for built-in `mineru` CLI command (leverage existing CLI, don't build custom)
+  - [x] 2.1.2 Implement subprocess management with timeout handling and cleanup
+  - [x] 2.1.3 Implement stdout/stderr capture and logging
+  - [x] 2.1.4 Add GPU device assignment per worker (`CUDA_VISIBLE_DEVICES`)
+  - [x] 2.1.5 Configure per-worker VRAM limit (7GB max via MinerU CLI options)
+  - [x] 2.1.6 Support batch processing (multiple PDFs per invocation)
 
-- [ ] 2.2 Create `src/Medical_KG_rev/services/mineru/output_parser.py`
-  - [ ] 2.2.1 Implement JSON output parser for MinerU structured format
-  - [ ] 2.2.2 Implement Markdown output parser with metadata extraction
-  - [ ] 2.2.3 Parse table structures with cell coordinates and content
-  - [ ] 2.2.4 Parse figure metadata with image paths and captions
-  - [ ] 2.2.5 Parse equation blocks with LaTeX/MathML representation
-  - [ ] 2.2.6 Handle parsing errors and incomplete outputs gracefully
+- [x] 2.2 Create `src/Medical_KG_rev/services/mineru/output_parser.py`
+  - [x] 2.2.1 Implement JSON output parser for MinerU structured format
+  - [x] 2.2.2 Implement Markdown output parser with metadata extraction
+  - [x] 2.2.3 Parse table structures with cell coordinates and content
+  - [x] 2.2.4 Parse figure metadata with image paths and captions
+  - [x] 2.2.5 Parse equation blocks with LaTeX/MathML representation
+  - [x] 2.2.6 Handle parsing errors and incomplete outputs gracefully
 
-- [ ] 2.3 Update `src/Medical_KG_rev/services/mineru/service.py`
-  - [ ] 2.3.1 Remove stub `_decode_pdf` and `_infer_blocks` methods
-  - [ ] 2.3.2 Integrate `MineruCLI` for PDF processing
-  - [ ] 2.3.3 Integrate `MineruOutputParser` for result parsing
-  - [ ] 2.3.4 Add fail-fast GPU availability check on startup
-  - [ ] 2.3.5 Implement batch request handling
-  - [ ] 2.3.6 Add GPU memory monitoring and OOM detection
+- [x] 2.3 Update `src/Medical_KG_rev/services/mineru/service.py`
+  - [x] 2.3.1 Remove stub `_decode_pdf` and `_infer_blocks` methods
+  - [x] 2.3.2 Integrate `MineruCLI` for PDF processing
+  - [x] 2.3.3 Integrate `MineruOutputParser` for result parsing
+  - [x] 2.3.4 Add fail-fast GPU availability check on startup
+  - [x] 2.3.5 Implement batch request handling
+  - [x] 2.3.6 Add GPU memory monitoring and OOM detection
 
 ## 3. Parallel Worker Architecture
 
-- [ ] 3.1 Create `src/Medical_KG_rev/services/mineru/worker_pool.py`
-  - [ ] 3.1.1 Implement `WorkerPool` class with default of 4 parallel workers
-  - [ ] 3.1.2 Implement `Worker` class with GPU assignment (one GPU per worker)
-  - [ ] 3.1.3 Configure each worker with 7GB VRAM limit
-  - [ ] 3.1.4 Add Kafka consumer integration for `pdf.parse.requests.v1` topic
-  - [ ] 3.1.5 Implement job queue with priority support
-  - [ ] 3.1.6 Add worker health checks and auto-restart
-  - [ ] 3.1.7 Implement graceful shutdown on SIGTERM
-  - [ ] 3.1.8 Configure multiprocessing for parallel CPU utilization (prevent CPU bottleneck)
+- [x] 3.1 Create `src/Medical_KG_rev/services/mineru/worker_pool.py`
+  - [x] 3.1.1 Implement `WorkerPool` class with default of 4 parallel workers
+  - [x] 3.1.2 Implement `Worker` class with GPU assignment (one GPU per worker)
+  - [x] 3.1.3 Configure each worker with 7GB VRAM limit
+  - [x] 3.1.4 Add Kafka consumer integration for `pdf.parse.requests.v1` topic
+  - [x] 3.1.5 Implement job queue with priority support
+  - [x] 3.1.6 Add worker health checks and auto-restart
+  - [x] 3.1.7 Implement graceful shutdown on SIGTERM
+  - [x] 3.1.8 Configure multiprocessing for parallel CPU utilization (prevent CPU bottleneck)
 
-- [ ] 3.2 Create `src/Medical_KG_rev/services/mineru/gpu_manager.py`
-  - [ ] 3.2.1 Implement GPU discovery and enumeration
-  - [ ] 3.2.2 Track GPU utilization per worker (7GB VRAM allocation per worker)
-  - [ ] 3.2.3 Implement GPU memory usage monitoring
-  - [ ] 3.2.4 Add OOM detection and worker recovery
-  - [ ] 3.2.5 Emit GPU metrics to Prometheus
-  - [ ] 3.2.6 Validate CUDA 12.8 availability on startup
+- [x] 3.2 Create `src/Medical_KG_rev/services/mineru/gpu_manager.py`
+  - [x] 3.2.1 Implement GPU discovery and enumeration
+  - [x] 3.2.2 Track GPU utilization per worker (7GB VRAM allocation per worker)
+  - [x] 3.2.3 Implement GPU memory usage monitoring
+  - [x] 3.2.4 Add OOM detection and worker recovery
+  - [x] 3.2.5 Emit GPU metrics to Prometheus
+  - [x] 3.2.6 Validate CUDA 12.8 availability on startup
 
-- [ ] 3.3 Update `src/Medical_KG_rev/config/settings.py`
-  - [ ] 3.3.1 Add `MineruSettings` configuration class
-  - [ ] 3.3.2 Add `MineruWorkerSettings` with default worker_count=4, vram_per_worker=7GB
-  - [ ] 3.3.3 Add validation for GPU IDs and batch sizes
-  - [ ] 3.3.4 Add performance tuning parameters (timeout, memory limits)
-  - [ ] 3.3.5 Add CPU multiprocessing configuration (core/thread allocation)
+- [x] 3.3 Update `src/Medical_KG_rev/config/settings.py`
+  - [x] 3.3.1 Add `MineruSettings` configuration class
+  - [x] 3.3.2 Add `MineruWorkerSettings` with default worker_count=4, vram_per_worker=7GB
+  - [x] 3.3.3 Add validation for GPU IDs and batch sizes
+  - [x] 3.3.4 Add performance tuning parameters (timeout, memory limits)
+  - [x] 3.3.5 Add CPU multiprocessing configuration (core/thread allocation)
 
 ## 4. Data Model Updates
 
-- [ ] 4.1 Update `src/Medical_KG_rev/models/ir.py`
-  - [ ] 4.1.1 Extend `Block` model with `layout_bbox` (bounding box coordinates)
-  - [ ] 4.1.2 Add `reading_order` field for multi-column layout
-  - [ ] 4.1.3 Add `confidence_score` from MinerU model predictions
+- [x] 4.1 Update `src/Medical_KG_rev/models/ir.py`
+  - [x] 4.1.1 Extend `Block` model with `layout_bbox` (bounding box coordinates)
+  - [x] 4.1.2 Add `reading_order` field for multi-column layout
+  - [x] 4.1.3 Add `confidence_score` from MinerU model predictions
 
-- [ ] 4.2 Create `src/Medical_KG_rev/models/table.py`
-  - [ ] 4.2.1 Define `TableCell` model (content, row, col, rowspan, colspan)
-  - [ ] 4.2.2 Define `Table` model (cells, headers, caption, bbox, page_num)
-  - [ ] 4.2.3 Add `to_markdown()` and `to_html()` serialization methods
-  - [ ] 4.2.4 Add validation for table structure integrity
+- [x] 4.2 Create `src/Medical_KG_rev/models/table.py`
+  - [x] 4.2.1 Define `TableCell` model (content, row, col, rowspan, colspan)
+  - [x] 4.2.2 Define `Table` model (cells, headers, caption, bbox, page_num)
+  - [x] 4.2.3 Add `to_markdown()` and `to_html()` serialization methods
+  - [x] 4.2.4 Add validation for table structure integrity
 
-- [ ] 4.3 Create `src/Medical_KG_rev/models/figure.py`
-  - [ ] 4.3.1 Define `Figure` model (image_path, caption, bbox, page_num, figure_type)
-  - [ ] 4.3.2 Add support for molecular structures, plots, diagrams
-  - [ ] 4.3.3 Add MIME type and dimensions metadata
+- [x] 4.3 Create `src/Medical_KG_rev/models/figure.py`
+  - [x] 4.3.1 Define `Figure` model (image_path, caption, bbox, page_num, figure_type)
+  - [x] 4.3.2 Add support for molecular structures, plots, diagrams
+  - [x] 4.3.3 Add MIME type and dimensions metadata
 
-- [ ] 4.4 Create `src/Medical_KG_rev/models/equation.py`
-  - [ ] 4.4.1 Define `Equation` model (latex, mathml, bbox, page_num)
-  - [ ] 4.4.2 Add rendering metadata (display vs inline)
+- [x] 4.4 Create `src/Medical_KG_rev/models/equation.py`
+  - [x] 4.4.1 Define `Equation` model (latex, mathml, bbox, page_num)
+  - [x] 4.4.2 Add rendering metadata (display vs inline)
 
 ## 5. gRPC Service Updates
 
-- [ ] 5.1 Update `proto/mineru_service.proto`
-  - [ ] 5.1.1 Add `BatchProcessPDFRequest` message for multiple PDFs
-  - [ ] 5.1.2 Update `ProcessPDFResponse` with tables, figures, equations fields
-  - [ ] 5.1.3 Add `ProcessingMetadata` with MinerU version, model names, GPU ID
-  - [ ] 5.1.4 Add `TableStructure`, `FigureMetadata`, `EquationData` messages
-  - [ ] 5.1.5 Regenerate Python gRPC stubs
+- [x] 5.1 Update `proto/mineru_service.proto`
+  - [x] 5.1.1 Add `BatchProcessPDFRequest` message for multiple PDFs
+  - [x] 5.1.2 Update `ProcessPDFResponse` with tables, figures, equations fields
+  - [x] 5.1.3 Add `ProcessingMetadata` with MinerU version, model names, GPU ID
+  - [x] 5.1.4 Add `TableStructure`, `FigureMetadata`, `EquationData` messages
+  - [x] 5.1.5 Regenerate Python gRPC stubs
 
-- [ ] 5.2 Update `src/Medical_KG_rev/services/mineru/grpc_server.py`
-  - [ ] 5.2.1 Implement `BatchProcessPDF` RPC handler
-  - [ ] 5.2.2 Convert parsed MinerU output to gRPC response messages
-  - [ ] 5.2.3 Add error handling with specific status codes
-  - [ ] 5.2.4 Add OpenTelemetry tracing for RPC calls
+- [x] 5.2 Update `src/Medical_KG_rev/services/mineru/grpc_server.py`
+  - [x] 5.2.1 Implement `BatchProcessPDF` RPC handler
+  - [x] 5.2.2 Convert parsed MinerU output to gRPC response messages
+  - [x] 5.2.3 Add error handling with specific status codes
+  - [x] 5.2.4 Add OpenTelemetry tracing for RPC calls
 
 ## 6. Downstream Pipeline Integration
 

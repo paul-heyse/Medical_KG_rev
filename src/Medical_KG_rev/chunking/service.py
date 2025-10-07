@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -88,6 +89,25 @@ class _ChunkingCircuitBreaker:
         mapping = {"closed": 0, "open": 1, "half_open": 2}
         set_chunking_circuit_state(mapping.get(self._state, 0))
 
+    @contextmanager
+    def attempt(
+        self,
+        *,
+        skip_failures: tuple[type[Exception], ...] = (),
+    ) -> "Iterator[None]":
+        """Guard a chunking attempt and update circuit state automatically."""
+
+        self.guard()
+        try:
+            yield
+        except skip_failures:
+            raise
+        except Exception:
+            self.record_failure()
+            raise
+        else:
+            self.record_success()
+
 
 @dataclass(slots=True)
 class ChunkingOptions:
@@ -144,8 +164,12 @@ class ChunkingService:
             chunker_settings = [primary, *auxiliaries]
         else:
             chunker_settings = [profile.primary, *profile.auxiliaries]
-        self._circuit.guard()
-        try:
+        skip_failures = (
+            ChunkerConfigurationError,
+            InvalidDocumentError,
+            ChunkingUnavailableError,
+        )
+        with self._circuit.attempt(skip_failures=skip_failures):
             registered = self.factory.create_many(
                 chunker_settings, allow_experimental=True
             )
@@ -154,18 +178,7 @@ class ChunkingService:
                 enable_multi_granularity=allow_multi,
             )
             chunks = pipeline.chunk(document, tenant_id=tenant_id)
-        except ChunkerConfigurationError:
-            raise
-        except InvalidDocumentError:
-            raise
-        except ChunkingUnavailableError:
-            raise
-        except Exception as exc:
-            self._circuit.record_failure()
-            raise
-        else:
-            self._circuit.record_success()
-            return chunks
+        return chunks
 
     def chunk_text(
         self,

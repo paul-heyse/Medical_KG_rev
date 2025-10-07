@@ -1,15 +1,15 @@
-"""Document ingestion pipeline integrating chunking, embeddings, and storage."""
+"""Ingestion service primitives for chunking integration."""
 
 from .service import (
-    EmbeddingBatchMetrics,
-    IngestionOptions,
-    IngestionResult,
+    ChunkStorage,
+    ChunkingRun,
+    InMemoryChunkStorage,
     IngestionService,
 )
 
 __all__ = [
-    "EmbeddingBatchMetrics",
-    "IngestionOptions",
-    "IngestionResult",
+    "ChunkStorage",
+    "ChunkingRun",
+    "InMemoryChunkStorage",
     "IngestionService",
 ]

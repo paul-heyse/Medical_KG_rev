@@ -52,6 +52,37 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+RERANK_OPERATIONS = Counter(
+    "reranking_operations_total",
+    "Total reranking invocations",
+    labelnames=("reranker", "tenant", "batch_size"),
+)
+RERANK_DURATION = Histogram(
+    "reranking_duration_seconds",
+    "Distribution of reranking latencies",
+    labelnames=("reranker", "tenant"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
+RERANK_ERRORS = Counter(
+    "reranking_errors_total",
+    "Number of reranking failures grouped by type",
+    labelnames=("reranker", "error_type"),
+)
+RERANK_PAIRS = Counter(
+    "reranking_pairs_processed_total",
+    "Number of query/document pairs scored",
+    labelnames=("reranker",),
+)
+RERANK_CIRCUIT = Gauge(
+    "reranking_circuit_breaker_state",
+    "Circuit breaker state per reranker (1=open)",
+    labelnames=("reranker", "tenant"),
+)
+RERANK_GPU = Gauge(
+    "reranking_gpu_utilization_percent",
+    "GPU utilisation while reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: Request) -> str:
@@ -125,3 +156,24 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
+
+
+def record_reranking_operation(
+    reranker: str,
+    tenant: str,
+    batch_size: int,
+    duration_seconds: float,
+    pairs: int,
+    circuit_state: str,
+    gpu_utilisation: float | None = None,
+) -> None:
+    RERANK_OPERATIONS.labels(reranker, tenant, str(batch_size)).inc()
+    RERANK_DURATION.labels(reranker, tenant).observe(max(duration_seconds, 0.0))
+    RERANK_PAIRS.labels(reranker).inc(max(pairs, 0))
+    RERANK_CIRCUIT.labels(reranker, tenant).set(1.0 if circuit_state == "open" else 0.0)
+    if gpu_utilisation is not None:
+        RERANK_GPU.labels(reranker).set(max(gpu_utilisation, 0.0))
+
+
+def record_reranking_error(reranker: str, error_type: str) -> None:
+    RERANK_ERRORS.labels(reranker, error_type).inc()

@@ -26,6 +26,7 @@ class Chunk(BaseModel):
     granularity: Granularity
     chunker: str
     chunker_version: str
+    page_no: int | None = Field(default=None, ge=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     meta: dict[str, Any] = Field(default_factory=dict)
 

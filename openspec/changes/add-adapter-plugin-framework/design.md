@@ -381,7 +381,9 @@ for name, adapter_cls in OLD_ADAPTERS.items():
    **A**: Semantic versioning in metadata, orchestrator can specify version constraints
 
 3. **Q**: Should adapters be allowed to define custom pipeline stages?
-   **A**: No - adapters produce Document IR, pipeline stages are framework concern
+   **A**: The default `AdapterPipeline` enforces fetch → parse → validate, but advanced adapters may override `build_pipeline` to
+   insert domain-specific stages while still returning an `AdapterExecutionContext`/`AdapterInvocationResult`. The framework keeps
+   ownership of cross-cutting concerns (resilience, auditing) and validates custom pipelines at registration time.
 
 4. **Q**: How do we test third-party adapters for certification?
    **A**: Provide adapter test harness, require >80% coverage for "certified" badge

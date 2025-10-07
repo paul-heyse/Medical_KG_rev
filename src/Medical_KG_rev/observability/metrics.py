@@ -414,6 +414,25 @@ ORCHESTRATION_OPERATIONS = Counter(
     labelnames=("operation", "status"),
 )
 
+ADAPTER_PLUGIN_INVOCATIONS = Counter(
+    "adapter_plugin_invocations_total",
+    "Total number of adapter plugin executions",
+    labelnames=("adapter", "domain"),
+)
+
+ADAPTER_PLUGIN_FAILURES = Counter(
+    "adapter_plugin_failures_total",
+    "Total number of adapter plugin failures",
+    labelnames=("adapter", "domain"),
+)
+
+ADAPTER_PIPELINE_STAGE_DURATION = Histogram(
+    "adapter_pipeline_stage_duration_seconds",
+    "Latency distribution for adapter plugin pipeline stages",
+    labelnames=("adapter", "stage"),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0, 2.0),
+)
+
 TIMEOUT_BREACHES = Counter(
     "timeout_breaches_total",
     "Total number of timeout breaches",

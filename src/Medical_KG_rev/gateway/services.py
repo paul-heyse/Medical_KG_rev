@@ -17,6 +17,8 @@ from Medical_KG_rev.chunking.exceptions import (
     InvalidDocumentError,
 )
 
+from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
+
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
@@ -47,6 +49,9 @@ from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
 from .models import (
+    AdapterConfigSchemaView,
+    AdapterHealthView,
+    AdapterMetadataView,
     BatchError,
     BatchOperationResult,
     ChunkRequest,
@@ -91,6 +96,7 @@ class GatewayService:
     events: EventStreamManager
     orchestrator: Orchestrator
     ledger: JobLedger
+    adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
     workers: list[WorkerBase] = field(default_factory=list)
     chunker: ChunkingService = field(default_factory=ChunkingService)
     reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
@@ -855,6 +861,49 @@ class GatewayService:
         if not updated:
             return None
         return self._to_job_status(updated)
+
+    # ------------------------------------------------------------------
+    # Adapter plugin helpers
+    # ------------------------------------------------------------------
+    def list_adapters(self, domain: str | None = None) -> list[AdapterMetadataView]:
+        domain_enum = AdapterDomain(domain) if domain else None
+        metadata = self.adapter_manager.list_metadata(domain=domain_enum)
+        return [self._to_adapter_view(item) for item in metadata]
+
+    def get_adapter_metadata(self, name: str) -> AdapterMetadataView | None:
+        try:
+            metadata = self.adapter_manager.get_metadata(name)
+        except Exception:
+            return None
+        return self._to_adapter_view(metadata)
+
+    def get_adapter_health(self, name: str) -> AdapterHealthView | None:
+        if name not in {meta.name for meta in self.adapter_manager.list_metadata()}:
+            return None
+        healthy = self.adapter_manager.check_health(name)
+        return AdapterHealthView(name=name, healthy=healthy)
+
+    def get_adapter_config_schema(self, name: str) -> AdapterConfigSchemaView | None:
+        metadata = self.get_adapter_metadata(name)
+        if metadata is None:
+            return None
+        schema = metadata.config_schema or {}
+        return AdapterConfigSchemaView(name=name, schema=schema)
+
+    def _to_adapter_view(self, metadata) -> AdapterMetadataView:
+        dataset = getattr(metadata, "dataset", None)
+        extra = metadata.extra if hasattr(metadata, "extra") else {}
+        return AdapterMetadataView(
+            name=metadata.name,
+            version=metadata.version,
+            domain=metadata.domain,
+            summary=metadata.summary,
+            capabilities=list(metadata.capabilities),
+            maintainer=metadata.maintainer,
+            dataset=dataset,
+            config_schema=dict(metadata.config_schema or {}),
+            extra=dict(extra),
+        )
 
 
 _service: GatewayService | None = None

@@ -565,16 +565,25 @@ class PubChemAdapter(BaseAdapter):
 **Step 3**: Register adapter
 
 ```python
-# src/Medical_KG_rev/adapters/registry.py
+# src/Medical_KG_rev/adapters/plugins/domains/biomedical/pubchem.py
 
-from .biomedical import PubChemAdapter
+from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
+from Medical_KG_rev.adapters.plugins.domains.metadata import BiomedicalAdapterMetadata
 
-ADAPTER_REGISTRY = {
-    "clinicaltrials": ClinicalTrialsAdapter,
-    "openalex": OpenAlexAdapter,
-    "pubchem": PubChemAdapter,  # Add new adapter
-    # ... other adapters
-}
+class PubChemAdapterPlugin(BaseAdapterPlugin):
+    metadata = BiomedicalAdapterMetadata(
+        name="pubchem",
+        version="1.0.0",
+        summary="PubChem compound ingestion",
+        capabilities=["compound"],
+        maintainer="Data Platform",
+        dataset="pubchem",
+    )
+
+    # implement fetch/parse/validate hooks...
+
+
+manager.register(PubChemAdapterPlugin())
 ```
 
 **Step 4**: Add REST endpoint

@@ -444,6 +444,68 @@ class ChunkingService:
             return False
         return True
 
+    def _fallback_chunk(
+        self,
+        tenant_id: str,
+        document_id: str,
+        text: str,
+        options: ChunkingOptions | None,
+    ) -> list[SimpleNamespace]:
+        strategy = options.strategy if options else None
+        segments: list[str]
+        granularity: Granularity
+        if strategy in {"section", "section_aware"}:
+            segments = text.split("\n\n")
+            granularity = "section"
+        elif strategy == "paragraph":
+            segments = [segment for segment in text.split("\n\n") if segment.strip()]
+            granularity = "paragraph"
+        elif strategy == "table":
+            tables = [segment for segment in text.split("\n\n") if "|" in segment]
+            segments = tables or [text]
+            granularity = "table"
+        elif strategy == "sliding_window":
+            tokens = text.split()
+            size = (options.max_tokens if options and options.max_tokens else 50)
+            overlap = options.overlap if options and options.overlap is not None else 0.0
+            stride = max(1, int(size * (1 - overlap)))
+            if stride > size:
+                stride = size
+            segments = [
+                " ".join(tokens[i : i + size])
+                for i in range(0, len(tokens) or 1, stride)
+            ]
+            granularity = "window"
+        else:
+            segments = [text]
+            granularity = (
+                options.granularity
+                if options and options.granularity
+                else "paragraph"
+            )
+        result: list[SimpleNamespace] = []
+        for index, segment in enumerate(segment for segment in segments if segment.strip()):
+            metadata = {"segment_type": granularity, "token_count": len(segment.split())}
+            result.append(
+                SimpleNamespace(
+                    id=f"{document_id}:{granularity}:{index}",
+                    chunk_id=f"{document_id}:{granularity}:{index}",
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    text=segment,
+                    body=segment,
+                    granularity=granularity,
+                    chunker="fallback",
+                    metadata=metadata,
+                    meta=metadata,
+                    token_count=metadata["token_count"],
+                )
+            )
+        return result
+
+    def available_strategies(self) -> list[str]:
+        return self._service.list_strategies()
+
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:
             return None

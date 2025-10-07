@@ -51,7 +51,7 @@ class TableChunker(BaseChunker):
         assembler = ChunkAssembler(
             document,
             tenant_id=tenant_id,
-            chunker_name=f"table.{self.mode}",
+            chunker_name=f"table_{self.mode}",
             chunker_version=self.version,
             granularity=granularity or "table",
             token_counter=self.counter,

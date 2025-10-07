@@ -1,0 +1,282 @@
+[
+  {
+    "doc_id": "spl-001",
+    "source": "spl",
+    "title": "Spl Sample 1",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-002",
+    "source": "spl",
+    "title": "Spl Sample 2",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-003",
+    "source": "spl",
+    "title": "Spl Sample 3",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-004",
+    "source": "spl",
+    "title": "Spl Sample 4",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-005",
+    "source": "spl",
+    "title": "Spl Sample 5",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-006",
+    "source": "spl",
+    "title": "Spl Sample 6",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-007",
+    "source": "spl",
+    "title": "Spl Sample 7",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-008",
+    "source": "spl",
+    "title": "Spl Sample 8",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-009",
+    "source": "spl",
+    "title": "Spl Sample 9",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "spl-010",
+    "source": "spl",
+    "title": "Spl Sample 10",
+    "text": "Highlights emphasise boxed warnings and contraindications.\nDosage and administration specifies titration guidance.\nPharmacology section summarises mechanism of action.\nPatient counselling outlines key safety messages.",
+    "boundaries": [
+      0,
+      59,
+      115,
+      168
+    ],
+    "queries": [
+      {
+        "text": "boxed warning",
+        "keywords": [
+          "boxed",
+          "warnings"
+        ]
+      },
+      {
+        "text": "dosage",
+        "keywords": [
+          "dosage",
+          "administration"
+        ]
+      }
+    ]
+  }
+]

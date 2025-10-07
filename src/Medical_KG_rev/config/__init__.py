@@ -14,6 +14,12 @@ from .settings import (
     load_settings,
     migrate_reranking_config,
 )
+from .vector_store import (
+    CompressionConfig as VectorCompressionConfig,
+    NamespaceConfigModel as VectorNamespaceConfig,
+    VectorStoreConfig,
+    load_vector_store_config,
+)
 
 __all__ = [
     "AppSettings",
@@ -29,4 +35,8 @@ __all__ = [
     "TelemetrySettings",
     "get_settings",
     "load_settings",
+    "VectorCompressionConfig",
+    "VectorNamespaceConfig",
+    "VectorStoreConfig",
+    "load_vector_store_config",
 ]

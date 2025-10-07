@@ -42,6 +42,20 @@ JOB_DURATION = Histogram(
     "Duration of ingest/retrieve operations",
     labelnames=("operation",),
 )
+CHUNKING_LATENCY = Histogram(
+    "chunking_latency_seconds",
+    "Latency distribution for chunking profiles",
+    labelnames=("profile",),
+)
+CHUNK_SIZE = Histogram(
+    "chunk_size_characters",
+    "Distribution of chunk sizes by granularity",
+    labelnames=("profile", "granularity"),
+)
+CHUNKING_CIRCUIT_STATE = Gauge(
+    "chunking_circuit_breaker_state",
+    "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
+)
 GPU_UTILISATION = Gauge(
     "gpu_utilization_percent",
     "GPU memory utilisation percentage",

@@ -4,8 +4,23 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from .stores.external import (
+    AnnoyIndex,
+    ChromaStore,
+    DiskANNStore,
+    DuckDBVSSStore,
+    HNSWLibIndex,
+    LanceDBStore,
+    NMSLibIndex,
+    PgvectorStore,
+    ScaNNIndex,
+    VespaStore,
+    WeaviateStore,
+)
 from .stores.faiss import FaissVectorStore
 from .stores.memory import InMemoryVectorStore
+from .stores.milvus import MilvusVectorStore
+from .stores.opensearch import OpenSearchKNNStore
 from .stores.qdrant import QdrantVectorStore
 from .types import VectorStorePort
 
@@ -13,6 +28,19 @@ _SUPPORTED_DRIVERS = {
     "memory": InMemoryVectorStore,
     "faiss": FaissVectorStore,
     "qdrant": QdrantVectorStore,
+    "milvus": MilvusVectorStore,
+    "opensearch": OpenSearchKNNStore,
+    "weaviate": WeaviateStore,
+    "vespa": VespaStore,
+    "pgvector": PgvectorStore,
+    "diskann": DiskANNStore,
+    "hnswlib": HNSWLibIndex,
+    "nmslib": NMSLibIndex,
+    "annoy": AnnoyIndex,
+    "scann": ScaNNIndex,
+    "lancedb": LanceDBStore,
+    "duckdbvss": DuckDBVSSStore,
+    "chroma": ChromaStore,
 }
 
 

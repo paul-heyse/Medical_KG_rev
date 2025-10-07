@@ -6,35 +6,82 @@ import uuid
 from collections.abc import Callable
 from typing import Mapping
 from time import perf_counter
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 try:  # pragma: no cover - optional dependency
     import torch
 except Exception:  # pragma: no cover - torch is optional in CPU-only environments
     torch = None  # type: ignore
 
-try:  # pragma: no cover - optional dependency
+if TYPE_CHECKING:  # pragma: no cover - type checking only
     from fastapi import FastAPI, Request, Response
+else:  # pragma: no cover - optional dependency handling
+    try:
+        from fastapi import FastAPI, Request, Response
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+        FastAPI = Request = Response = Any  # type: ignore[assignment]
+        _FASTAPI_IMPORT_ERROR: ModuleNotFoundError | None = exc
+    else:
+        _FASTAPI_IMPORT_ERROR = None
+
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from Medical_KG_rev.config.settings import AppSettings
+else:  # pragma: no cover - optional dependency handling
+    try:
+        from Medical_KG_rev.config.settings import AppSettings
+    except (ModuleNotFoundError, ImportError) as exc:  # pragma: no cover - optional dependency
+        AppSettings = Any  # type: ignore[assignment]
+        _APP_SETTINGS_IMPORT_ERROR: Exception | None = exc
+    else:
+        _APP_SETTINGS_IMPORT_ERROR = None
+
+try:  # pragma: no cover - optional dependency
+    from prometheus_client import (  # type: ignore
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    FastAPI = None  # type: ignore[assignment]
-    Request = Any  # type: ignore[assignment]
-    Response = Any  # type: ignore[assignment]
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
 
-from prometheus_client import (  # type: ignore
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+    class _NoopMetric:
+        def labels(self, *args, **kwargs):  # noqa: ANN002, ANN003 - signature mirrors prometheus
+            return self
 
-from Medical_KG_rev.config.settings import AppSettings
-from Medical_KG_rev.observability.alerts import get_alert_manager
-from Medical_KG_rev.utils.logging import (
-    bind_correlation_id,
-    get_correlation_id,
-    reset_correlation_id,
-)
+        def inc(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+        def observe(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+        def set(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+    def _noop_metric(*args, **kwargs):  # noqa: ANN002, ANN003
+        return _NoopMetric()
+
+    Counter = Gauge = Histogram = _noop_metric  # type: ignore[assignment]
+
+    def generate_latest() -> bytes:  # type: ignore[override]
+        return b""
+
+try:  # pragma: no cover - optional dependency chain
+    from Medical_KG_rev.utils.logging import (
+        bind_correlation_id,
+        get_correlation_id,
+        reset_correlation_id,
+    )
+except Exception:  # pragma: no cover - optional dependency chain
+    def bind_correlation_id(*args, **kwargs):  # noqa: ANN002, ANN003
+        return None
+
+    def get_correlation_id() -> str | None:
+        return None
+
+    def reset_correlation_id(_token) -> None:  # noqa: ANN001
+        return None
 
 REQUEST_COUNTER = Counter(
     "api_requests",
@@ -207,7 +254,7 @@ RERANK_GPU_MEMORY_ALERTS = Counter(
 )
 
 
-def _normalise_path(request: Request) -> str:
+def _normalise_path(request: "Request") -> str:
     route = request.scope.get("route")
     return getattr(route, "path", request.url.path)
 
@@ -224,9 +271,16 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
-def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
-    if FastAPI is None:
-        return
+def register_metrics(app: "FastAPI", settings: AppSettings) -> None:
+    if "_FASTAPI_IMPORT_ERROR" in globals() and _FASTAPI_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "FastAPI is required to register metrics. Install the 'fastapi' extra."
+        ) from _FASTAPI_IMPORT_ERROR
+    if "_APP_SETTINGS_IMPORT_ERROR" in globals() and _APP_SETTINGS_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "Medical_KG_rev configuration settings are unavailable. Install project dependencies."
+        ) from _APP_SETTINGS_IMPORT_ERROR
+
     if not settings.observability.metrics.enabled:
         return
 
@@ -294,7 +348,7 @@ def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.
         return response
 
     @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> Response:
+    async def metrics_endpoint() -> "Response":
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -306,123 +360,13 @@ def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
 
 
-def record_reranking_operation(
-    reranker: str,
-    tenant: str,
-    batch_size: int,
-    duration_seconds: float,
-    pairs: int,
-    circuit_state: str,
-    gpu_utilisation: float | None = None,
-) -> None:
-    RERANK_OPERATIONS.labels(reranker, tenant, str(batch_size)).inc()
-    RERANK_DURATION.labels(reranker, tenant).observe(max(duration_seconds, 0.0))
-    RERANK_PAIRS.labels(reranker).inc(max(pairs, 0))
-    RERANK_CIRCUIT.labels(reranker, tenant).set(1.0 if circuit_state == "open" else 0.0)
-    if gpu_utilisation is not None:
-        RERANK_GPU.labels(reranker).set(max(gpu_utilisation, 0.0))
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
 
 
-def record_reranking_error(reranker: str, error_type: str) -> None:
-    RERANK_ERRORS.labels(reranker, error_type).inc()
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
 
 
-def record_orchestration_operation(operation: str, tenant: str, status: str) -> None:
-    """Increment orchestration operation counter."""
-
-    _increment_with_exemplar(ORCHESTRATION_OPERATIONS, (operation, tenant, status))
-
-
-def observe_orchestration_duration(operation: str, pipeline: str, duration: float) -> None:
-    """Record end-to-end orchestration latency."""
-
-    _observe_with_exemplar(ORCHESTRATION_END_TO_END_DURATION, (operation, pipeline), duration)
-    get_alert_manager().latency_breach(f"{operation}:{pipeline}", duration * 1000)
-
-
-def observe_orchestration_stage(operation: str, stage: str, duration: float) -> None:
-    """Record per-stage orchestration latency."""
-
-    _observe_with_exemplar(ORCHESTRATION_STAGE_DURATION, (operation, stage), duration)
-    get_alert_manager().latency_breach(stage, duration * 1000)
-
-
-def record_orchestration_error(operation: str, stage: str, error_type: str) -> None:
-    """Increment orchestration error counters."""
-
-    _increment_with_exemplar(ORCHESTRATION_ERRORS, (operation, stage, error_type))
-    get_alert_manager().error_observed(stage, error_type)
-
-
-def set_orchestration_queue_depth(stage: str, depth: int) -> None:
-    """Update queue depth gauge for a stage."""
-
-    ORCHESTRATION_QUEUE_DEPTH.labels(stage).set(max(depth, 0))
-
-
-def set_orchestration_circuit_state(service: str, state: str) -> None:
-    """Set circuit breaker state gauge for a downstream service."""
-
-    value = {"closed": 0, "half_open": 0.5, "open": 1}.get(state, 0)
-    ORCHESTRATION_CIRCUIT_STATE.labels(service).set(value)
-    get_alert_manager().circuit_state_changed(service, state)
-
-
-def record_dead_letter_event(stage: str, error_type: str) -> None:
-    """Track when a message is routed to the dead letter queue."""
-
-    _increment_with_exemplar(ORCHESTRATION_DLQ_EVENTS, (stage, error_type))
-    get_alert_manager().error_observed(stage, f"dlq:{error_type}")
-
-
-def set_dead_letter_queue_depth(depth: int) -> None:
-    """Update the depth of the orchestration dead letter queue."""
-
-    ORCHESTRATION_DLQ_DEPTH.set(max(depth, 0))
-    get_alert_manager().dlq_depth(depth)
-
-
-def record_ingestion_document(pipeline: str) -> None:
-    """Count an ingested document for throughput metrics."""
-
-    _increment_with_exemplar(INGESTION_DOCUMENTS, (pipeline,), 1.0)
-
-
-def observe_ingestion_stage_latency(stage: str, duration: float) -> None:
-    """Observe ingestion stage latency."""
-
-    _observe_with_exemplar(INGESTION_STAGE_LATENCY, (stage,), duration)
-    get_alert_manager().latency_breach(stage, duration * 1000)
-
-
-def record_ingestion_error(stage: str, error_type: str) -> None:
-    """Increment ingestion stage error counter."""
-
-    _increment_with_exemplar(INGESTION_STAGE_ERRORS, (stage, error_type))
-    get_alert_manager().error_observed(stage, error_type)
-
-
-def record_query_operation(pipeline: str, tenant: str, status: str) -> None:
-    """Record a query pipeline state transition."""
-
-    _increment_with_exemplar(QUERY_OPERATIONS, (pipeline, tenant, status))
-
-
-def observe_query_latency(pipeline: str, duration: float) -> None:
-    """Observe total query latency."""
-
-    _observe_with_exemplar(QUERY_LATENCY, (pipeline,), duration)
-
-
-def update_job_status_metrics(status_counts: Mapping[str, int]) -> None:
-    """Refresh gauges describing job ledger status distribution."""
-
-    for status, count in status_counts.items():
-        JOB_STATUS.labels(status).set(max(count, 0))
-
-
-def record_timeout_breach(operation: str, stage: str, duration: float) -> None:
-    """Record when a stage exceeds timeout budgets."""
-
-    _increment_with_exemplar(ORCHESTRATION_TIMEOUTS, (operation, stage))
-    get_alert_manager().latency_breach(f"{operation}:{stage}", duration * 1000)
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

@@ -44,24 +44,28 @@ class IndexingService:
     ) -> IndexingResult:
         chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
         if incremental:
-            chunks = [chunk for chunk in chunks if chunk.id not in self.faiss.ids]
+            chunks = [chunk for chunk in chunks if getattr(chunk, "chunk_id", getattr(chunk, "id", "")) not in self.faiss.ids]
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
         self._embed_and_index(tenant_id, chunks)
-        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
+        return IndexingResult(
+            document_id=document_id,
+            chunk_ids=[getattr(chunk, "chunk_id", getattr(chunk, "id", "")) for chunk in chunks],
+        )
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
         for chunk in chunks:
+            chunk_meta = getattr(chunk, "meta", None) or getattr(chunk, "metadata", {})
             doc = {
                 "id": chunk.chunk_id,
                 "text": chunk.body,
                 "doc_id": chunk.doc_id,
                 "granularity": chunk.granularity,
                 "chunker": chunk.chunker,
-                **chunk.meta,
             }
+            doc.update(chunk_meta)
             if metadata:
                 doc.update(metadata)
             documents.append(doc)
@@ -81,7 +85,8 @@ class IndexingService:
             chunk = chunk_lookup.get(vector.id)
             if chunk is None:
                 continue
-            metadata = dict(chunk.meta)
+            chunk_meta = getattr(chunk, "meta", None) or getattr(chunk, "metadata", {})
+            metadata = dict(chunk_meta)
             metadata.setdefault("text", chunk.body)
             metadata.setdefault("granularity", chunk.granularity)
             metadata.setdefault("chunker", chunk.chunker)

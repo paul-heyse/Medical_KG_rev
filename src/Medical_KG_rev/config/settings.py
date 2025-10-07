@@ -67,6 +67,82 @@ class ObservabilitySettings(BaseModel):
     sentry: SentrySettings = Field(default_factory=SentrySettings)
 
 
+class MineruCpuSettings(BaseModel):
+    """CPU utilisation hints for the MinerU worker pool."""
+
+    enabled: bool = True
+    omp_num_threads: int = Field(default=4, ge=1, le=128)
+    mkl_num_threads: int = Field(default=4, ge=1, le=128)
+    extra_env: Mapping[str, str] = Field(default_factory=dict)
+
+    def export_environment(self) -> dict[str, str]:
+        if not self.enabled:
+            return {}
+        env = {
+            "OMP_NUM_THREADS": str(self.omp_num_threads),
+            "MKL_NUM_THREADS": str(self.mkl_num_threads),
+        }
+        env.update({str(k): str(v) for k, v in self.extra_env.items()})
+        return env
+
+
+class MineruWorkerSettings(BaseModel):
+    """MinerU worker configuration for GPU-backed CLI execution."""
+
+    count: int = Field(default=4, ge=1, le=32)
+    vram_per_worker_gb: int = Field(default=7, ge=1, le=48)
+    timeout_seconds: int = Field(default=300, ge=30, le=1800)
+    batch_size: int = Field(default=4, ge=1, le=32)
+    device_ids: Sequence[int] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_device_ids(self) -> "MineruWorkerSettings":
+        if self.device_ids is not None:
+            unique = {device for device in self.device_ids if device is not None}
+            if not unique:
+                raise ValueError("At least one GPU device id must be provided")
+            if len(unique) < self.count:
+                # Allow multiple workers per GPU but flag potential contention
+                raise ValueError(
+                    "Device id list must cover all configured MinerU workers"
+                )
+        return self
+
+    @property
+    def vram_per_worker_mb(self) -> int:
+        return self.vram_per_worker_gb * 1024
+
+
+class MineruSettings(BaseModel):
+    """Top-level MinerU GPU service configuration."""
+
+    enabled: bool = False
+    cli_command: str = Field(default="mineru", description="Path to MinerU CLI")
+    expected_version: str = Field(default=">=2.5.4")
+    cuda_version: str = Field(default="12.8")
+    workers: MineruWorkerSettings = Field(default_factory=MineruWorkerSettings)
+    cpu: MineruCpuSettings = Field(default_factory=MineruCpuSettings)
+    simulate_if_unavailable: bool = True
+
+    @model_validator(mode="after")
+    def validate_configuration(self) -> "MineruSettings":
+        if self.enabled and not self.cli_command:
+            raise ValueError("MinerU CLI command must be provided when enabled")
+        if self.workers.vram_per_worker_gb * self.workers.count > 32:
+            # Conservative default assuming RTX 5090 32GB device
+            raise ValueError(
+                "Configured VRAM for MinerU workers exceeds 32GB budget"
+            )
+        return self
+
+    def environment(self) -> dict[str, str]:
+        """Return environment variables required by the CLI."""
+
+        env = dict(self.cpu.export_environment())
+        env["CUDA_VERSION_REQUIRED"] = self.cuda_version
+        return env
+
+
 class VaultSettings(BaseModel):
     """Settings for the optional HashiCorp Vault integration."""
 
@@ -385,6 +461,7 @@ class AppSettings(BaseSettings):
     service_name: str = "medical-kg"
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
+    mineru: MineruSettings = Field(default_factory=MineruSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
     domains_config_path: Path | None = Field(default=None)

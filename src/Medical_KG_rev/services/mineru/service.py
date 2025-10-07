@@ -1,10 +1,7 @@
-"""MinerU PDF processing microservice backed by GPU acceleration."""
-
 from __future__ import annotations
 
-import uuid
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+import time
+from datetime import datetime, timezone
 
 import structlog
 
@@ -13,98 +10,98 @@ try:  # pragma: no cover - optional dependency in unit tests
 except Exception:  # pragma: no cover
     grpc = None  # type: ignore
 
-from ..gpu.manager import GpuManager, GpuNotAvailableError
+from Medical_KG_rev.config.settings import MineruSettings, get_settings
+from Medical_KG_rev.services.gpu.manager import GpuManager, GpuNotAvailableError
+
+from .cli_wrapper import MineruCliBase, MineruCliError, MineruCliInput, create_cli
+from .output_parser import MineruOutputParser, MineruOutputParserError
+from .postprocessor import MineruPostProcessor
+from .types import Document, MineruRequest, MineruResponse
 
 logger = structlog.get_logger(__name__)
 
 
-@dataclass(slots=True)
-class Block:
-    """Representation of a document block produced by MinerU."""
-
-    id: str
-    page: int
-    kind: str
-    text: str
-    bbox: tuple[float, float, float, float]
-    confidence: float
-
-
-@dataclass(slots=True)
-class Document:
-    """Structured intermediate representation for a PDF document."""
-
-    document_id: str
-    tenant_id: str
-    blocks: list[Block] = field(default_factory=list)
-
-
-@dataclass(slots=True)
-class MineruRequest:
-    tenant_id: str
-    document_id: str
-    content: bytes
-
-
-@dataclass(slots=True)
-class MineruResponse:
-    document: Document
-
-
 class MineruProcessor:
-    """Parses PDF bytes into structured blocks using GPU acceleration."""
+    """Integrates the MinerU CLI with GPU orchestration."""
 
-    def __init__(self, gpu: GpuManager, *, min_memory_mb: int = 512) -> None:
-        self.gpu = gpu
-        self.min_memory_mb = min_memory_mb
-
-    def _decode_pdf(self, payload: bytes) -> list[str]:
-        # In test environments we treat the payload as UTF-8 text for determinism.
-        try:
-            text = payload.decode("utf-8")
-        except UnicodeDecodeError as exc:  # pragma: no cover - defensive branch
-            raise ValueError("MinerU service expects UTF-8 encoded content in tests") from exc
-        pages = [page.strip() for page in text.split("\f") if page.strip()]
-        return pages or [text.strip()]
-
-    def _infer_blocks(self, pages: Iterable[str]) -> list[Block]:
-        blocks: list[Block] = []
-        for page_index, page_text in enumerate(pages, start=1):
-            for raw_index, line in enumerate(page_text.splitlines()):
-                if not line.strip():
-                    continue
-                kind = "table" if "|" in line or "\t" in line else "text"
-                confidence = 0.9 if kind == "text" else 0.8
-                width = min(0.95, max(0.2, len(line) / 200))
-                height = 0.05
-                block = Block(
-                    id=f"blk-{uuid.uuid4().hex[:8]}",
-                    page=page_index,
-                    kind=kind,
-                    text=line.strip(),
-                    bbox=(0.05, raw_index * height, 0.05 + width, (raw_index + 1) * height),
-                    confidence=confidence,
-                )
-                blocks.append(block)
-        return blocks
+    def __init__(
+        self,
+        gpu: GpuManager,
+        *,
+        settings: MineruSettings | None = None,
+        cli: MineruCliBase | None = None,
+        parser: MineruOutputParser | None = None,
+        postprocessor: MineruPostProcessor | None = None,
+        min_memory_mb: int | None = None,
+    ) -> None:
+        self._settings = settings or get_settings().mineru
+        self._gpu = gpu
+        self._cli = cli or create_cli(self._settings)
+        self._parser = parser or MineruOutputParser()
+        self._postprocessor = postprocessor or MineruPostProcessor()
+        self._required_memory_mb = min_memory_mb or self._settings.workers.vram_per_worker_mb
 
     def process(self, request: MineruRequest) -> MineruResponse:
-        logger.info("mineru.process.started", document_id=request.document_id)
+        logger.info(
+            "mineru.process.started",
+            document_id=request.document_id,
+            tenant_id=request.tenant_id,
+        )
+        device_index: int | None = None
+        start = time.monotonic()
         try:
-            with self.gpu.device_session(
-                "mineru", required_memory_mb=self.min_memory_mb, warmup=True
-            ):
-                pages = self._decode_pdf(request.content)
-                blocks = self._infer_blocks(pages)
+            with self._gpu.device_session(
+                "mineru", required_memory_mb=self._required_memory_mb, warmup=True
+            ) as device:
+                device_index = device.index
+                cli_result = self._cli.run_batch(
+                    [
+                        MineruCliInput(
+                            document_id=request.document_id,
+                            content=request.content,
+                        )
+                    ],
+                    gpu_id=device.index,
+                )
         except GpuNotAvailableError:
             logger.error("mineru.process.failed", reason="gpu-unavailable")
             raise
+        except MineruCliError as exc:
+            logger.error("mineru.process.failed", reason="cli-error", error=str(exc))
+            raise
 
-        document = Document(
-            document_id=request.document_id, tenant_id=request.tenant_id, blocks=blocks
+        if not cli_result.outputs:
+            raise MineruCliError("MinerU CLI returned no outputs")
+
+        output = cli_result.outputs[0]
+        try:
+            parsed = self._parser.parse_path(output.path)
+        except MineruOutputParserError as exc:
+            logger.error("mineru.output.parse_failed", error=str(exc))
+            raise
+
+        duration = time.monotonic() - start
+        provenance = {
+            "cli": self._cli.describe(),
+            "gpu_device": f"cuda:{device_index}" if device_index is not None else "unknown",
+            "duration_seconds": cli_result.duration_seconds,
+            "stdout": cli_result.stdout.strip(),
+            "stderr": cli_result.stderr.strip(),
+        }
+        document: Document = self._postprocessor.build_document(parsed, request, provenance)
+        logger.info(
+            "mineru.process.completed",
+            document_id=document.document_id,
+            blocks=len(document.blocks),
+            tables=len(document.tables),
+            figures=len(document.figures),
+            equations=len(document.equations),
         )
-        logger.info("mineru.process.completed", document_id=request.document_id, blocks=len(blocks))
-        return MineruResponse(document=document)
+        return MineruResponse(
+            document=document,
+            processed_at=datetime.now(timezone.utc),
+            duration_seconds=duration,
+        )
 
 
 class MineruGrpcService:
@@ -128,6 +125,14 @@ class MineruGrpcService:
                     details=str(exc),
                 )
             raise
+        except MineruCliError as exc:
+            if grpc is not None and context is not None:
+                await context.abort(
+                    code=grpc.StatusCode.INTERNAL,
+                    details=str(exc),
+                )
+            raise
+
         from Medical_KG_rev.proto.gen import mineru_pb2  # type: ignore import-error
 
         reply = mineru_pb2.ProcessPdfResponse()
@@ -139,9 +144,16 @@ class MineruGrpcService:
             reply_block.id = block.id
             reply_block.page = block.page
             reply_block.kind = block.kind
-            reply_block.text = block.text
-            reply_block.confidence = block.confidence
-            reply_block.bbox.x0, reply_block.bbox.y0, reply_block.bbox.x1, reply_block.bbox.y1 = (
-                block.bbox
-            )
+            reply_block.text = block.text or ""
+            reply_block.confidence = float(block.confidence or 0.0)
+            if block.bbox:
+                (
+                    reply_block.bbox.x0,
+                    reply_block.bbox.y0,
+                    reply_block.bbox.x1,
+                    reply_block.bbox.y1,
+                ) = block.bbox
         return reply
+
+
+__all__ = ["MineruProcessor", "MineruGrpcService", "MineruRequest", "MineruResponse"]

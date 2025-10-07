@@ -9,6 +9,7 @@ from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.normalization import normalize_batch
 from ..utils.offsets import batch_offsets
+from ..utils.records import RecordBuilder
 
 
 @dataclass(slots=True)
@@ -17,6 +18,7 @@ class LlamaIndexEmbedderAdapter:
     _delegate: object | None = None
     _normalize: bool = False
     _offsets: bool = True
+    _builder: RecordBuilder | None = None
     name: str = ""
     kind: str = ""
 
@@ -33,6 +35,7 @@ class LlamaIndexEmbedderAdapter:
         self._delegate = cls(**init_kwargs)
         self._normalize = bool(self.config.normalize)
         self._offsets = bool(params.get("include_offsets", True))
+        self._builder = RecordBuilder(self.config, normalized_override=self._normalize)
         self.name = self.config.name
         self.kind = self.config.kind
 
@@ -54,29 +57,14 @@ class LlamaIndexEmbedderAdapter:
     def _records(
         self, request: EmbeddingRequest, vectors: list[list[float]], texts: list[str]
     ) -> list[EmbeddingRecord]:
-        ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(vectors))])
-        offsets = batch_offsets(texts) if self._offsets else [[] for _ in texts]
-        records: list[EmbeddingRecord] = []
-        for chunk_id, vector, offset_map in zip(ids, vectors, offsets, strict=False):
-            records.append(
-                EmbeddingRecord(
-                    id=chunk_id,
-                    tenant_id=request.tenant_id,
-                    namespace=request.namespace,
-                    model_id=self.config.model_id,
-                    model_version=self.config.model_version,
-                    kind=self.config.kind,
-                    dim=len(vector),
-                    vectors=[vector],
-                    normalized=self._normalize,
-                    metadata={
-                        "provider": self.config.provider,
-                        "offsets": offset_map,
-                    },
-                    correlation_id=request.correlation_id,
-                )
-            )
-        return records
+        assert self._builder is not None
+        offsets = batch_offsets(texts) if self._offsets else None
+        return self._builder.dense(
+            request,
+            vectors,
+            dim=len(vectors[0]) if vectors else None,
+            offsets=offsets,
+        )
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
         texts = list(request.texts)

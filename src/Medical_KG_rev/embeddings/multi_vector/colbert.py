@@ -11,6 +11,10 @@ import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
+from ..utils.records import RecordBuilder
+
+
+logger = structlog.get_logger(__name__)
 
 
 logger = structlog.get_logger(__name__)
@@ -101,6 +105,7 @@ class ColBERTRagatouilleEmbedder:
     _max_tokens: int = 0
     _shards: ColbertShardManager = field(default_factory=ColbertShardManager)
     _qdrant: QdrantMultiVectorAdapter | None = None
+    _builder: RecordBuilder | None = None
     name: str = ""
     kind: str = ""
 
@@ -116,19 +121,27 @@ class ColBERTRagatouilleEmbedder:
             )
         if "qdrant_collection" in params:
             self._qdrant = QdrantMultiVectorAdapter(collection=str(params["qdrant_collection"]))
+        self._builder = RecordBuilder(self.config, normalized_override=self.config.normalize)
         self.name = self.config.name
         self.kind = self.config.kind
 
     def _records(self, request: EmbeddingRequest, texts: list[str]) -> list[EmbeddingRecord]:
-        records: list[EmbeddingRecord] = []
-        ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(texts))])
+        assert self._builder is not None
+        ids = list(request.ids or [])
+        if len(ids) < len(texts):
+            ids.extend(
+                f"{request.namespace}:{index}" for index in range(len(ids), len(texts))
+            )
+        else:
+            ids = ids[: len(texts)]
+        vector_groups: list[list[list[float]]] = []
+        extras: list[dict[str, object]] = []
         for chunk_id, text in zip(ids, texts, strict=False):
             tokens = text.split()
             tokens = tokens[: self._max_tokens]
             vectors, positions = _token_vectors(tokens, self._dim)
             shard_name = self._shards.store(chunk_id, vectors)
             metadata = {
-                "provider": self.config.provider,
                 "token_positions": positions,
                 "shard": shard_name,
             }
@@ -141,21 +154,15 @@ class ColBERTRagatouilleEmbedder:
                 shard=shard_name,
                 tokens=len(tokens),
             )
-            records.append(
-                EmbeddingRecord(
-                    id=chunk_id,
-                    tenant_id=request.tenant_id,
-                    namespace=request.namespace,
-                    model_id=self.config.model_id,
-                    model_version=self.config.model_version,
-                    kind=self.config.kind,
-                    dim=self._dim,
-                    vectors=vectors,
-                    metadata=metadata,
-                    correlation_id=request.correlation_id,
-                )
-            )
-        return records
+            vector_groups.append(vectors)
+            extras.append(metadata)
+        return self._builder.multi_vector(
+            request,
+            vector_groups,
+            dim=self._dim,
+            extra_metadata=extras,
+            ids=ids,
+        )
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
         return self._records(request, list(request.texts))

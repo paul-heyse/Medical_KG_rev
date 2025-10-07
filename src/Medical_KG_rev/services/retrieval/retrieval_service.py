@@ -51,7 +51,9 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        router: RetrievalRouter | None = None,
+        embedding_worker: EmbeddingWorker | None = None,
+        active_namespaces: Sequence[str] | None = None,
+        namespace_weights: Mapping[str, float] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -59,7 +61,11 @@ class RetrievalService:
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self.router = router or RetrievalRouter()
+        self.embedding_worker = embedding_worker
+        self.active_namespaces = list(active_namespaces or [vector_namespace])
+        self.namespace_weights = dict(namespace_weights or {vector_namespace: 1.0})
+        self._query_cache: OrderedDict[tuple[str, tuple[str, ...]], list[Mapping[str, Any]]] = OrderedDict()
+        self._cache_size = 32
 
     def search(
         self,
@@ -103,50 +109,9 @@ class RetrievalService:
 
     def _dense_strategy(
         self, query: str, k: int, context: SecurityContext
-    ) -> list[RouterMatch]:
-        pseudo_query = [float(hash(token) % 100) for token in query.split()]
-        results: list[RouterMatch] = []
-        if self.vector_store is not None:
-            namespace = self.vector_namespace
-            try:
-                dimension = self.vector_store.registry.get(
-                    tenant_id=context.tenant_id, namespace=namespace
-                ).params.dimension
-                if len(pseudo_query) < dimension:
-                    pseudo_query.extend([0.0] * (dimension - len(pseudo_query)))
-                elif len(pseudo_query) > dimension:
-                    pseudo_query = pseudo_query[:dimension]
-                matches = self.vector_store.query(
-                    context=context,
-                    namespace=namespace,
-                    query=VectorQuery(values=pseudo_query, top_k=k),
-                )
-            except VectorStoreError as exc:
-                logger.warning(
-                    "retrieval.vector_search.failed",
-                    namespace=namespace,
-                    error=str(exc),
-                )
-                return []
-            except Exception as exc:  # pragma: no cover - defensive logging
-                logger.warning(
-                    "retrieval.vector_search.failed",
-                    namespace=namespace,
-                    error=str(exc),
-                )
-                return []
-            for match in matches:
-                metadata = dict(match.metadata)
-                metadata.setdefault("namespace", namespace)
-                results.append(
-                    RouterMatch(
-                        id=match.vector_id,
-                        score=float(match.score),
-                        metadata=metadata,
-                        source="vector",
-                    )
-                )
-            return results
+    ) -> list[Mapping[str, object]]:
+        if self.vector_store is not None and self.embedding_worker is not None:
+            return self._vector_store_search(query, k, context)
         if not self.faiss or not self.faiss.ids:
             return []
         if len(pseudo_query) < self.faiss.dimension:
@@ -166,20 +131,58 @@ class RetrievalService:
             )
         return results
 
-    def _build_strategies(
-        self, index: str, context: SecurityContext
-    ) -> list[RetrievalStrategy]:
-        def bm25_handler(request: RoutingRequest) -> list[RouterMatch]:
-            hits = self.opensearch.search(
-                index, request.query, strategy="bm25", filters=request.filters, size=request.top_k
+    def _vector_store_search(
+        self, query: str, k: int, context: SecurityContext
+    ) -> list[Mapping[str, object]]:
+        cached = self._query_cache_get(query)
+        if cached is not None:
+            return cached
+        embeddings = self._encode_query(query, context)
+        namespace = self.vector_namespace
+        try:
+            results: list[Mapping[str, object]] = []
+            for embedding in embeddings:
+                if not embedding.vectors:
+                    continue
+                dimension = self.vector_store.registry.get(
+                    tenant_id=context.tenant_id, namespace=embedding.namespace
+                ).params.dimension
+                values = list(embedding.vectors[0])
+                if len(values) < dimension:
+                    values.extend([0.0] * (dimension - len(values)))
+                elif len(values) > dimension:
+                    values = values[:dimension]
+                matches = self.vector_store.query(
+                    context=context,
+                    namespace=embedding.namespace,
+                    query=VectorQuery(values=values, top_k=k),
+                )
+                results.extend(
+                    {
+                        "_id": match.vector_id,
+                        "_score": match.score * self.namespace_weights.get(embedding.namespace, 1.0),
+                        "_source": {"text": str(match.metadata.get("text", "")), **match.metadata},
+                        "highlight": [],
+                    }
+                    for match in matches
+                )
+        except VectorStoreError as exc:
+            logger.warning(
+                "retrieval.vector_search.failed",
+                namespace=namespace,
+                error=str(exc),
             )
-            return [self._opensearch_to_match(hit, "bm25") for hit in hits]
-
-        def splade_handler(request: RoutingRequest) -> list[RouterMatch]:
-            hits = self.opensearch.search(
-                index, request.query, strategy="splade", filters=request.filters, size=request.top_k
+            return []
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning(
+                "retrieval.vector_search.failed",
+                namespace=namespace,
+                error=str(exc),
             )
-            return [self._opensearch_to_match(hit, "splade") for hit in hits]
+            return []
+        if results:
+            self._query_cache_set(query, results)
+        return results
 
         def dense_handler(request: RoutingRequest) -> list[RouterMatch]:
             return self._dense_strategy(request.query, request.top_k, context)

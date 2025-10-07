@@ -6,17 +6,22 @@ import time
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 import structlog
 
 from Medical_KG_rev.config.embeddings import load_embeddings_config
 from Medical_KG_rev.embeddings.namespace import NamespaceManager
-from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest as AdapterEmbeddingRequest
+from Medical_KG_rev.embeddings.ports import (
+    BaseEmbedder,
+    EmbedderConfig,
+    EmbeddingRecord,
+    EmbeddingRequest as AdapterEmbeddingRequest,
+)
 from Medical_KG_rev.embeddings.providers import register_builtin_embedders
 from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
 from Medical_KG_rev.embeddings.storage import StorageRouter
-from Medical_KG_rev.embeddings.utils.batching import BatchProgress, iter_with_progress
+from Medical_KG_rev.embeddings.utils.batching import BatchProgress
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
@@ -58,14 +63,15 @@ class EmbeddingResponse:
 class EmbeddingModelRegistry:
     """Compatibility wrapper that exposes cached embedder instances by name."""
 
-    def __init__(
-        self,
-        *,
-        namespace_manager: NamespaceManager | None = None,
-        config_path: str | None = None,
-        vector_store: VectorStoreService | None = None,
-    ) -> None:
-        self.namespace_manager = namespace_manager or NamespaceManager()
+    namespace_manager: NamespaceManager
+    registry: EmbedderRegistry
+    factory: EmbedderFactory
+    _config: object
+    _embedder_configs: list[EmbedderConfig]
+    _configs_by_name: dict[str, EmbedderConfig]
+
+    def __init__(self, _gpu_manager: object | None = None, *, config_path: str | None = None) -> None:
+        self.namespace_manager = NamespaceManager()
         self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
         register_builtin_embedders(self.registry)
         self.factory = EmbedderFactory(self.registry)
@@ -189,12 +195,20 @@ class EmbeddingWorker:
             return len(record.terms)
         return 0
 
-    def _batch_iterator(self, request: EmbeddingRequest, batch_size: int) -> tuple[list[list[str]], list[list[str]]]:
+    def _batch_iterator(
+        self, request: EmbeddingRequest, batch_size: int
+    ) -> Iterator[tuple[list[str], list[str]]]:
         texts = list(request.texts)
-        ids = list(request.chunk_ids)
-        text_batches = list(iter_with_progress(texts, batch_size))
-        id_batches = list(iter_with_progress(ids or [f"{request.tenant_id}:{index}" for index in range(len(texts))], batch_size))
-        return text_batches, id_batches
+        ids = list(request.chunk_ids or [])
+        if len(ids) < len(texts):
+            ids.extend(f"{request.tenant_id}:{index}" for index in range(len(ids), len(texts)))
+        else:
+            ids = ids[: len(texts)]
+        for start in range(0, len(texts), batch_size):
+            yield (
+                texts[start : start + batch_size],
+                ids[start : start + batch_size],
+            )
 
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
         configs = self._resolve_configs(request)
@@ -208,7 +222,7 @@ class EmbeddingWorker:
         for config in configs:
             ensure_available(config.requires_gpu, operation=f"embed:{config.name}")
             embedder = self.factory.get(config)
-            text_batches, id_batches = self._batch_iterator(request, request.batch_size)
+            batches = self._batch_iterator(request, request.batch_size)
             progress = BatchProgress(
                 total=len(request.texts),
                 callback=lambda processed, total, namespace=config.namespace, model=config.name: logger.info(
@@ -221,7 +235,7 @@ class EmbeddingWorker:
             )
             start = time.perf_counter()
             records: list[EmbeddingRecord] = []
-            for text_batch, id_batch in zip(text_batches, id_batches, strict=True):
+            for text_batch, id_batch in batches:
                 adapter_request = self._adapter_request(
                     request,
                     config,
@@ -246,10 +260,7 @@ class EmbeddingWorker:
             for record in records:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
-                metadata = {
-                    **record.metadata,
-                    "storage_target": self.storage_router.route(record.kind).name,
-                }
+                self.storage_router.persist(record)
                 response.vectors.append(
                     EmbeddingVector(
                         id=record.id,
@@ -327,7 +338,6 @@ class EmbeddingWorker:
                     )
                 )
         return response
-
 
 
 class EmbeddingGrpcService:

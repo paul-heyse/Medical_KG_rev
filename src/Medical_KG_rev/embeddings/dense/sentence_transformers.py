@@ -13,6 +13,7 @@ from ..registry import EmbedderRegistry
 from ..utils.batching import BatchProgress, iter_with_progress
 from ..utils.normalization import normalize_batch
 from ..utils.prefixes import apply_prefixes
+from ..utils.records import RecordBuilder
 
 _MODEL_DEFAULTS: dict[str, dict[str, object]] = {
     "BAAI/bge-small-en": {"dim": 384, "pooling": "mean"},
@@ -80,31 +81,35 @@ class SentenceTransformersEmbedder:
         *,
         offset: int = 0,
     ) -> list[EmbeddingRecord]:
-        ids = list(
-            request.ids
-            or [f"{request.namespace}:{index + offset}" for index in range(len(vectors))]
+        builder = RecordBuilder(self.config, normalized_override=self._normalize)
+        return builder.dense(
+            request,
+            vectors,
+            dim=self._dim,
+            extra_metadata={"onnx_optimized": self._onnx_enabled},
         )
-        records: list[EmbeddingRecord] = []
-        for chunk_id, vector in zip(ids, vectors, strict=False):
-            records.append(
-                EmbeddingRecord(
-                    id=chunk_id,
-                    tenant_id=request.tenant_id,
-                    namespace=request.namespace,
-                    model_id=self.config.model_id,
-                    model_version=self.config.model_version,
-                    kind=self.config.kind,
-                    dim=self._dim,
-                    vectors=[vector],
-                    normalized=self._normalize,
-                    metadata={
-                        "provider": self.config.provider,
-                        "onnx_optimized": self._onnx_enabled,
-                    },
-                    correlation_id=request.correlation_id,
-                )
+
+    def _log_progress(self, processed: int, total: int) -> None:
+        if self._progress_interval <= 0:
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
             )
-        return records
+            return
+        if processed in self._progress_history:
+            return
+        if processed % self._progress_interval == 0 or processed == total:
+            self._progress_history.append(processed)
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
+            )
 
     def _log_progress(self, processed: int, total: int) -> None:
         if self._progress_interval <= 0:

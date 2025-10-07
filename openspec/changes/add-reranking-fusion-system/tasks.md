@@ -61,17 +61,17 @@
 ### 5.1 OpenSearch LTR
 
 - [x] 5.1.1 Implement `OpenSearchLTRReranker`
-- [ ] 5.1.2 Add feature extraction (BM25, SPLADE, dense, recency)
-- [ ] 5.1.3 Implement LambdaMART/XGBoost model integration
-- [ ] 5.1.4 Add model training pipeline (feature generation)
-- [ ] 5.1.5 Implement sltr (Learning to Rank) plugin integration
+- [x] 5.1.2 Add feature extraction (BM25, SPLADE, dense, recency)
+- [x] 5.1.3 Implement LambdaMART/XGBoost model integration
+- [x] 5.1.4 Add model training pipeline (feature generation)
+- [x] 5.1.5 Implement sltr (Learning to Rank) plugin integration
 
 ### 5.2 Vespa Rank Profiles
 
 - [x] 5.2.1 Implement `VespaRankProfileReranker`
-- [ ] 5.2.2 Add rank profile definition and deployment
-- [ ] 5.2.3 Implement ONNX model integration
-- [ ] 5.2.4 Add first-phase and second-phase ranking
+- [x] 5.2.2 Add rank profile definition and deployment
+- [x] 5.2.3 Implement ONNX model integration
+- [x] 5.2.4 Add first-phase and second-phase ranking
 
 ## 6. Fusion Algorithms
 

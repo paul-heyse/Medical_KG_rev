@@ -197,7 +197,9 @@ class RerankingEngine:
         version: str,
         results: Iterable[RerankResult],
     ) -> None:
-        self.cache.warm(reranker_id, tenant_id, version, results)
+        reranker = self.factory.resolve(reranker_id)
+        cache_version = version or reranker.model_version
+        self.cache.warm(reranker.identifier, tenant_id, cache_version, results)
 
     # ------------------------------------------------------------------
     def health(self) -> Mapping[str, bool]:

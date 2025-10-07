@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, Sequence
 
-from .models import QueryDocumentPair, RerankResult, RerankingResponse
+from .models import NormalizationStrategy, QueryDocumentPair, RerankResult, RerankingResponse
 
 
 class RerankerPort(Protocol):
@@ -20,8 +20,9 @@ class RerankerPort(Protocol):
         pairs: Sequence[QueryDocumentPair],
         *,
         top_k: int | None = None,
-        normalize: bool = True,
+        normalize: bool | NormalizationStrategy = True,
         batch_size: int | None = None,
+        explain: bool = False,
     ) -> RerankingResponse:
         """Score the supplied query/document pairs."""
 

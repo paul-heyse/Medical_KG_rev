@@ -110,11 +110,14 @@ class RerankerEvaluator:
     ) -> dict[str, float]:
         """Compare two rerankers returning deltas for key metrics."""
 
+        def _round(value: float) -> float:
+            return round(value, 4)
+
         return {
-            "ndcg_delta": challenger.ndcg_at_10 - baseline.ndcg_at_10,
-            "recall_delta": challenger.recall_at_10 - baseline.recall_at_10,
-            "mrr_delta": challenger.mrr - baseline.mrr,
-            "latency_delta": challenger.latency_p95_ms - baseline.latency_p95_ms,
+            "ndcg_delta": _round(challenger.ndcg_at_10 - baseline.ndcg_at_10),
+            "recall_delta": _round(challenger.recall_at_10 - baseline.recall_at_10),
+            "mrr_delta": _round(challenger.mrr - baseline.mrr),
+            "latency_delta": _round(challenger.latency_p95_ms - baseline.latency_p95_ms),
         }
 
     def leaderboard(

@@ -161,23 +161,38 @@ class EmbeddingWorker:
 
     def __init__(
         self,
-        registry: EmbeddingModelRegistry | None = None,
+        registry_or_namespace: EmbeddingModelRegistry | NamespaceManager | None = None,
         *,
         namespace_manager: NamespaceManager | None = None,
         config_path: str | None = None,
-        vector_store: VectorStoreService | None = None,
     ) -> None:
-        if registry is None:
-            registry = EmbeddingModelRegistry(
-                namespace_manager=namespace_manager,
-                config_path=config_path,
-            )
-        self.model_registry = registry
-        self.namespace_manager = registry.namespace_manager
-        self.storage_router = registry.storage_router
-        self.registry = registry.registry
-        self.factory = registry.factory
-        self.vector_store = vector_store
+        self._legacy_registry: EmbeddingModelRegistry | None = None
+        if isinstance(registry_or_namespace, EmbeddingModelRegistry):
+            self._legacy_registry = registry_or_namespace
+            self.namespace_manager = registry_or_namespace.namespace_manager
+            self.registry = None
+            self.factory = None
+            self.storage_router = StorageRouter()
+            self._config = None
+            self._embedder_configs: list[EmbedderConfig] = []
+            self._configs_by_name: dict[str, EmbedderConfig] = {}
+            self._configs_by_namespace: dict[str, EmbedderConfig] = {}
+            return
+
+        if isinstance(registry_or_namespace, NamespaceManager) and namespace_manager is not None:
+            raise TypeError("namespace_manager should not be provided twice")
+        effective_namespace = namespace_manager
+        if effective_namespace is None and isinstance(registry_or_namespace, NamespaceManager):
+            effective_namespace = registry_or_namespace
+        self.namespace_manager = effective_namespace or NamespaceManager()
+        self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
+        register_builtin_embedders(self.registry)
+        self.factory = EmbedderFactory(self.registry)
+        self.storage_router = StorageRouter()
+        self._config = load_embeddings_config(Path(config_path) if config_path else None)
+        self._embedder_configs = self._config.to_embedder_configs()
+        self._configs_by_name = {config.name: config for config in self._embedder_configs}
+        self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
 
     def _resolve_configs(self, request: EmbeddingRequest) -> list[EmbedderConfig]:
         return self.model_registry.resolve(
@@ -382,7 +397,6 @@ class EmbeddingWorker:
                         )
                     )
         return response
-
 
 
 class EmbeddingGrpcService:

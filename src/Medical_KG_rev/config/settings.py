@@ -291,6 +291,34 @@ class RerankerModelSettings(BaseModel):
     quantization: Literal["int8", "fp16"] | None = None
     requires_gpu: bool = False
 
+    @model_validator(mode="after")
+    def validate_model_availability(self) -> "RerankerModelSettings":
+        from Medical_KG_rev.services.reranking.factory import RerankerFactory
+        from Medical_KG_rev.services.reranking.errors import UnknownRerankerError
+
+        factory = RerankerFactory()
+        if self.reranker_id not in factory.available:
+            raise ValueError(
+                f"Reranker '{self.reranker_id}' is not registered. Available: {factory.available}"
+            )
+        try:
+            reranker = factory.resolve(self.reranker_id)
+        except UnknownRerankerError as exc:  # pragma: no cover - defensive
+            raise ValueError(str(exc)) from exc
+        if self.requires_gpu:
+            try:
+                import torch
+
+                if not torch.cuda.is_available():  # type: ignore[attr-defined]
+                    raise ValueError("GPU is required for the configured reranker but unavailable")
+            except Exception as exc:  # pragma: no cover - torch optional
+                raise ValueError("GPU is required for the configured reranker but unavailable") from exc
+            if not getattr(reranker, "requires_gpu", False):
+                raise ValueError(
+                    f"Reranker '{self.reranker_id}' does not support GPU execution"
+                )
+        return self
+
 
 class FusionAlgorithmSettings(BaseModel):
     """Fusion algorithm configuration."""
@@ -331,6 +359,22 @@ class RerankingSettings(BaseModel):
     model: RerankerModelSettings = Field(default_factory=RerankerModelSettings)
     fusion: FusionAlgorithmSettings = Field(default_factory=FusionAlgorithmSettings)
     pipeline: PipelineStageSettings = Field(default_factory=PipelineStageSettings)
+
+
+def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:
+    """Convert legacy reranking configuration dictionaries into the new schema."""
+
+    migrated: dict[str, Any] = dict(payload)
+    legacy_model = migrated.pop("model_name", None)
+    if legacy_model and "model" not in migrated:
+        migrated["model"] = {"model": legacy_model}
+    fusion_strategy = migrated.pop("fusion_strategy", None)
+    if fusion_strategy and "fusion" not in migrated:
+        migrated["fusion"] = {"strategy": fusion_strategy}
+    cache_ttl = migrated.pop("cacheTtl", None)
+    if cache_ttl is not None and "cache_ttl" not in migrated:
+        migrated["cache_ttl"] = cache_ttl
+    return RerankingSettings(**migrated)
 
 
 class AppSettings(BaseSettings):

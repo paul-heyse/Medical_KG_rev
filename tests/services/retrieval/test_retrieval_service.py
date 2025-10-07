@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
+from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalRouter, RetrievalService
 
 
 def _setup_clients():
@@ -34,3 +36,13 @@ def test_rerank_adds_scores():
 
     assert any(result.rerank_score is not None for result in results)
     assert all("reranking" in result.metadata for result in results)
+
+
+def test_explain_mode_includes_stage_metrics():
+    opensearch, faiss = _setup_clients()
+    service = RetrievalService(opensearch, faiss)
+
+    results = service.search("chunks", "headache", rerank=True, explain=True)
+
+    assert results[0].metadata.get("pipeline_metrics")
+    assert results[0].metadata.get("timing")

@@ -5,9 +5,10 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
-from ..base import EmbeddingContextualChunker, Segment
+from ..base import EmbeddingContextualChunker
 from ..exceptions import ChunkerConfigurationError
 from ..provenance import BlockContext
+from ..segmentation import Segment
 from ..tokenization import TokenCounter
 
 

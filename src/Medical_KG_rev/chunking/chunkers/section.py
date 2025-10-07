@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from itertools import groupby
 from typing import Iterable
 
-from ..base import ContextualChunker, Segment
+from ..base import ContextualChunker
 from ..provenance import BlockContext
+from ..segmentation import Segment, SectionSegmenter
 from ..tokenization import TokenCounter
 
 
@@ -27,19 +27,23 @@ class SectionAwareChunker(ContextualChunker):
         min_tokens: int = 180,
         max_tokens: int = 900,
         preserve_tables: bool = True,
+        segmenter: SectionSegmenter | None = None,
     ) -> None:
-        super().__init__(token_counter=token_counter)
-        self.target_tokens = target_tokens
-        self.min_tokens = min_tokens
-        self.max_tokens = max_tokens
-        self.preserve_tables = preserve_tables
+        strategy = segmenter or SectionSegmenter(
+            target_tokens=target_tokens,
+            min_tokens=min_tokens,
+            max_tokens=max_tokens,
+            preserve_tables=preserve_tables,
+        )
+        super().__init__(token_counter=token_counter, segmenter=strategy)
+        self._segmenter = strategy
+        self.target_tokens = strategy.target_tokens
+        self.min_tokens = strategy.min_tokens
+        self.max_tokens = strategy.max_tokens
+        self.preserve_tables = strategy.preserve_tables
 
     def segment_contexts(self, contexts: Iterable[BlockContext]) -> Iterable[Segment]:
-        result: list[Segment] = []
-        for _, section_blocks in groupby(contexts, key=lambda ctx: ctx.section.id):
-            section_list = list(section_blocks)
-            result.extend(self._segment_section(section_list))
-        return result
+        return self._segmenter.plan(list(contexts))
 
     def explain(self) -> dict[str, object]:
         return {

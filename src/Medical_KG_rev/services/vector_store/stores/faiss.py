@@ -3,14 +3,24 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import faiss
 import numpy as np
 
 from ..errors import DimensionMismatchError, InvalidNamespaceConfigError, NamespaceNotFoundError
-from ..models import CompressionPolicy, IndexParams, VectorMatch, VectorQuery, VectorRecord
+from ..models import (
+    CompressionPolicy,
+    HealthStatus,
+    IndexParams,
+    RebuildReport,
+    SnapshotInfo,
+    VectorMatch,
+    VectorQuery,
+    VectorRecord,
+)
 from ..types import VectorStorePort
 
 
@@ -377,6 +387,175 @@ class FaissVectorStore(VectorStorePort):
         if removed:
             self._persist_index(state)
         return removed
+
+    def create_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        destination: str,
+        include_payloads: bool = True,
+    ) -> SnapshotInfo:
+        state = self._get_state(tenant_id, namespace)
+        path = self._resolve_snapshot_path(destination, tenant_id, namespace)
+        vector_ids = list(state.vector_id_to_internal.keys())
+        vectors = state.payload_store.fetch_vectors(vector_ids)
+        metadata = state.payload_store.fetch_metadata(vector_ids)
+        records: list[dict[str, object]] = []
+        for vector_id in vector_ids:
+            record: dict[str, object] = {"vector_id": vector_id, "metadata": metadata.get(vector_id, {})}
+            if include_payloads and vector_id in vectors:
+                record["values"] = vectors[vector_id].tolist()
+            records.append(record)
+        payload = {
+            "tenant_id": tenant_id,
+            "namespace": namespace,
+            "created_at": time.time(),
+            "params": asdict(state.params),
+            "compression": asdict(state.compression),
+            "records": records,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, sort_keys=True))
+        stats = path.stat()
+        return SnapshotInfo(
+            namespace=namespace,
+            path=str(path),
+            size_bytes=stats.st_size,
+            created_at=time.time(),
+            metadata={"records": len(records), "include_payloads": include_payloads},
+        )
+
+    def restore_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        source: str,
+        overwrite: bool = False,
+    ) -> RebuildReport:
+        payload = json.loads(Path(source).read_text())
+        params = IndexParams(**payload["params"])
+        compression = CompressionPolicy(**payload.get("compression", {}))
+        tenant_state = self._tenants.setdefault(tenant_id, {})
+        if overwrite:
+            tenant_state.pop(namespace, None)
+        self.create_or_update_collection(
+            tenant_id=tenant_id,
+            namespace=namespace,
+            params=params,
+            compression=compression,
+            metadata=None,
+            named_vectors=None,
+        )
+        records_payload = payload.get("records", [])
+        records: list[VectorRecord] = []
+        for record in records_payload:
+            values = record.get("values")
+            if not values:
+                continue
+            records.append(
+                VectorRecord(
+                    vector_id=str(record["vector_id"]),
+                    values=values,
+                    metadata=record.get("metadata", {}),
+                )
+            )
+        if records:
+            self.upsert(tenant_id=tenant_id, namespace=namespace, records=records)
+        return RebuildReport(
+            namespace=namespace,
+            rebuilt=bool(records),
+            details={"restored_records": len(records)},
+        )
+
+    def rebuild_index(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        force: bool = False,
+    ) -> RebuildReport:
+        state = self._get_state(tenant_id, namespace)
+        vector_ids = list(state.vector_id_to_internal.keys())
+        vectors = state.payload_store.fetch_vectors(vector_ids)
+        metadata = state.payload_store.fetch_metadata(vector_ids)
+        params = state.params
+        compression = state.compression
+        if force and state.index_path.exists():
+            state.index_path.unlink(missing_ok=True)
+        tenant_state = self._tenants.setdefault(tenant_id, {})
+        tenant_state.pop(namespace, None)
+        self.create_or_update_collection(
+            tenant_id=tenant_id,
+            namespace=namespace,
+            params=params,
+            compression=compression,
+            metadata=None,
+            named_vectors=None,
+        )
+        rebuilt_state = self._get_state(tenant_id, namespace)
+        if not vector_ids:
+            return RebuildReport(namespace=namespace, rebuilt=True, details={"vectors": 0})
+        rebuilt_state.payload_store.delete(vector_ids)
+        rebuilt_state.vector_id_to_internal.clear()
+        rebuilt_state.internal_to_vector_id.clear()
+        rebuilt_state.next_internal_id = 1
+        records = [
+            VectorRecord(
+                vector_id=vector_id,
+                values=vectors[vector_id].tolist(),
+                metadata=metadata.get(vector_id, {}),
+            )
+            for vector_id in vector_ids
+            if vector_id in vectors
+        ]
+        if records:
+            self.upsert(tenant_id=tenant_id, namespace=namespace, records=records)
+        return RebuildReport(
+            namespace=namespace,
+            rebuilt=True,
+            details={"vectors": len(records)},
+        )
+
+    def check_health(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str | None = None,
+    ) -> Mapping[str, HealthStatus]:
+        tenant_state = self._tenants.get(tenant_id, {})
+        if namespace is not None:
+            state = tenant_state.get(namespace)
+            if not state:
+                return {namespace: HealthStatus(name=namespace, healthy=False, details={})}
+            return {
+                namespace: HealthStatus(
+                    name=namespace,
+                    healthy=not state.requires_training or state.cpu_index.is_trained,
+                    details={
+                        "vectors": len(state.vector_id_to_internal),
+                        "trained": state.cpu_index.is_trained,
+                    },
+                )
+            }
+        statuses: dict[str, HealthStatus] = {}
+        for name, state in tenant_state.items():
+            statuses[name] = HealthStatus(
+                name=name,
+                healthy=not state.requires_training or state.cpu_index.is_trained,
+                details={
+                    "vectors": len(state.vector_id_to_internal),
+                    "trained": state.cpu_index.is_trained,
+                },
+            )
+        return statuses
+
+    def _resolve_snapshot_path(self, destination: str, tenant_id: str, namespace: str) -> Path:
+        path = Path(destination)
+        if path.suffix:
+            return path
+        return path / f"{tenant_id}__{namespace}.faiss-snapshot.json"
 
     # ------------------------------------------------------------------
     # Helpers

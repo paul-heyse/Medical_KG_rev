@@ -1,82 +1,25 @@
-"""Framework adapters for LangChain embedding classes."""
+"""Framework adapter for LangChain embedding implementations."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 
-from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
-from ..utils.normalization import normalize_batch
-from ..utils.offsets import batch_offsets
-from ..utils.records import RecordBuilder
+from .delegate import DelegateCall, DelegatedFrameworkAdapter
 
 
 @dataclass(slots=True)
-class LangChainEmbedderAdapter:
-    config: EmbedderConfig
-    _delegate: object | None = None
-    _normalize: bool = False
-    _offsets: bool = True
-    _builder: RecordBuilder | None = None
-    name: str = ""
-    kind: str = ""
-
-    def __post_init__(self) -> None:
-        params = self.config.parameters
-        self._validate_parameters(params)
-        target = params["class_path"]
-        module_name, _, class_name = str(target).rpartition(".")
-        module = import_module(module_name)
-        cls = getattr(module, class_name)
-        init_kwargs = params.get("init", {})
-        if not isinstance(init_kwargs, dict):
-            raise ValueError("LangChain adapter 'init' parameter must be a mapping")
-        self._delegate = cls(**init_kwargs)
-        self._normalize = bool(self.config.normalize)
-        self._offsets = bool(params.get("include_offsets", True))
-        self._builder = RecordBuilder(self.config, normalized_override=self._normalize)
-        self.name = self.config.name
-        self.kind = self.config.kind
-
-    def _validate_parameters(self, params: dict[str, object]) -> None:
-        if "class_path" not in params:
-            raise ValueError("LangChain adapter requires 'class_path' parameter")
-
-    def _call(self, texts: list[str]) -> list[list[float]]:
-        if hasattr(self._delegate, "embed_documents"):
-            vectors = self._delegate.embed_documents(texts)  # type: ignore[attr-defined]
-        else:
-            vectors = self._delegate.embed(texts)  # type: ignore[attr-defined]
-        if self._normalize:
-            vectors = normalize_batch(vectors)
-        return [list(map(float, vector)) for vector in vectors]
-
-    def _records(
-        self, request: EmbeddingRequest, vectors: list[list[float]], texts: list[str]
-    ) -> list[EmbeddingRecord]:
-        assert self._builder is not None
-        offsets = batch_offsets(texts) if self._offsets else None
-        return self._builder.dense(
-            request,
-            vectors,
-            dim=len(vectors[0]) if vectors else None,
-            offsets=offsets,
-        )
-
-    def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        texts = list(request.texts)
-        return self._records(request, self._call(texts), texts)
-
-    def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        if hasattr(self._delegate, "embed_query"):
-            vector = self._delegate.embed_query(" ".join(request.texts))  # type: ignore[attr-defined]
-            vectors = [vector] * len(request.texts)
-        else:
-            vectors = self._call(list(request.texts))
-        if self._normalize:
-            vectors = normalize_batch(vectors)
-        return self._records(request, vectors, list(request.texts))
+class LangChainEmbedderAdapter(DelegatedFrameworkAdapter):
+    document_calls = (
+        DelegateCall("embed_documents", "batch"),
+        DelegateCall("embed", "batch"),
+    )
+    query_calls = (
+        DelegateCall("embed_query", "per_text"),
+        DelegateCall("embed_queries", "batch"),
+        DelegateCall("embed_documents", "batch"),
+        DelegateCall("embed", "batch"),
+    )
 
 
 def register_langchain(registry: EmbedderRegistry) -> None:

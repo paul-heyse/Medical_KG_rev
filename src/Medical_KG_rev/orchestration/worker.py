@@ -58,6 +58,9 @@ else:  # pragma: no cover - telemetry optional
 logger = structlog.get_logger(__name__)
 
 
+logger = structlog.get_logger(__name__)
+
+
 @dataclass
 class WorkerMetrics:
     processed: int = 0

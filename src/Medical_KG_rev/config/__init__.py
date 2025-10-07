@@ -12,12 +12,7 @@ from .settings import (
     TelemetrySettings,
     get_settings,
     load_settings,
-)
-from .vector_store import (
-    CompressionConfig as VectorCompressionConfig,
-    NamespaceConfigModel as VectorNamespaceConfig,
-    VectorStoreConfig,
-    load_vector_store_config,
+    migrate_reranking_config,
 )
 
 __all__ = [
@@ -29,6 +24,7 @@ __all__ = [
     "LoggingSettings",
     "ObservabilitySettings",
     "RerankingSettings",
+    "migrate_reranking_config",
     "SecretResolver",
     "TelemetrySettings",
     "get_settings",

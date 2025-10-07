@@ -5,7 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
-from .models import IndexParams, VectorMatch, VectorQuery, VectorRecord
+from .models import (
+    CompressionPolicy,
+    IndexParams,
+    VectorMatch,
+    VectorQuery,
+    VectorRecord,
+)
 
 
 class VectorStorePort(Protocol):
@@ -17,7 +23,9 @@ class VectorStorePort(Protocol):
         tenant_id: str,
         namespace: str,
         params: IndexParams,
+        compression: CompressionPolicy,
         metadata: Mapping[str, object] | None = None,
+        named_vectors: Mapping[str, IndexParams] | None = None,
     ) -> None:
         """Ensure the target namespace exists with the provided parameters."""
 

@@ -23,6 +23,7 @@ def test_rrf_fusion_combines_results():
 
     assert len(results) == 2
     assert all(result.retrieval_score > 0 for result in results)
+    assert all("reranking" not in result.metadata for result in results)
 
 
 def test_rerank_adds_scores():

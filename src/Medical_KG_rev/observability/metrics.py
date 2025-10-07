@@ -66,6 +66,37 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+RERANK_OPERATIONS = Counter(
+    "reranking_operations_total",
+    "Total reranking invocations",
+    labelnames=("reranker", "tenant", "batch_size"),
+)
+RERANK_DURATION = Histogram(
+    "reranking_duration_seconds",
+    "Distribution of reranking latencies",
+    labelnames=("reranker", "tenant"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
+RERANK_ERRORS = Counter(
+    "reranking_errors_total",
+    "Number of reranking failures grouped by type",
+    labelnames=("reranker", "error_type"),
+)
+RERANK_PAIRS = Counter(
+    "reranking_pairs_processed_total",
+    "Number of query/document pairs scored",
+    labelnames=("reranker",),
+)
+RERANK_CIRCUIT = Gauge(
+    "reranking_circuit_breaker_state",
+    "Circuit breaker state per reranker (1=open)",
+    labelnames=("reranker", "tenant"),
+)
+RERANK_GPU = Gauge(
+    "reranking_gpu_utilization_percent",
+    "GPU utilisation while reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: Request) -> str:

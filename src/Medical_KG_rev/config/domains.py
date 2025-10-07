@@ -4,9 +4,34 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from pathlib import Path
+from typing import Any
 
-import yaml
+import importlib.util
+import structlog
 from pydantic import BaseModel, Field
+
+logger = structlog.get_logger(__name__)
+
+_YAML_AVAILABLE = importlib.util.find_spec("yaml") is not None
+
+if _YAML_AVAILABLE:
+    from yaml import safe_load as _safe_load  # type: ignore
+else:  # pragma: no cover - optional dependency fallback
+    def _safe_load(_: str) -> Mapping[str, Any]:
+        logger.warning(
+            "config.yaml.unavailable",
+            message="PyYAML not installed; using empty domain registry",
+        )
+        return {}
+
+
+class _YamlFacade:
+    @staticmethod
+    def safe_load(content: str) -> Mapping[str, Any]:
+        return _safe_load(content)
+
+
+yaml = _YamlFacade()
 
 
 class DomainConfig(BaseModel):

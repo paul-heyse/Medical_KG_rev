@@ -5,13 +5,22 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from time import perf_counter
+from typing import Any
+
+import structlog
 
 try:  # pragma: no cover - optional dependency
     import torch
 except Exception:  # pragma: no cover - torch is optional in CPU-only environments
     torch = None  # type: ignore
 
-from fastapi import FastAPI, Request, Response
+try:  # pragma: no cover - optional dependency
+    from fastapi import FastAPI, Request, Response
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    FastAPI = None  # type: ignore[assignment]
+    Request = Any  # type: ignore[assignment]
+    Response = Any  # type: ignore[assignment]
+
 from prometheus_client import (  # type: ignore
     CONTENT_TYPE_LATEST,
     Counter,
@@ -26,6 +35,8 @@ from Medical_KG_rev.utils.logging import (
     get_correlation_id,
     reset_correlation_id,
 )
+
+logger = structlog.get_logger(__name__)
 
 REQUEST_COUNTER = Counter(
     "api_requests",
@@ -52,6 +63,58 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+RERANK_OPERATIONS = Counter(
+    "reranking_operations_total",
+    "Total reranking invocations",
+    labelnames=("reranker", "tenant", "batch_size"),
+)
+RERANK_DURATION = Histogram(
+    "reranking_duration_seconds",
+    "Distribution of reranking latencies",
+    labelnames=("reranker", "tenant"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
+RERANK_ERRORS = Counter(
+    "reranking_errors_total",
+    "Number of reranking failures grouped by type",
+    labelnames=("reranker", "error_type"),
+)
+RERANK_PAIRS = Counter(
+    "reranking_pairs_processed_total",
+    "Number of query/document pairs scored",
+    labelnames=("reranker",),
+)
+RERANK_CIRCUIT = Gauge(
+    "reranking_circuit_breaker_state",
+    "Circuit breaker state per reranker (1=open)",
+    labelnames=("reranker", "tenant"),
+)
+RERANK_GPU = Gauge(
+    "reranking_gpu_utilization_percent",
+    "GPU utilisation while reranking",
+    labelnames=("reranker",),
+)
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: Request) -> str:
@@ -71,8 +134,18 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
-def register_metrics(app: FastAPI, settings: AppSettings) -> None:
+def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
+    if FastAPI is None:
+        logger.info(
+            "metrics.registration.skipped",
+            reason="fastapi_unavailable",
+        )
+        return
     if not settings.observability.metrics.enabled:
+        logger.info(
+            "metrics.registration.skipped",
+            reason="disabled",
+        )
         return
 
     path = settings.observability.metrics.path
@@ -125,3 +198,41 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
+
+
+def record_reranking_operation(
+    reranker: str,
+    tenant: str,
+    batch_size: int,
+    duration_seconds: float,
+    pairs: int,
+    circuit_state: str,
+    gpu_utilisation: float | None = None,
+) -> None:
+    RERANK_OPERATIONS.labels(reranker, tenant, str(batch_size)).inc()
+    RERANK_DURATION.labels(reranker, tenant).observe(max(duration_seconds, 0.0))
+    RERANK_PAIRS.labels(reranker).inc(max(pairs, 0))
+    RERANK_CIRCUIT.labels(reranker, tenant).set(1.0 if circuit_state == "open" else 0.0)
+    if gpu_utilisation is not None:
+        RERANK_GPU.labels(reranker).set(max(gpu_utilisation, 0.0))
+
+
+def record_reranking_error(reranker: str, error_type: str) -> None:
+    RERANK_ERRORS.labels(reranker, error_type).inc()
+
+
+def record_pipeline_stage(stage: str, duration_seconds: float) -> None:
+    PIPELINE_STAGE_DURATION.labels(stage).observe(max(duration_seconds, 0.0))
+
+
+def record_cache_hit_rate(reranker: str, hit_rate: float) -> None:
+    RERANK_CACHE_HIT.labels(reranker).set(max(0.0, min(hit_rate, 1.0)))
+
+
+def record_latency_alert(reranker: str, duration_seconds: float, slo_seconds: float) -> None:
+    if duration_seconds > slo_seconds:
+        RERANK_LATENCY_ALERTS.labels(reranker).inc()
+
+
+def record_gpu_memory_alert(reranker: str) -> None:
+    RERANK_GPU_MEMORY_ALERTS.labels(reranker).inc()

@@ -10,6 +10,7 @@ from Medical_KG_rev.chunking import (
     ChunkingService as ModularChunkingService,
     Granularity,
 )
+from Medical_KG_rev.chunking.exceptions import ChunkerConfigurationError
 
 STRATEGY_ALIASES: dict[str, tuple[str, Granularity]] = {
     "section": ("section_aware", "section"),
@@ -50,12 +51,15 @@ class ChunkingService:
         options: ChunkingOptions | None = None,
     ) -> list[Chunk]:
         modular_options = self._translate_options(options)
-        return self._service.chunk_text(
-            tenant_id=tenant_id,
-            document_id=document_id,
-            text=text,
-            options=modular_options,
-        )
+        try:
+            return self._service.chunk_text(
+                tenant_id=tenant_id,
+                document_id=document_id,
+                text=text,
+                options=modular_options,
+            )
+        except ChunkerConfigurationError:
+            return self._fallback_chunks(tenant_id, document_id, text)
 
     def chunk_sections(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(
@@ -95,6 +99,58 @@ class ChunkingService:
                 overlap=overlap,
             ),
         )
+
+    def _fallback_chunks(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
+        chunks: list[Chunk] = []
+        cursor = 0
+        for idx, segment in enumerate(text.splitlines(keepends=True)):
+            body = segment.strip()
+            length = len(segment)
+            if not body:
+                cursor += length
+                continue
+            start_offset = segment.index(body)
+            start = cursor + start_offset
+            end = start + len(body)
+            chunk_id = f"{document_id}-fallback-{idx}"
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    body=body,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="paragraph",
+                    chunker="fallback",
+                    chunker_version="v1",
+                    meta={},
+                )
+            )
+            cursor += length
+        if not chunks and text.strip():
+            stripped = text.strip()
+            start = text.index(stripped)
+            end = start + len(stripped)
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{document_id}-fallback-0",
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    body=stripped,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="document",
+                    chunker="fallback",
+                    chunker_version="v1",
+                    meta={},
+                )
+            )
+        return chunks
 
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:

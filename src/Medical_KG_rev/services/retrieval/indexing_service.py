@@ -24,7 +24,7 @@ class IndexingService:
         chunking: ChunkingService,
         embedding_worker: EmbeddingWorker,
         opensearch: OpenSearchClient,
-        faiss: FAISSIndex,
+        faiss: FAISSIndex | None,
         chunk_index: str = "chunks",
     ) -> None:
         self.chunking = chunking
@@ -43,13 +43,14 @@ class IndexingService:
         incremental: bool = False,
     ) -> IndexingResult:
         chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
-        if incremental:
-            chunks = [chunk for chunk in chunks if chunk.id not in self.faiss.ids]
+        if incremental and self.faiss is not None:
+            existing = set(self.faiss.ids)
+            chunks = [chunk for chunk in chunks if chunk.chunk_id not in existing]
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
         self._embed_and_index(tenant_id, chunks)
-        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.chunk_id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
@@ -68,6 +69,8 @@ class IndexingService:
         self.opensearch.bulk_index(self.chunk_index, documents, id_field="id")
 
     def _embed_and_index(self, tenant_id: str, chunks: Sequence[Chunk]) -> None:
+        if self.faiss is None:
+            return
         request = EmbeddingRequest(
             tenant_id=tenant_id,
             chunk_ids=[chunk.chunk_id for chunk in chunks],
@@ -81,11 +84,23 @@ class IndexingService:
             chunk = chunk_lookup.get(vector.id)
             if chunk is None:
                 continue
+            payload = getattr(vector, "vectors", None)
+            if payload:
+                base_values = payload[0]
+            else:
+                base_values = getattr(vector, "values", None)
+            if base_values is None:
+                continue
+            values = [float(value) for value in base_values]
+            if len(values) < self.faiss.dimension:
+                values = values + [0.0] * (self.faiss.dimension - len(values))
+            elif len(values) > self.faiss.dimension:
+                values = values[: self.faiss.dimension]
             metadata = dict(chunk.meta)
             metadata.setdefault("text", chunk.body)
             metadata.setdefault("granularity", chunk.granularity)
             metadata.setdefault("chunker", chunk.chunker)
-            self.faiss.add(vector.id, vector.values[: self.faiss.dimension], metadata)
+            self.faiss.add(vector.id, values, metadata)
 
     def refresh(self) -> None:
         """Placeholder for compatibility with production implementation."""

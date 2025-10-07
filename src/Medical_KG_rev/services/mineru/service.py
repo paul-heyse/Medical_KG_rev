@@ -4,7 +4,7 @@ import itertools
 import os
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 
@@ -78,7 +78,7 @@ class MineruProcessor:
             try:
                 self._gpu.wait_for_gpu(timeout=max(5.0, self._settings.workers.timeout_seconds / 10))
             except GpuNotAvailableError as exc:
-                logger.error("mineru.startup.gpu_unavailable", error=str(exc))
+                logger.bind(error=str(exc)).error("mineru.startup.gpu_unavailable")
                 raise
 
     def process(self, request: MineruRequest) -> MineruResponse:
@@ -93,11 +93,54 @@ class MineruProcessor:
         )
 
     def process_batch(self, requests: Sequence[MineruRequest]) -> MineruBatchResponse:
-        if not requests:
+        request_list = list(requests)
+        if not request_list:
             now = datetime.now(timezone.utc)
             return MineruBatchResponse(documents=[], processed_at=now, duration_seconds=0.0, metadata=[])
 
-        logger.info("mineru.process.batch_started", size=len(requests))
+        batch_limit = self._settings.workers.batch_limit
+        batches = list(self._chunk_requests(request_list, batch_limit))
+        logger.bind(
+            size=len(request_list), batches=len(batches), batch_limit=batch_limit
+        ).info("mineru.process.batch_started")
+
+        start_monotonic = time.monotonic()
+        aggregated_documents: list[Document] = []
+        aggregated_metadata: list[ProcessingMetadata] = []
+        processed_at: datetime | None = None
+
+        for index, batch in enumerate(batches, start=1):
+            partial = self._run_cli_batch(batch, batch_index=index, total_batches=len(batches))
+            aggregated_documents.extend(partial.documents)
+            aggregated_metadata.extend(partial.metadata)
+            processed_at = partial.processed_at
+
+        duration = time.monotonic() - start_monotonic
+        logger.bind(
+            size=len(request_list), batches=len(batches), duration=round(duration, 4)
+        ).info("mineru.process.batch_completed")
+
+        return MineruBatchResponse(
+            documents=aggregated_documents,
+            processed_at=processed_at or datetime.now(timezone.utc),
+            duration_seconds=duration,
+            metadata=aggregated_metadata,
+        )
+
+    def _chunk_requests(
+        self, requests: Sequence[MineruRequest], limit: int
+    ) -> Iterable[Sequence[MineruRequest]]:
+        limit = max(1, limit)
+        for start in range(0, len(requests), limit):
+            yield requests[start : start + limit]
+
+    def _run_cli_batch(
+        self,
+        requests: Sequence[MineruRequest],
+        *,
+        batch_index: int,
+        total_batches: int,
+    ) -> MineruBatchResponse:
         request_map = {request.document_id: request for request in requests}
         started_at = datetime.now(timezone.utc)
         start_monotonic = time.monotonic()
@@ -106,23 +149,25 @@ class MineruProcessor:
             for request in requests
         ]
 
-        device_index: int | None = None
         gpu_label: str = "unknown"
         try:
             with self._gpu.device_session(
                 "mineru", required_memory_mb=self._required_memory_mb, warmup=True
             ) as device:
-                device_index = device.index
                 gpu_label = f"cuda:{device.index}"
                 MINERU_GPU_MEMORY_USAGE_BYTES.labels(
                     gpu_id=gpu_label, state="required"
                 ).set(float(self._required_memory_mb * _BYTES_PER_MB))
                 cli_result = self._cli.run_batch(cli_inputs, gpu_id=device.index)
         except GpuNotAvailableError:
-            logger.error("mineru.process.failed", reason="gpu-unavailable")
+            logger.bind(reason="gpu-unavailable", batch=batch_index).error(
+                "mineru.process.failed"
+            )
             raise
         except MineruCliError as exc:
-            logger.error("mineru.process.failed", reason="cli-error", error=str(exc))
+            logger.bind(
+                reason="cli-error", error=str(exc), batch=batch_index
+            ).error("mineru.process.failed")
             self._handle_cli_failure(exc)
             raise  # pragma: no cover - re-raised by _handle_cli_failure
 
@@ -143,12 +188,14 @@ class MineruProcessor:
         for output in cli_result.outputs:
             request = request_map.get(output.document_id)
             if request is None:
-                logger.warning("mineru.process.output_without_request", document_id=output.document_id)
+                logger.bind(
+                    document_id=output.document_id, batch=batch_index
+                ).warning("mineru.process.output_without_request")
                 continue
             try:
                 parsed = self._parser.parse_path(output.path)
             except MineruOutputParserError as exc:
-                logger.error("mineru.output.parse_failed", error=str(exc))
+                logger.bind(error=str(exc)).error("mineru.output.parse_failed")
                 raise
 
             metadata = self._build_metadata(
@@ -164,14 +211,15 @@ class MineruProcessor:
             metadata_entries.append(metadata)
             self._record_extraction_metrics(parsed)
 
-            logger.info(
-                "mineru.process.completed",
+            logger.bind(
                 document_id=document.document_id,
                 blocks=len(document.blocks),
                 tables=len(document.tables),
                 figures=len(document.figures),
                 equations=len(document.equations),
-            )
+                batch=batch_index,
+                total_batches=total_batches,
+            ).info("mineru.process.completed")
 
         return MineruBatchResponse(
             documents=documents,
@@ -209,7 +257,9 @@ class MineruProcessor:
             raise RuntimeError(
                 f"MinerU version {installed} does not satisfy expectation '{self._settings.expected_version}'"
             )
-        logger.info("mineru.version.validated", installed=installed, expected=self._settings.expected_version)
+        logger.bind(
+            installed=installed, expected=self._settings.expected_version
+        ).info("mineru.version.validated")
         return installed
 
     @staticmethod

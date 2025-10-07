@@ -5,13 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-import structlog
-
-from Medical_KG_rev.services.embedding.service import (
-    EmbeddingRequest,
-    EmbeddingVector,
-    EmbeddingWorker,
-)
+from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
+from Medical_KG_rev.services.reranking.pipeline.cache import RerankCacheManager
 
 from .chunking import Chunk, ChunkingOptions, ChunkingService
 from .faiss_index import FAISSIndex
@@ -66,8 +61,10 @@ class IndexingService:
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
-        self._embed_and_index(tenant_id, chunks, metadata)
-        return IndexingResult(document_id=document_id, chunk_ids=[chunk.chunk_id for chunk in chunks])
+        self._embed_and_index(tenant_id, chunks)
+        if self.rerank_cache is not None:
+            self.rerank_cache.invalidate(tenant_id, [document_id])
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []

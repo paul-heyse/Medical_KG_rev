@@ -2,16 +2,20 @@ from __future__ import annotations
 
 import hashlib
 
+import importlib.util
+
 import pytest
 
-try:  # pragma: no cover - optional dependency for API tests
-    from fastapi.testclient import TestClient
-except Exception:  # pragma: no cover - optional dependency or missing extras
+_FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
+_PYDANTIC_AVAILABLE = importlib.util.find_spec("pydantic") is not None
+if _FASTAPI_AVAILABLE:
+    from fastapi.testclient import TestClient  # type: ignore
+else:  # pragma: no cover - optional dependency
     TestClient = None  # type: ignore[assignment]
 
-try:  # pragma: no cover - optional dependency for non-chunking tests
-    from Medical_KG_rev.config.settings import get_settings
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - optional dependency
+if _PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.config.settings import get_settings  # type: ignore
+else:  # pragma: no cover - optional dependency
     get_settings = None  # type: ignore[assignment]
 
 API_TEST_KEY = "test-api-key"
@@ -62,13 +66,11 @@ def _configure_security(monkeypatch):
         "MK_SECURITY__OAUTH__SCOPES",
         '["ingest:write", "kg:read", "jobs:read", "jobs:write", "process:write", "kg:write", "audit:read"]',
     )
-    if get_settings is None:
-        yield
-        return
-
-    get_settings.cache_clear()
+    if get_settings is not None:
+        get_settings.cache_clear()
     yield
-    get_settings.cache_clear()
+    if get_settings is not None:
+        get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -80,7 +82,6 @@ def api_key() -> str:
 def _inject_api_key_header(monkeypatch, api_key: str):
     if TestClient is None:
         return
-
     original_request = TestClient.request
 
     def _request(self, method, url, *args, **kwargs):  # type: ignore[override]

@@ -2,32 +2,36 @@
 
 from __future__ import annotations
 
-from importlib import import_module
+import importlib.util
 from typing import Any
 
-__all__ = [
-    "GPU_MEMORY_USED",
-    "GPU_UTILIZATION",
-    "GpuManager",
-    "GpuNotAvailableError",
-]
+__all__: list[str] = []
 
-_SERVICE_MAP = {
-    "GpuManager": ("Medical_KG_rev.services.gpu.manager", "GpuManager"),
-    "GpuNotAvailableError": ("Medical_KG_rev.services.gpu.manager", "GpuNotAvailableError"),
-    "GPU_MEMORY_USED": ("Medical_KG_rev.services.gpu.metrics", "GPU_MEMORY_USED"),
-    "GPU_UTILIZATION": ("Medical_KG_rev.services.gpu.metrics", "GPU_UTILIZATION"),
-}
+_PROMETHEUS_AVAILABLE = importlib.util.find_spec("prometheus_client") is not None
+_TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
+if _PROMETHEUS_AVAILABLE:
+    from .gpu.metrics import GPU_MEMORY_USED, GPU_UTILIZATION  # type: ignore
 
-def __getattr__(name: str) -> Any:
-    try:
-        module_path, attribute = _SERVICE_MAP[name]
-    except KeyError as exc:  # pragma: no cover
-        raise AttributeError(name) from exc
-    module = import_module(module_path)
-    return getattr(module, attribute)
+    __all__.extend(["GPU_MEMORY_USED", "GPU_UTILIZATION"])
+else:  # pragma: no cover - optional dependency fallback
+    GPU_MEMORY_USED = None  # type: ignore[assignment]
+    GPU_UTILIZATION = None  # type: ignore[assignment]
 
 
-def __dir__() -> list[str]:  # pragma: no cover - tooling aid
-    return sorted(__all__)
+if _TORCH_AVAILABLE:
+    from .gpu.manager import GpuManager, GpuNotAvailableError  # type: ignore
+
+    __all__.extend(["GpuManager", "GpuNotAvailableError"])
+else:  # pragma: no cover - optional dependency fallback
+
+    class GpuNotAvailableError(RuntimeError):
+        """Fallback error raised when GPU support is requested without torch."""
+
+    class GpuManager:
+        """Stub GPU manager used when torch is unavailable."""
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - delegating stub
+            raise GpuNotAvailableError("PyTorch with CUDA support is required for GPU services")
+
+    __all__.extend(["GpuManager", "GpuNotAvailableError"])

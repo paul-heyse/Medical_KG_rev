@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from time import perf_counter
 from typing import Mapping, Sequence
 
 import structlog
@@ -14,6 +13,7 @@ from Medical_KG_rev.observability.metrics import record_pipeline_stage
 from ..models import PipelineSettings, ScoredDocument
 from ..rerank_engine import RerankingEngine
 from ..fusion.service import FusionService
+from .runtime import PipelineRuntime
 
 logger = structlog.get_logger(__name__)
 
@@ -43,24 +43,30 @@ class TwoStagePipeline:
             rerank=rerank,
             reranker=reranker_id,
         )
-        stage_metrics: dict[str, float] = {}
-        stage_start = perf_counter()
-        fused = self.fusion.fuse(candidate_lists)
-        stage_metrics["fusion_ms"] = round((perf_counter() - stage_start) * 1000, 3)
-        record_pipeline_stage("fusion", stage_metrics["fusion_ms"] / 1000)
+        runtime = PipelineRuntime(
+            name="two-stage",
+            emit_stage_metric=record_pipeline_stage,
+        )
+        runtime.annotate("tenant", context.tenant_id)
+        runtime.annotate("rerank_requested", rerank)
+        runtime.annotate("reranker", reranker_id or "default")
+        fused = runtime.run("fusion", self.fusion.fuse, candidate_lists)
         documents = list(fused.documents)
         for document in documents:
             document.metadata.setdefault("retrieval_score", document.score)
         metrics: dict[str, object] = {
             "fusion": fused.metrics,
         }
+        runtime.annotate("candidates", len(documents))
         if not rerank or not documents:
-            metrics["timing"] = stage_metrics
+            metrics["timing"] = dict(runtime.timings)
+            metrics["runtime"] = dict(runtime.metadata)
             return documents[:top_k], metrics
 
         rerank_candidates = documents[: self.settings.rerank_candidates]
-        stage_start = perf_counter()
-        response = self.reranking.rerank(
+        response = runtime.run(
+            "rerank",
+            self.reranking.rerank,
             context=context,
             query=query,
             documents=rerank_candidates,
@@ -68,15 +74,14 @@ class TwoStagePipeline:
             top_k=self.settings.return_top_k,
             explain=explain,
         )
-        stage_metrics["rerank_ms"] = round((perf_counter() - stage_start) * 1000, 3)
-        record_pipeline_stage("rerank", stage_metrics["rerank_ms"] / 1000)
         score_map = {item.doc_id: item.score for item in response.results}
         for document in rerank_candidates:
             if document.doc_id in score_map:
                 document.score = score_map[document.doc_id]
         rerank_candidates.sort(key=lambda doc: doc.score, reverse=True)
         metrics["reranking"] = response.metrics
-        metrics["timing"] = stage_metrics
+        metrics["timing"] = dict(runtime.timings)
+        metrics["runtime"] = dict(runtime.metadata)
         if explain:
             for document in rerank_candidates:
                 document.metadata.setdefault("pipeline_metrics", metrics)

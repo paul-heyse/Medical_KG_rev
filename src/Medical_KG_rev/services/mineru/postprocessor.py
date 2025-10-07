@@ -115,8 +115,8 @@ class MineruPostProcessor:
                 metadata_updates["headers"] = list(table.headers)
             if "exports" not in table.metadata:
                 metadata_updates["exports"] = serialisations
-            updated = table.with_metadata(**metadata_updates) if metadata_updates else table
-            prepared.append(updated)
+            enriched = table.enrich(metadata=metadata_updates) if metadata_updates else table
+            prepared.append(enriched)
             exports[table.id] = serialisations
         return prepared, exports
 
@@ -134,10 +134,14 @@ class MineruPostProcessor:
                 stored = self._store_figure(tenant_id, document_id, figure)
                 if stored:
                     storage_info.update(stored)
-            metadata_updates = storage_info if storage_info else {}
-            figure_copy = figure.with_metadata(**metadata_updates) if metadata_updates else figure
+            updates: dict[str, Any] = {}
             if storage_info.get("url"):
-                figure_copy = figure_copy.model_copy(update={"image_path": storage_info["url"]})
+                updates["image_path"] = storage_info["url"]
+            figure_copy = (
+                figure.enrich(metadata=storage_info, **updates)
+                if storage_info or updates
+                else figure
+            )
             prepared.append(figure_copy)
             if storage_info:
                 assets[figure.id] = storage_info
@@ -154,8 +158,12 @@ class MineruPostProcessor:
             if "render_mode" not in equation.metadata:
                 metadata_updates["render_mode"] = render_mode
             rendering[equation.id] = render_mode
-            updated = equation.with_metadata(**metadata_updates) if metadata_updates else equation
-            prepared.append(updated)
+            enriched = (
+                equation.enrich(metadata=metadata_updates)
+                if metadata_updates
+                else equation
+            )
+            prepared.append(enriched)
         return prepared, rendering
 
     def _render_table_serialisations(self, table: Table) -> dict[str, str]:

@@ -78,6 +78,13 @@ pip install -e ".[dev]"
 pip install --upgrade --index-url https://download.pytorch.org/whl/cu128 \
   torch>=2.8.0+cu128 torchvision>=0.19.0+cu128 torchaudio>=2.5.0+cu128
 
+# MinerU GPU requirements
+# - CUDA 12.8 runtime and drivers
+# - NVIDIA RTX 5090 with 32GB VRAM (validated target)
+# - Four MinerU workers with 7GB VRAM reservation each (28GB total, 4GB headroom)
+# - Ensure `CUDA_VISIBLE_DEVICES` is set for each worker and `mineru.workers.count=4`
+# - Recommended CPU settings: `OMP_NUM_THREADS=4`, `MKL_NUM_THREADS=4`
+
 # Optional: Install OpenCV with NumPy 2.3+ support (required for mineru[gpu])
 # Use conda-forge wheels—PyPI's opencv-python currently pins numpy<2.3.
 # Example with micromamba/conda:

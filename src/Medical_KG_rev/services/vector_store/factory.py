@@ -6,6 +6,7 @@ from collections.abc import Mapping
 
 from .stores.faiss import FaissVectorStore
 from .stores.memory import InMemoryVectorStore
+from .stores.milvus import MilvusVectorStore
 from .stores.qdrant import QdrantVectorStore
 from .types import VectorStorePort
 
@@ -13,6 +14,7 @@ _SUPPORTED_DRIVERS = {
     "memory": InMemoryVectorStore,
     "faiss": FaissVectorStore,
     "qdrant": QdrantVectorStore,
+    "milvus": MilvusVectorStore,
 }
 
 

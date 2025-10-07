@@ -18,6 +18,9 @@ from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
 from Medical_KG_rev.embeddings.storage import StorageRouter
 from Medical_KG_rev.embeddings.utils.batching import BatchProgress, iter_with_progress
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
+from Medical_KG_rev.services.vector_store.models import VectorRecord
+from Medical_KG_rev.services.vector_store.service import VectorStoreService
+from Medical_KG_rev.auth.context import SecurityContext
 
 logger = structlog.get_logger(__name__)
 
@@ -55,15 +58,14 @@ class EmbeddingResponse:
 class EmbeddingModelRegistry:
     """Compatibility wrapper that exposes cached embedder instances by name."""
 
-    namespace_manager: NamespaceManager
-    registry: EmbedderRegistry
-    factory: EmbedderFactory
-    _config: object
-    _embedder_configs: list[EmbedderConfig]
-    _configs_by_name: dict[str, EmbedderConfig]
-
-    def __init__(self, _gpu_manager: object | None = None, *, config_path: str | None = None) -> None:
-        self.namespace_manager = NamespaceManager()
+    def __init__(
+        self,
+        *,
+        namespace_manager: NamespaceManager | None = None,
+        config_path: str | None = None,
+        vector_store: VectorStoreService | None = None,
+    ) -> None:
+        self.namespace_manager = namespace_manager or NamespaceManager()
         self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
         register_builtin_embedders(self.registry)
         self.factory = EmbedderFactory(self.registry)
@@ -146,6 +148,7 @@ class EmbeddingWorker:
         self.storage_router = StorageRouter()
         self._configs_by_name = {config.name: config for config in self._embedder_configs}
         self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
+        self.vector_store = vector_store
 
     def _resolve_configs(self, request: EmbeddingRequest) -> list[EmbedderConfig]:
         if request.namespaces:
@@ -239,10 +242,14 @@ class EmbeddingWorker:
             dimension = self._dimension_from_record(first)
             if dimension:
                 self.namespace_manager.introspect_dimension(config.namespace, dimension)
+            vector_records: list[VectorRecord] = []
             for record in records:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
-                self.storage_router.persist(record)
+                metadata = {
+                    **record.metadata,
+                    "storage_target": self.storage_router.route(record.kind).name,
+                }
                 response.vectors.append(
                     EmbeddingVector(
                         id=record.id,
@@ -252,11 +259,34 @@ class EmbeddingWorker:
                         vectors=record.vectors,
                         terms=record.terms,
                         dimension=dim,
-                        metadata={
-                            **record.metadata,
-                            "storage_target": self.storage_router.route(record.kind).name,
-                        },
+                        metadata=metadata,
                     )
+                )
+                if self.vector_store and record.vectors:
+                    named_vectors: dict[str, list[float]] | None = None
+                    if len(record.vectors) > 1:
+                        named_vectors = {
+                            f"segment_{idx}": list(vector)
+                            for idx, vector in enumerate(record.vectors[1:], start=1)
+                        }
+                    vector_records.append(
+                        VectorRecord(
+                            vector_id=record.id,
+                            values=list(record.vectors[0]),
+                            metadata=metadata,
+                            named_vectors=named_vectors,
+                        )
+                    )
+            if self.vector_store and vector_records:
+                context = SecurityContext(
+                    subject="embedding-worker",
+                    tenant_id=request.tenant_id,
+                    scopes={"index:write"},
+                )
+                self.vector_store.upsert(
+                    context=context,
+                    namespace=config.namespace,
+                    records=vector_records,
                 )
             logger.info(
                 "embedding.pipeline.completed",
@@ -297,6 +327,7 @@ class EmbeddingWorker:
                     )
                 )
         return response
+
 
 
 class EmbeddingGrpcService:

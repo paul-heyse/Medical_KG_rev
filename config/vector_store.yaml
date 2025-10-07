@@ -1,0 +1,31 @@
+backends:
+  milvus:
+    uri: localhost:19530
+    database: default
+  opensearch:
+    hosts:
+      - http://localhost:9200
+
+tenants:
+  - tenant_id: system
+    namespaces:
+      - name: clinical_dense
+        driver: milvus
+        params:
+          dimension: 4
+          metric: cosine
+          kind: ivf_flat
+          nlist: 32
+        compression:
+          kind: int8
+        named_vectors:
+          - name: title
+            dimension: 4
+            metric: cosine
+            kind: hnsw
+      - name: clinical_sparse
+        driver: opensearch_knn
+        params:
+          dimension: 768
+          metric: cosine
+          kind: hnsw

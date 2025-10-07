@@ -146,13 +146,13 @@
 
 ## 2. Foundation & Dependencies
 
-- [ ] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
-- [ ] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [ ] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
-- [ ] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
-- [ ] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
-- [ ] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
-- [ ] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
+- [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
+- [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
+- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
+- [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
+- [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
+- [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
+- [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
 - [ ] 2.8 Test dependency installation in clean venv
 - [ ] 2.9 Download scispaCy model: `python -m spacy download en_core_sci_sm`
 - [ ] 2.10 Verify all libraries import without errors
@@ -161,14 +161,14 @@
 
 ## 3. ChunkerPort Interface & Runtime Registry
 
-- [ ] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
+- [x] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
 
   ```python
   class ChunkerPort(Protocol):
       def chunk(self, document: Document, profile: str) -> list[Chunk]: ...
   ```
 
-- [ ] 3.2 Define `Chunk` dataclass with required fields:
+- [x] 3.2 Define `Chunk` dataclass with required fields:
   - [ ] `chunk_id: str`
   - [ ] `doc_id: str`
   - [ ] `text: str`
@@ -177,11 +177,11 @@
   - [ ] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
   - [ ] `page_bbox: dict | None` (for PDFs)
   - [ ] `metadata: dict[str, Any]`
-- [ ] 3.3 Implement chunker registry:
+- [x] 3.3 Implement chunker registry:
   - [ ] `register_chunker(name: str, implementation: Type[ChunkerPort])`
   - [ ] `get_chunker(name: str) -> ChunkerPort`
-- [ ] 3.4 Add validation: raise if profile not registered
-- [ ] 3.5 Write unit tests for ChunkerPort protocol compliance
+- [x] 3.4 Add validation: raise if profile not registered
+- [x] 3.5 Write unit tests for ChunkerPort protocol compliance
 
 ---
 
@@ -189,7 +189,7 @@
 
 ### 4.1 Profile Data Model
 
-- [ ] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
+- [x] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
 
   ```python
   class Profile(BaseModel):
@@ -203,12 +203,12 @@
       filters: list[str] = ["drop_boilerplate", "exclude_references"]
   ```
 
-- [ ] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
-- [ ] 4.1.3 Validate profiles on startup (Pydantic validation)
+- [x] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
+- [x] 4.1.3 Validate profiles on startup (Pydantic validation)
 
 ### 4.2 IMRaD Profile (PMC JATS)
 
-- [ ] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
+- [x] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
 
   ```yaml
   name: pmc-imrad
@@ -227,13 +227,13 @@
     - deduplicate_page_furniture
   ```
 
-- [ ] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
+- [x] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
 - [ ] 4.2.3 Test on 10 PMC articles, verify heading alignment
 - [ ] 4.2.4 Validate section labels: "Abstract", "Introduction", "Methods", "Results", "Discussion"
 
 ### 4.3 Registry Profile (CT.gov)
 
-- [ ] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
+- [x] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
 
   ```yaml
   name: ctgov-registry
@@ -260,7 +260,7 @@
 
 ### 4.4 SPL Profile (DailyMed)
 
-- [ ] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
+- [x] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
 
   ```yaml
   name: spl-label
@@ -285,7 +285,7 @@
 
 ### 4.5 Guideline Profile
 
-- [ ] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
+- [x] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
 
   ```yaml
   name: guideline
@@ -313,8 +313,8 @@
 
 ### 5.1 LangChain Text Splitters Wrapper
 
-- [ ] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
-- [ ] 5.1.2 Implement `LangChainChunker` class:
+- [x] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
+- [x] 5.1.2 Implement `LangChainChunker` class:
 
   ```python
   class LangChainChunker:

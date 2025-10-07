@@ -11,7 +11,7 @@ from Medical_KG_rev.chunking import (
     ChunkingService as ModularChunkingService,
     Granularity,
 )
-from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+from Medical_KG_rev.chunking.exceptions import ChunkerConfigurationError
 
 STRATEGY_ALIASES: dict[str, tuple[str, Granularity]] = {
     "section": ("section_aware", "section"),
@@ -74,143 +74,15 @@ class ChunkingService:
             tenant_id = "default"
 
         modular_options = self._translate_options(options)
-        document = self._build_document(document_id, text)
-        canonical_strategy = (
-            modular_options.strategy
-            if modular_options and modular_options.strategy
-            else "section_aware"
-        )
         try:
-            modular_chunks = self._service.chunk_document(
-                document,
+            return self._service.chunk_text(
                 tenant_id=tenant_id,
-                source=None,
+                document_id=document_id,
+                text=text,
                 options=modular_options,
             )
-        except Exception:  # pragma: no cover - fallback for incompatible chunkers
-            if canonical_strategy == "table":
-                modular_chunks = []
-            else:
-                raise
-        if canonical_strategy == "table" and not modular_chunks:
-            return self._table_chunks_legacy(
-                document=document,
-                tenant_id=tenant_id,
-            )
-        block_lookup: dict[str, Block] = {}
-        block_sections: dict[str, tuple[str, str]] = {}
-        section_titles: dict[str, str] = {}
-        for section in document.sections:
-            title = (section.title or "").strip()
-            section_titles[section.id] = title
-            for block in section.blocks:
-                block_lookup[block.id] = block
-                block_sections[block.id] = (section.id, title)
-        legacy_chunks: list[LegacyChunk] = []
-        synthesized_index = 0
-        covered_blocks: set[str] = set()
-        for chunk in modular_chunks:
-            metadata = dict(chunk.meta)
-            metadata.setdefault("segment_type", chunk.granularity)
-            metadata.setdefault("chunker", chunk.chunker)
-            metadata.setdefault("chunker_version", chunk.chunker_version)
-            block_ids = metadata.get("block_ids") or []
-            if canonical_strategy in {"section_aware", "semantic_splitter"} and block_ids:
-                for block_id in block_ids:
-                    block = block_lookup.get(block_id)
-                    if block is None:
-                        continue
-                    if canonical_strategy == "section_aware" and block.type == BlockType.TABLE:
-                        continue
-                    if canonical_strategy == "semantic_splitter" and block.type == BlockType.TABLE:
-                        continue
-                    text_body = (block.text or "").strip()
-                    if not text_body:
-                        continue
-                    section_id, title = block_sections.get(block_id, (metadata.get("section_id", ""), ""))
-                    token_count = len(text_body.split())
-                    chunk_metadata = {
-                        "block_ids": [block_id],
-                        "section_id": section_id,
-                        "token_count": token_count,
-                        "segment_type": "section"
-                        if canonical_strategy == "section_aware"
-                        else "paragraph",
-                        "chunker": chunk.chunker,
-                        "chunker_version": chunk.chunker_version,
-                    }
-                    legacy_chunks.append(
-                        LegacyChunk(
-                            id=f"{document.id}:{chunk.chunker}:{chunk.granularity}:{synthesized_index}",
-                            text=text_body,
-                            metadata=chunk_metadata,
-                            chunker=chunk.chunker,
-                            chunker_version=chunk.chunker_version,
-                            granularity=chunk.granularity,
-                            tenant_id=chunk.tenant_id,
-                            document_id=chunk.doc_id,
-                            token_count=token_count,
-                        )
-                    )
-                    synthesized_index += 1
-                    covered_blocks.add(block_id)
-                continue
-            text_body = chunk.body
-            section_id = metadata.get("section_id")
-            title_prefix = section_titles.get(section_id or "", "")
-            if title_prefix and not text_body.startswith(title_prefix):
-                text_body = f"{title_prefix}\n{text_body}".strip()
-            token_count = len(text_body.split())
-            metadata["token_count"] = token_count
-            legacy_chunks.append(
-                LegacyChunk(
-                    id=chunk.chunk_id,
-                    text=text_body,
-                    metadata=metadata,
-                    chunker=chunk.chunker,
-                    chunker_version=chunk.chunker_version,
-                    granularity=chunk.granularity,
-                    tenant_id=chunk.tenant_id,
-                    document_id=chunk.doc_id,
-                    token_count=token_count,
-                )
-            )
-            for block_id in block_ids:
-                covered_blocks.add(block_id)
-        if canonical_strategy == "section_aware":
-            for block_id, block in block_lookup.items():
-                if block.type == BlockType.TABLE:
-                    continue
-                if block_id in covered_blocks:
-                    continue
-                text_body = (block.text or "").strip()
-                if not text_body:
-                    continue
-                section_id, _ = block_sections.get(block_id, ("", ""))
-                token_count = len(text_body.split())
-                metadata = {
-                    "block_ids": [block_id],
-                    "section_id": section_id,
-                    "token_count": token_count,
-                    "segment_type": "section",
-                    "chunker": "section_aware",
-                    "chunker_version": "legacy",
-                }
-                legacy_chunks.append(
-                    LegacyChunk(
-                        id=f"{document.id}:section_aware:section:{synthesized_index}",
-                        text=text_body,
-                        metadata=metadata,
-                        chunker="section_aware",
-                        chunker_version="legacy",
-                        granularity="section",
-                        tenant_id=tenant_id,
-                        document_id=document.id,
-                        token_count=token_count,
-                    )
-                )
-                synthesized_index += 1
-        return legacy_chunks
+        except ChunkerConfigurationError:
+            return self._fallback_chunks(tenant_id, document_id, text)
 
     def chunk_sections(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
         return self.chunk(
@@ -431,83 +303,57 @@ class ChunkingService:
             sections=sections,
         )
 
-    @staticmethod
-    def _looks_like_heading(line: str) -> bool:
-        stripped = line.strip()
-        if not stripped:
-            return False
-        if "|" in stripped:
-            return False
-        if stripped[-1] in ".!?":
-            return False
-        if len(stripped.split()) > 12:
-            return False
-        return True
-
-    def _fallback_chunk(
-        self,
-        tenant_id: str,
-        document_id: str,
-        text: str,
-        options: ChunkingOptions | None,
-    ) -> list[SimpleNamespace]:
-        strategy = options.strategy if options else None
-        segments: list[str]
-        granularity: Granularity
-        if strategy in {"section", "section_aware"}:
-            segments = text.split("\n\n")
-            granularity = "section"
-        elif strategy == "paragraph":
-            segments = [segment for segment in text.split("\n\n") if segment.strip()]
-            granularity = "paragraph"
-        elif strategy == "table":
-            tables = [segment for segment in text.split("\n\n") if "|" in segment]
-            segments = tables or [text]
-            granularity = "table"
-        elif strategy == "sliding_window":
-            tokens = text.split()
-            size = (options.max_tokens if options and options.max_tokens else 50)
-            overlap = options.overlap if options and options.overlap is not None else 0.0
-            stride = max(1, int(size * (1 - overlap)))
-            if stride > size:
-                stride = size
-            segments = [
-                " ".join(tokens[i : i + size])
-                for i in range(0, len(tokens) or 1, stride)
-            ]
-            granularity = "window"
-        else:
-            segments = [text]
-            granularity = (
-                options.granularity
-                if options and options.granularity
-                else "paragraph"
-            )
-        result: list[SimpleNamespace] = []
-        for index, segment in enumerate(segment for segment in segments if segment.strip()):
-            metadata = {"segment_type": granularity, "token_count": len(segment.split())}
-            result.append(
-                SimpleNamespace(
-                    id=f"{document_id}:{granularity}:{index}",
-                    chunk_id=f"{document_id}:{granularity}:{index}",
+    def _fallback_chunks(self, tenant_id: str, document_id: str, text: str) -> list[Chunk]:
+        chunks: list[Chunk] = []
+        cursor = 0
+        for idx, segment in enumerate(text.splitlines(keepends=True)):
+            body = segment.strip()
+            length = len(segment)
+            if not body:
+                cursor += length
+                continue
+            start_offset = segment.index(body)
+            start = cursor + start_offset
+            end = start + len(body)
+            chunk_id = f"{document_id}-fallback-{idx}"
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
                     doc_id=document_id,
                     tenant_id=tenant_id,
-                    text=segment,
-                    body=segment,
-                    granularity=granularity,
+                    body=body,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="paragraph",
                     chunker="fallback",
-                    metadata=metadata,
-                    meta=metadata,
-                    token_count=metadata["token_count"],
+                    chunker_version="v1",
+                    meta={},
                 )
             )
-        return result
-
-    def available_strategies(self) -> list[str]:
-        return self._service.list_strategies()
-
-    def available_strategies(self) -> list[str]:
-        return self._service.list_strategies()
+            cursor += length
+        if not chunks and text.strip():
+            stripped = text.strip()
+            start = text.index(stripped)
+            end = start + len(stripped)
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{document_id}-fallback-0",
+                    doc_id=document_id,
+                    tenant_id=tenant_id,
+                    body=stripped,
+                    title_path=(),
+                    section=None,
+                    start_char=start,
+                    end_char=end,
+                    granularity="document",
+                    chunker="fallback",
+                    chunker_version="v1",
+                    meta={},
+                )
+            )
+        return chunks
 
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:

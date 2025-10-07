@@ -20,6 +20,12 @@ from .vector_store import (
     VectorStoreConfig,
     load_vector_store_config,
 )
+from .vector_store import (
+    CompressionConfig as VectorCompressionConfig,
+    NamespaceConfigModel as VectorNamespaceConfig,
+    VectorStoreConfig,
+    load_vector_store_config,
+)
 
 __all__ = [
     "AppSettings",

@@ -75,18 +75,69 @@ class IngestionService:
         document: Document,
         *,
         tenant_id: str,
-        source_hint: str | None = None,
-        options: ChunkingOptions | None = None,
-    ) -> ChunkingRun:
-        profile = self.detect_profile(document, source_hint)
-        started = perf_counter()
-        chunks = list(
-            self.chunking.chunk_document(
-                document,
-                tenant_id=tenant_id,
-                source=profile,
-                options=options,
-            )
+        document_id: str,
+        text: str,
+        context: SecurityContext,
+        options: IngestionOptions | None = None,
+    ) -> IngestionResult:
+        opts = options or IngestionOptions()
+        chunks = self.chunking.chunk(tenant_id, document_id, text, opts.chunking)
+        if not chunks:
+            return IngestionResult()
+        chunk_ids = [chunk.chunk_id for chunk in chunks]
+        texts = [chunk.body for chunk in chunks]
+        chunk_metadata: list[dict[str, Any]] = []
+        for chunk in chunks:
+            base_metadata: dict[str, Any] = {
+                "document_id": document_id,
+                "chunk_id": getattr(chunk, "chunk_id", getattr(chunk, "id", "")),
+                "chunker": getattr(chunk, "chunker", "unknown"),
+                "granularity": getattr(chunk, "granularity", "paragraph"),
+                "text": getattr(chunk, "body", ""),
+                "tenant_id": tenant_id,
+            }
+            raw_meta = getattr(chunk, "metadata", getattr(chunk, "meta", {})) or {}
+            base_metadata.update(dict(raw_meta))
+            if "token_count" not in base_metadata and hasattr(chunk, "token_count"):
+                base_metadata["token_count"] = getattr(chunk, "token_count")
+            chunk_metadata.append(base_metadata)
+        global_metadata = dict(opts.metadata) if opts.metadata else {}
+        batch_size = max(1, opts.batch_size)
+        retries = max(0, opts.retries)
+        request = EmbeddingRequest(
+            tenant_id=tenant_id,
+            chunk_ids=chunk_ids,
+            texts=texts,
+            batch_size=batch_size,
+            namespaces=opts.namespaces,
+            correlation_id=opts.correlation_id,
+            metadatas=chunk_metadata,
+            actor=context.subject,
+        )
+        attempt = 0
+        response = None
+        start = time.perf_counter()
+        while attempt <= retries:
+            try:
+                response = self.embedding_worker.run(request)
+                break
+            except Exception as exc:  # pragma: no cover - defensive logging path
+                logger.warning(
+                    "ingestion.embedding.failed",
+                    tenant_id=tenant_id,
+                    document_id=document_id,
+                    attempt=attempt,
+                    error=str(exc),
+                )
+                attempt += 1
+                if attempt > retries:
+                    raise
+        duration_ms = (time.perf_counter() - start) * 1000
+        result = IngestionResult(chunk_ids=chunk_ids, retries=attempt)
+        result.metrics = EmbeddingBatchMetrics(
+            batches=(len(texts) + batch_size - 1) // batch_size,
+            total=len(texts),
+            duration_ms=duration_ms,
         )
         duration = perf_counter() - started
         self._ensure_chunk_ids(document.id, chunks)

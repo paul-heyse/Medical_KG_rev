@@ -1,15 +1,6 @@
-"""Ingestion service primitives for chunking integration."""
+"""Ingestion service exports."""
 
-from .service import (
-    ChunkStorage,
-    ChunkingRun,
-    InMemoryChunkStorage,
-    IngestionService,
-)
+from .vector_ingestion import VectorIngestionService
 
-__all__ = [
-    "ChunkStorage",
-    "ChunkingRun",
-    "InMemoryChunkStorage",
-    "IngestionService",
-]
+__all__ = ["VectorIngestionService"]
+

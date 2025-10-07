@@ -3,7 +3,7 @@
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .factory import RerankerFactory
 from .fusion.service import FusionService
-from .late_interaction import ColBERTReranker
+from .late_interaction import ColBERTReranker, QdrantColBERTReranker, RagatouilleColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import (
@@ -20,7 +20,7 @@ from .models import (
     ScoredDocument,
 )
 from .pipeline.batch_processor import BatchProcessor
-from .pipeline.cache import RerankCacheManager
+from .pipeline.cache import RedisCacheBackend, RerankCacheManager
 from .pipeline.circuit import CircuitBreaker
 from .rerank_engine import RerankingEngine
 from .evaluation.harness import EvaluationResult, RerankerEvaluator
@@ -31,6 +31,8 @@ __all__ = [
     "MonoT5Reranker",
     "QwenReranker",
     "ColBERTReranker",
+    "RagatouilleColBERTReranker",
+    "QdrantColBERTReranker",
     "BM25Reranker",
     "BM25FReranker",
     "OpenSearchLTRReranker",
@@ -49,6 +51,7 @@ __all__ = [
     "ScoredDocument",
     "BatchProcessor",
     "RerankCacheManager",
+    "RedisCacheBackend",
     "CacheMetrics",
     "CircuitBreaker",
     "RerankingEngine",

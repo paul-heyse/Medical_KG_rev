@@ -1,8 +1,8 @@
 """Universal embedding service implementation."""
 
+from .registry import EmbeddingModelRegistry
 from .service import (
     EmbeddingGrpcService,
-    EmbeddingModelRegistry,
     EmbeddingRequest,
     EmbeddingResponse,
     EmbeddingVector,

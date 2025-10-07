@@ -6,13 +6,20 @@ import uuid
 from collections.abc import Callable
 from typing import Mapping
 from time import perf_counter
+from typing import Any
 
 try:  # pragma: no cover - optional dependency
     import torch
 except Exception:  # pragma: no cover - torch is optional in CPU-only environments
     torch = None  # type: ignore
 
-from fastapi import FastAPI, Request, Response
+try:  # pragma: no cover - optional dependency
+    from fastapi import FastAPI, Request, Response
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    FastAPI = None  # type: ignore[assignment]
+    Request = Any  # type: ignore[assignment]
+    Response = Any  # type: ignore[assignment]
+
 from prometheus_client import (  # type: ignore
     CONTENT_TYPE_LATEST,
     Counter,
@@ -177,6 +184,27 @@ RERANK_GPU = Gauge(
     "GPU utilisation while reranking",
     labelnames=("reranker",),
 )
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
+)
 
 
 def _normalise_path(request: Request) -> str:
@@ -196,7 +224,9 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
-def register_metrics(app: FastAPI, settings: AppSettings) -> None:
+def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
+    if FastAPI is None:
+        return
     if not settings.observability.metrics.enabled:
         return
 

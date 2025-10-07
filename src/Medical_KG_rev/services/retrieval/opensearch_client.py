@@ -39,6 +39,17 @@ class OpenSearchClient:
             doc_id = str(doc[id_field])
             self.index(index, doc_id, doc)
 
+    def get(self, index: str, doc_id: str) -> Mapping[str, object] | None:
+        stored = self._indices.get(index, {}).get(doc_id)
+        if stored is None:
+            return None
+        return stored.body
+
+    def has_document(self, index: str, doc_id: str) -> bool:
+        """Check whether a document is present in the simulated index."""
+
+        return doc_id in self._indices.get(index, {})
+
     def search(
         self,
         index: str,

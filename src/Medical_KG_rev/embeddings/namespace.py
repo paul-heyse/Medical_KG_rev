@@ -31,6 +31,12 @@ class NamespaceManager:
         self._namespaces: dict[str, NamespaceConfig] = {}
         self._observed_dims: dict[str, int] = {}
 
+    def reset(self) -> None:
+        """Clear registered namespaces and observed dimensions."""
+
+        self._namespaces.clear()
+        self._observed_dims.clear()
+
     def register(self, config: EmbedderConfig) -> NamespaceConfig:
         parts = config.namespace_parts
         dim = None if parts["dim"] == "auto" else int(parts["dim"])

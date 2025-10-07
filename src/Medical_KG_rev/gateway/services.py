@@ -10,6 +10,11 @@ from time import perf_counter
 
 import structlog
 
+from Medical_KG_rev.chunking.exceptions import (
+    ChunkerConfigurationError,
+    ChunkingUnavailableError,
+    InvalidDocumentError,
+)
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
@@ -177,20 +182,98 @@ class GatewayService:
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
         job_id = self._new_job(request.tenant_id, "chunk")
-        sample_text = request.options.get("text") if isinstance(request.options, dict) else None  # type: ignore[attr-defined]
-        if not sample_text:
-            sample_text = (
-                "Population: Adults with hypertension. Intervention: ACE inhibitor administered daily. "
-                "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
+        options_payload = request.options if isinstance(request.options, dict) else {}
+        raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
+        if raw_text is not None and not raw_text.strip():
+            detail = ProblemDetail(
+                title="Invalid document payload",
+                status=400,
+                type="https://httpstatuses.com/400",
+                detail="Text payload must be a non-empty string",
+                instance=f"/v1/chunk/{request.document_id}",
             )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail)
+        sample_text = raw_text or (
+            "Population: Adults with hypertension. Intervention: ACE inhibitor administered daily. "
+            "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
+        )
         options = ChunkingOptions(
             strategy=request.strategy,
             max_tokens=request.chunk_size,
             overlap=request.overlap,
         )
-        raw_chunks = self.chunker.chunk(
-            request.tenant_id, request.document_id, sample_text, options
-        )
+        try:
+            raw_chunks = self.chunker.chunk(
+                request.tenant_id, request.document_id, sample_text, options
+            )
+        except InvalidDocumentError as exc:
+            detail = ProblemDetail(
+                title="Invalid document payload",
+                status=400,
+                type="https://httpstatuses.com/400",
+                detail=str(exc),
+                instance=f"/v1/chunk/{request.document_id}",
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except ChunkerConfigurationError as exc:
+            detail = ProblemDetail(
+                title="Chunker configuration invalid",
+                status=422,
+                type="https://httpstatuses.com/422",
+                detail=str(exc),
+                extensions={"valid_strategies": self.chunker.available_strategies()},
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except ChunkingUnavailableError as exc:
+            retry_after = max(1, int(round(exc.retry_after)))
+            detail = ProblemDetail(
+                title="Chunking temporarily unavailable",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=str(exc),
+                extensions={"retry_after": retry_after},
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except MemoryError as exc:
+            message = str(exc) or "Chunking operation exhausted available memory"
+            detail = ProblemDetail(
+                title="Chunking resources exhausted",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=message,
+                extensions={"retry_after": 60},
+            )
+            self._fail_job(job_id, message)
+            raise GatewayError(detail) from exc
+        except TimeoutError as exc:
+            message = str(exc) or "Chunking operation timed out"
+            detail = ProblemDetail(
+                title="Chunking resources exhausted",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=message,
+                extensions={"retry_after": 30},
+            )
+            self._fail_job(job_id, message)
+            raise GatewayError(detail) from exc
+        except RuntimeError as exc:
+            message = str(exc)
+            if "GPU semantic checks" in message:
+                detail = ProblemDetail(
+                    title="GPU unavailable for semantic chunking",
+                    status=503,
+                    type="https://httpstatuses.com/503",
+                    detail=message,
+                    extensions={"reason": "gpu_unavailable"},
+                )
+                self._fail_job(job_id, message)
+                raise GatewayError(detail) from exc
+            self._fail_job(job_id, message or "Runtime error during chunking")
+            raise
         chunks: list[DocumentChunk] = []
         for index, chunk in enumerate(raw_chunks):
             metadata = dict(chunk.meta)

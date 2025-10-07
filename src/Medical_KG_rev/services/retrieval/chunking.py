@@ -96,6 +96,9 @@ class ChunkingService:
             ),
         )
 
+    def available_strategies(self) -> list[str]:
+        return self._service.list_strategies()
+
     def _translate_options(self, options: ChunkingOptions | None) -> ModularOptions | None:
         if options is None:
             return None

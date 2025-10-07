@@ -1,0 +1,282 @@
+[
+  {
+    "doc_id": "ctgov-001",
+    "source": "ctgov",
+    "title": "Ctgov Sample 1",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-002",
+    "source": "ctgov",
+    "title": "Ctgov Sample 2",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-003",
+    "source": "ctgov",
+    "title": "Ctgov Sample 3",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-004",
+    "source": "ctgov",
+    "title": "Ctgov Sample 4",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-005",
+    "source": "ctgov",
+    "title": "Ctgov Sample 5",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-006",
+    "source": "ctgov",
+    "title": "Ctgov Sample 6",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-007",
+    "source": "ctgov",
+    "title": "Ctgov Sample 7",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-008",
+    "source": "ctgov",
+    "title": "Ctgov Sample 8",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-009",
+    "source": "ctgov",
+    "title": "Ctgov Sample 9",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  },
+  {
+    "doc_id": "ctgov-010",
+    "source": "ctgov",
+    "title": "Ctgov Sample 10",
+    "text": "Summary provides rationale for enrolling elderly patients.\nEligibility criteria list inclusion and exclusion considerations.\nOutcomes focus on progression free survival endpoints.\nSafety assessment captures adverse events of interest.",
+    "boundaries": [
+      0,
+      59,
+      125,
+      180
+    ],
+    "queries": [
+      {
+        "text": "eligibility",
+        "keywords": [
+          "eligibility",
+          "criteria"
+        ]
+      },
+      {
+        "text": "adverse events",
+        "keywords": [
+          "adverse",
+          "events"
+        ]
+      }
+    ]
+  }
+]

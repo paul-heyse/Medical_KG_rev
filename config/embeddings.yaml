@@ -1,0 +1,42 @@
+active_namespaces:
+  - single_vector.bge_small_en.384.v1
+  - sparse.splade_v3.400.v1
+  - multi_vector.colbert_v2.128.v1
+
+namespaces:
+  single_vector.bge_small_en.384.v1:
+    name: bge-small-en
+    provider: sentence-transformers
+    kind: single_vector
+    model_id: BAAI/bge-small-en
+    model_version: v1.5
+    dim: 384
+    pooling: mean
+    normalize: true
+    batch_size: 32
+    prefixes:
+      query: "query:"
+      document: "passage:"
+    parameters: {}
+  sparse.splade_v3.400.v1:
+    name: splade-v3
+    provider: splade-doc
+    kind: sparse
+    model_id: splade-v3
+    model_version: v3
+    dim: 400
+    normalize: false
+    batch_size: 8
+    parameters:
+      top_k: 400
+  multi_vector.colbert_v2.128.v1:
+    name: colbert-v2
+    provider: colbert
+    kind: multi_vector
+    model_id: colbert-v2
+    model_version: v2
+    dim: 128
+    normalize: false
+    batch_size: 16
+    parameters:
+      max_doc_tokens: 180

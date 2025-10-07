@@ -23,6 +23,7 @@ from .registry import NamespaceRegistry
 from .service import VectorStoreService
 from .stores.faiss import FaissVectorStore
 from .stores.memory import InMemoryVectorStore
+from .stores.qdrant import QdrantVectorStore
 from .types import VectorStorePort
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "InvalidNamespaceConfigError",
     "FaissVectorStore",
     "InMemoryVectorStore",
+    "QdrantVectorStore",
     "IndexParams",
     "NamespaceConfig",
     "NamespaceNotFoundError",

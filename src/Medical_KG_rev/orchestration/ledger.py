@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -105,6 +106,7 @@ class JobLedger:
         )
         self._entries[job_id] = entry
         self._doc_index[doc_key] = job_id
+        self._refresh_metrics()
         return entry
 
     def idempotent_create(
@@ -119,13 +121,15 @@ class JobLedger:
         existing_id = self._doc_index.get(doc_key)
         if existing_id:
             return self._entries[existing_id].snapshot()
-        return self.create(
+        created = self.create(
             job_id=job_id,
             doc_key=doc_key,
             tenant_id=tenant_id,
             pipeline=pipeline,
             metadata=metadata,
         )
+        self._refresh_metrics()
+        return created
 
     # ------------------------------------------------------------------
     # Mutation helpers
@@ -164,6 +168,7 @@ class JobLedger:
         if metadata:
             entry.metadata.update(metadata)
         entry.updated_at = datetime.utcnow()
+        self._refresh_metrics()
         return entry
 
     def update_metadata(self, job_id: str, metadata: dict[str, object]) -> JobLedgerEntry:
@@ -235,5 +240,14 @@ class JobLedger:
         for entry in self._entries.values():
             yield entry.snapshot()
 
+    # ------------------------------------------------------------------
+    # Metrics
+    # ------------------------------------------------------------------
+    def _refresh_metrics(self) -> None:
+        counts = Counter(entry.status for entry in self._entries.values())
+        update_job_status_metrics(counts)
+
 
 __all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
+from Medical_KG_rev.observability.metrics import update_job_status_metrics
+

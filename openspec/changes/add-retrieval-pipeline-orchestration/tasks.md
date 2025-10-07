@@ -119,67 +119,67 @@
 
 ### 5.1 Correlation ID Propagation
 
-- [ ] 5.1.1 Generate UUID correlation ID at request entry
-- [ ] 5.1.2 Propagate through all pipeline stages
-- [ ] 5.1.3 Include in all logs and metrics
-- [ ] 5.1.4 Add to Kafka message headers
-- [ ] 5.1.5 Include in HTTP response headers
+- [x] 5.1.1 Generate UUID correlation ID at request entry
+- [x] 5.1.2 Propagate through all pipeline stages
+- [x] 5.1.3 Include in all logs and metrics
+- [x] 5.1.4 Add to Kafka message headers
+- [x] 5.1.5 Include in HTTP response headers
 
 ### 5.2 Circuit Breakers
 
-- [ ] 5.2.1 Implement `CircuitBreaker` for each external service
-- [ ] 5.2.2 Add failure threshold configuration (e.g., 5 consecutive failures)
-- [ ] 5.2.3 Implement open/half-open/closed states
-- [ ] 5.2.4 Add automatic recovery with exponential backoff
-- [ ] 5.2.5 Emit alerts on circuit breaker state changes
+- [x] 5.2.1 Implement `CircuitBreaker` for each external service
+- [x] 5.2.2 Add failure threshold configuration (e.g., 5 consecutive failures)
+- [x] 5.2.3 Implement open/half-open/closed states
+- [x] 5.2.4 Add automatic recovery with exponential backoff
+- [x] 5.2.5 Emit alerts on circuit breaker state changes
 
 ### 5.3 Timeout Management
 
-- [ ] 5.3.1 Implement `TimeoutManager` per pipeline stage
-- [ ] 5.3.2 Add configurable timeouts (retrieval: 50ms, reranking: 50ms)
-- [ ] 5.3.3 Implement total pipeline timeout (100ms target)
-- [ ] 5.3.4 Add timeout breach logging and metrics
+- [x] 5.3.1 Implement `TimeoutManager` per pipeline stage
+- [x] 5.3.2 Add configurable timeouts (retrieval: 50ms, reranking: 50ms)
+- [x] 5.3.3 Implement total pipeline timeout (100ms target)
+- [x] 5.3.4 Add timeout breach logging and metrics
 
 ### 5.4 Graceful Degradation
 
-- [ ] 5.4.1 Implement fallback strategies on component failure
-- [ ] 5.4.2 Return partial results when possible
-- [ ] 5.4.3 Add degraded mode indicator in response
-- [ ] 5.4.4 Log degradation events for alerting
+- [x] 5.4.1 Implement fallback strategies on component failure
+- [x] 5.4.2 Return partial results when possible
+- [x] 5.4.3 Add degraded mode indicator in response
+- [x] 5.4.4 Log degradation events for alerting
 
 ## 6. Monitoring & Observability
 
 ### 6.1 Prometheus Metrics
 
-- [ ] 6.1.1 Add ingestion pipeline metrics (docs/sec, stage latency, error rate)
-- [ ] 6.1.2 Add query pipeline metrics (query/sec, P50/P95/P99 latency, error rate)
-- [ ] 6.1.3 Add per-stage metrics (chunking, embedding, retrieval, fusion, reranking)
-- [ ] 6.1.4 Add job ledger metrics (queued, processing, completed, failed)
-- [ ] 6.1.5 Add circuit breaker state metrics
+- [x] 6.1.1 Add ingestion pipeline metrics (docs/sec, stage latency, error rate)
+- [x] 6.1.2 Add query pipeline metrics (query/sec, P50/P95/P99 latency, error rate)
+- [x] 6.1.3 Add per-stage metrics (chunking, embedding, retrieval, fusion, reranking)
+- [x] 6.1.4 Add job ledger metrics (queued, processing, completed, failed)
+- [x] 6.1.5 Add circuit breaker state metrics
 
 ### 6.2 OpenTelemetry Tracing
 
-- [ ] 6.2.1 Add distributed tracing spans for all stages
-- [ ] 6.2.2 Propagate trace context via Kafka headers
-- [ ] 6.2.3 Include span attributes (stage name, doc_id, query, etc.)
-- [ ] 6.2.4 Configure sampling rate (10% default)
-- [ ] 6.2.5 Integrate with Jaeger for visualization
+- [x] 6.2.1 Add distributed tracing spans for all stages
+- [x] 6.2.2 Propagate trace context via Kafka headers
+- [x] 6.2.3 Include span attributes (stage name, doc_id, query, etc.)
+- [x] 6.2.4 Configure sampling rate (10% default)
+- [x] 6.2.5 Integrate with Jaeger for visualization
 
 ### 6.3 Structured Logging
 
-- [ ] 6.3.1 Add correlation ID to all log entries
-- [ ] 6.3.2 Log pipeline stage transitions
-- [ ] 6.3.3 Log error details with context
-- [ ] 6.3.4 Implement log aggregation (via structlog)
-- [ ] 6.3.5 Add sensitive data scrubbing
+- [x] 6.3.1 Add correlation ID to all log entries
+- [x] 6.3.2 Log pipeline stage transitions
+- [x] 6.3.3 Log error details with context
+- [x] 6.3.4 Implement log aggregation (via structlog)
+- [x] 6.3.5 Add sensitive data scrubbing
 
 ### 6.4 Alerting
 
-- [ ] 6.4.1 Configure latency threshold alerts (P95 > 200ms)
-- [ ] 6.4.2 Configure error rate alerts (>5% errors)
-- [ ] 6.4.3 Add circuit breaker state change alerts
-- [ ] 6.4.4 Add DLQ accumulation alerts
-- [ ] 6.4.5 Configure alert routing (PagerDuty, Slack)
+- [x] 6.4.1 Configure latency threshold alerts (P95 > 200ms)
+- [x] 6.4.2 Configure error rate alerts (>5% errors)
+- [x] 6.4.3 Add circuit breaker state change alerts
+- [x] 6.4.4 Add DLQ accumulation alerts
+- [x] 6.4.5 Configure alert routing (PagerDuty, Slack)
 
 ## 7. Evaluation Framework
 
@@ -187,8 +187,8 @@
 
 - [x] 7.1.1 Implement `GroundTruthManager` (load queries + relevant docs)
 - [x] 7.1.2 Add ground truth dataset schema (queries, doc_ids, relevance labels)
-- [ ] 7.1.3 Create annotation interface for new test sets
-- [ ] 7.1.4 Store ground truth in versioned files (JSONL)
+- [x] 7.1.3 Create annotation interface for new test sets
+- [x] 7.1.4 Store ground truth in versioned files (JSONL)
 
 ### 7.2 Retrieval Metrics
 
@@ -200,24 +200,24 @@
 
 ### 7.3 Per-Stage Evaluation
 
-- [ ] 7.3.1 Evaluate chunking quality (boundary F1)
-- [ ] 7.3.2 Evaluate embedding quality (similarity correlation)
-- [ ] 7.3.3 Evaluate retrieval recall before fusion
-- [ ] 7.3.4 Evaluate fusion improvement vs single-strategy
-- [ ] 7.3.5 Evaluate reranking improvement vs fusion-only
+- [x] 7.3.1 Evaluate chunking quality (boundary F1)
+- [x] 7.3.2 Evaluate embedding quality (similarity correlation)
+- [x] 7.3.3 Evaluate retrieval recall before fusion
+- [x] 7.3.4 Evaluate fusion improvement vs single-strategy
+- [x] 7.3.5 Evaluate reranking improvement vs fusion-only
 
 ### 7.4 Evaluation Harness
 
 - [x] 7.4.1 Implement `EvalHarness` (run evaluation on test set)
-- [ ] 7.4.2 Add automated nightly evaluation runs
+- [x] 7.4.2 Add automated nightly evaluation runs
 - [x] 7.4.3 Generate evaluation reports (markdown + JSON)
-- [ ] 7.4.4 Track metrics over time (regression detection)
-- [ ] 7.4.5 Compare multiple configurations side-by-side
+- [x] 7.4.4 Track metrics over time (regression detection)
+- [x] 7.4.5 Compare multiple configurations side-by-side
 
 ### 7.5 A/B Testing Framework
 
 - [x] 7.5.1 Implement `ABTestRunner` (split traffic between configs)
-- [ ] 7.5.2 Add experiment configuration (variant A vs B, traffic split)
+- [x] 7.5.2 Add experiment configuration (variant A vs B, traffic split)
 - [x] 7.5.3 Track per-variant metrics (latency, accuracy, errors)
 - [x] 7.5.4 Implement statistical significance testing
 - [x] 7.5.5 Generate A/B test reports with recommendations
@@ -234,9 +234,9 @@
 
 - [x] 9.1 Extend YAML schema for complete pipeline configuration
 - [x] 9.2 Add configuration validation (all components exist)
-- [ ] 9.3 Implement hot-reload for configuration changes (where safe)
-- [ ] 9.4 Add configuration versioning
-- [ ] 9.5 Create configuration migration tools
+- [x] 9.3 Implement hot-reload for configuration changes (where safe)
+- [x] 9.4 Add configuration versioning
+- [x] 9.5 Create configuration migration tools
 
 ## 10. Testing
 

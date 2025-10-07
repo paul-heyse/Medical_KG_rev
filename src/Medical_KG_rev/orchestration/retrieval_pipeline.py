@@ -9,10 +9,16 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 
 import structlog
 
+from Medical_KG_rev.observability.metrics import (
+    observe_query_latency,
+    observe_query_stage_latency,
+    record_query_operation,
+)
 from Medical_KG_rev.utils.errors import ProblemDetail
 
 from .pipeline import ParallelExecutor, PipelineContext, PipelineExecutor, PipelineStage, StageFailure
 from .profiles import ProfileDetector, apply_profile_overrides
+from .resilience import CircuitBreaker
 
 
 logger = structlog.get_logger(__name__)
@@ -111,6 +117,9 @@ class RetrievalOrchestrator(PipelineStage):
                 retriable=True,
             )
         context.data["retrieval_candidates"] = aggregated
+        durations = [entry.get("duration_ms", 0.0) for entry in aggregated]
+        if durations:
+            observe_query_stage_latency(self.name, max(durations) / 1000.0)
         return context
 
 
@@ -223,6 +232,7 @@ class RerankOrchestrator(PipelineStage):
     cache: RerankCache = field(default_factory=RerankCache)
     name: str = "rerank"
     timeout_ms: int | None = 50
+    circuit_breaker: CircuitBreaker | None = None
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         candidates: list[dict[str, Any]] = context.data.get("fusion_results", [])
@@ -253,7 +263,22 @@ class RerankOrchestrator(PipelineStage):
             context.data["reranked_results"] = cached
             return context
         started = time.perf_counter()
-        results = self.rerank(context, top_candidates, rerank_candidates)
+        try:
+            if self.circuit_breaker:
+                with self.circuit_breaker.guard(self.name):
+                    results = self.rerank(context, top_candidates, rerank_candidates)
+            else:
+                results = self.rerank(context, top_candidates, rerank_candidates)
+        except StageFailure:
+            raise
+        except Exception as exc:  # pragma: no cover - guardrail
+            raise StageFailure(
+                "Reranking failed",
+                status=500,
+                stage=self.name,
+                detail=str(exc),
+                retriable=True,
+            ) from exc
         duration = time.perf_counter() - started
         context.stage_timings[f"{self.name}:duration"] = duration
         if timeout_ms and duration * 1000 > timeout_ms:
@@ -266,6 +291,7 @@ class RerankOrchestrator(PipelineStage):
             )
         self.cache.put(cache_key, results)
         context.data["reranked_results"] = results
+        observe_query_stage_latency(self.name, duration)
         return context
 
 
@@ -349,11 +375,17 @@ class QueryPipelineExecutor:
             if context.errors and context.partial:
                 return context
         started = time.perf_counter()
+        record_query_operation(self.pipeline_name, context.tenant_id, "started")
         try:
             result = self.executor.run(context)
         except StageFailure as failure:
             context.errors.append(failure.problem)
             context.partial = True
+            context.degraded = True
+            context.data.setdefault("degradation_events", []).append(
+                {"stage": failure.stage or "pipeline", "reason": failure.problem.title}
+            )
+            record_query_operation(self.pipeline_name, context.tenant_id, "failed")
             return context
         duration = time.perf_counter() - started
         if duration > self.total_timeout:
@@ -364,6 +396,16 @@ class QueryPipelineExecutor:
             )
             context.errors.append(timeout_problem)
             context.partial = True
+            context.degraded = True
+            context.data.setdefault("degradation_events", []).append(
+                {"stage": "pipeline", "reason": timeout_problem.title}
+            )
+            record_query_operation(self.pipeline_name, context.tenant_id, "degraded")
+        else:
+            record_query_operation(self.pipeline_name, context.tenant_id, "success")
+        context.stage_timings.setdefault("total", duration)
+        observe_query_latency(self.pipeline_name, duration)
+        context.data["degraded"] = context.degraded or context.partial
         return result
 
     def _apply_profile(self, context: PipelineContext) -> PipelineContext:

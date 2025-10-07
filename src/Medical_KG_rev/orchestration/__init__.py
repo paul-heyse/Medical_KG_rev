@@ -2,6 +2,7 @@
 
 from .kafka import KafkaClient, KafkaMessage
 from .ledger import JobLedger, JobLedgerEntry, JobTransition
+from .config_manager import PipelineConfigManager
 from .orchestrator import OrchestrationError, Orchestrator
 from .pipeline import (
     ParallelExecutor,
@@ -51,6 +52,7 @@ __all__ = [
     "PipelineDefinition",
     "PipelineExecutor",
     "PipelineProfile",
+    "PipelineConfigManager",
     "PipelineWorkerBase",
     "ProfileDefinition",
     "ProfileDetector",

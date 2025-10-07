@@ -45,6 +45,18 @@ from .orchestrator import (
     Orchestrator,
 )
 
+try:  # pragma: no cover - optional telemetry
+    from opentelemetry.context import attach as otel_attach, detach as otel_detach
+    from opentelemetry.propagate import get_global_textmap
+except Exception:  # pragma: no cover - telemetry optional
+    otel_attach = otel_detach = None
+    _TRACE_PROPAGATOR = None
+else:  # pragma: no cover - telemetry optional
+    _TRACE_PROPAGATOR = get_global_textmap()
+
+
+logger = structlog.get_logger(__name__)
+
 
 logger = structlog.get_logger(__name__)
 
@@ -153,6 +165,13 @@ class PipelineWorkerBase(WorkerBase):
         tenant_id = payload.get("tenant_id")
         if not job_id or not tenant_id:
             return
+        otel_token = None
+        if _TRACE_PROPAGATOR and otel_attach and message.headers:
+            try:  # pragma: no cover - optional telemetry
+                otel_ctx = _TRACE_PROPAGATOR.extract(message.headers)
+                otel_token = otel_attach(otel_ctx)
+            except Exception:
+                otel_token = None
         correlation = message.headers.get("x-correlation-id") if message.headers else None
         if correlation or payload.get("correlation_id"):
             correlation_id = correlation or str(payload.get("correlation_id"))
@@ -190,6 +209,11 @@ class PipelineWorkerBase(WorkerBase):
             self._handle_success(job_id, result, message, correlation_id)
         finally:
             reset_correlation_id(token)
+            if otel_token and otel_detach:  # pragma: no cover - optional telemetry
+                try:
+                    otel_detach(otel_token)
+                except Exception:
+                    pass
 
     def _handle_success(
         self,
@@ -219,6 +243,13 @@ class PipelineWorkerBase(WorkerBase):
             payload.setdefault("job_id", job_id)
             payload.setdefault("tenant_id", context.tenant_id)
             headers = {"x-correlation-id": correlation_id or context.correlation_id}
+            if _TRACE_PROPAGATOR:  # pragma: no cover - optional telemetry
+                carrier: dict[str, str] = {}
+                try:
+                    _TRACE_PROPAGATOR.inject(carrier)
+                except Exception:
+                    carrier = {}
+                headers.update({key.lower(): value for key, value in carrier.items()})
             self.kafka.publish(
                 self.output_topic,
                 payload,

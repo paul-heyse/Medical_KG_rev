@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -13,13 +13,20 @@ from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.chunking import Chunk
 from Medical_KG_rev.chunking.service import ChunkingOptions
 from Medical_KG_rev.models.ir import Document
-from Medical_KG_rev.observability.metrics import observe_orchestration_stage, record_business_event
+from Medical_KG_rev.observability.metrics import (
+    observe_ingestion_stage_latency,
+    observe_orchestration_stage,
+    record_business_event,
+    record_ingestion_document,
+    record_ingestion_error,
+)
 from Medical_KG_rev.services.embedding import EmbeddingRequest, EmbeddingWorker
 from Medical_KG_rev.services.ingestion import IngestionService
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 from .pipeline import PipelineContext, PipelineStage, StageFailure
+from .resilience import CircuitBreaker
 
 logger = structlog.get_logger(__name__)
 
@@ -48,6 +55,9 @@ class ChunkingStage(PipelineStage):
     ingestion: IngestionService
     timeout_ms: int | None = 5000
     name: str = "chunking"
+    circuit_breaker: CircuitBreaker = field(
+        default_factory=lambda: CircuitBreaker(service="chunking-service")
+    )
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         document_payload = context.data.get("document")
@@ -71,13 +81,18 @@ class ChunkingStage(PipelineStage):
         )
         options = _coerce_chunking_options(chunk_config.get("options"))
         try:
-            run = self.ingestion.chunk_document(
-                document,
-                tenant_id=tenant_id,
-                source_hint=profile_hint,
-                options=options,
-            )
+            with self.circuit_breaker.guard(self.name):
+                run = self.ingestion.chunk_document(
+                    document,
+                    tenant_id=tenant_id,
+                    source_hint=profile_hint,
+                    options=options,
+                )
+        except StageFailure:
+            record_ingestion_error(self.name, "circuit")
+            raise
         except Exception as exc:  # pragma: no cover - service level safety
+            record_ingestion_error(self.name, "failure")
             raise StageFailure(
                 "Chunking stage failed",
                 detail=str(exc),
@@ -93,6 +108,8 @@ class ChunkingStage(PipelineStage):
             "duration_ms": round(run.duration_seconds * 1000, 3),
             "chunks": len(run.chunks),
         }
+        record_ingestion_document(context.pipeline_version or "default")
+        observe_ingestion_stage_latency(self.name, run.duration_seconds)
         record_business_event("ingestion.chunked")
         return context
 
@@ -113,6 +130,9 @@ class EmbeddingStage(PipelineStage):
     models: Sequence[str] | None = None
     timeout_ms: int | None = 1000
     name: str = "embedding"
+    circuit_breaker: CircuitBreaker = field(
+        default_factory=lambda: CircuitBreaker(service="embedding-service")
+    )
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         chunks: Sequence[dict[str, Any]] = context.data.get("chunks") or []
@@ -137,8 +157,15 @@ class EmbeddingStage(PipelineStage):
                 models=models,
                 correlation_id=context.correlation_id,
             )
-            response = self.worker.run(request)
+            started = perf_counter()
+            with self.circuit_breaker.guard(self.name):
+                response = self.worker.run(request)
+            duration = perf_counter() - started
+        except StageFailure:
+            record_ingestion_error(self.name, "circuit")
+            raise
         except Exception as exc:  # pragma: no cover - service level guard
+            record_ingestion_error(self.name, "failure")
             raise StageFailure(
                 "Embedding stage failed",
                 detail=str(exc),
@@ -162,7 +189,9 @@ class EmbeddingStage(PipelineStage):
         context.data.setdefault("metrics", {})["embedding"] = {
             "vectors": len(vectors),
             "namespaces": sorted({vector["namespace"] for vector in vectors}),
+            "duration_ms": round(duration * 1000, 3),
         }
+        observe_ingestion_stage_latency(self.name, duration)
         record_business_event("ingestion.embedded")
         return context
 
@@ -173,6 +202,9 @@ class IndexingStage(PipelineStage):
     batch_size: int = 50
     timeout_ms: int | None = 2000
     name: str = "indexing"
+    circuit_breaker: CircuitBreaker = field(
+        default_factory=lambda: CircuitBreaker(service="vector-store")
+    )
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         embeddings: Sequence[dict[str, Any]] = context.data.get("embeddings") or []
@@ -199,16 +231,21 @@ class IndexingStage(PipelineStage):
             for batch in batches:
                 start = perf_counter()
                 try:
-                    result = self.vector_service.upsert(
-                        context=SecurityContext(
-                            subject="ingestion-indexer",
-                            tenant_id=context.tenant_id,
-                            scopes={"index:write"},
-                        ),
-                        namespace=namespace,
-                        records=batch,
-                    )
+                    with self.circuit_breaker.guard(self.name):
+                        result = self.vector_service.upsert(
+                            context=SecurityContext(
+                                subject="ingestion-indexer",
+                                tenant_id=context.tenant_id,
+                                scopes={"index:write"},
+                            ),
+                            namespace=namespace,
+                            records=batch,
+                        )
+                except StageFailure:
+                    record_ingestion_error(self.name, "circuit")
+                    raise
                 except Exception as exc:  # pragma: no cover - persistence guard
+                    record_ingestion_error(self.name, "failure")
                     raise StageFailure(
                         "Indexing stage failed",
                         detail=str(exc),
@@ -217,6 +254,7 @@ class IndexingStage(PipelineStage):
                     ) from exc
                 duration = perf_counter() - start
                 observe_orchestration_stage("ingest", f"index:{namespace}", duration)
+                observe_ingestion_stage_latency(self.name, duration)
                 total += result.upserted
             upserts[namespace] = total
         context.data.setdefault("metrics", {})["indexing"] = {

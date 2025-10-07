@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 from contextvars import Token
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
@@ -22,6 +23,15 @@ from Medical_KG_rev.observability.metrics import (
 )
 from Medical_KG_rev.utils.errors import ProblemDetail
 from Medical_KG_rev.utils.logging import bind_correlation_id, get_correlation_id, reset_correlation_id
+
+from .resilience import TimeoutManager
+
+try:  # pragma: no cover - optional tracing dependency
+    from opentelemetry import trace
+except Exception:  # pragma: no cover - tracing optional
+    trace = None  # type: ignore
+
+import structlog
 
 T = TypeVar("T")
 
@@ -64,6 +74,8 @@ class PipelineContext:
     errors: list[ProblemDetail] = field(default_factory=list)
     stage_timings: dict[str, float] = field(default_factory=dict)
     partial: bool = False
+    degraded: bool = False
+    degradation_events: list[dict[str, Any]] = field(default_factory=list)
 
     def with_data(self, **values: Any) -> PipelineContext:
         self.data.update(values)
@@ -79,6 +91,8 @@ class PipelineContext:
             errors=list(self.errors),
             stage_timings=dict(self.stage_timings),
             partial=self.partial,
+            degraded=self.degraded,
+            degradation_events=list(self.degradation_events),
         )
 
 
@@ -155,6 +169,7 @@ class PipelineExecutor:
         self.stages = list(stages)
         self.operation = operation
         self.pipeline = pipeline
+        self._timeout = TimeoutManager()
 
     def run(self, context: PipelineContext) -> PipelineContext:
         token = None
@@ -162,35 +177,128 @@ class PipelineExecutor:
         if current != context.correlation_id:
             token = bind_correlation_id(context.correlation_id)
         started = perf_counter()
+        pipeline_span = (
+            _TRACER.start_as_current_span(f"{self.operation}.{self.pipeline}") if _TRACER else nullcontext()
+        )
+        logger.info(
+            "orchestration.pipeline.start",
+            operation=self.operation,
+            pipeline=self.pipeline,
+            tenant_id=context.tenant_id,
+            correlation_id=context.correlation_id,
+        )
         try:
-            for stage in self.stages:
-                stage_started = perf_counter()
-                try:
-                    context = stage.execute(context)
-                except StageFailure as failure:
-                    context.errors.append(failure.problem)
-                    context.partial = failure.retriable or bool(context.data)
-                    record_orchestration_error(
-                        self.operation,
-                        failure.stage or stage.name,
-                        failure.error_type,
+            with pipeline_span as span:
+                if span is not None:  # pragma: no cover - tracing optional
+                    span.set_attribute("pipeline.operation", self.operation)
+                    span.set_attribute("pipeline.name", self.pipeline)
+                    span.set_attribute("tenant_id", context.tenant_id)
+                    span.set_attribute("correlation_id", context.correlation_id)
+                for stage in self.stages:
+                    stage_started = perf_counter()
+                    failure: StageFailure | None = None
+                    status = "success"
+                    stage_span = (
+                        _TRACER.start_as_current_span(f"{self.operation}.{stage.name}")
+                        if _TRACER
+                        else nullcontext()
                     )
-                    record_orchestration_operation(
-                        self.operation,
-                        context.tenant_id,
-                        "partial" if context.partial else "failed",
-                    )
-                    raise
-                finally:
-                    duration = perf_counter() - stage_started
-                    context.stage_timings[stage.name] = duration
-                    observe_orchestration_stage(self.operation, stage.name, duration)
-            total = perf_counter() - started
-            context.stage_timings.setdefault("total", total)
-            observe_orchestration_duration(self.operation, self.pipeline, total)
-            record_orchestration_operation(self.operation, context.tenant_id, "success")
-            context.pipeline_version = context.pipeline_version or self.pipeline
-            return context
+                    with stage_span as stage_otel:
+                        if stage_otel is not None:  # pragma: no cover - tracing optional
+                            stage_otel.set_attribute("pipeline.stage", stage.name)
+                            stage_otel.set_attribute("pipeline.operation", self.operation)
+                            stage_otel.set_attribute("pipeline.name", self.pipeline)
+                            stage_otel.set_attribute("correlation_id", context.correlation_id)
+                        logger.info(
+                            "orchestration.stage.start",
+                            stage=stage.name,
+                            operation=self.operation,
+                            pipeline=self.pipeline,
+                            correlation_id=context.correlation_id,
+                        )
+                        try:
+                            context = stage.execute(context)
+                        except StageFailure as exc:
+                            failure = exc
+                            status = "error"
+                        except Exception as exc:  # pragma: no cover - defensive guard
+                            failure = StageFailure(
+                                "Stage execution failed",
+                                detail=str(exc),
+                                stage=stage.name,
+                                retriable=False,
+                            )
+                            status = "error"
+                        finally:
+                            duration = perf_counter() - stage_started
+                            context.stage_timings[stage.name] = duration
+                            try:
+                                self._timeout.ensure(
+                                    operation=self.operation,
+                                    stage=stage.name,
+                                    duration_seconds=duration,
+                                    timeout_ms=getattr(stage, "timeout_ms", None),
+                                )
+                            except StageFailure as timeout_failure:
+                                failure = timeout_failure
+                                status = "error"
+                            observe_orchestration_stage(self.operation, stage.name, duration)
+                            if stage_otel is not None:  # pragma: no cover - tracing optional
+                                stage_otel.set_attribute("stage.duration_ms", round(duration * 1000, 3))
+                                stage_otel.set_attribute("stage.status", status)
+                        if failure:
+                            context.errors.append(failure.problem)
+                            context.partial = context.partial or failure.retriable or bool(context.data)
+                            context.degraded = True
+                            context.degradation_events.append(
+                                {
+                                    "stage": failure.stage or stage.name,
+                                    "reason": failure.problem.title,
+                                    "retriable": failure.retriable,
+                                }
+                            )
+                            record_orchestration_error(
+                                self.operation,
+                                failure.stage or stage.name,
+                                failure.error_type,
+                            )
+                            record_orchestration_operation(
+                                self.operation,
+                                context.tenant_id,
+                                "partial" if context.partial else "failed",
+                            )
+                            logger.warning(
+                                "orchestration.stage.failure",
+                                stage=stage.name,
+                                operation=self.operation,
+                                pipeline=self.pipeline,
+                                correlation_id=context.correlation_id,
+                                error=failure.problem.title,
+                            )
+                            raise failure
+                        logger.info(
+                            "orchestration.stage.success",
+                            stage=stage.name,
+                            operation=self.operation,
+                            pipeline=self.pipeline,
+                            correlation_id=context.correlation_id,
+                            duration_ms=round(context.stage_timings[stage.name] * 1000, 3),
+                        )
+                total = perf_counter() - started
+                context.stage_timings.setdefault("total", total)
+                observe_orchestration_duration(self.operation, self.pipeline, total)
+                record_orchestration_operation(self.operation, context.tenant_id, "success")
+                context.pipeline_version = context.pipeline_version or self.pipeline
+                if span is not None:  # pragma: no cover - tracing optional
+                    span.set_attribute("pipeline.duration_ms", round(total * 1000, 3))
+                logger.info(
+                    "orchestration.pipeline.complete",
+                    operation=self.operation,
+                    pipeline=self.pipeline,
+                    correlation_id=context.correlation_id,
+                    duration_ms=round(total * 1000, 3),
+                )
+                return context
         finally:
             if token is not None:
                 reset_correlation_id(token)
@@ -321,3 +429,5 @@ __all__ = [
     "ensure_correlation_id",
     "iter_stages",
 ]
+logger = structlog.get_logger(__name__)
+_TRACER = trace.get_tracer(__name__) if trace else None

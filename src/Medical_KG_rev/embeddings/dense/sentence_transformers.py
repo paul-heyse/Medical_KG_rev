@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
+from ..utils.batching import BatchProgress, iter_with_progress
 from ..utils.normalization import normalize_batch
 from ..utils.prefixes import apply_prefixes
 
@@ -21,6 +23,9 @@ _MODEL_DEFAULTS: dict[str, dict[str, object]] = {
     "sentence-transformers/specter2": {"dim": 768, "pooling": "cls"},
     "cambridgeltl/SapBERT-from-PubMedBERT-fulltext": {"dim": 768, "pooling": "cls"},
 }
+
+
+logger = structlog.get_logger(__name__)
 
 
 def _pseudo_embedding(text: str, dim: int) -> list[float]:
@@ -41,8 +46,12 @@ class SentenceTransformersEmbedder:
     _query_prefix: str | None = None
     _document_prefix: str | None = None
     _normalize: bool = False
+    _batch_size: int = 32
+    _onnx_enabled: bool = False
+    _progress_interval: int = 0
     name: str = ""
     kind: str = ""
+    _progress_history: list[int] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         defaults = _MODEL_DEFAULTS.get(self.config.model_id, {})
@@ -58,6 +67,9 @@ class SentenceTransformersEmbedder:
             else defaults.get("document_prefix", None)
         )
         self._normalize = bool(self.config.normalize)
+        self._batch_size = int(self.config.parameters.get("batch_size", self.config.batch_size))
+        self._onnx_enabled = bool(self.config.parameters.get("onnx", False))
+        self._progress_interval = int(self.config.parameters.get("progress_interval", 0))
         self.name = self.config.name
         self.kind = self.config.kind
 
@@ -65,8 +77,13 @@ class SentenceTransformersEmbedder:
         self,
         request: EmbeddingRequest,
         vectors: list[list[float]],
+        *,
+        offset: int = 0,
     ) -> list[EmbeddingRecord]:
-        ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(vectors))])
+        ids = list(
+            request.ids
+            or [f"{request.namespace}:{index + offset}" for index in range(len(vectors))]
+        )
         records: list[EmbeddingRecord] = []
         for chunk_id, vector in zip(ids, vectors, strict=False):
             records.append(
@@ -80,17 +97,50 @@ class SentenceTransformersEmbedder:
                     dim=self._dim,
                     vectors=[vector],
                     normalized=self._normalize,
-                    metadata={"provider": self.config.provider},
+                    metadata={
+                        "provider": self.config.provider,
+                        "onnx_optimized": self._onnx_enabled,
+                    },
                     correlation_id=request.correlation_id,
                 )
             )
         return records
 
+    def _log_progress(self, processed: int, total: int) -> None:
+        if self._progress_interval <= 0:
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
+            )
+            return
+        if processed in self._progress_history:
+            return
+        if processed % self._progress_interval == 0 or processed == total:
+            self._progress_history.append(processed)
+            logger.info(
+                "embeddings.batch.progress",
+                model=self.config.model_id,
+                namespace=self.config.namespace,
+                processed=processed,
+                total=total,
+            )
+
     def _embed(self, request: EmbeddingRequest, *, prefix: str | None) -> list[EmbeddingRecord]:
-        texts = apply_prefixes(request.texts, prefix=prefix)
-        vectors = [_pseudo_embedding(text, self._dim) for text in texts]
-        if self._normalize:
-            vectors = normalize_batch(vectors)
+        texts = list(request.texts)
+        if not texts:
+            return []
+        texts = apply_prefixes(texts, prefix=prefix)
+        self._progress_history.clear()
+        progress = BatchProgress(total=len(texts), callback=self._log_progress)
+        vectors: list[list[float]] = []
+        for batch in iter_with_progress(texts, self._batch_size, progress=progress):
+            batch_vectors = [_pseudo_embedding(text, self._dim) for text in batch]
+            if self._normalize:
+                batch_vectors = normalize_batch(batch_vectors)
+            vectors.extend(batch_vectors)
         return self._build_records(request, vectors)
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:

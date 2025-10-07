@@ -327,16 +327,9 @@ class Orchestrator:
                     ADAPTER_PLUGIN_INVOCATIONS.labels(
                         metadata.name, metadata.domain.value
                     ).inc()
-                    response = self.adapter_manager.run(metadata.name, request)
-                    adapter_responses.append(
-                        {
-                            "adapter": metadata.name,
-                            "domain": metadata.domain.value,
-                            "items": response.items,
-                            "warnings": response.warnings,
-                        }
+                    result = self.adapter_manager.invoke(
+                        metadata.name, request, strict=False
                     )
-                    adapter_versions[metadata.name] = metadata.version
                 except AdapterPluginError as exc:
                     ADAPTER_PLUGIN_FAILURES.labels(
                         metadata.name, metadata.domain.value
@@ -349,6 +342,33 @@ class Orchestrator:
                         }
                     )
                     continue
+
+                response_entry: dict[str, object] = {
+                    "adapter": metadata.name,
+                    "domain": metadata.domain.value,
+                    "timings": [
+                        {"stage": timing.name, "duration_ms": timing.duration_ms}
+                        for timing in result.timings
+                    ],
+                    "total_duration_ms": result.total_duration_ms,
+                    "validation": result.validation.model_dump(),
+                }
+                if result.extras:
+                    response_entry["extras"] = dict(result.extras)
+                response_entry["items"] = result.response.items
+                response_entry["warnings"] = result.response.warnings
+                response_entry["metadata"] = result.response.metadata
+
+                if not result.validation.valid:
+                    ADAPTER_PLUGIN_FAILURES.labels(
+                        metadata.name, metadata.domain.value
+                    ).inc()
+                    response_entry["error"] = "validation_failed"
+                    adapter_responses.append(response_entry)
+                    continue
+
+                adapter_versions[metadata.name] = metadata.version
+                adapter_responses.append(response_entry)
         if adapter_versions:
             metadata = entry.metadata if isinstance(entry.metadata, dict) else {}
             current_versions = dict(metadata.get("adapter_versions", {}))

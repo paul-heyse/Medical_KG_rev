@@ -20,7 +20,7 @@ from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 
 from .errors import AdapterPluginError
 from .pipeline import AdapterExecutionState, AdapterPipelineFactory
-from .runtime import RegisteredAdapter
+from .runtime import AdapterInvocationResult, RegisteredAdapter
 
 hookspec = pluggy.HookspecMarker("medical_kg.adapters")
 hookimpl = pluggy.HookimplMarker("medical_kg.adapters")
@@ -85,12 +85,13 @@ class AdapterPluginManager:
         adapter_name = metadata.name
         pipeline = self._pipeline_factory.build(plugin, metadata)
         domain_metadata = self._registry.register(metadata)
-        self._adapters[adapter_name] = RegisteredAdapter(
+        registered = RegisteredAdapter(
             plugin=plugin,
             metadata=metadata,
             pipeline=pipeline,
             domain_metadata=domain_metadata,
         )
+        self._adapters[adapter_name] = registered
         return metadata
 
     def unregister(self, adapter_name: str) -> None:
@@ -143,7 +144,7 @@ class AdapterPluginManager:
         strict: bool = True,
     ) -> AdapterExecutionState:
         registered = self._get_registered(adapter_name)
-        state = registered.pipeline.execute(registered.new_state(request))
+        state = registered.execute(request)
         if strict:
             state.raise_for_validation()
         return state
@@ -155,8 +156,24 @@ class AdapterPluginManager:
         *,
         strict: bool = True,
     ) -> AdapterResponse:
-        state = self.execute(adapter_name, request, strict=strict)
+        if strict:
+            result = self.invoke(adapter_name, request, strict=True)
+            return result.response
+        state = self.execute(adapter_name, request, strict=False)
         return state.ensure_response()
+
+    def invoke(
+        self,
+        adapter_name: str,
+        request: AdapterRequest,
+        *,
+        strict: bool = True,
+    ) -> AdapterInvocationResult:
+        registered = self._get_registered(adapter_name)
+        state = registered.execute(request)
+        if strict:
+            state.raise_for_validation()
+        return registered.build_result(state)
 
     def check_health(self, adapter_name: str) -> bool:
         registered = self._get_registered(adapter_name)

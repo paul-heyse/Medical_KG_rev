@@ -65,11 +65,14 @@ from .plugins.resilience import (
     retry_on_failure,
 )
 from .plugins.pipeline import (
+    AdapterExecutionContext,
     AdapterExecutionState,
     AdapterPipeline,
     AdapterPipelineFactory,
     AdapterStage,
+    AdapterStageTiming,
 )
+from .plugins.runtime import AdapterExecutionPlan, AdapterInvocationResult
 
 __all__ = [
     "AdapterConfig",
@@ -84,9 +87,13 @@ __all__ = [
     "AdapterPluginError",
     "AdapterPluginManager",
     "AdapterExecutionState",
+    "AdapterExecutionContext",
     "AdapterPipeline",
     "AdapterPipelineFactory",
     "AdapterStage",
+    "AdapterStageTiming",
+    "AdapterExecutionPlan",
+    "AdapterInvocationResult",
     "AdapterCostEstimate",
     "AdapterDomain",
     "AdapterMetadata",

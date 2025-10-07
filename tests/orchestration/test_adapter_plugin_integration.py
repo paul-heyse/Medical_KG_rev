@@ -57,7 +57,10 @@ def test_orchestrator_adapter_chain_executes_plugins(stub_manager):
     )
     context = orchestrator._handle_adapter_chain(entry, {})
     assert context["adapter_chain"] == ["dummy"]
-    assert context["adapter_responses"][0]["items"] == ["doc"]
+    response_entry = context["adapter_responses"][0]
+    assert response_entry["items"] == ["doc"]
+    assert response_entry["timings"]
+    assert response_entry["metadata"]["adapter"] == "dummy"
     stored = ledger.get("job-1")
     assert stored is not None
     assert stored.metadata.get("adapter_versions", {}).get("dummy") == "1.0.0"

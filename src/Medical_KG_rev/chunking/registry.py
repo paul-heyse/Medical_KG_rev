@@ -52,8 +52,28 @@ class ChunkerRegistry:
 
 
 def default_registry() -> ChunkerRegistry:
+    from .adapters import (
+        HaystackPreprocessorChunker,
+        LangChainHTMLChunker,
+        LangChainMarkdownChunker,
+        LangChainNLTKChunker,
+        LangChainSpacyChunker,
+        LangChainSplitterChunker,
+        LangChainTokenSplitterChunker,
+        LlamaIndexHierarchicalChunker,
+        LlamaIndexNodeParserChunker,
+        LlamaIndexSentenceChunker,
+        UnstructuredChunker,
+    )
     from .chunkers import (
         ClinicalRoleChunker,
+        TextTilingChunker,
+        C99Chunker,
+        BayesSegChunker,
+        LDATopicChunker,
+        LayoutHeuristicChunker,
+        SemanticClusterChunker,
+        GraphPartitionChunker,
         SectionAwareChunker,
         SemanticSplitterChunker,
         SlidingWindowChunker,
@@ -66,4 +86,22 @@ def default_registry() -> ChunkerRegistry:
     registry.register("table", TableChunker)
     registry.register("semantic_splitter", SemanticSplitterChunker)
     registry.register("clinical_role", ClinicalRoleChunker)
+    registry.register("layout_heuristic", LayoutHeuristicChunker)
+    registry.register("semantic_cluster", SemanticClusterChunker, experimental=True)
+    registry.register("graph_partition", GraphPartitionChunker, experimental=True)
+    registry.register("text_tiling", TextTilingChunker, experimental=True)
+    registry.register("c99", C99Chunker, experimental=True)
+    registry.register("bayes_seg", BayesSegChunker, experimental=True)
+    registry.register("lda_topic", LDATopicChunker, experimental=True)
+    registry.register("langchain.recursive_character", LangChainSplitterChunker)
+    registry.register("langchain.token", LangChainTokenSplitterChunker)
+    registry.register("langchain.markdown", LangChainMarkdownChunker)
+    registry.register("langchain.html", LangChainHTMLChunker)
+    registry.register("langchain.nltk", LangChainNLTKChunker)
+    registry.register("langchain.spacy", LangChainSpacyChunker)
+    registry.register("llama_index.semantic_splitter", LlamaIndexNodeParserChunker, experimental=True)
+    registry.register("llama_index.hierarchical", LlamaIndexHierarchicalChunker, experimental=True)
+    registry.register("llama_index.sentence", LlamaIndexSentenceChunker, experimental=True)
+    registry.register("haystack.preprocessor", HaystackPreprocessorChunker, experimental=True)
+    registry.register("unstructured.adapter", UnstructuredChunker, experimental=True)
     return registry

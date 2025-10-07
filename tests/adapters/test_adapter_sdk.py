@@ -1,28 +1,27 @@
 import pytest
 
-from Medical_KG_rev.adapters import ExampleAdapter, run_adapter
-from Medical_KG_rev.adapters.registry import AdapterRegistry
+import pytest
+
+from Medical_KG_rev.adapters import AdapterDomain, AdapterPluginManager, AdapterRequest
+from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
 from Medical_KG_rev.adapters.yaml_parser import AdapterConfig, load_adapter_config
 
 
-def test_example_adapter_run():
-    adapter = ExampleAdapter()
-    result = run_adapter(adapter)
-    assert len(result.documents) == 1
-    assert result.documents[0].source == "example"
+def _request() -> AdapterRequest:
+    return AdapterRequest(
+        tenant_id="tenant",
+        correlation_id="corr",
+        domain=AdapterDomain.BIOMEDICAL,
+    )
 
 
-def test_registry_register_and_create():
-    local_registry = AdapterRegistry()
-    local_registry.register(ExampleAdapter)
-    instance = local_registry.create("ExampleAdapter")
-    assert isinstance(instance, ExampleAdapter)
-
-    with pytest.raises(ValueError):
-        local_registry.register(ExampleAdapter)
-
-    with pytest.raises(KeyError):
-        local_registry.create("MissingAdapter")
+def test_example_plugin_run():
+    manager = AdapterPluginManager()
+    metadata = manager.register(ExampleAdapterPlugin())
+    assert metadata.name == "example"
+    response = manager.run("example", _request())
+    assert response.items[0]["message"] == "hello world"
+    assert manager.check_health("example") is True
 
 
 def test_load_adapter_config(tmp_path):

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 
-from ..errors import DimensionMismatchError, NamespaceNotFoundError
-from ..models import IndexParams, VectorMatch, VectorQuery, VectorRecord
+from ..errors import DimensionMismatchError, InvalidNamespaceConfigError, NamespaceNotFoundError
+from ..models import CompressionPolicy, IndexParams, VectorMatch, VectorQuery, VectorRecord
 from ..types import VectorStorePort
 
 
@@ -29,13 +29,20 @@ class FaissVectorStore(VectorStorePort):
         tenant_id: str,
         namespace: str,
         params: IndexParams,
+        compression: CompressionPolicy,
         metadata: Mapping[str, object] | None = None,
+        named_vectors: Mapping[str, IndexParams] | None = None,
     ) -> None:
         tenant_state = self._state.setdefault(tenant_id, {})
         existing = tenant_state.get(namespace)
         if existing and existing.index.dimension != params.dimension:
             raise DimensionMismatchError(
                 existing.index.dimension, params.dimension, namespace=namespace
+            )
+        if named_vectors:
+            raise InvalidNamespaceConfigError(
+                namespace,
+                detail="FAISS adapter does not support named vectors.",
             )
         if existing:
             return

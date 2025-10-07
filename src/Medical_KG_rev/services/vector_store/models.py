@@ -42,6 +42,7 @@ class NamespaceConfig:
     params: IndexParams
     compression: CompressionPolicy = field(default_factory=CompressionPolicy)
     version: str = "v1"
+    named_vectors: Mapping[str, IndexParams] | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +53,7 @@ class VectorRecord:
     values: Sequence[float]
     metadata: Mapping[str, object] = field(default_factory=dict)
     vector_version: str | None = None
+    named_vectors: Mapping[str, Sequence[float]] | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -61,6 +63,8 @@ class VectorQuery:
     values: Sequence[float]
     top_k: int = 10
     filters: Mapping[str, object] | None = None
+    vector_name: str | None = None
+    reorder: bool | None = None
 
 
 @dataclass(slots=True, frozen=True)

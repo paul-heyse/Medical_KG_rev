@@ -30,17 +30,17 @@
 - [x] 2.8 Add Jina v3 embedding support via TEI
 - [x] 2.9 Implement `OpenAICompatEmbedder` for vLLM-served models (Qwen-3)
 - [x] 2.10 Add automatic dimension introspection and validation
-- [ ] 2.11 Implement batch processing with progress tracking
-- [ ] 2.12 Add ONNX optimization support for CPU deployment (optional)
+- [x] 2.11 Implement batch processing with progress tracking
+- [x] 2.12 Add ONNX optimization support for CPU deployment (optional)
 
 ## 3. Late-Interaction Multi-Vector Adapters (6 tasks)
 
 - [x] 3.1 Implement `ColBERTRagatouilleEmbedder` wrapper for RAGatouille library
 - [x] 3.2 Add ColBERT-v2 model support with token-level vectors
 - [x] 3.3 Implement max_doc_tokens truncation and padding
-- [ ] 3.4 Create FAISS shard management for ColBERT indexes
-- [ ] 3.5 Implement MaxSim scoring utilities
-- [ ] 3.6 Add integration with Qdrant multivector storage (optional alternative)
+- [x] 3.4 Create FAISS shard management for ColBERT indexes
+- [x] 3.5 Implement MaxSim scoring utilities
+- [x] 3.6 Add integration with Qdrant multivector storage (optional alternative)
 
 ## 4. Learned-Sparse Adapters (8 tasks)
 
@@ -49,17 +49,17 @@
 - [x] 4.3 Implement top-K term selection (default: 400 terms)
 - [x] 4.4 Create `SPLADEQueryEmbedder` for optional query-side encoding
 - [x] 4.5 Implement `PyseriniSparseEmbedder` wrapper for uniCOIL/DeepImpact/TILDE
-- [ ] 4.6 Add OpenSearch rank_features field mapping utilities
-- [ ] 4.7 Implement term weight normalization strategies
-- [ ] 4.8 Add vocabulary tracking for sparse embeddings
+- [x] 4.6 Add OpenSearch rank_features field mapping utilities
+- [x] 4.7 Implement term weight normalization strategies
+- [x] 4.8 Add vocabulary tracking for sparse embeddings
 
 ## 5. Neural-Sparse Adapters (5 tasks)
 
 - [x] 5.1 Implement `OpenSearchNeuralSparseEmbedder` for OS ML plugin integration
-- [ ] 5.2 Add support for encoder hosting via ML plugin
-- [ ] 5.3 Add support for external TEI endpoint
-- [ ] 5.4 Create neural query type generation for OpenSearch
-- [ ] 5.5 Implement neural-sparse field mapping
+- [x] 5.2 Add support for encoder hosting via ML plugin
+- [x] 5.3 Add support for external TEI endpoint
+- [x] 5.4 Create neural query type generation for OpenSearch
+- [x] 5.5 Implement neural-sparse field mapping
 
 ## 6. Framework Integration Adapters (9 tasks)
 
@@ -70,8 +70,8 @@
 - [x] 6.5 Add LlamaIndex HuggingFace embeddings support
 - [x] 6.6 Add LlamaIndex OpenAI embeddings support (via vLLM)
 - [x] 6.7 Create `HaystackEmbedderAdapter` wrapper for haystack embedders
-- [ ] 6.8 Implement offset mapping for framework adapters to preserve metadata
-- [ ] 6.9 Add configuration validation for framework-specific parameters
+- [x] 6.8 Implement offset mapping for framework adapters to preserve metadata
+- [x] 6.9 Add configuration validation for framework-specific parameters
 
 ## 7. Experimental Embedders (8 tasks)
 
@@ -96,65 +96,72 @@
 
 ## 9. Ingestion Service Integration (6 tasks)
 
-- [ ] 9.1 Extend `IngestionService` to invoke embedding pipeline after chunking
-- [ ] 9.2 Implement namespace selection based on chunk configuration
-- [ ] 9.3 Add batch processing for chunks with progress tracking
-- [ ] 9.4 Integrate with storage router for namespace-based persistence
-- [ ] 9.5 Add telemetry for embedding latency and batch efficiency
-- [ ] 9.6 Implement error handling and retry logic for embedding failures
+- [x] 9.1 Extend `IngestionService` to invoke embedding pipeline after chunking
+- [x] 9.2 Implement namespace selection based on chunk configuration
+- [x] 9.3 Add batch processing for chunks with progress tracking
+- [x] 9.4 Integrate with storage router for namespace-based persistence
+- [x] 9.5 Add telemetry for embedding latency and batch efficiency
+- [x] 9.6 Implement error handling and retry logic for embedding failures
 
 ## 10. Storage Router Integration (5 tasks)
 
-- [ ] 10.1 Create storage router mapping namespaces to backends
-- [ ] 10.2 Implement dense embedding routing to Qdrant/FAISS/Milvus
-- [ ] 10.3 Implement sparse embedding routing to OpenSearch rank_features
-- [ ] 10.4 Implement multi-vector routing to ColBERT FAISS or Qdrant multivector
-- [ ] 10.5 Implement neural-sparse routing to OpenSearch neural fields
+- [x] 10.1 Create storage router mapping namespaces to backends
+- [x] 10.2 Implement dense embedding routing to Qdrant/FAISS/Milvus
+- [x] 10.3 Implement sparse embedding routing to OpenSearch rank_features
+- [x] 10.4 Implement multi-vector routing to ColBERT FAISS or Qdrant multivector
+- [x] 10.5 Implement neural-sparse routing to OpenSearch neural fields
 
 ## 11. Retrieval Service Integration (6 tasks)
 
-- [ ] 11.1 Extend retrieval service to support multi-strategy embedding
-- [ ] 11.2 Implement query encoding per active namespace
-- [ ] 11.3 Add parallel query execution across namespaces
-- [ ] 11.4 Integrate with fusion layer for multi-strategy results
-- [ ] 11.5 Add namespace-specific scoring and weights
-- [ ] 11.6 Implement query-side optimizations (caching, batching)
+- [x] 11.1 Extend retrieval service to support multi-strategy embedding
+- [x] 11.2 Implement query encoding per active namespace
+- [x] 11.3 Add parallel query execution across namespaces
+- [x] 11.4 Integrate with fusion layer for multi-strategy results
+- [x] 11.5 Add namespace-specific scoring and weights
+- [x] 11.6 Implement query-side optimizations (caching, batching)
 
 ## 12. Evaluation Harness (6 tasks)
 
-- [ ] 12.1 Create `eval/embedding_eval.py` evaluation runner
-- [ ] 12.2 Implement retrieval metrics (Recall@K, nDCG@K, MRR)
-- [ ] 12.3 Add zero-shot benchmark support (BEIR, MTEB subsets)
-- [ ] 12.4 Create embedding quality metrics (semantic similarity correlations)
-- [ ] 12.5 Implement A/B testing framework for embedder comparison
-- [ ] 12.6 Create leaderboard visualization per namespace
+- [x] 12.1 Create `eval/embedding_eval.py` evaluation runner
+- [x] 12.2 Implement retrieval metrics (Recall@K, nDCG@K, MRR)
+- [x] 12.3 Add zero-shot benchmark support (BEIR, MTEB subsets)
+- [x] 12.4 Create embedding quality metrics (semantic similarity correlations)
+- [x] 12.5 Implement A/B testing framework for embedder comparison
+- [x] 12.6 Create leaderboard visualization per namespace
 
 ## 13. Testing (10 tasks)
 
-- [ ] 13.1 Create unit tests for BaseEmbedder interface and EmbeddingRecord model
-- [ ] 13.2 Add tests for each dense embedder with mock/real models
-- [ ] 13.3 Create tests for sparse embedders with term weight validation
-- [ ] 13.4 Add tests for multi-vector embedders with ColBERT integration
-- [ ] 13.5 Create tests for framework adapters with library integration
-- [ ] 13.6 Add integration tests for namespace management and dimension validation
-- [ ] 13.7 Create integration tests for storage routing
-- [ ] 13.8 Add performance tests for batch processing efficiency
-- [ ] 13.9 Create tests for GPU fail-fast behavior
-- [ ] 13.10 Add tests for configuration validation and registry
+- [x] 13.1 Create unit tests for BaseEmbedder interface and EmbeddingRecord model
+- [x] 13.2 Add tests for each dense embedder with mock/real models
+- [x] 13.3 Create tests for sparse embedders with term weight validation
+- [x] 13.4 Add tests for multi-vector embedders with ColBERT integration
+- [x] 13.5 Create tests for framework adapters with library integration
+- [x] 13.6 Add integration tests for namespace management and dimension validation
+- [x] 13.7 Create integration tests for storage routing
+- [x] 13.8 Add performance tests for batch processing efficiency
+- [x] 13.9 Create tests for GPU fail-fast behavior
+- [x] 13.10 Add tests for configuration validation and registry
 
 ## 14. Documentation (5 tasks)
 
-- [ ] 14.1 Write developer guide for adding new embedding adapters
-- [ ] 14.2 Document each embedder's model, parameters, and use cases
-- [ ] 14.3 Create configuration examples for common scenarios
-- [ ] 14.4 Write evaluation harness usage guide
-- [ ] 14.5 Add API documentation for embeddings module
+- [x] 14.1 Write developer guide for adding new embedding adapters
+- [x] 14.2 Document each embedder's model, parameters, and use cases
+- [x] 14.3 Create configuration examples for common scenarios
+- [x] 14.4 Write evaluation harness usage guide
+- [x] 14.5 Add API documentation for embeddings module
 
 ## 15. Dependencies & Setup (4 tasks)
 
-- [ ] 15.1 Add all required dependencies to `pyproject.toml`
-- [ ] 15.2 Configure TEI server setup documentation
-- [ ] 15.3 Configure vLLM embedding endpoint setup
-- [ ] 15.4 Add model download scripts and documentation
+- [x] 15.1 Add all required dependencies to `pyproject.toml`
+- [x] 15.2 Configure TEI server setup documentation
+- [x] 15.3 Configure vLLM embedding endpoint setup
+- [x] 15.4 Add model download scripts and documentation
 
-**Total: 112 tasks across 15 categories**
+## 16. Stabilization Fixes (4 tasks)
+
+- [x] 16.1 Restore fallback chunk metadata compatibility with indexing pipeline
+- [x] 16.2 Ensure sliding window fallback returns overlapping segments
+- [x] 16.3 Update retrieval indexing to support normalized chunk objects
+- [x] 16.4 Align GPU registry namespaces with validation requirements
+
+**Total: 116 tasks across 16 categories**

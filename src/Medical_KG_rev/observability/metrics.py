@@ -42,6 +42,20 @@ JOB_DURATION = Histogram(
     "Duration of ingest/retrieve operations",
     labelnames=("operation",),
 )
+CHUNKING_LATENCY = Histogram(
+    "chunking_latency_seconds",
+    "Latency distribution for chunking profiles",
+    labelnames=("profile",),
+)
+CHUNK_SIZE = Histogram(
+    "chunk_size_characters",
+    "Distribution of chunk sizes by granularity",
+    labelnames=("profile", "granularity"),
+)
+CHUNKING_CIRCUIT_STATE = Gauge(
+    "chunking_circuit_breaker_state",
+    "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
+)
 GPU_UTILISATION = Gauge(
     "gpu_utilization_percent",
     "GPU memory utilisation percentage",
@@ -51,6 +65,58 @@ BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
+)
+RERANK_OPERATIONS = Counter(
+    "reranking_operations_total",
+    "Total reranking invocations",
+    labelnames=("reranker", "tenant", "batch_size"),
+)
+RERANK_DURATION = Histogram(
+    "reranking_duration_seconds",
+    "Distribution of reranking latencies",
+    labelnames=("reranker", "tenant"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0),
+)
+RERANK_ERRORS = Counter(
+    "reranking_errors_total",
+    "Number of reranking failures grouped by type",
+    labelnames=("reranker", "error_type"),
+)
+RERANK_PAIRS = Counter(
+    "reranking_pairs_processed_total",
+    "Number of query/document pairs scored",
+    labelnames=("reranker",),
+)
+RERANK_CIRCUIT = Gauge(
+    "reranking_circuit_breaker_state",
+    "Circuit breaker state per reranker (1=open)",
+    labelnames=("reranker", "tenant"),
+)
+RERANK_GPU = Gauge(
+    "reranking_gpu_utilization_percent",
+    "GPU utilisation while reranking",
+    labelnames=("reranker",),
+)
+PIPELINE_STAGE_DURATION = Histogram(
+    "retrieval_pipeline_stage_duration_seconds",
+    "Latency per stage of the retrieval pipeline",
+    labelnames=("stage",),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+)
+RERANK_CACHE_HIT = Gauge(
+    "reranking_cache_hit_rate",
+    "Cache hit rate for reranker results",
+    labelnames=("reranker",),
+)
+RERANK_LATENCY_ALERTS = Counter(
+    "reranking_latency_alerts_total",
+    "Number of reranking operations breaching latency SLOs",
+    labelnames=("reranker",),
+)
+RERANK_GPU_MEMORY_ALERTS = Counter(
+    "reranking_gpu_memory_alerts_total",
+    "Alerts fired when GPU memory is exhausted during reranking",
+    labelnames=("reranker",),
 )
 
 
@@ -125,3 +191,15 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
+
+
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
+
+
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
+
+
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

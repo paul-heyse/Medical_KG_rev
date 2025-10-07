@@ -2,118 +2,118 @@
 
 ## 1. Core Orchestration Infrastructure
 
-- [ ] 1.1 Define `PipelineStage` protocol (execute method)
-- [ ] 1.2 Create `PipelineConfig` model from YAML
-- [ ] 1.3 Implement `PipelineExecutor` (sequential stage execution)
-- [ ] 1.4 Add `ParallelExecutor` (concurrent strategy execution)
-- [ ] 1.5 Create correlation ID generation and propagation
+- [x] 1.1 Define `PipelineStage` protocol (execute method)
+- [x] 1.2 Create `PipelineConfig` model from YAML
+- [x] 1.3 Implement `PipelineExecutor` (sequential stage execution)
+- [x] 1.4 Add `ParallelExecutor` (concurrent strategy execution)
+- [x] 1.5 Create correlation ID generation and propagation
 
 ## 2. Ingestion Pipeline Orchestration
 
 ### 2.1 Chunking Stage
 
-- [ ] 2.1.1 Implement `ChunkingWorker` Kafka consumer
-- [ ] 2.1.2 Subscribe to `ingest.chunking.v1` topic
-- [ ] 2.1.3 Call `ChunkingService` with doc and config
-- [ ] 2.1.4 Publish chunks to `ingest.chunks.v1` topic
-- [ ] 2.1.5 Update job ledger with chunking status
+- [x] 2.1.1 Implement `ChunkingWorker` Kafka consumer
+- [x] 2.1.2 Subscribe to `ingest.chunking.v1` topic
+- [x] 2.1.3 Call `ChunkingService` with doc and config
+- [x] 2.1.4 Publish chunks to `ingest.chunks.v1` topic
+- [x] 2.1.5 Update job ledger with chunking status
 
 ### 2.2 Embedding Stage
 
-- [ ] 2.2.1 Implement `EmbeddingWorker` Kafka consumer
-- [ ] 2.2.2 Subscribe to `ingest.chunks.v1` topic
-- [ ] 2.2.3 Call `EmbeddingService` for all configured namespaces
-- [ ] 2.2.4 Publish embeddings to `ingest.embeddings.v1` topic
-- [ ] 2.2.5 Handle multi-namespace embedding (dense, sparse, multi-vector)
+- [x] 2.2.1 Implement `EmbeddingWorker` Kafka consumer
+- [x] 2.2.2 Subscribe to `ingest.chunks.v1` topic
+- [x] 2.2.3 Call `EmbeddingService` for all configured namespaces
+- [x] 2.2.4 Publish embeddings to `ingest.embeddings.v1` topic
+- [x] 2.2.5 Handle multi-namespace embedding (dense, sparse, multi-vector)
 
 ### 2.3 Indexing Stage
 
-- [ ] 2.3.1 Implement `IndexingWorker` Kafka consumer
-- [ ] 2.3.2 Subscribe to `ingest.embeddings.v1` topic
-- [ ] 2.3.3 Route embeddings to appropriate vector stores by namespace
-- [ ] 2.3.4 Batch upsert for efficiency (50-100 vectors per batch)
-- [ ] 2.3.5 Publish completion to `ingest.indexed.v1` topic
-- [ ] 2.3.6 Mark job complete in ledger
+- [x] 2.3.1 Implement `IndexingWorker` Kafka consumer
+- [x] 2.3.2 Subscribe to `ingest.embeddings.v1` topic
+- [x] 2.3.3 Route embeddings to appropriate vector stores by namespace
+- [x] 2.3.4 Batch upsert for efficiency (50-100 vectors per batch)
+- [x] 2.3.5 Publish completion to `ingest.indexed.v1` topic
+- [x] 2.3.6 Mark job complete in ledger
 
 ### 2.4 Job State Management
 
-- [ ] 2.4.1 Implement `JobLedger` with Redis/Postgres backend
-- [ ] 2.4.2 Add job creation with initial status (queued)
-- [ ] 2.4.3 Implement stage transition tracking (chunking → embedding → indexing)
-- [ ] 2.4.4 Add error state handling
-- [ ] 2.4.5 Implement retry counter and max attempts
-- [ ] 2.4.6 Add job completion timestamp and duration
+- [x] 2.4.1 Implement `JobLedger` with Redis/Postgres backend
+- [x] 2.4.2 Add job creation with initial status (queued)
+- [x] 2.4.3 Implement stage transition tracking (chunking → embedding → indexing)
+- [x] 2.4.4 Add error state handling
+- [x] 2.4.5 Implement retry counter and max attempts
+- [x] 2.4.6 Add job completion timestamp and duration
 
 ### 2.5 Error Handling & Retry
 
-- [ ] 2.5.1 Implement exponential backoff for transient errors
-- [ ] 2.5.2 Add dead letter queue (DLQ) for permanent failures
-- [ ] 2.5.3 Implement retry policy configuration (max attempts, backoff multiplier)
-- [ ] 2.5.4 Add error classification (retriable vs permanent)
-- [ ] 2.5.5 Implement DLQ monitoring and alerting
+- [x] 2.5.1 Implement exponential backoff for transient errors
+- [x] 2.5.2 Add dead letter queue (DLQ) for permanent failures
+- [x] 2.5.3 Implement retry policy configuration (max attempts, backoff multiplier)
+- [x] 2.5.4 Add error classification (retriable vs permanent)
+- [x] 2.5.5 Implement DLQ monitoring and alerting
 
 ## 3. Query Pipeline Orchestration
 
 ### 3.1 Retrieval Stage
 
-- [ ] 3.1.1 Implement `RetrievalOrchestrator`
-- [ ] 3.1.2 Add parallel fan-out to enabled strategies
-- [ ] 3.1.3 Implement per-strategy timeout (50ms default)
-- [ ] 3.1.4 Add strategy result collection and validation
-- [ ] 3.1.5 Implement graceful degradation (partial results on strategy failure)
+- [x] 3.1.1 Implement `RetrievalOrchestrator`
+- [x] 3.1.2 Add parallel fan-out to enabled strategies
+- [x] 3.1.3 Implement per-strategy timeout (50ms default)
+- [x] 3.1.4 Add strategy result collection and validation
+- [x] 3.1.5 Implement graceful degradation (partial results on strategy failure)
 
 ### 3.2 Fusion Stage
 
-- [ ] 3.2.1 Implement `FusionOrchestrator`
-- [ ] 3.2.2 Add result deduplication by doc_id
-- [ ] 3.2.3 Apply configured fusion algorithm (RRF, weighted)
-- [ ] 3.2.4 Implement score normalization if needed
-- [ ] 3.2.5 Add fusion result validation
+- [x] 3.2.1 Implement `FusionOrchestrator`
+- [x] 3.2.2 Add result deduplication by doc_id
+- [x] 3.2.3 Apply configured fusion algorithm (RRF, weighted)
+- [x] 3.2.4 Implement score normalization if needed
+- [x] 3.2.5 Add fusion result validation
 
 ### 3.3 Reranking Stage
 
-- [ ] 3.3.1 Implement `RerankOrchestrator`
-- [ ] 3.3.2 Add candidate selection (top N for reranking)
-- [ ] 3.3.3 Call configured reranker with batch processing
-- [ ] 3.3.4 Implement reranking timeout (50ms default)
-- [ ] 3.3.5 Add reranking cache lookup and write
+- [x] 3.3.1 Implement `RerankOrchestrator`
+- [x] 3.3.2 Add candidate selection (top N for reranking)
+- [x] 3.3.3 Call configured reranker with batch processing
+- [x] 3.3.4 Implement reranking timeout (50ms default)
+- [x] 3.3.5 Add reranking cache lookup and write
 
 ### 3.4 Final Selection Stage
 
-- [ ] 3.4.1 Implement `FinalSelectorOrchestrator`
-- [ ] 3.4.2 Add top-K selection from reranked results
-- [ ] 3.4.3 Implement explain mode (include scores from all stages)
-- [ ] 3.4.4 Add result formatting and metadata enrichment
+- [x] 3.4.1 Implement `FinalSelectorOrchestrator`
+- [x] 3.4.2 Add top-K selection from reranked results
+- [x] 3.4.3 Implement explain mode (include scores from all stages)
+- [x] 3.4.4 Add result formatting and metadata enrichment
 
 ### 3.5 End-to-End Pipeline Executor
 
-- [ ] 3.5.1 Implement `QueryPipelineExecutor`
-- [ ] 3.5.2 Chain all query stages sequentially
-- [ ] 3.5.3 Add per-stage timing and metrics
-- [ ] 3.5.4 Implement total timeout enforcement (100ms target)
-- [ ] 3.5.5 Add error handling and partial result return
+- [x] 3.5.1 Implement `QueryPipelineExecutor`
+- [x] 3.5.2 Chain all query stages sequentially
+- [x] 3.5.3 Add per-stage timing and metrics
+- [x] 3.5.4 Implement total timeout enforcement (100ms target)
+- [x] 3.5.5 Add error handling and partial result return
 
 ## 4. Profile Management
 
 ### 4.1 Profile Configuration
 
-- [ ] 4.1.1 Implement `ProfileManager` to load YAML profiles
-- [ ] 4.1.2 Add profile validation (all referenced components exist)
-- [ ] 4.1.3 Create default profiles (PMC, DailyMed, ClinicalTrials.gov)
-- [ ] 4.1.4 Implement profile inheritance (base + overrides)
+- [x] 4.1.1 Implement `ProfileManager` to load YAML profiles
+- [x] 4.1.2 Add profile validation (all referenced components exist)
+- [x] 4.1.3 Create default profiles (PMC, DailyMed, ClinicalTrials.gov)
+- [x] 4.1.4 Implement profile inheritance (base + overrides)
 
 ### 4.2 Profile Detection
 
-- [ ] 4.2.1 Implement `ProfileDetector` based on doc metadata
-- [ ] 4.2.2 Add source-based detection (e.g., source="openalex" → PMC profile)
-- [ ] 4.2.3 Implement explicit profile override via API parameter
-- [ ] 4.2.4 Add fallback to default profile
+- [x] 4.2.1 Implement `ProfileDetector` based on doc metadata
+- [x] 4.2.2 Add source-based detection (e.g., source="openalex" → PMC profile)
+- [x] 4.2.3 Implement explicit profile override via API parameter
+- [x] 4.2.4 Add fallback to default profile
 
 ### 4.3 Profile Application
 
-- [ ] 4.3.1 Apply ingestion profile at document intake
-- [ ] 4.3.2 Apply query profile based on target source/collection
-- [ ] 4.3.3 Log profile selection for audit
+- [x] 4.3.1 Apply ingestion profile at document intake
+- [x] 4.3.2 Apply query profile based on target source/collection
+- [x] 4.3.3 Log profile selection for audit
 
 ## 5. State Management & Resilience
 
@@ -185,18 +185,18 @@
 
 ### 7.1 Ground Truth Management
 
-- [ ] 7.1.1 Implement `GroundTruthManager` (load queries + relevant docs)
-- [ ] 7.1.2 Add ground truth dataset schema (queries, doc_ids, relevance labels)
+- [x] 7.1.1 Implement `GroundTruthManager` (load queries + relevant docs)
+- [x] 7.1.2 Add ground truth dataset schema (queries, doc_ids, relevance labels)
 - [ ] 7.1.3 Create annotation interface for new test sets
 - [ ] 7.1.4 Store ground truth in versioned files (JSONL)
 
 ### 7.2 Retrieval Metrics
 
-- [ ] 7.2.1 Implement nDCG@K (K=1,5,10,20)
-- [ ] 7.2.2 Implement Recall@K
-- [ ] 7.2.3 Implement MRR (Mean Reciprocal Rank)
-- [ ] 7.2.4 Implement MAP (Mean Average Precision)
-- [ ] 7.2.5 Add per-query metrics and aggregate statistics
+- [x] 7.2.1 Implement nDCG@K (K=1,5,10,20)
+- [x] 7.2.2 Implement Recall@K
+- [x] 7.2.3 Implement MRR (Mean Reciprocal Rank)
+- [x] 7.2.4 Implement MAP (Mean Average Precision)
+- [x] 7.2.5 Add per-query metrics and aggregate statistics
 
 ### 7.3 Per-Stage Evaluation
 
@@ -208,41 +208,39 @@
 
 ### 7.4 Evaluation Harness
 
-- [ ] 7.4.1 Implement `EvalHarness` (run evaluation on test set)
+- [x] 7.4.1 Implement `EvalHarness` (run evaluation on test set)
 - [ ] 7.4.2 Add automated nightly evaluation runs
-- [ ] 7.4.3 Generate evaluation reports (markdown + JSON)
+- [x] 7.4.3 Generate evaluation reports (markdown + JSON)
 - [ ] 7.4.4 Track metrics over time (regression detection)
 - [ ] 7.4.5 Compare multiple configurations side-by-side
 
 ### 7.5 A/B Testing Framework
 
-- [ ] 7.5.1 Implement `ABTestRunner` (split traffic between configs)
+- [x] 7.5.1 Implement `ABTestRunner` (split traffic between configs)
 - [ ] 7.5.2 Add experiment configuration (variant A vs B, traffic split)
-- [ ] 7.5.3 Track per-variant metrics (latency, accuracy, errors)
-- [ ] 7.5.4 Implement statistical significance testing
-- [ ] 7.5.5 Generate A/B test reports with recommendations
+- [x] 7.5.3 Track per-variant metrics (latency, accuracy, errors)
+- [x] 7.5.4 Implement statistical significance testing
+- [x] 7.5.5 Generate A/B test reports with recommendations
 
-## 8. Integration with Existing Services
-
-- [ ] 8.1 Integrate ChunkingService via orchestration
-- [ ] 8.2 Integrate EmbeddingService via orchestration
-- [ ] 8.3 Integrate VectorStoreService via orchestration
-- [ ] 8.4 Integrate RerankerService via orchestration
+- [x] 8.1 Integrate ChunkingService via orchestration
+- [x] 8.2 Integrate EmbeddingService via orchestration
+- [x] 8.3 Integrate VectorStoreService via orchestration
+- [x] 8.4 Integrate RerankerService via orchestration
 - [ ] 8.5 Add REST API endpoints for ingestion and query pipelines
 - [ ] 8.6 Add GraphQL resolvers for pipelines
 - [ ] 8.7 Implement SSE streaming for ingestion job progress
 
 ## 9. Configuration Management
 
-- [ ] 9.1 Extend YAML schema for complete pipeline configuration
-- [ ] 9.2 Add configuration validation (all components exist)
+- [x] 9.1 Extend YAML schema for complete pipeline configuration
+- [x] 9.2 Add configuration validation (all components exist)
 - [ ] 9.3 Implement hot-reload for configuration changes (where safe)
 - [ ] 9.4 Add configuration versioning
 - [ ] 9.5 Create configuration migration tools
 
 ## 10. Testing
 
-- [ ] 10.1 Unit tests for each orchestrator
+- [x] 10.1 Unit tests for each orchestrator
 - [ ] 10.2 Integration tests for ingestion pipeline (end-to-end)
 - [ ] 10.3 Integration tests for query pipeline (end-to-end)
 - [ ] 10.4 Performance tests (latency, throughput)

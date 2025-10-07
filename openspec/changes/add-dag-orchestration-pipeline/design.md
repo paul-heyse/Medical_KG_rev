@@ -527,6 +527,444 @@ class HaystackEmbedder(EmbedStage):
 
 ---
 
+## Configuration Management Implementation
+
+### Pydantic Models for Pipeline Topology
+
+```python
+# src/Medical_KG_rev/orchestration/config/models.py
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator
+
+class BackoffStrategy(str, Enum):
+    EXPONENTIAL = "exponential"
+    LINEAR = "linear"
+    NONE = "none"
+
+class CircuitBreakerConfig(BaseModel):
+    """Circuit breaker configuration."""
+    failure_threshold: int = Field(ge=3, le=10)
+    reset_timeout_seconds: int = Field(ge=30, le=600)
+
+class ResiliencePolicyConfig(BaseModel):
+    """Named resilience policy loaded from YAML."""
+    name: str
+    max_attempts: int = Field(ge=1, le=10)
+    backoff_strategy: BackoffStrategy
+    backoff_initial_seconds: float = Field(ge=0.1, le=10.0)
+    backoff_max_seconds: float = Field(ge=1.0, le=300.0)
+    backoff_jitter_seconds: float = Field(ge=0.0, le=5.0)
+    timeout_seconds: int = Field(ge=1, le=600)
+    circuit_breaker: CircuitBreakerConfig | None = None
+    rate_limit_per_second: float | None = Field(default=None, ge=0.1, le=100.0)
+
+class GateCondition(BaseModel):
+    """Gate condition for conditional pipeline execution."""
+    ledger_field: str = Field(pattern=r"^[a-z_]+$")
+    equals: bool | str | int
+
+class StageDefinition(BaseModel):
+    """Single stage in pipeline topology."""
+    name: str = Field(pattern=r"^[a-z_]+$")
+    type: str  # IngestStage, ParseStage, ChunkStage, etc.
+    policy: str  # Reference to resilience policy name
+    depends_on: list[str] = Field(default_factory=list)
+    condition: GateCondition | None = None
+
+    @field_validator("depends_on")
+    @classmethod
+    def validate_dependencies(cls, v):
+        if len(v) != len(set(v)):
+            raise ValueError("Duplicate dependencies not allowed")
+        return v
+
+class PipelineTopologyConfig(BaseModel):
+    """Complete pipeline topology loaded from YAML."""
+    version: str = Field(pattern=r"^\d+\.\d+$")
+    name: str = Field(pattern=r"^[a-z-]+$")
+    description: str
+    applicable_sources: list[str]
+    stages: list[StageDefinition]
+
+    @field_validator("stages")
+    @classmethod
+    def validate_dag(cls, stages):
+        """Ensure stages form a DAG (no cycles)."""
+        # Build dependency graph
+        graph = {s.name: set(s.depends_on) for s in stages}
+
+        # Topological sort to detect cycles
+        visited = set()
+        rec_stack = set()
+
+        def has_cycle(node):
+            visited.add(node)
+            rec_stack.add(node)
+            for neighbor in graph.get(node, []):
+                if neighbor not in visited:
+                    if has_cycle(neighbor):
+                        return True
+                elif neighbor in rec_stack:
+                    return True
+            rec_stack.remove(node)
+            return False
+
+        for stage in stages:
+            if stage.name not in visited:
+                if has_cycle(stage.name):
+                    raise ValueError(f"Cycle detected in pipeline: {stage.name}")
+
+        return stages
+
+class PipelineConfigLoader:
+    """Loads and caches pipeline topology configurations."""
+
+    def __init__(self, config_dir: Path = Path("config/orchestration/pipelines")):
+        self.config_dir = config_dir
+        self._cache: dict[str, PipelineTopologyConfig] = {}
+
+    def load(self, pipeline_name: str) -> PipelineTopologyConfig:
+        """Load pipeline config from YAML with validation."""
+        if pipeline_name in self._cache:
+            return self._cache[pipeline_name]
+
+        yaml_path = self.config_dir / f"{pipeline_name}.yaml"
+        if not yaml_path.exists():
+            raise FileNotFoundError(f"Pipeline config not found: {yaml_path}")
+
+        with open(yaml_path) as f:
+            data = yaml.safe_load(f)
+
+        config = PipelineTopologyConfig(**data)
+        self._cache[pipeline_name] = config
+        return config
+```
+
+---
+
+## Backward Compatibility & Testing Strategy
+
+### Test Migration Approach
+
+```python
+# tests/orchestration/test_dagster_compatibility.py
+import pytest
+from Medical_KG_rev.orchestration import Orchestrator
+from Medical_KG_rev.orchestration.dagster import DagsterOrchestrator
+
+@pytest.mark.parametrize("use_dagster", [False, True])
+def test_orchestration_output_parity(use_dagster: bool, monkeypatch):
+    """Ensure Dagster produces identical outputs to legacy orchestration."""
+    monkeypatch.setenv("MK_USE_DAGSTER", str(use_dagster))
+
+    # Submit job
+    job_id = submit_test_job(tenant_id="test", dataset="clinicaltrials", item={"id": "NCT04267848"})
+
+    # Wait for completion
+    wait_for_job_completion(job_id, timeout=30)
+
+    # Validate outputs
+    document = get_document(job_id)
+    chunks = get_chunks(job_id)
+    embeddings = get_embeddings(job_id)
+
+    # Compare with expected baseline (same for both paths)
+    assert document.id == "clinicaltrials:NCT04267848"
+    assert len(chunks) >= 10  # At least 10 chunks expected
+    assert all(e.dimension == 512 for e in embeddings)  # Qwen dimension
+
+@pytest.fixture
+def legacy_orchestrator():
+    """Legacy orchestration for comparison."""
+    return Orchestrator(kafka, ledger, events)
+
+@pytest.fixture
+def dagster_orchestrator():
+    """Dagster-based orchestration."""
+    return DagsterOrchestrator(kafka, ledger, events)
+
+def test_stage_timing_parity(legacy_orchestrator, dagster_orchestrator):
+    """Ensure Dagster stage timings are within acceptable range of legacy."""
+    job_id_legacy = legacy_orchestrator.submit_job(...)
+    job_id_dagster = dagster_orchestrator.submit_job(...)
+
+    # Measure timings
+    legacy_timings = measure_stage_timings(job_id_legacy)
+    dagster_timings = measure_stage_timings(job_id_dagster)
+
+    # Allow 10% overhead for Dagster
+    for stage in ["chunk", "embed", "index"]:
+        assert dagster_timings[stage] <= legacy_timings[stage] * 1.1
+```
+
+---
+
+## Security & Authentication Details
+
+### Dagster UI OAuth Integration
+
+```python
+# src/Medical_KG_rev/orchestration/dagster/auth.py
+from dagster import DagsterInstance
+from dagster_cloud import DagsterCloudAgentInstance
+from Medical_KG_rev.auth.jwt import JWTAuthenticator
+
+class DagsterOAuthConfig:
+    """OAuth configuration for Dagster webserver."""
+
+    def __init__(self, settings: AppSettings):
+        self.jwt_authenticator = JWTAuthenticator(
+            jwks_url=settings.auth.jwks_url,
+            audience="medical-kg-api",
+            issuer="medical-kg-auth"
+        )
+        self.required_scopes = ["admin:read", "admin:write"]
+
+    def get_instance_config(self) -> dict:
+        """Generate Dagster instance YAML config with OAuth."""
+        return {
+            "run_launcher": {
+                "module": "dagster.core.launcher",
+                "class": "DefaultRunLauncher"
+            },
+            "run_storage": {
+                "module": "dagster_postgres.run_storage",
+                "class": "PostgresRunStorage",
+                "config": {
+                    "postgres_url": os.getenv("DAGSTER_POSTGRES_URL")
+                }
+            },
+            "event_log_storage": {
+                "module": "dagster_postgres.event_log",
+                "class": "PostgresEventLogStorage",
+                "config": {
+                    "postgres_url": os.getenv("DAGSTER_POSTGRES_URL")
+                }
+            },
+            "schedule_storage": {
+                "module": "dagster_postgres.schedule_storage",
+                "class": "PostgresScheduleStorage",
+                "config": {
+                    "postgres_url": os.getenv("DAGSTER_POSTGRES_URL")
+                }
+            },
+            "telemetry": {"enabled": False},
+            "auth": {
+                "type": "jwt",
+                "jwt_secret": os.getenv("MK_JWT_SECRET_KEY"),
+                "jwt_algorithm": "HS256",
+                "required_claims": {
+                    "aud": "medical-kg-api",
+                    "scopes": self.required_scopes
+                }
+            }
+        }
+
+# ops/k8s/base/configmap-dagster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dagster-instance
+  namespace: medical-kg
+data:
+  dagster.yaml: |
+    run_launcher:
+      module: dagster.core.launcher
+      class: DefaultRunLauncher
+
+    run_storage:
+      module: dagster_postgres.run_storage
+      class: PostgresRunStorage
+      config:
+        postgres_url:
+          env: DAGSTER_POSTGRES_URL
+
+    auth:
+      type: jwt
+      jwt_secret:
+        env: MK_JWT_SECRET_KEY
+      jwt_algorithm: HS256
+      required_claims:
+        aud: medical-kg-api
+        scopes: ["admin:read", "admin:write"]
+```
+
+---
+
+## Data Migration Implementation
+
+### Job Ledger Migration Script
+
+```python
+# scripts/migrate_job_ledger_for_dagster.py
+"""Migrate Job Ledger schema to support Dagster orchestration."""
+import logging
+from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+def migrate_ledger_schema():
+    """Add new fields to existing Job Ledger entries."""
+    settings = get_settings()
+    ledger = JobLedger(storage_backend=settings.ledger_storage)
+
+    # New fields with defaults
+    new_fields = {
+        "pdf_downloaded": False,
+        "pdf_ir_ready": False,
+        "current_stage": None,
+        "pipeline_name": "auto",  # Default to auto for existing jobs
+        "retry_count_per_stage": {},
+        "post_pdf_started": False
+    }
+
+    logger.info("Starting Job Ledger migration for Dagster support")
+
+    # Iterate all existing entries
+    migrated_count = 0
+    error_count = 0
+
+    for entry in ledger.list_all():
+        try:
+            # Check if already migrated
+            if hasattr(entry, "pipeline_name"):
+                logger.debug(f"Job {entry.job_id} already migrated, skipping")
+                continue
+
+            # Add new fields
+            for field, default_value in new_fields.items():
+                setattr(entry, field, default_value)
+
+            # Infer pipeline_name from existing metadata
+            if "pdf_url" in entry.metadata or entry.dataset in ["pmc-fulltext", "unpaywall", "core"]:
+                entry.pipeline_name = "pdf-two-phase"
+
+            # Update storage
+            ledger.update(entry)
+            migrated_count += 1
+
+            if migrated_count % 100 == 0:
+                logger.info(f"Migrated {migrated_count} entries...")
+
+        except Exception as e:
+            logger.error(f"Failed to migrate job {entry.job_id}: {e}")
+            error_count += 1
+
+    logger.info(f"Migration complete: {migrated_count} migrated, {error_count} errors")
+
+    if error_count > 0:
+        raise RuntimeError(f"Migration completed with {error_count} errors")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    migrate_ledger_schema()
+```
+
+---
+
+## Performance Benchmarking Specification
+
+### Benchmark Implementation
+
+```python
+# tests/performance/benchmark_dagster_vs_legacy.py
+"""Performance comparison: Dagster vs Legacy orchestration."""
+import time
+import statistics
+from dataclasses import dataclass
+from typing import Literal
+
+@dataclass
+class BenchmarkResult:
+    """Results from orchestration benchmark."""
+    orchestration_type: Literal["legacy", "dagster"]
+    job_count: int
+    total_duration_seconds: float
+    throughput_jobs_per_second: float
+    stage_timings: dict[str, list[float]]  # stage -> list of durations
+    p50_latency_ms: float
+    p95_latency_ms: float
+    p99_latency_ms: float
+    error_count: int
+
+def run_benchmark(orchestration_type: Literal["legacy", "dagster"], job_count: int = 100) -> BenchmarkResult:
+    """Run benchmark with specified orchestration type."""
+    # Setup
+    if orchestration_type == "legacy":
+        orch = create_legacy_orchestrator()
+    else:
+        orch = create_dagster_orchestrator()
+
+    # Submit jobs
+    job_ids = []
+    start = time.time()
+
+    for i in range(job_count):
+        job_id = orch.submit_job(
+            tenant_id="benchmark",
+            dataset="clinicaltrials",
+            item={"id": f"NCT{i:08d}"}
+        )
+        job_ids.append(job_id)
+
+    # Wait for all completions
+    stage_timings = {stage: [] for stage in ["ingest", "parse", "chunk", "embed", "index"]}
+    latencies = []
+    error_count = 0
+
+    for job_id in job_ids:
+        try:
+            result = wait_for_completion(job_id, timeout=60)
+            latencies.append(result.total_duration_ms)
+
+            # Collect stage timings
+            for stage, duration in result.stage_durations.items():
+                stage_timings[stage].append(duration)
+        except TimeoutError:
+            error_count += 1
+
+    end = time.time()
+    total_duration = end - start
+
+    # Calculate percentiles
+    latencies_sorted = sorted(latencies)
+    p50 = latencies_sorted[len(latencies) // 2]
+    p95 = latencies_sorted[int(len(latencies) * 0.95)]
+    p99 = latencies_sorted[int(len(latencies) * 0.99)]
+
+    return BenchmarkResult(
+        orchestration_type=orchestration_type,
+        job_count=job_count,
+        total_duration_seconds=total_duration,
+        throughput_jobs_per_second=job_count / total_duration,
+        stage_timings=stage_timings,
+        p50_latency_ms=p50,
+        p95_latency_ms=p95,
+        p99_latency_ms=p99,
+        error_count=error_count
+    )
+
+def compare_performance():
+    """Compare legacy vs Dagster orchestration."""
+    legacy_result = run_benchmark("legacy", job_count=100)
+    dagster_result = run_benchmark("dagster", job_count=100)
+
+    print(f"Legacy throughput: {legacy_result.throughput_jobs_per_second:.2f} jobs/sec")
+    print(f"Dagster throughput: {dagster_result.throughput_jobs_per_second:.2f} jobs/sec")
+    print(f"Overhead: {((dagster_result.p95_latency_ms / legacy_result.p95_latency_ms) - 1) * 100:.1f}%")
+
+    # Assert acceptable overhead (≤10%)
+    assert dagster_result.p95_latency_ms <= legacy_result.p95_latency_ms * 1.1, \
+        f"Dagster P95 latency ({dagster_result.p95_latency_ms}ms) exceeds 10% overhead threshold"
+
+    # Assert throughput parity
+    assert dagster_result.throughput_jobs_per_second >= legacy_result.throughput_jobs_per_second * 0.9, \
+        f"Dagster throughput ({dagster_result.throughput_jobs_per_second:.2f}) below 90% of legacy"
+```
+
+---
+
 ## Open Questions
 
 ### Q1: Should we support dynamic pipeline generation?

@@ -260,4 +260,89 @@
 - [ ] 16.9 Remove legacy code after 1 release cycle of Dagster stability
 - [ ] 16.10 Conduct retrospective and document lessons learned
 
-**Total Tasks**: 176 across 16 work streams
+## 17. Dependency Management & Version Pinning
+
+- [ ] 17.1 Create dependency compatibility matrix for Dagster + Haystack + resilience libs
+- [ ] 17.2 Pin exact versions in `requirements.txt`:
+  - [ ] 17.2.1 `dagster==1.5.14` (latest stable in 1.5.x series)
+  - [ ] 17.2.2 `dagster-postgres==0.21.14` (matching Dagster version)
+  - [ ] 17.2.3 `haystack-ai==2.0.1` (latest stable in 2.0.x series)
+  - [ ] 17.2.4 `tenacity==8.2.3`
+  - [ ] 17.2.5 `pybreaker==1.0.2`
+  - [ ] 17.2.6 `aiolimiter==1.1.0`
+  - [ ] 17.2.7 `cloudevents==1.9.0`
+  - [ ] 17.2.8 `openlineage-python==1.1.0` (optional)
+- [ ] 17.3 Test upgrade path from Dagster 1.5.x to 1.6.x
+- [ ] 17.4 Document breaking changes in Haystack 2.0.x → 2.1.x
+- [ ] 17.5 Create Dependabot config for automated security updates
+- [ ] 17.6 Set up CI job to test against upcoming library versions
+
+## 18. Error Taxonomy & Handling
+
+- [ ] 18.1 Define Dagster-specific error classes:
+  - [ ] 18.1.1 `DagsterPipelineConfigError` (invalid YAML topology)
+  - [ ] 18.1.2 `DagsterStageTimeoutError` (stage exceeded timeout)
+  - [ ] 18.1.3 `DagsterGateConditionError` (gate condition never met)
+  - [ ] 18.1.4 `DagsterResourceUnavailableError` (GPU, Kafka, ledger unavailable)
+- [ ] 18.2 Map Dagster failure modes to Job Ledger states
+- [ ] 18.3 Define CloudEvent error codes for each failure type
+- [ ] 18.4 Implement automatic retry for transient failures (Kafka publish, ledger update)
+- [ ] 18.5 Implement dead letter queue for unrecoverable stage failures
+- [ ] 18.6 Add error correlation across stage boundaries via correlation_id
+- [ ] 18.7 Create error runbook with troubleshooting steps for common failures
+- [ ] 18.8 Write tests for each error scenario (timeout, GPU OOM, gate timeout)
+
+## 19. Rollback Procedures
+
+- [ ] 19.1 Document step-by-step rollback from Dagster to legacy orchestration:
+  - [ ] 19.1.1 Set feature flag `MK_USE_DAGSTER=false`
+  - [ ] 19.1.2 Restart gateway and worker services
+  - [ ] 19.1.3 Verify legacy orchestration resumes processing queued jobs
+  - [ ] 19.1.4 Stop Dagster daemon and webserver (no data loss)
+- [ ] 19.2 Test rollback procedure in staging environment
+- [ ] 19.3 Define rollback triggers (error rate >5%, P95 latency >2x baseline)
+- [ ] 19.4 Create automated rollback script (`scripts/rollback_to_legacy.sh`)
+- [ ] 19.5 Document data consistency checks post-rollback
+- [ ] 19.6 Test rollback with jobs in-flight (graceful termination)
+- [ ] 19.7 Create communication plan for stakeholders during rollback
+
+## 20. Operational Runbook
+
+- [ ] 20.1 Create `docs/runbooks/dagster-operations.md` with sections:
+  - [ ] 20.1.1 Starting/stopping Dagster services (webserver, daemon)
+  - [ ] 20.1.2 Checking Dagster health (UI, API, Prometheus metrics)
+  - [ ] 20.1.3 Investigating failed jobs (UI logs, CloudEvents, ledger state)
+  - [ ] 20.1.4 Manually triggering post-PDF stages (sensor override)
+  - [ ] 20.1.5 Draining job queue before maintenance
+  - [ ] 20.1.6 Recovering from Dagster database corruption
+- [ ] 20.2 Create troubleshooting decision tree for common issues:
+  - [ ] 20.2.1 Job stuck at PDF gate → Check MinerU status, ledger state, sensor logs
+  - [ ] 20.2.2 High retry rates → Check circuit breaker state, upstream API health
+  - [ ] 20.2.3 CloudEvents not appearing → Check Kafka topic, consumer lag
+  - [ ] 20.2.4 GPU stage failures → Check GPU availability, vLLM endpoint health
+- [ ] 20.3 Define on-call escalation paths for Dagster issues
+- [ ] 20.4 Create runbook for Dagster version upgrades
+- [ ] 20.5 Document backup/restore procedures for Dagster PostgreSQL
+- [ ] 20.6 Create runbook for Dagster UI access control (adding/removing users)
+
+## 21. Monitoring & Alerting Specifications
+
+- [ ] 21.1 Create Grafana dashboard `Medical_KG_Dagster_Overview.json`:
+  - [ ] 21.1.1 Panel: Job throughput (jobs/second) by pipeline
+  - [ ] 21.1.2 Panel: P50/P95/P99 latency per stage
+  - [ ] 21.1.3 Panel: Retry rate by stage
+  - [ ] 21.1.4 Panel: Circuit breaker state (open/closed/half-open)
+  - [ ] 21.1.5 Panel: Sensor activity (poll rate, trigger count)
+  - [ ] 21.1.6 Panel: Job Ledger state distribution
+- [ ] 21.2 Define Prometheus alerting rules:
+  - [ ] 21.2.1 Alert: `DagsterJobFailureRateHigh` (>5% over 5 minutes)
+  - [ ] 21.2.2 Alert: `DagsterStageLatencyHigh` (P95 > SLO for 10 minutes)
+  - [ ] 21.2.3 Alert: `DagsterSensorStalled` (no triggers for 5 minutes)
+  - [ ] 21.2.4 Alert: `DagsterCircuitBreakerOpen` (any circuit open for >5 minutes)
+  - [ ] 21.2.5 Alert: `DagsterJobQueueBacklog` (>100 jobs queued)
+- [ ] 21.3 Integrate CloudEvents with existing log aggregation (Loki)
+- [ ] 21.4 Create CloudEvent-based alerts for critical failures
+- [ ] 21.5 Set up PagerDuty integration for critical Dagster alerts
+- [ ] 21.6 Define SLO dashboards for Dagster orchestration (99.9% availability)
+
+**Total Tasks**: 228 across 21 work streams

@@ -26,3 +26,43 @@ def test_ingestion_service_chunking_run() -> None:
     stored = service.list_chunks("tenant", "doc-ingest")
     assert stored
 
+def test_ingestion_pipeline_persists_embeddings() -> None:
+    chunking = _StubChunkingService()
+    config_path = Path(__file__).resolve().parents[2] / "config" / "embeddings.yaml"
+    worker = EmbeddingWorker(config_path=str(config_path))
+    registry = NamespaceRegistry()
+    namespace = "single_vector.bge_small_en.384.v1"
+    registry.register(
+        tenant_id="tenant",
+        config=NamespaceConfig(name=namespace, params=IndexParams(dimension=384)),
+    )
+    store = InMemoryVectorStore()
+    store.create_or_update_collection(
+        tenant_id="tenant",
+        namespace=namespace,
+        params=IndexParams(dimension=384),
+        metadata={},
+    )
+    vector_service = VectorStoreService(store=store, registry=registry)
+    ingestion = IngestionService(
+        chunking=chunking,
+        embedding_worker=worker,
+        vector_store=vector_service,
+        opensearch=OpenSearchClient(),
+        faiss=FAISSIndex(384),
+    )
+    context = SecurityContext(subject="user", tenant_id="tenant", scopes={"index:write"})
+    options = IngestionOptions(namespaces=[namespace])
+    result = ingestion.ingest(
+        tenant_id="tenant",
+        document_id="doc-1",
+        text="Clinical trial data on hypertension treatment",
+        context=context,
+        options=options,
+    )
+    assert result.stored["single_vector"] >= 1
+    assert result.metrics.total == 1
+    namespace_state = store._state["tenant"][namespace]
+    assert namespace_state.metadata
+    stored_meta = next(iter(namespace_state.metadata.values()))
+    assert stored_meta.get("tenant_id") == "tenant"

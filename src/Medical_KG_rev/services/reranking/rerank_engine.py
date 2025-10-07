@@ -10,6 +10,9 @@ import structlog
 
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import (
+    record_cache_hit_rate,
+    record_gpu_memory_alert,
+    record_latency_alert,
     record_reranking_error,
     record_reranking_operation,
 )
@@ -40,6 +43,7 @@ class RerankingEngine:
         documents: Sequence[ScoredDocument],
         reranker_id: str | None,
         top_k: int | None = None,
+        explain: bool = False,
     ) -> RerankingResponse:
         reranker_key = reranker_id or "cross_encoder:bge"
         if not context.has_scope("retrieve:read"):
@@ -74,12 +78,34 @@ class RerankingEngine:
         scored: list[RerankResult] = list(cached)
         if pending:
             try:
-                batches = self.batch_processor.iter_batches(
-                    pending,
-                    preferred_size=reranker.batch_size,
+                queue: list[Sequence[QueryDocumentPair]] = list(
+                    self.batch_processor.iter_batches(
+                        pending,
+                        preferred_size=reranker.batch_size,
+                    )
                 )
-                for batch in batches:
-                    response = reranker.score_pairs(batch, top_k=top_k)
+                while queue:
+                    batch = queue.pop(0)
+                    def _score(items: Sequence[QueryDocumentPair]) -> RerankingResponse:
+                        if explain:
+                            try:
+                                return reranker.score_pairs(items, top_k=top_k, explain=True)
+                            except TypeError:
+                                return reranker.score_pairs(items, top_k=top_k)
+                        return reranker.score_pairs(items, top_k=top_k)
+
+                    response, batch_duration = self.batch_processor.time_batch(
+                        batch,
+                        _score,
+                    )
+                    extra = self.batch_processor.split_on_timeout(batch, batch_duration)
+                    if extra:
+                        queue = list(extra) + queue
+                        continue
+                    if reranker.requires_gpu:
+                        available = self.batch_processor.gpu_memory_snapshot()
+                        if available is not None and available < 0.5:
+                            record_gpu_memory_alert(reranker.identifier)
                     scored.extend(response.results)
             except RerankingError as err:
                 self.circuit_breaker.record_failure(reranker.identifier)
@@ -117,6 +143,11 @@ class RerankingEngine:
             "circuit_state": self.circuit_breaker.state(reranker.identifier),
             "cache": asdict(self.cache.metrics()),
         }
+        cache_metrics = metrics["cache"]
+        if isinstance(cache_metrics, Mapping):
+            hit_rate = float(cache_metrics.get("hit_rate", 0.0))
+            record_cache_hit_rate(reranker.identifier, hit_rate)
+        record_latency_alert(reranker.identifier, duration, slo_seconds=0.25)
         record_reranking_operation(
             reranker.identifier,
             context.tenant_id,
@@ -157,3 +188,27 @@ class RerankingEngine:
                 )
             )
         return pairs
+
+    # ------------------------------------------------------------------
+    def warm_cache(
+        self,
+        reranker_id: str,
+        tenant_id: str,
+        version: str,
+        results: Iterable[RerankResult],
+    ) -> None:
+        reranker = self.factory.resolve(reranker_id)
+        cache_version = version or reranker.model_version
+        self.cache.warm(reranker.identifier, tenant_id, cache_version, results)
+
+    # ------------------------------------------------------------------
+    def health(self) -> Mapping[str, bool]:
+        status: dict[str, bool] = {}
+        for reranker_id in self.factory.available:
+            try:
+                reranker = self.factory.resolve(reranker_id)
+            except RerankingError:
+                status[reranker_id] = False
+            else:
+                status[reranker_id] = self.circuit_breaker.state(reranker.identifier) != "open"
+        return status

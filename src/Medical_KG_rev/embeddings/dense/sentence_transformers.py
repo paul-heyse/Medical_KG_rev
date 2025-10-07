@@ -111,28 +111,6 @@ class SentenceTransformersEmbedder:
                 total=total,
             )
 
-    def _log_progress(self, processed: int, total: int) -> None:
-        if self._progress_interval <= 0:
-            logger.info(
-                "embeddings.batch.progress",
-                model=self.config.model_id,
-                namespace=self.config.namespace,
-                processed=processed,
-                total=total,
-            )
-            return
-        if processed in self._progress_history:
-            return
-        if processed % self._progress_interval == 0 or processed == total:
-            self._progress_history.append(processed)
-            logger.info(
-                "embeddings.batch.progress",
-                model=self.config.model_id,
-                namespace=self.config.namespace,
-                processed=processed,
-                total=total,
-            )
-
     def _embed(self, request: EmbeddingRequest, *, prefix: str | None) -> list[EmbeddingRecord]:
         texts = list(request.texts)
         if not texts:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -31,6 +32,7 @@ class _CollectionConfig:
 @dataclass(slots=True)
 class _CollectionInfo:
     config: _CollectionConfig
+    points_count: int = 0
 
 
 @dataclass(slots=True)
@@ -45,19 +47,30 @@ class _ScoredPoint:
     payload: Mapping[str, object]
 
 
+@dataclass(slots=True)
+class _Snapshot:
+    name: str
+    size: int
+    location: str
+
+
 class FakeQdrantClient:
     def __init__(self) -> None:
         self.collections: dict[str, dict[str, Any]] = {}
         self.upserts: list[dict[str, Any]] = []
         self.search_calls: list[dict[str, Any]] = []
         self.delete_calls: list[dict[str, Any]] = []
+        self.snapshots: dict[str, _Snapshot] = {}
+        self.recoveries: list[dict[str, Any]] = []
+        self.collection_sizes: dict[str, int] = {}
 
     def get_collection(self, *, collection_name: str, **_: Any) -> _CollectionInfo:
         if collection_name not in self.collections:
             raise UnexpectedResponse(status_code=404, reason_phrase="Not Found", content=b"", headers={})
         record = self.collections[collection_name]
         params = _CollectionParams(vectors=record["vectors"])
-        return _CollectionInfo(config=_CollectionConfig(params=params))
+        size = self.collection_sizes.get(collection_name, 0)
+        return _CollectionInfo(config=_CollectionConfig(params=params), points_count=size)
 
     def recreate_collection(self, *, collection_name: str, vectors_config: Any, **kwargs: Any) -> bool:
         self.collections[collection_name] = {
@@ -72,6 +85,7 @@ class FakeQdrantClient:
 
     def upsert(self, *, collection_name: str, points: Sequence[qm.PointStruct], **_: Any) -> None:
         self.upserts.append({"collection": collection_name, "points": list(points)})
+        self.collection_sizes[collection_name] = len(points)
 
     def search(
         self,
@@ -99,7 +113,29 @@ class FakeQdrantClient:
 
     def delete(self, *, collection_name: str, points_selector: qm.PointIdsList, **_: Any) -> _UpdateResult:
         self.delete_calls.append({"collection": collection_name, "selector": points_selector})
-        return _UpdateResult(deleted=len(points_selector.points))
+        deleted = len(points_selector.points)
+        self.collection_sizes[collection_name] = max(
+            0, self.collection_sizes.get(collection_name, 0) - deleted
+        )
+        return _UpdateResult(deleted=deleted)
+
+    def create_snapshot(self, *, collection_name: str, **_: Any) -> _Snapshot:
+        snapshot = _Snapshot(
+            name=f"{collection_name}-snapshot",
+            size=1024,
+            location=f"/snapshots/{collection_name}.snap",
+        )
+        self.snapshots[collection_name] = snapshot
+        return snapshot
+
+    def recover_snapshot(self, *, collection_name: str, location: str | None, snapshot_name: str | None, **_: Any) -> None:
+        self.recoveries.append(
+            {
+                "collection": collection_name,
+                "location": location,
+                "snapshot_name": snapshot_name,
+            }
+        )
 
 
 @pytest.fixture()
@@ -231,6 +267,58 @@ def test_delete_wraps_qdrant_response(client: FakeQdrantClient) -> None:
 
     assert removed == 2
     assert isinstance(client.delete_calls[0]["selector"], qm.PointIdsList)
+
+
+def test_snapshot_restore_and_health(client: FakeQdrantClient, tmp_path: Path) -> None:
+    store = QdrantVectorStore(client=client)
+    params = IndexParams(dimension=16, metric="cosine", kind="hnsw")
+    compression = CompressionPolicy(kind="none")
+    store.create_or_update_collection(
+        tenant_id="tenant-a",
+        namespace="dense.snapshot",
+        params=params,
+        compression=compression,
+        metadata={},
+    )
+    store.upsert(
+        tenant_id="tenant-a",
+        namespace="dense.snapshot",
+        records=[VectorRecord(vector_id="vec-1", values=[0.2] * 16, metadata={})],
+    )
+    path = tmp_path / "snapshot.json"
+    info = store.create_snapshot(
+        tenant_id="tenant-a",
+        namespace="dense.snapshot",
+        destination=str(path),
+    )
+    assert info.metadata and info.metadata["name"].endswith("snapshot")
+    report = store.restore_snapshot(
+        tenant_id="tenant-a",
+        namespace="dense.snapshot",
+        source=str(path),
+    )
+    assert report.rebuilt
+    health = store.check_health(tenant_id="tenant-a")
+    assert "dense.snapshot" in health and health["dense.snapshot"].healthy
+
+
+def test_rebuild_index_triggers_update(client: FakeQdrantClient) -> None:
+    store = QdrantVectorStore(client=client)
+    params = IndexParams(dimension=16, metric="cosine", kind="hnsw")
+    compression = CompressionPolicy(kind="none")
+    store.create_or_update_collection(
+        tenant_id="tenant-a",
+        namespace="dense.rebuild",
+        params=params,
+        compression=compression,
+        metadata={},
+    )
+    report = store.rebuild_index(
+        tenant_id="tenant-a",
+        namespace="dense.rebuild",
+        force=True,
+    )
+    assert report.rebuilt
 
 
 def test_missing_collection_raises(client: FakeQdrantClient) -> None:

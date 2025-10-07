@@ -154,3 +154,15 @@ def test_chunking_circuit_breaker_opens(tmp_path: Path) -> None:
             service.chunk_document(document, tenant_id="tenant", source=document.source)
     with pytest.raises(ChunkingUnavailableError):
         service.chunk_document(document, tenant_id="tenant", source=document.source)
+
+
+def test_chunking_service_session_cache(simple_config: Path) -> None:
+    document = build_document()
+    service = ChunkingService(config_path=simple_config)
+    assert not service._session_cache
+    service.chunk_document(document, tenant_id="tenant", source=document.source)
+    assert len(service._session_cache) == 1
+    service.chunk_document(document, tenant_id="tenant", source=document.source)
+    assert len(service._session_cache) == 1
+    service.clear_session_cache()
+    assert not service._session_cache

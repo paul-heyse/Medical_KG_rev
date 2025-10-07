@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+"""Embedding worker service coordinating adapter execution and persistence."""
+
+from __future__ import annotations
+
+import time
 from dataclasses import dataclass, field
 from typing import Sequence
 
@@ -33,6 +38,8 @@ class EmbeddingRequest:
     models: Sequence[str] | None = None
     namespaces: Sequence[str] | None = None
     correlation_id: str | None = None
+    metadatas: Sequence[Mapping[str, object]] | None = None
+    actor: str | None = None
 
 
 @dataclass(slots=True)
@@ -43,8 +50,73 @@ class EmbeddingVector:
     kind: str
     vectors: list[list[float]] | None
     terms: dict[str, float] | None
-    dimension: int
+    neural_fields: dict[str, object] | None = None
+    dimension: int = 0
+    model_version: str | None = None
     metadata: dict[str, object] = field(default_factory=dict)
+    record: EmbeddingRecord | None = None
+
+    @classmethod
+    def from_record(
+        cls,
+        record: EmbeddingRecord,
+        *,
+        storage_router: StorageRouter | None = None,
+    ) -> "EmbeddingVector":
+        if record.dim is not None:
+            dimension = record.dim
+        elif record.vectors:
+            dimension = len(record.vectors[0])
+        elif record.terms:
+            dimension = len(record.terms)
+        else:
+            dimension = 0
+        metadata = dict(record.metadata)
+        if storage_router is not None:
+            try:
+                target = storage_router.route(record.kind).name
+            except KeyError:  # pragma: no cover - defensive guard
+                target = "unmapped"
+            metadata.setdefault("storage_target", target)
+        metadata.setdefault("model_version", record.model_version)
+        return cls(
+            id=record.id,
+            model=record.model_id,
+            namespace=record.namespace,
+            kind=record.kind,
+            vectors=record.vectors,
+            terms=record.terms,
+            neural_fields=record.neural_fields,
+            dimension=dimension,
+            model_version=record.model_version,
+            metadata=metadata,
+            record=record,
+        )
+
+
+@dataclass(slots=True)
+class _VectorBuilder:
+    """Helper that converts adapter records into response vectors."""
+
+    storage_router: StorageRouter
+
+    def build(self, record: EmbeddingRecord) -> EmbeddingVector:
+        return EmbeddingVector.from_record(record, storage_router=self.storage_router)
+
+
+@dataclass(slots=True)
+class EmbeddingResponse:
+    vectors: list[EmbeddingVector] = field(default_factory=list)
+
+    @property
+    def values(self) -> list[float] | None:
+        """Compatibility accessor returning the primary dense payload."""
+
+        if self.vectors:
+            # Return a copy so downstream normalization does not mutate
+            # the stored payload which may be re-used by other adapters.
+            return list(self.vectors[0])
+        return None
 
     @property
     def values(self) -> list[float] | None:
@@ -60,6 +132,53 @@ class EmbeddingVector:
 @dataclass(slots=True)
 class EmbeddingResponse:
     vectors: list[EmbeddingVector] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _LegacyEmbeddingModel:
+    name: str
+    dimension: int
+    kind: str
+
+    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
+        tokens = text.split()
+        if self.kind == "dense":
+            base = float(len(tokens) or 1)
+            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
+            return {"id": chunk_id, "values": values}
+        weights = {
+            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
+            for index in range(min(self.dimension, max(1, len(tokens))))
+        }
+        return {"id": chunk_id, "terms": weights}
+
+
+class EmbeddingModelRegistry:
+    """Compatibility shim for legacy embedding registry usage in tests."""
+
+    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
+        self.namespace_manager = NamespaceManager()
+        self._models: dict[str, _LegacyEmbeddingModel] = {
+            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
+            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
+        }
+        self._aliases = {
+            "splade": "splade",
+            "sparse": "splade",
+            "bge": "bge",
+            "bge-small": "bge",
+            "dense": "bge",
+        }
+
+    def list_models(self) -> list[str]:
+        return list(self._models)
+
+    def get(self, name: str) -> _LegacyEmbeddingModel:
+        key = self._aliases.get(name, name)
+        try:
+            return self._models[key]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise KeyError(f"Unknown embedding model '{name}'") from exc
 
 
 class EmbeddingWorker:
@@ -95,9 +214,10 @@ class EmbeddingWorker:
         return AdapterEmbeddingRequest(
             tenant_id=request.tenant_id,
             namespace=config.namespace,
-            texts=list(request.texts),
-            ids=list(request.chunk_ids),
+            texts=list(texts),
+            ids=list(ids),
             correlation_id=request.correlation_id,
+            metadata=[dict(item) for item in metadata],
         )
 
     def _dimension_from_record(self, record: EmbeddingRecord) -> int:
@@ -109,12 +229,36 @@ class EmbeddingWorker:
             return len(record.terms)
         return 0
 
+    def _batch_iterator(
+        self, request: EmbeddingRequest, batch_size: int
+    ) -> Iterator[tuple[list[str], list[str], list[dict[str, object]]]]:
+        texts = list(request.texts)
+        ids = list(request.chunk_ids or [])
+        if len(ids) < len(texts):
+            ids.extend(f"{request.tenant_id}:{index}" for index in range(len(ids), len(texts)))
+        else:
+            ids = ids[: len(texts)]
+        metadata_list = [
+            dict(item) for item in list(request.metadatas or [])[: len(texts)]
+        ]
+        while len(metadata_list) < len(texts):
+            metadata_list.append({})
+        for start in range(0, len(texts), batch_size):
+            yield (
+                texts[start : start + batch_size],
+                ids[start : start + batch_size],
+                metadata_list[start : start + batch_size],
+            )
+
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        if self._legacy_registry is not None:
+            return self._run_legacy(request)
         configs = self._resolve_configs(request)
         response = EmbeddingResponse()
         logger.info(
             "embedding.pipeline.start",
             tenant_id=request.tenant_id,
+            actor=request.actor,
             chunks=len(request.texts),
             models=[config.name for config in configs],
         )
@@ -187,9 +331,73 @@ class EmbeddingWorker:
                 "embedding.pipeline.completed",
                 namespace=config.namespace,
                 model=config.name,
+                actor=request.actor,
                 total=len(records),
+                duration_ms=(time.perf_counter() - start) * 1000,
             )
-        logger.info("embedding.pipeline.finish", total=len(response.vectors))
+        logger.info(
+            "embedding.pipeline.finish",
+            total=len(response.vectors),
+            actor=request.actor,
+            tenant_id=request.tenant_id,
+        )
+        return response
+
+    def encode_queries(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        configs = self._resolve_configs(request)
+        response = EmbeddingResponse()
+        for config in configs:
+            ensure_available(config.requires_gpu, operation=f"embed-query:{config.name}")
+            embedder = self.factory.get(config)
+            adapter_request = self._adapter_request(
+                request,
+                config,
+                texts=request.texts,
+                ids=request.chunk_ids
+                or [f"query:{index}" for index in range(len(request.texts))],
+                metadata=request.metadatas or [{} for _ in request.texts],
+            )
+            records = embedder.embed_queries(adapter_request)
+            for record in records:
+                dim = self._dimension_from_record(record)
+                self.namespace_manager.validate_record(config.namespace, dim)
+                response.vectors.append(self._vector_builder.build(record))
+        return response
+
+    def _run_legacy(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        models = request.models or self._legacy_registry.list_models()
+        response = EmbeddingResponse()
+        for model_name in models:
+            model = self._legacy_registry.get(model_name)
+            for chunk_id, text in zip(request.chunk_ids, request.texts, strict=False):
+                result = model.embed(chunk_id, text)
+                metadata = {"source": "legacy"}
+                if model.kind == "dense":
+                    response.vectors.append(
+                        EmbeddingVector(
+                            id=result["id"],
+                            model=model.name,
+                            namespace=model.name,
+                            kind="dense",
+                            vectors=[result["values"]],
+                            terms=None,
+                            dimension=model.dimension,
+                            metadata=metadata,
+                        )
+                    )
+                else:
+                    response.vectors.append(
+                        EmbeddingVector(
+                            id=result["id"],
+                            model=model.name,
+                            namespace=model.name,
+                            kind="sparse",
+                            vectors=None,
+                            terms=result["terms"],
+                            dimension=model.dimension,
+                            metadata=metadata,
+                        )
+                    )
         return response
 
 

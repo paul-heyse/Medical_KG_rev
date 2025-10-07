@@ -1,0 +1,28 @@
+{
+  "imrad": {
+    "introduction": ["background", "introduction"],
+    "methods": ["methods", "study design", "materials and methods"],
+    "results": ["results"],
+    "discussion": ["discussion", "conclusion"],
+    "abstract": ["abstract"],
+    "supplement": ["supplement", "appendix"]
+  },
+  "clinical_trial": {
+    "eligibility": ["eligibility", "inclusion criteria", "exclusion criteria"],
+    "outcomes": ["outcome", "endpoint", "primary outcome", "secondary outcome"],
+    "adverse_events": ["adverse", "safety", "serious adverse events"],
+    "dose": ["dose", "dosage", "administration"],
+    "population": ["participants", "population", "subjects"],
+    "design": ["design", "overview"]
+  },
+  "spl": {
+    "indications": ["indications", "usage"],
+    "dosage": ["dosage and administration", "dosage"],
+    "warnings": ["warnings", "precautions"],
+    "adverse_reactions": ["adverse reactions", "adverse events"],
+    "clinical_pharmacology": ["clinical pharmacology"],
+    "use_in_specific_populations": ["use in specific populations"],
+    "drug_interactions": ["drug interactions"]
+  }
+}
+

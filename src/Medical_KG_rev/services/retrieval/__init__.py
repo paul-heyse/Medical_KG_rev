@@ -1,12 +1,9 @@
-"""Retrieval services including chunking, indexing, and fusion search."""
+"""Lazy exports for retrieval services to minimise optional dependencies."""
 
-from .chunking import Chunk, ChunkingOptions, ChunkingService
-from .faiss_index import FAISSIndex
-from .indexing_service import IndexingService
-from .opensearch_client import DocumentIndexTemplate, OpenSearchClient
-from .query_dsl import QueryDSL, QueryValidationError
-from .reranker import CrossEncoderReranker
-from .retrieval_service import RetrievalResult, RetrievalService
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Any
 
 __all__ = [
     "Chunk",
@@ -22,3 +19,52 @@ __all__ = [
     "RetrievalResult",
     "RetrievalService",
 ]
+
+_RETRIEVAL_MAP = {
+    "Chunk": ("Medical_KG_rev.services.retrieval.chunking", "Chunk"),
+    "ChunkingOptions": ("Medical_KG_rev.services.retrieval.chunking", "ChunkingOptions"),
+    "ChunkingService": ("Medical_KG_rev.services.retrieval.chunking", "ChunkingService"),
+    "CrossEncoderReranker": (
+        "Medical_KG_rev.services.retrieval.reranker",
+        "CrossEncoderReranker",
+    ),
+    "DocumentIndexTemplate": (
+        "Medical_KG_rev.services.retrieval.opensearch_client",
+        "DocumentIndexTemplate",
+    ),
+    "FAISSIndex": ("Medical_KG_rev.services.retrieval.faiss_index", "FAISSIndex"),
+    "IndexingService": (
+        "Medical_KG_rev.services.retrieval.indexing_service",
+        "IndexingService",
+    ),
+    "OpenSearchClient": (
+        "Medical_KG_rev.services.retrieval.opensearch_client",
+        "OpenSearchClient",
+    ),
+    "QueryDSL": ("Medical_KG_rev.services.retrieval.query_dsl", "QueryDSL"),
+    "QueryValidationError": (
+        "Medical_KG_rev.services.retrieval.query_dsl",
+        "QueryValidationError",
+    ),
+    "RetrievalResult": (
+        "Medical_KG_rev.services.retrieval.retrieval_service",
+        "RetrievalResult",
+    ),
+    "RetrievalService": (
+        "Medical_KG_rev.services.retrieval.retrieval_service",
+        "RetrievalService",
+    ),
+}
+
+
+def __getattr__(name: str) -> Any:
+    try:
+        module_path, attribute = _RETRIEVAL_MAP[name]
+    except KeyError as exc:  # pragma: no cover
+        raise AttributeError(name) from exc
+    module = import_module(module_path)
+    return getattr(module, attribute)
+
+
+def __dir__() -> list[str]:  # pragma: no cover - tooling aid
+    return sorted(__all__)

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from .ports import EmbeddingKind
+from .ports import EmbeddingKind, EmbeddingRecord
 
 
 @dataclass(slots=True)
 class StorageTarget:
     name: str
     description: str
+    handler: Callable[[EmbeddingRecord], None] | None = None
 
 
 class StorageRouter:
@@ -23,6 +26,7 @@ class StorageRouter:
             "sparse": StorageTarget(name="opensearch", description="Learned sparse rank_features"),
             "neural_sparse": StorageTarget(name="opensearch_neural", description="OpenSearch neural fields"),
         }
+        self._buffers: dict[str, list[EmbeddingRecord]] = defaultdict(list)
 
     def route(self, kind: EmbeddingKind) -> StorageTarget:
         try:
@@ -32,3 +36,14 @@ class StorageRouter:
 
     def register(self, kind: EmbeddingKind, target: StorageTarget) -> None:
         self._targets[kind] = target
+
+    def persist(self, record: EmbeddingRecord) -> None:
+        target = self.route(record.kind)
+        if target.handler:
+            target.handler(record)
+            return
+        # Default to buffering for inspection/testing when no backend handler provided.
+        self._buffers[target.name].append(record)
+
+    def buffered(self, name: str) -> Sequence[EmbeddingRecord]:
+        return list(self._buffers.get(name, ()))

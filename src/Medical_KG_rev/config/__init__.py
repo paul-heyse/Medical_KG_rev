@@ -7,10 +7,12 @@ from .settings import (
     FeatureFlagSettings,
     LoggingSettings,
     ObservabilitySettings,
+    RerankingSettings,
     SecretResolver,
     TelemetrySettings,
     get_settings,
     load_settings,
+    migrate_reranking_config,
 )
 
 __all__ = [
@@ -21,6 +23,8 @@ __all__ = [
     "FeatureFlagSettings",
     "LoggingSettings",
     "ObservabilitySettings",
+    "RerankingSettings",
+    "migrate_reranking_config",
     "SecretResolver",
     "TelemetrySettings",
     "get_settings",

@@ -12,12 +12,12 @@
 
 ### 2.1 Qdrant (Default)
 
-- [ ] 2.1.1 Implement `QdrantStore` with HNSW support
-- [ ] 2.1.2 Add scalar int8 quantization support
-- [ ] 2.1.3 Add binary quantization (BQ) with float reorder
-- [ ] 2.1.4 Implement GPU-accelerated indexing
-- [ ] 2.1.5 Add named vectors for multi-vector (ColBERT)
-- [ ] 2.1.6 Implement payload filters and metadata indexing
+- [x] 2.1.1 Implement `QdrantStore` with HNSW support
+- [x] 2.1.2 Add scalar int8 quantization support
+- [x] 2.1.3 Add binary quantization (BQ) with float reorder
+- [x] 2.1.4 Implement GPU-accelerated indexing
+- [x] 2.1.5 Add named vectors for multi-vector (ColBERT)
+- [x] 2.1.6 Implement payload filters and metadata indexing
 
 ### 2.2 FAISS
 
@@ -131,7 +131,7 @@
 
 ## 11. Testing
 
-- [ ] 11.1 Unit tests for `VectorStorePort` implementations
+- [x] 11.1 Unit tests for `VectorStorePort` implementations
 - [ ] 11.2 Unit tests for compression utilities
 - [ ] 11.3 Unit tests for fusion algorithms (weighted, RRF)
 - [ ] 11.4 Integration tests for each backend (Qdrant, FAISS, Milvus, OpenSearch)

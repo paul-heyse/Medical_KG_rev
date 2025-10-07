@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .artifact import Artifact
+
 
 class TableCell(BaseModel):
     """Represents a cell inside a structured table."""
@@ -21,18 +23,14 @@ class TableCell(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
-class Table(BaseModel):
+class Table(Artifact):
     """Structured table representation extracted from MinerU output."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = Artifact.model_config
 
-    id: str
-    page: int = Field(ge=1)
     cells: tuple[TableCell, ...] = Field(default_factory=tuple)
     headers: tuple[str, ...] = Field(default_factory=tuple)
     caption: str | None = None
-    bbox: tuple[float, float, float, float] | None = Field(default=None)
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("cells")
     @classmethod

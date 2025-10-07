@@ -6,6 +6,8 @@ from typing import Any, Sequence
 
 from Medical_KG_rev.models.equation import Equation
 from Medical_KG_rev.models.figure import Figure
+from Medical_KG_rev.models.ir import Block as IrBlock
+from Medical_KG_rev.models.ir import Document as IrDocument
 from Medical_KG_rev.models.table import Table
 
 
@@ -24,6 +26,7 @@ class Block:
     table: Table | None = None
     figure: Figure | None = None
     equation: Equation | None = None
+    ir_block: IrBlock | None = None
 
 
 @dataclass(slots=True)
@@ -38,6 +41,7 @@ class Document:
     equations: list[Equation] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
+    ir_document: IrDocument | None = None
 
 
 @dataclass(slots=True)
@@ -82,6 +86,7 @@ class ProcessingMetadata:
     cli_stdout: str
     cli_stderr: str
     cli_descriptor: str
+    planned_memory_mb: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -96,6 +101,7 @@ class ProcessingMetadata:
             "cli_stdout": self.cli_stdout,
             "cli_stderr": self.cli_stderr,
             "cli": self.cli_descriptor,
+            "planned_memory_mb": self.planned_memory_mb,
         }
 
 

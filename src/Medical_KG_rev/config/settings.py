@@ -94,6 +94,7 @@ class MineruWorkerSettings(BaseModel):
     timeout_seconds: int = Field(default=300, ge=30, le=1800)
     batch_size: int = Field(default=4, ge=1, le=32)
     device_ids: Sequence[int] | None = Field(default=None)
+    reservation_margin: float = Field(default=0.9, ge=0.5, le=1.0)
 
     @model_validator(mode="after")
     def validate_device_ids(self) -> "MineruWorkerSettings":
@@ -101,16 +102,26 @@ class MineruWorkerSettings(BaseModel):
             unique = {device for device in self.device_ids if device is not None}
             if not unique:
                 raise ValueError("At least one GPU device id must be provided")
+            if any(device < 0 for device in unique):
+                raise ValueError("GPU device ids must be non-negative integers")
             if len(unique) < self.count:
                 # Allow multiple workers per GPU but flag potential contention
                 raise ValueError(
                     "Device id list must cover all configured MinerU workers"
                 )
+        if self.batch_size > self.count:
+            raise ValueError("Batch size cannot exceed configured worker count")
         return self
 
     @property
     def vram_per_worker_mb(self) -> int:
         return self.vram_per_worker_gb * 1024
+
+    @property
+    def batch_limit(self) -> int:
+        """Maximum number of PDFs a worker may process per CLI invocation."""
+
+        return max(1, self.batch_size)
 
 
 class MineruSettings(BaseModel):

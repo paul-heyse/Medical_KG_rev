@@ -128,7 +128,7 @@ class SubprocessMineruCli(MineruCliBase):
                 path.write_bytes(item.content)
 
             command = self._build_command(input_dir, output_dir)
-            logger.info("mineru.cli.invoke", command=command, gpu_id=gpu_id)
+            logger.bind(command=command, gpu_id=gpu_id).info("mineru.cli.invoke")
             start = time.monotonic()
             proc = subprocess.run(
                 command,
@@ -139,12 +139,11 @@ class SubprocessMineruCli(MineruCliBase):
             )
             duration = time.monotonic() - start
             if proc.returncode != 0:
-                logger.error(
-                    "mineru.cli.failed",
+                logger.bind(
                     returncode=proc.returncode,
                     stdout=proc.stdout,
                     stderr=proc.stderr,
-                )
+                ).error("mineru.cli.failed")
                 raise MineruCliError(
                     f"MinerU CLI exited with code {proc.returncode}: {proc.stderr.strip()}"
                 )
@@ -265,7 +264,7 @@ def create_cli(settings: MineruSettings) -> MineruCliBase:
     except MineruCliError:
         if not settings.simulate_if_unavailable:
             raise
-        logger.warning("mineru.cli.fallback", reason="command-not-found")
+        logger.bind(reason="command-not-found").warning("mineru.cli.fallback")
         return SimulatedMineruCli(settings)
 
 

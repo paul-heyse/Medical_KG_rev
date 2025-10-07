@@ -8,12 +8,16 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from ..adapters.plugins.bootstrap import get_plugin_manager
+from ..adapters import AdapterPluginError
+from ..adapters.plugins.models import AdapterDomain, AdapterRequest
 from ..gateway.models import JobEvent
 from ..gateway.sse.manager import EventStreamManager
 from ..models.ir import Block, BlockType, Document, Section
 from ..services.ingestion import IngestionService
 from .kafka import KafkaClient
 from .ledger import JobLedger, JobLedgerEntry
+from ..observability.metrics import ADAPTER_PLUGIN_FAILURES, ADAPTER_PLUGIN_INVOCATIONS
 
 _DEFAULT_TEI = """
 <TEI>
@@ -72,7 +76,9 @@ class Orchestrator:
         self.events = events
         self.pipelines: dict[str, Pipeline] = {}
         self.ingestion = ingestion_service or IngestionService()
+        self.adapter_manager = get_plugin_manager()
         self._register_default_pipelines()
+        self._run_adapter_health_checks()
 
     # ------------------------------------------------------------------
     # Pipeline registration
@@ -310,11 +316,114 @@ class Orchestrator:
         self, entry: JobLedgerEntry, context: dict[str, object]
     ) -> dict[str, object]:
         context = dict(context)
-        adapters = ["OpenAlex", "Unpaywall", "CORE", "MinerU"]
-        context["adapter_chain"] = adapters
-        if entry.metadata.get("item", {}).get("open_access"):
-            context["pdf_fetched"] = True
+        domains = self._resolve_domains(entry)
+        adapter_versions: dict[str, str] = {}
+        adapter_responses: list[dict[str, object]] = []
+        for domain in domains:
+            metadata_items = self.adapter_manager.list_metadata(domain=domain)
+            for metadata in metadata_items:
+                request = self._build_adapter_request(entry, context, domain)
+                try:
+                    ADAPTER_PLUGIN_INVOCATIONS.labels(
+                        metadata.name, metadata.domain.value
+                    ).inc()
+                    result = self.adapter_manager.invoke(
+                        metadata.name, request, strict=False
+                    )
+                except AdapterPluginError as exc:
+                    ADAPTER_PLUGIN_FAILURES.labels(
+                        metadata.name, metadata.domain.value
+                    ).inc()
+                    adapter_responses.append(
+                        {
+                            "adapter": metadata.name,
+                            "domain": metadata.domain.value,
+                            "error": str(exc),
+                        }
+                    )
+                    continue
+
+                response_entry: dict[str, object] = {
+                    "adapter": metadata.name,
+                    "domain": metadata.domain.value,
+                    "timings": [
+                        {"stage": timing.name, "duration_ms": timing.duration_ms}
+                        for timing in result.timings
+                    ],
+                    "total_duration_ms": result.total_duration_ms,
+                    "validation": result.validation.model_dump(),
+                }
+                if result.extras:
+                    response_entry["extras"] = dict(result.extras)
+                response_entry["items"] = result.response.items
+                response_entry["warnings"] = result.response.warnings
+                response_entry["metadata"] = result.response.metadata
+
+                if not result.validation.valid:
+                    ADAPTER_PLUGIN_FAILURES.labels(
+                        metadata.name, metadata.domain.value
+                    ).inc()
+                    response_entry["error"] = "validation_failed"
+                    adapter_responses.append(response_entry)
+                    continue
+
+                adapter_versions[metadata.name] = metadata.version
+                adapter_responses.append(response_entry)
+        if adapter_versions:
+            metadata = entry.metadata if isinstance(entry.metadata, dict) else {}
+            current_versions = dict(metadata.get("adapter_versions", {}))
+            current_versions.update(adapter_versions)
+            self.ledger.update_metadata(entry.job_id, {"adapter_versions": current_versions})
+        context["adapter_chain"] = [response["adapter"] for response in adapter_responses]
+        context["adapter_responses"] = adapter_responses
         return context
+
+    def _build_adapter_request(
+        self, entry: JobLedgerEntry, context: dict[str, object], domain: AdapterDomain
+    ) -> AdapterRequest:
+        parameters: dict[str, object] = {}
+        metadata = entry.metadata or {}
+        item = metadata.get("item")
+        if isinstance(item, dict):
+            parameters.update(item)
+        request_params = context.get("adapter_parameters")
+        if isinstance(request_params, dict):
+            parameters.update(request_params)
+        correlation_id = context.get("correlation_id") or entry.job_id
+        return AdapterRequest(
+            tenant_id=entry.tenant_id,
+            correlation_id=str(correlation_id),
+            domain=domain,
+            parameters=parameters,
+        )
+
+    def _resolve_domains(self, entry: JobLedgerEntry) -> list[AdapterDomain]:
+        metadata = entry.metadata or {}
+        explicit_domains = metadata.get("domains")
+        domains: list[AdapterDomain] = []
+        if isinstance(explicit_domains, (list, tuple)):
+            for item in explicit_domains:
+                try:
+                    domains.append(AdapterDomain(item))
+                except ValueError:  # pragma: no cover - invalid input ignored
+                    continue
+        if not domains:
+            dataset = metadata.get("dataset")
+            domains.append(self._infer_domain(dataset))
+        return domains
+
+    def _infer_domain(self, dataset: object) -> AdapterDomain:
+        if not dataset:
+            return AdapterDomain.BIOMEDICAL
+        for metadata in self.adapter_manager.list_metadata():
+            if getattr(metadata, "dataset", None) == dataset:
+                return metadata.domain
+        return AdapterDomain.BIOMEDICAL
+
+    def _run_adapter_health_checks(self) -> None:
+        for metadata in self.adapter_manager.list_metadata():
+            if not self.adapter_manager.check_health(metadata.name):
+                raise OrchestrationError(f"Adapter '{metadata.name}' failed health check")
 
     # ------------------------------------------------------------------
     # Helpers

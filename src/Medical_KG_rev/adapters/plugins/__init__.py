@@ -1,0 +1,85 @@
+"""Adapter plugin framework utilities."""
+
+from .base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
+from .config import (
+    AdapterSettings,
+    ConfigValidationResult,
+    SettingsHotReloader,
+    VaultSecretProvider,
+    apply_env_overrides,
+    migrate_yaml_to_env,
+    validate_on_startup,
+)
+from .errors import AdapterPluginError
+from .manager import AdapterHookSpec, AdapterPluginManager, hookimpl, hookspec
+from .models import (
+    AdapterConfig,
+    AdapterCostEstimate,
+    AdapterDomain,
+    AdapterMetadata,
+    AdapterRequest,
+    AdapterResponse,
+    AdapterResponseEnvelope,
+    BiomedicalPayload,
+    FinancialPayload,
+    LegalPayload,
+    Pagination,
+    ValidationOutcome,
+)
+from .pipeline import (
+    AdapterExecutionState,
+    AdapterPipeline,
+    AdapterPipelineFactory,
+    AdapterStage,
+)
+from .resilience import (
+    BackoffStrategy,
+    CircuitBreaker,
+    CircuitState,
+    ResilienceConfig,
+    ResilientHTTPClient,
+    circuit_breaker,
+    rate_limit,
+    retry_on_failure,
+)
+
+__all__ = [
+    "AdapterHookSpec",
+    "AdapterPluginError",
+    "AdapterPluginManager",
+    "AdapterExecutionState",
+    "AdapterPipeline",
+    "AdapterPipelineFactory",
+    "AdapterStage",
+    "AdapterConfig",
+    "AdapterCostEstimate",
+    "AdapterDomain",
+    "AdapterMetadata",
+    "AdapterRequest",
+    "AdapterResponse",
+    "AdapterResponseEnvelope",
+    "AdapterSettings",
+    "BackoffStrategy",
+    "BaseAdapterPlugin",
+    "BiomedicalPayload",
+    "CircuitBreaker",
+    "CircuitState",
+    "ConfigValidationResult",
+    "FinancialPayload",
+    "LegalPayload",
+    "Pagination",
+    "ReadOnlyAdapterPlugin",
+    "ResilienceConfig",
+    "ResilientHTTPClient",
+    "SettingsHotReloader",
+    "ValidationOutcome",
+    "VaultSecretProvider",
+    "apply_env_overrides",
+    "circuit_breaker",
+    "migrate_yaml_to_env",
+    "rate_limit",
+    "retry_on_failure",
+    "validate_on_startup",
+    "hookimpl",
+    "hookspec",
+]

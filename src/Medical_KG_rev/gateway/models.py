@@ -69,6 +69,7 @@ class DocumentSummary(BaseModel):
     summary: str | None = None
     source: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+    explain: dict[str, Any] | None = None
 
 
 class RetrievalResult(BaseModel):
@@ -76,6 +77,11 @@ class RetrievalResult(BaseModel):
     documents: Sequence[DocumentSummary]
     total: int
     rerank_metrics: dict[str, Any] = Field(default_factory=dict)
+    pipeline_version: str | None = None
+    partial: bool = False
+    degraded: bool = False
+    errors: Sequence[ProblemDetail] = Field(default_factory=list)
+    stage_timings: dict[str, float] = Field(default_factory=dict)
 
 
 class EntityLinkResult(BaseModel):
@@ -115,6 +121,11 @@ class IngestionRequest(BaseModel):
     items: Sequence[dict[str, Any]]
     priority: Literal["low", "normal", "high"] = "normal"
     metadata: dict[str, Any] = Field(default_factory=dict)
+    profile: str | None = None
+
+
+class PipelineIngestionRequest(IngestionRequest):
+    dataset: str
 
 
 class ChunkRequest(BaseModel):
@@ -141,6 +152,13 @@ class RetrieveRequest(BaseModel):
     rerank: bool = True
     rerank_top_k: int = Field(default=10, ge=1, le=200)
     rerank_overflow: bool = False
+    profile: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    explain: bool = False
+
+
+class PipelineQueryRequest(RetrieveRequest):
+    profile: str | None = None
 
 
 class EntityLinkRequest(BaseModel):

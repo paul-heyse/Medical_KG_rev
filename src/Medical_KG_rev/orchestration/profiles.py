@@ -124,9 +124,22 @@ class ProfileDetector:
 
 
 def apply_profile_overrides(context: dict[str, Any], profile: PipelineProfile) -> dict[str, Any]:
+    """Merge profile overrides with an existing context configuration."""
+
     merged = dict(context)
     merged.setdefault("profile", profile.name)
-    merged.setdefault("config", {}).update(profile.overrides)
+    base_config: dict[str, Any] = {}
+    request_config = merged.get("config")
+    if isinstance(request_config, Mapping):
+        for stage, options in request_config.items():
+            if isinstance(options, Mapping):
+                base_config[stage] = dict(options)
+    for stage, overrides in profile.overrides.items():
+        if not isinstance(overrides, Mapping):
+            continue
+        stage_overrides = base_config.setdefault(stage, {})
+        stage_overrides.update(overrides)
+    merged["config"] = base_config
     return merged
 
 

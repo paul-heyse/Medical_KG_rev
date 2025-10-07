@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import structlog
 
@@ -28,84 +28,94 @@ ResultList = Sequence[Mapping[str, Any]]
 
 
 @dataclass(slots=True)
-class RetrievalStrategy:
+class ConfigurableStage(PipelineStage):
+    """Base class for stages that honour per-request configuration overrides."""
+
     name: str
-    executor: Callable[[PipelineContext], ResultList]
     timeout_ms: int | None = None
+    base_options: Mapping[str, Any] = field(default_factory=dict)
+    config_key: str | None = None
+
+    def resolve_options(self, context: PipelineContext) -> dict[str, Any]:
+        options = dict(self.base_options)
+        config = context.data.get("config")
+        key = self.config_key or self.name
+        if isinstance(config, Mapping):
+            overrides = config.get(key)
+            if isinstance(overrides, Mapping):
+                options.update(overrides)
+        return options
+
+    def effective_timeout(self, options: Mapping[str, Any]) -> int | None:
+        override = options.get("timeout_ms")
+        if isinstance(override, (int, float)):
+            return int(override)
+        return self.timeout_ms
 
 
 @dataclass(slots=True)
-class RetrievalOrchestrator(PipelineStage):
-    strategies: Sequence[RetrievalStrategy]
-    fanout: ParallelExecutor
-    timeout_ms: int | None = 50
-    name: str = "retrieval"
+class StrategySpec:
+    """Declarative strategy binding used by the retrieval stage."""
+
+    name: str
+    runner: Callable[[PipelineContext, Mapping[str, Any]], ResultList]
+    timeout_ms: int | None = None
+
+    def execute(self, context: PipelineContext, options: Mapping[str, Any]) -> ResultList:
+        return self.runner(context, options)
+
+
+@dataclass(slots=True)
+class RetrievalOrchestrator(ConfigurableStage):
+    """Fan out to registered retrieval strategies and collect candidates."""
+
+    strategies: Mapping[str, StrategySpec] = field(default_factory=dict)
+    fanout: ParallelExecutor = field(default_factory=ParallelExecutor)
 
     def execute(self, context: PipelineContext) -> PipelineContext:
-        if not self.strategies:
+        options = self.resolve_options(context)
+        selections = self._selected_strategies(options)
+        if not selections:
             raise StageFailure(
                 "No retrieval strategies configured",
                 status=500,
                 stage=self.name,
                 error_type="configuration",
             )
-        retrieval_config = _stage_config(context.data, "retrieval")
-        enabled = retrieval_config.get("strategies")
-        if enabled:
-            selected = [s for s in self.strategies if s.name in enabled]
-        else:
-            selected = list(self.strategies)
-        if not selected:
-            raise StageFailure(
-                "No retrieval strategies enabled",
-                status=500,
-                stage=self.name,
-                error_type="configuration",
-            )
-        timeout_override = retrieval_config.get("timeout_ms")
-        if isinstance(timeout_override, (int, float)):
-            self_timeout = int(timeout_override)
-        else:
-            self_timeout = self.timeout_ms
+        stage_timeout = self.effective_timeout(options)
+        overrides_map = {definition.name: overrides for definition, overrides in selections}
         tasks = {
-            strategy.name: _strategy_callable(
-                context,
-                _apply_strategy_overrides(strategy, retrieval_config),
-            )
-            for strategy in selected
+            definition.name: (lambda d=definition, o=overrides_map[definition.name]: self._run_strategy(context, d, o))
+            for definition, _ in selections
         }
-        per_strategy_timeouts = [
-            strategy.timeout_ms for strategy in selected if strategy.timeout_ms
-        ]
-        timeout_ms = self_timeout
-        if per_strategy_timeouts:
-            timeout_ms = min(per_strategy_timeouts)
         results = self.fanout.run(
             tasks,
-            timeout_ms=timeout_ms,
+            timeout_ms=stage_timeout,
             correlation_id=context.correlation_id,
         )
         aggregated: list[dict[str, Any]] = []
         for name, result in results.items():
             if result.timed_out:
-                context.errors.append(
-                    ProblemDetail(
-                        title="Strategy timeout",
-                        status=504,
-                        detail=f"Retrieval strategy '{name}' timed out",
-                    )
+                problem = ProblemDetail(
+                    title="Strategy timeout",
+                    status=504,
+                    detail=f"Retrieval strategy '{name}' timed out",
                 )
+                context.errors.append(problem)
                 context.partial = True
+                context.degraded = True
                 continue
             if result.error:
                 context.errors.append(result.error)
                 context.partial = True
+                context.degraded = True
                 continue
             aggregated.append(
                 {
                     "strategy": name,
                     "results": list(result.value or []),
                     "duration_ms": round(result.duration * 1000, 3),
+                    "options": overrides_map.get(name, {}),
                 }
             )
         if not aggregated:
@@ -116,38 +126,80 @@ class RetrievalOrchestrator(PipelineStage):
                 error_type="timeout",
                 retriable=True,
             )
-        context.data["retrieval_candidates"] = aggregated
         durations = [entry.get("duration_ms", 0.0) for entry in aggregated]
         if durations:
             observe_query_stage_latency(self.name, max(durations) / 1000.0)
+        context.data["retrieval_candidates"] = aggregated
         return context
 
+    def _selected_strategies(
+        self, options: Mapping[str, Any]
+    ) -> list[tuple[StrategySpec, Mapping[str, Any]]]:
+        configured = options.get("strategies")
+        selections: list[tuple[str, Mapping[str, Any]]] = []
+        if isinstance(configured, Mapping):
+            for name, value in configured.items():
+                if name in self.strategies:
+                    if isinstance(value, Mapping):
+                        selections.append((name, dict(value)))
+                    else:
+                        selections.append((name, {}))
+        elif isinstance(configured, Sequence):
+            for name in configured:
+                if name in self.strategies:
+                    selections.append((name, {}))
+        else:
+            selections = [(name, {}) for name in self.strategies]
+        defaults = options.get("strategy_options")
+        if not isinstance(defaults, Mapping):
+            defaults = {}
+        timeouts = options.get("timeouts") or options.get("strategy_timeouts")
+        if not isinstance(timeouts, Mapping):
+            timeouts = {}
+        global_timeout = options.get("strategy_timeout_ms")
+        resolved: list[tuple[StrategySpec, Mapping[str, Any]]] = []
+        for name, overrides in selections:
+            definition = self.strategies.get(name)
+            if not definition:
+                continue
+            strategy_options: dict[str, Any] = {}
+            if isinstance(defaults.get(name), Mapping):
+                strategy_options.update(defaults[name])
+            strategy_options.update(overrides)
+            if name in timeouts and "timeout_ms" not in strategy_options:
+                strategy_options["timeout_ms"] = timeouts[name]
+            if "timeout_ms" not in strategy_options and definition.timeout_ms is not None:
+                strategy_options["timeout_ms"] = definition.timeout_ms
+            if global_timeout and "timeout_ms" not in strategy_options:
+                strategy_options["timeout_ms"] = int(global_timeout)
+            resolved.append((definition, strategy_options))
+        return resolved
 
-def _strategy_callable(
-    context: PipelineContext, strategy: RetrievalStrategy
-) -> Callable[[], ResultList]:
-    def runner() -> ResultList:
+    def _run_strategy(
+        self,
+        context: PipelineContext,
+        definition: StrategySpec,
+        options: Mapping[str, Any],
+    ) -> ResultList:
         started = time.perf_counter()
-        value = strategy.executor(context)
-        elapsed = (time.perf_counter() - started) * 1000
-        context.stage_timings[f"{strategy.name}:retrieve"] = elapsed / 1000
-        if strategy.timeout_ms and elapsed > strategy.timeout_ms:
+        results = definition.execute(context, options)
+        duration = time.perf_counter() - started
+        context.stage_timings[f"{self.name}.{definition.name}"] = duration
+        timeout_ms = options.get("timeout_ms")
+        if isinstance(timeout_ms, (int, float)) and duration * 1000 > float(timeout_ms):
             raise StageFailure(
-                f"Strategy '{strategy.name}' exceeded timeout",
+                f"Strategy '{definition.name}' exceeded timeout",
                 status=504,
-                stage="retrieval",
+                stage=self.name,
                 error_type="timeout",
                 retriable=True,
             )
-        return value
-
-    return runner
+        return results
 
 
 @dataclass(slots=True)
-class FusionOrchestrator(PipelineStage):
-    name: str = "fusion"
-    timeout_ms: int | None = 5
+class FusionOrchestrator(ConfigurableStage):
+    """Merge candidate lists into a fused ranking."""
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         candidates: Sequence[Mapping[str, Any]] = context.data.get("retrieval_candidates", [])
@@ -158,10 +210,16 @@ class FusionOrchestrator(PipelineStage):
                 stage=self.name,
                 error_type="validation",
             )
-        fusion_config = _stage_config(context.data, "fusion")
-        method = str(fusion_config.get("method", "rrf")).lower()
-        weights = fusion_config.get("weights") or fusion_config.get("strategy_weights", {})
-        fused = _fuse_candidates(candidates, method=method, weights=weights)
+        options = self.resolve_options(context)
+        method = str(options.get("method", "rrf")).lower()
+        weights = options.get("weights") or options.get("strategy_weights") or {}
+        normalization = options.get("normalization")
+        fused = _fuse_candidates(
+            candidates,
+            method=method,
+            weights=weights,
+            normalization=normalization,
+        )
         context.data["fusion_results"] = fused
         return context
 
@@ -171,6 +229,7 @@ def _fuse_candidates(
     *,
     method: str,
     weights: Mapping[str, float] | None,
+    normalization: str | None,
 ) -> list[dict[str, Any]]:
     weights = weights or {}
     scores: dict[str, float] = defaultdict(float)
@@ -184,14 +243,18 @@ def _fuse_candidates(
             score = float(item.get("score", 0.0))
             if method == "weighted":
                 contribution = score * weight
-            else:  # reciprocal rank fusion
-                contribution = weight * (1.0 / (rank + 60))
+            else:
+                contribution = weight / (rank + 60)
             scores[doc_id] += contribution
             metadata.setdefault(doc_id, {}).setdefault("strategies", {})[strategy] = {
                 "score": score,
                 "rank": rank,
             }
             metadata[doc_id].setdefault("document", item)
+    if normalization == "max" and scores:
+        max_score = max(scores.values()) or 1.0
+        for key in list(scores):
+            scores[key] /= max_score
     ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     fused: list[dict[str, Any]] = []
     for doc_id, score in ranked:
@@ -201,7 +264,7 @@ def _fuse_candidates(
                 "id": doc_id,
                 "score": score,
                 "document": document,
-                "strategies": metadata[doc_id]["strategies"],
+                "strategies": metadata[doc_id].get("strategies", {}),
             }
         )
     return fused
@@ -227,11 +290,11 @@ class RerankCache:
 
 
 @dataclass(slots=True)
-class RerankOrchestrator(PipelineStage):
-    rerank: Callable[[PipelineContext, Sequence[dict[str, Any]], int], list[dict[str, Any]]]
+class RerankOrchestrator(ConfigurableStage):
+    """Apply reranking to fused candidates with optional caching."""
+
+    rerank: Callable[[PipelineContext, Sequence[dict[str, Any]], Mapping[str, Any]], Sequence[dict[str, Any]]]
     cache: RerankCache = field(default_factory=RerankCache)
-    name: str = "rerank"
-    timeout_ms: int | None = 50
     circuit_breaker: CircuitBreaker | None = None
 
     def execute(self, context: PipelineContext) -> PipelineContext:
@@ -243,21 +306,20 @@ class RerankOrchestrator(PipelineStage):
                 stage=self.name,
                 error_type="validation",
             )
-        rerank_config = _stage_config(context.data, "rerank")
-        if "cache_ttl_seconds" in rerank_config:
+        options = self.resolve_options(context)
+        timeout_ms = self.effective_timeout(options)
+        if "cache_ttl_seconds" in options:
             try:
-                self.cache.ttl_seconds = float(rerank_config["cache_ttl_seconds"])
+                self.cache.ttl_seconds = float(options["cache_ttl_seconds"])
             except (TypeError, ValueError):
-                pass
-        timeout_override = rerank_config.get("timeout_ms")
-        timeout_ms = self.timeout_ms
-        if isinstance(timeout_override, (int, float)):
-            timeout_ms = int(timeout_override)
-        rerank_candidates = int(
-            rerank_config.get("rerank_candidates", min(len(candidates), 100))
-        )
-        top_candidates = candidates[:rerank_candidates]
-        cache_key = _rerank_cache_key(context, top_candidates)
+                logger.debug("rerank.cache.invalid_ttl", value=options.get("cache_ttl_seconds"))
+        if not bool(options.get("enabled", True)):
+            context.data["reranked_results"] = list(candidates)
+            return context
+        rerank_candidates = int(options.get("rerank_candidates", min(len(candidates), 100)))
+        allow_overflow = bool(options.get("allow_overflow", False))
+        top_candidates = candidates if allow_overflow else candidates[:rerank_candidates]
+        cache_key = _rerank_cache_key(context, top_candidates, options)
         cached = self.cache.get(cache_key)
         if cached is not None:
             context.data["reranked_results"] = cached
@@ -266,9 +328,9 @@ class RerankOrchestrator(PipelineStage):
         try:
             if self.circuit_breaker:
                 with self.circuit_breaker.guard(self.name):
-                    results = self.rerank(context, top_candidates, rerank_candidates)
+                    results = self.rerank(context, top_candidates, options)
             else:
-                results = self.rerank(context, top_candidates, rerank_candidates)
+                results = self.rerank(context, top_candidates, options)
         except StageFailure:
             raise
         except Exception as exc:  # pragma: no cover - guardrail
@@ -289,66 +351,58 @@ class RerankOrchestrator(PipelineStage):
                 error_type="timeout",
                 retriable=True,
             )
-        self.cache.put(cache_key, results)
-        context.data["reranked_results"] = results
+        self.cache.put(cache_key, list(results))
+        context.data["reranked_results"] = list(results)
         observe_query_stage_latency(self.name, duration)
         return context
 
 
-def _rerank_cache_key(context: PipelineContext, candidates: Sequence[dict[str, Any]]) -> str:
+def _rerank_cache_key(
+    context: PipelineContext,
+    candidates: Sequence[dict[str, Any]],
+    options: Mapping[str, Any],
+) -> str:
     doc_ids = ",".join(str(candidate.get("id")) for candidate in candidates)
     query = str(context.data.get("query", ""))
     tenant = context.tenant_id
-    return f"{tenant}:{query}:{hash(doc_ids)}"
-
-
-def _stage_config(data: Mapping[str, Any], stage: str) -> dict[str, Any]:
-    config = data.get("config")
-    if isinstance(config, Mapping):
-        stage_config = config.get(stage)
-        if isinstance(stage_config, Mapping):
-            return dict(stage_config)
-    return {}
-
-
-def _apply_strategy_overrides(strategy: RetrievalStrategy, config: Mapping[str, Any]) -> RetrievalStrategy:
-    timeouts = config.get("strategy_timeouts") or config.get("timeouts")
-    timeout_ms = strategy.timeout_ms
-    if isinstance(timeouts, Mapping) and strategy.name in timeouts:
-        override = timeouts[strategy.name]
-        if isinstance(override, (int, float)):
-            timeout_ms = int(override)
-    return RetrievalStrategy(name=strategy.name, executor=strategy.executor, timeout_ms=timeout_ms)
+    reranker_id = str(options.get("reranker_id", "default"))
+    return f"{tenant}:{reranker_id}:{query}:{hash(doc_ids)}"
 
 
 @dataclass(slots=True)
-class FinalSelectorOrchestrator(PipelineStage):
-    name: str = "final"
-    timeout_ms: int | None = 5
+class FinalSelectorOrchestrator(ConfigurableStage):
+    """Prepare the final response payload."""
 
     def execute(self, context: PipelineContext) -> PipelineContext:
+        options = self.resolve_options(context)
         results: Sequence[dict[str, Any]] = (
             context.data.get("reranked_results")
             or context.data.get("fusion_results")
             or []
         )
-        final_config = _stage_config(context.data, "final")
-        top_k = int(final_config.get("top_k", 10))
-        explain = bool(final_config.get("explain", context.data.get("explain", False)))
-        final_results = []
+        if not results:
+            raise StageFailure(
+                "No results available for final selection",
+                status=400,
+                stage=self.name,
+                error_type="validation",
+            )
+        top_k = int(options.get("top_k", context.data.get("top_k", 10)))
+        explain = bool(options.get("explain", context.data.get("explain", False)))
+        include_metadata = bool(options.get("include_metadata", True))
+        final_results: list[dict[str, Any]] = []
         for rank, item in enumerate(results[:top_k], start=1):
             document = dict(item.get("document", {}))
-            payload = {
-                "id": item.get("id"),
+            payload: dict[str, Any] = {
+                "id": item.get("id") or document.get("id"),
                 "rank": rank,
                 "score": item.get("score"),
-                "document": document,
+                "document": document if include_metadata else {k: document.get(k) for k in ("title", "summary", "source")},
             }
             if explain:
                 payload["strategies"] = item.get("strategies", {})
             final_results.append(payload)
         context.data["results"] = final_results
-        context.data["pipeline_version"] = context.pipeline_version
         return context
 
 
@@ -361,15 +415,18 @@ class QueryPipelineExecutor:
         *,
         operation: str = "retrieve",
         pipeline_name: str = "query",
+        pipeline_version: str | None = None,
         total_timeout_ms: int = 100,
         profile_detector: ProfileDetector | None = None,
     ) -> None:
         self.executor = PipelineExecutor(stages, operation=operation, pipeline=pipeline_name)
         self.total_timeout = total_timeout_ms / 1000
         self.pipeline_name = pipeline_name
+        self.pipeline_version = pipeline_version
         self.profile_detector = profile_detector
 
     def run(self, context: PipelineContext) -> PipelineContext:
+        context.data.setdefault("config", {})
         if self.profile_detector:
             context = self._apply_profile(context)
             if context.errors and context.partial:
@@ -405,7 +462,10 @@ class QueryPipelineExecutor:
             record_query_operation(self.pipeline_name, context.tenant_id, "success")
         context.stage_timings.setdefault("total", duration)
         observe_query_latency(self.pipeline_name, duration)
+        if self.pipeline_version and not context.pipeline_version:
+            context.pipeline_version = self.pipeline_version
         context.data["degraded"] = context.degraded or context.partial
+        context.data.setdefault("pipeline_version", context.pipeline_version or self.pipeline_version)
         return result
 
     def _apply_profile(self, context: PipelineContext) -> PipelineContext:
@@ -430,10 +490,12 @@ class QueryPipelineExecutor:
             return context
         context.data = apply_profile_overrides(context.data, profile)
         if not context.pipeline_version:
-            pipeline = profile.query_definition(self.profile_detector.manager.config)
-            context.pipeline_version = (
-                f"{pipeline.name}:{self.profile_detector.manager.config.version}"
-            )
+            if self.pipeline_version and ":" in self.pipeline_version:
+                context.pipeline_version = self.pipeline_version
+            elif self.pipeline_version:
+                context.pipeline_version = f"{profile.query}:{self.pipeline_version}".rstrip(":")
+            else:
+                context.pipeline_version = profile.query
         logger.info(
             "orchestration.profile.applied",
             operation=context.operation,
@@ -444,11 +506,12 @@ class QueryPipelineExecutor:
 
 
 __all__ = [
+    "ConfigurableStage",
     "FinalSelectorOrchestrator",
     "FusionOrchestrator",
     "QueryPipelineExecutor",
     "RerankCache",
     "RerankOrchestrator",
     "RetrievalOrchestrator",
-    "RetrievalStrategy",
+    "StrategySpec",
 ]

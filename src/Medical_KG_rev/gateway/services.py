@@ -21,20 +21,17 @@ from Medical_KG_rev.chunking.exceptions import (
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
-    FinalSelectorOrchestrator,
-    FusionOrchestrator,
     JobLedger,
     JobLedgerEntry,
     Orchestrator,
     ParallelExecutor,
     PipelineConfigManager,
     PipelineContext,
+    PipelineProfile,
     ProfileDetector,
     ProfileManager,
-    QueryPipelineExecutor,
-    RetrievalOrchestrator,
-    RetrievalStrategy,
-    RerankCache,
+    QueryPipelineBuilder,
+    StrategySpec,
 )
 from ..orchestration.kafka import KafkaClient
 from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
@@ -98,7 +95,7 @@ class GatewayService:
     config_manager: PipelineConfigManager | None = None
     profile_manager: ProfileManager | None = None
     profile_detector: ProfileDetector | None = None
-    query_executor: QueryPipelineExecutor | None = None
+    query_pipeline_builder: QueryPipelineBuilder | None = None
     _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
@@ -122,64 +119,86 @@ class GatewayService:
                 self.profile_manager,
                 default_profile=default_profile,
             )
-        if self.query_executor is None:
-            self.query_executor = self._build_query_executor()
+        if self.query_pipeline_builder is None:
+            self.query_pipeline_builder = self._build_query_builder()
 
-    def _default_query_pipeline_name(self) -> str:
-        if self.profile_detector:
-            try:
-                profile = self.profile_detector.manager.get(self.profile_detector.default_profile)
-                return profile.query
-            except KeyError:
-                pass
-        config = self.config_manager.config if self.config_manager else None
-        if config and config.query:
-            return next(iter(config.query))
-        return "query"
+    def _refresh_pipeline_components(self) -> None:
+        if not self.config_manager:
+            return
+        updated = self.config_manager.reload()
+        if not updated:
+            return
+        self.profile_manager = ProfileManager(updated, updated.profiles)
+        profiles = self.profile_manager.list_profiles()
+        default_profile = (
+            self.profile_detector.default_profile
+            if self.profile_detector and self.profile_detector.default_profile in profiles
+            else (profiles[0] if profiles else "default")
+        )
+        self.profile_detector = ProfileDetector(self.profile_manager, default_profile=default_profile)
+        self.query_pipeline_builder = self._build_query_builder()
 
-    def _build_query_executor(self) -> QueryPipelineExecutor:
+    def _build_query_builder(self) -> QueryPipelineBuilder:
+        assert self.config_manager is not None
+        assert self.profile_manager is not None
         assert self._parallel_executor is not None
-        strategies = [
-            RetrievalStrategy(
+        return QueryPipelineBuilder(
+            config_manager=self.config_manager,
+            profile_manager=self.profile_manager,
+            parallel_executor=self._parallel_executor,
+            strategies=self._strategy_registry(),
+            rerank_runner=self._rerank_candidates,
+        )
+
+    def _strategy_registry(self) -> dict[str, StrategySpec]:
+        return {
+            "bm25": StrategySpec(
                 name="bm25",
-                executor=self._synthetic_strategy("bm25", 0.92),
+                runner=self._synthetic_strategy("bm25", 0.92),
                 timeout_ms=50,
             ),
-            RetrievalStrategy(
+            "dense": StrategySpec(
                 name="dense",
-                executor=self._synthetic_strategy("dense", 0.88),
+                runner=self._synthetic_strategy("dense", 0.88),
                 timeout_ms=60,
             ),
-            RetrievalStrategy(
+            "splade": StrategySpec(
                 name="splade",
-                executor=self._synthetic_strategy("splade", 0.86),
+                runner=self._synthetic_strategy("splade", 0.86),
                 timeout_ms=60,
             ),
-        ]
-        retrieval = RetrievalOrchestrator(strategies=strategies, fanout=self._parallel_executor)
-        fusion = FusionOrchestrator()
-        rerank = RerankOrchestrator(
-            rerank=self._rerank_candidates,
-            cache=RerankCache(ttl_seconds=120.0),
-        )
-        final = FinalSelectorOrchestrator()
-        return QueryPipelineExecutor(
-            [retrieval, fusion, rerank, final],
-            pipeline_name=self._default_query_pipeline_name(),
-            profile_detector=self.profile_detector,
-        )
+        }
+
+    def _executor_for_profile(self, profile: PipelineProfile):
+        if self.query_pipeline_builder is None:
+            self.query_pipeline_builder = self._build_query_builder()
+        return self.query_pipeline_builder.executor_for_profile(profile)
+
+    def _resolve_profile(
+        self, explicit: str | None, metadata: Mapping[str, Any]
+    ) -> PipelineProfile:
+        if self.profile_detector is not None:
+            return self.profile_detector.detect(explicit=explicit, metadata=metadata)
+        if self.profile_manager is None:
+            raise KeyError(explicit or "default")
+        if explicit:
+            return self.profile_manager.get(explicit)
+        profiles = self.profile_manager.list_profiles()
+        default_name = profiles[0] if profiles else "default"
+        return self.profile_manager.get(default_name)
 
     def _synthetic_strategy(
         self, name: str, base_score: float
-    ) -> Callable[[PipelineContext], Sequence[dict[str, Any]]]:
-        def run(context: PipelineContext) -> list[dict[str, Any]]:
+    ) -> Callable[[PipelineContext, Mapping[str, Any]], Sequence[dict[str, Any]]]:
+        def run(context: PipelineContext, options: Mapping[str, Any]) -> list[dict[str, Any]]:
             query = str(context.data.get("query", ""))
             profile = str(
                 context.data.get("profile")
                 or (self.profile_detector.default_profile if self.profile_detector else "default")
             )
+            limit = int(options.get("top_k", 3))
             results: list[dict[str, Any]] = []
-            for index in range(3):
+            for index in range(limit):
                 score = max(base_score - index * 0.08, 0.0)
                 doc_id = f"doc-{index + 1}"
                 document = {
@@ -195,10 +214,14 @@ class GatewayService:
         return run
 
     def _rerank_candidates(
-        self, context: PipelineContext, candidates: Sequence[dict[str, Any]], top_n: int
+        self,
+        context: PipelineContext,
+        candidates: Sequence[dict[str, Any]],
+        options: Mapping[str, Any],
     ) -> list[dict[str, Any]]:
         reranked: list[dict[str, Any]] = []
         query = str(context.data.get("query", ""))
+        top_n = int(options.get("rerank_candidates", min(len(candidates), 100)))
         for rank, candidate in enumerate(candidates[:top_n], start=1):
             updated = dict(candidate)
             document = dict(candidate.get("document", {}))
@@ -214,15 +237,6 @@ class GatewayService:
         extensions = payload.pop("extra", {})
         payload.setdefault("extensions", extensions)
         return ProblemDetail.model_validate(payload)
-
-    def _stage_config_map(self, definition) -> dict[str, dict[str, Any]]:
-        config: dict[str, dict[str, Any]] = {}
-        for stage in definition.stages:
-            stage_config = dict(stage.options)
-            if stage.timeout_ms is not None:
-                stage_config.setdefault("timeout_ms", stage.timeout_ms)
-            config[stage.name] = stage_config
-        return config
 
     def _to_job_status(self, entry: JobLedgerEntry) -> JobStatus:
         history = [
@@ -458,17 +472,14 @@ class GatewayService:
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
         self._ensure_pipeline_components()
+        self._refresh_pipeline_components()
         started = perf_counter()
         job_id = self._new_job(request.tenant_id, "retrieve")
         metadata: dict[str, Any] = {"filters": request.filters, **request.metadata}
         if request.profile:
             metadata["profile"] = request.profile
         try:
-            profile = (
-                self.profile_detector.detect(explicit=request.profile, metadata=metadata)
-                if self.profile_detector
-                else None
-            )
+            profile = self._resolve_profile(request.profile, metadata)
         except KeyError as exc:
             detail = ProblemDetail(
                 title="Unknown profile",
@@ -478,13 +489,14 @@ class GatewayService:
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
-
-        definition = (
-            profile.query_definition(self.config_manager.config)
-            if profile is not None
-            else next(iter(self.config_manager.config.query.values()))
-        )
-        stage_config = self._stage_config_map(definition)
+        overrides: dict[str, dict[str, Any]] = {
+            "final": {"top_k": request.top_k, "explain": request.explain},
+            "rerank": {
+                "enabled": request.rerank,
+                "rerank_candidates": request.rerank_top_k,
+                "allow_overflow": request.rerank_overflow,
+            },
+        }
         context = PipelineContext(
             tenant_id=request.tenant_id,
             operation="retrieve",
@@ -492,24 +504,15 @@ class GatewayService:
                 "query": request.query,
                 "filters": request.filters,
                 "metadata": metadata,
-                "profile": profile.name if profile else request.profile,
-                "config": stage_config,
+                "profile": profile.name,
+                "config": overrides,
                 "explain": request.explain,
                 "top_k": request.top_k,
             },
         )
-        context.pipeline_version = (
-            f"{definition.name}:{self.config_manager.config.version}"
-            if self.config_manager
-            else definition.name
-        )
-        if self.query_executor:
-            if definition.name != self.query_executor.pipeline_name:
-                self.query_executor.pipeline_name = definition.name
-                self.query_executor.executor.pipeline = definition.name
-            result_context = self.query_executor.run(context)
-        else:
-            result_context = context
+        executor = self._executor_for_profile(profile)
+        pipeline_name = getattr(executor.executor, "pipeline", profile.query)
+        result_context = executor.run(context)
 
         documents: list[DocumentSummary] = []
         for item in result_context.data.get("results", [])[: request.top_k]:
@@ -526,7 +529,7 @@ class GatewayService:
                     title=str(document_payload.get("title", doc_id)),
                     score=float(item.get("score", 0.0)),
                     summary=document_payload.get("summary"),
-                    source=document_payload.get("source", definition.name),
+                    source=document_payload.get("source", pipeline_name),
                     metadata=metadata_payload,
                     explain=item.get("strategies") if request.explain else None,
                 )

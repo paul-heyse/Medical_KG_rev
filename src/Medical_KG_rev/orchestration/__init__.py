@@ -13,14 +13,16 @@ from .pipeline import (
     ProfileDefinition,
 )
 from .profiles import PipelineProfile, ProfileDetector, ProfileManager
+from .query_builder import QueryPipelineBuilder, Runner
 from .retrieval_pipeline import (
+    ConfigurableStage,
     FinalSelectorOrchestrator,
     FusionOrchestrator,
     QueryPipelineExecutor,
     RerankCache,
     RerankOrchestrator,
     RetrievalOrchestrator,
-    RetrievalStrategy,
+    StrategySpec,
 )
 from .worker import (
     ChunkingWorker,
@@ -36,6 +38,7 @@ from .worker import (
 __all__ = [
     "ChunkingWorker",
     "EmbeddingPipelineWorker",
+    "ConfigurableStage",
     "FinalSelectorOrchestrator",
     "FusionOrchestrator",
     "IngestWorker",
@@ -57,13 +60,15 @@ __all__ = [
     "ProfileDefinition",
     "ProfileDetector",
     "ProfileManager",
+    "QueryPipelineBuilder",
     "QueryPipelineExecutor",
+    "Runner",
     "RerankCache",
     "RerankOrchestrator",
     "OrchestrationError",
     "Orchestrator",
     "RetrievalOrchestrator",
-    "RetrievalStrategy",
+    "StrategySpec",
     "RetryPolicy",
     "WorkerBase",
 ]

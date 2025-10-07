@@ -27,11 +27,15 @@ from .models import (
     ValidationOutcome,
 )
 from .pipeline import (
+    AdapterExecutionContext,
+    AdapterExecutionMetrics,
     AdapterExecutionState,
     AdapterPipeline,
     AdapterPipelineFactory,
     AdapterStage,
+    StageResult,
 )
+from .runtime import AdapterExecutionPlan, AdapterInvocationResult
 from .resilience import (
     BackoffStrategy,
     CircuitBreaker,
@@ -44,13 +48,18 @@ from .resilience import (
 )
 
 __all__ = [
-    "AdapterHookSpec",
-    "AdapterPluginError",
-    "AdapterPluginManager",
+    "AdapterExecutionContext",
+    "AdapterExecutionMetrics",
     "AdapterExecutionState",
+    "AdapterHookSpec",
+    "AdapterInvocationResult",
     "AdapterPipeline",
     "AdapterPipelineFactory",
+    "AdapterPluginError",
+    "AdapterPluginManager",
     "AdapterStage",
+    "AdapterExecutionPlan",
+    "StageResult",
     "AdapterConfig",
     "AdapterCostEstimate",
     "AdapterDomain",

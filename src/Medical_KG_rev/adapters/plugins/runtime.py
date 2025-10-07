@@ -2,58 +2,60 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .domains.metadata import DomainAdapterMetadata
-from .pipeline import (
-    AdapterExecutionContext,
-    AdapterExecutionState,
-    AdapterPipeline,
-    AdapterStageTiming,
+from .errors import AdapterPluginError
+from .pipeline import AdapterExecutionContext, AdapterExecutionMetrics, AdapterPipeline
+from .models import (
+    AdapterMetadata,
+    AdapterRequest,
+    AdapterResponse,
+    ValidationOutcome,
 )
-from .models import AdapterConfig, AdapterMetadata, AdapterRequest, AdapterResponse, ValidationOutcome
-
-
-@dataclass(slots=True)
-class AdapterInvocationResult:
-    """Structured execution result enriched with telemetry."""
-
-    metadata: AdapterMetadata
-    response: AdapterResponse
-    validation: ValidationOutcome
-    timings: tuple[AdapterStageTiming, ...]
-    extras: Mapping[str, Any]
-
-    @property
-    def successful(self) -> bool:
-        return self.validation.valid
-
-    @property
-    def total_duration_ms(self) -> float:
-        return sum(timing.duration_ms for timing in self.timings)
+from .domains.metadata import DomainAdapterMetadata
 
 
 @dataclass(slots=True)
 class AdapterExecutionPlan:
-    """Execution plan binding metadata to a pipeline."""
+    """Describes how a registered adapter will be executed."""
 
-    metadata: AdapterMetadata
     pipeline: AdapterPipeline
 
-    def build_state(
-        self,
-        plugin: Any,
-        request: AdapterRequest,
-        *,
-        base_config: AdapterConfig | None = None,
-    ) -> AdapterExecutionState:
-        context = AdapterExecutionContext.from_request(
-            request=request,
-            metadata=self.metadata,
-            base_config=base_config,
-        )
-        return AdapterExecutionState(context=context, plugin=plugin)
+    @property
+    def name(self) -> str:
+        return self.pipeline.name
+
+    @property
+    def stage_names(self) -> tuple[str, ...]:
+        return self.pipeline.stage_names
+
+    def describe(self) -> dict[str, Any]:
+        return {"name": self.name, "stages": self.stage_names}
+
+
+@dataclass(slots=True)
+class AdapterInvocationResult:
+    """Structured outcome for an adapter invocation."""
+
+    adapter: AdapterMetadata
+    request: AdapterRequest
+    context: AdapterExecutionContext
+    response: AdapterResponse | None
+    validation: ValidationOutcome | None
+    metrics: AdapterExecutionMetrics
+    pipeline: Mapping[str, Any]
+    extras: Mapping[str, Any]
+    error: AdapterPluginError | None
+    strict: bool
+
+    @property
+    def ok(self) -> bool:
+        if self.error is not None:
+            return False
+        if self.validation is None:
+            return True
+        return self.validation.valid
 
 
 @dataclass(slots=True)
@@ -62,44 +64,38 @@ class RegisteredAdapter:
 
     plugin: Any
     metadata: AdapterMetadata
-    pipeline: AdapterPipeline
+    plan: AdapterExecutionPlan
     domain_metadata: DomainAdapterMetadata
-    plan: AdapterExecutionPlan = field(init=False)
-    base_config: AdapterConfig | None = field(init=False, default=None, repr=False)
 
-    def __post_init__(self) -> None:
-        self.plan = AdapterExecutionPlan(metadata=self.metadata, pipeline=self.pipeline)
-        self.base_config = getattr(self.plugin, "config", None)
-
-    def execute(self, request: AdapterRequest) -> AdapterExecutionState:
-        current_config = getattr(self.plugin, "config", None)
-        if current_config is not None and current_config is not self.base_config:
-            self.base_config = current_config
-        state = self.plan.build_state(self.plugin, request, base_config=self.base_config)
-        override = state.context.config
-        if override is not None and override is not self.base_config:
-            had_attribute = hasattr(self.plugin, "config")
-            original = getattr(self.plugin, "config", None)
-            try:
-                setattr(self.plugin, "config", override)
-                return self.pipeline.execute(state)
-            finally:
-                if had_attribute:
-                    setattr(self.plugin, "config", original)
-                else:  # pragma: no cover - defensive
-                    if hasattr(self.plugin, "config"):
-                        delattr(self.plugin, "config")
-        return self.pipeline.execute(state)
-
-    def build_result(self, state: AdapterExecutionState) -> AdapterInvocationResult:
-        response = state.ensure_response()
-        validation = state.validation or ValidationOutcome.success()
-        return AdapterInvocationResult(
+    def new_context(self, request: AdapterRequest) -> AdapterExecutionContext:
+        return AdapterExecutionContext(
+            request=request,
             metadata=self.metadata,
+            plugin=self.plugin,
+            pipeline_name=self.plan.name,
+        )
+
+    def build_result(
+        self,
+        context: AdapterExecutionContext,
+        *,
+        strict: bool,
+        error: AdapterPluginError | None,
+    ) -> AdapterInvocationResult:
+        response = context.response
+        if response is not None:
+            response.metadata = {**response.metadata, "pipeline": context.pipeline_name}
+        return AdapterInvocationResult(
+            adapter=self.metadata,
+            request=context.request,
+            context=context,
             response=response,
-            validation=validation,
-            timings=tuple(state.timings),
-            extras=dict(state.extras),
+            validation=context.validation,
+            metrics=context.metrics,
+            pipeline=self.plan.describe(),
+            extras=dict(context.extras),
+            error=error,
+            strict=strict,
         )
 
 

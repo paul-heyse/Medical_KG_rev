@@ -13,10 +13,12 @@ standardising the ingestion lifecycle.
    orchestrator persists or forwards the documents.
 
 The `AdapterPluginManager` materialises this lifecycle as an
-`AdapterPipeline`. When you call `manager.execute(name, request)` the manager
-creates an `AdapterExecutionState`, runs it through each pipeline stage, and
-returns the enriched state object. `manager.run(...)` is a thin wrapper that
-enforces validation and returns the final `AdapterResponse` for convenience.
+`AdapterPipeline`. When you call `manager.invoke(name, request)` the manager
+returns an `AdapterInvocationResult` containing the underlying
+`AdapterExecutionContext`, canonical response, validation outcome, and detailed
+stage timings. The historic `execute`/`run` helpers now build on top of
+`invoke`—`execute` returns the context while `run` continues to raise when the
+pipeline cannot produce a valid `AdapterResponse`.
 
 ## Registry
 
@@ -37,8 +39,8 @@ implementations.
 ## Testing
 
 Instantiate a plugin directly (or use `AdapterPluginManager`) to exercise the
-full lifecycle in tests. Using the manager exposes the pipeline state so you
-can assert on intermediate artefacts:
+full lifecycle in tests. Using the manager exposes the pipeline context and
+telemetry so you can assert on intermediate artefacts and timings:
 
 ```python
 request = AdapterRequest(
@@ -46,8 +48,8 @@ request = AdapterRequest(
 )
 manager = AdapterPluginManager()
 manager.register(ClinicalTrialsAdapterPlugin())
-state = manager.execute("clinicaltrials", request)
-state.raise_for_validation()  # optional in tests
-response = state.ensure_response()
-assert response.items
+result = manager.invoke("clinicaltrials", request)
+assert result.ok
+assert result.metrics.duration_ms > 0
+assert result.response is not None
 ```

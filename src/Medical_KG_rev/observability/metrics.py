@@ -426,6 +426,13 @@ ADAPTER_PLUGIN_FAILURES = Counter(
     labelnames=("adapter", "domain"),
 )
 
+ADAPTER_PIPELINE_STAGE_DURATION = Histogram(
+    "adapter_pipeline_stage_duration_seconds",
+    "Latency distribution for adapter plugin pipeline stages",
+    labelnames=("adapter", "stage"),
+    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0, 2.0),
+)
+
 TIMEOUT_BREACHES = Counter(
     "timeout_breaches_total",
     "Total number of timeout breaches",

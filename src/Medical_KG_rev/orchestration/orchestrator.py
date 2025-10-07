@@ -17,7 +17,11 @@ from ..models.ir import Block, BlockType, Document, Section
 from ..services.ingestion import IngestionService
 from .kafka import KafkaClient
 from .ledger import JobLedger, JobLedgerEntry
-from ..observability.metrics import ADAPTER_PLUGIN_FAILURES, ADAPTER_PLUGIN_INVOCATIONS
+from ..observability.metrics import (
+    ADAPTER_PIPELINE_STAGE_DURATION,
+    ADAPTER_PLUGIN_FAILURES,
+    ADAPTER_PLUGIN_INVOCATIONS,
+)
 
 _DEFAULT_TEI = """
 <TEI>
@@ -328,8 +332,50 @@ class Orchestrator:
                         metadata.name, metadata.domain.value
                     ).inc()
                     result = self.adapter_manager.invoke(
-                        metadata.name, request, strict=False
+                        metadata.name, request, strict=True
                     )
+                    telemetry = {
+                        "pipeline": result.pipeline.get("name"),
+                        "duration_ms": result.metrics.duration_ms,
+                        "stages": [
+                            {
+                                "name": stage.name,
+                                "duration_ms": stage.duration_ms,
+                                "status": stage.status,
+                            }
+                            for stage in result.metrics.stages
+                        ],
+                    }
+                    for stage in result.metrics.stages:
+                        ADAPTER_PIPELINE_STAGE_DURATION.labels(
+                            metadata.name, stage.name
+                        ).observe(stage.duration_ms / 1000.0)
+                    if result.error is not None or result.response is None:
+                        ADAPTER_PLUGIN_FAILURES.labels(
+                            metadata.name, metadata.domain.value
+                        ).inc()
+                        adapter_responses.append(
+                            {
+                                "adapter": metadata.name,
+                                "domain": metadata.domain.value,
+                                "error": str(result.error) if result.error else "missing response",
+                                "telemetry": telemetry,
+                            }
+                        )
+                        continue
+
+                    response = result.response
+                    adapter_responses.append(
+                        {
+                            "adapter": metadata.name,
+                            "domain": metadata.domain.value,
+                            "items": response.items,
+                            "warnings": response.warnings,
+                            "metadata": response.metadata,
+                            "telemetry": telemetry,
+                        }
+                    )
+                    adapter_versions[metadata.name] = metadata.version
                 except AdapterPluginError as exc:
                     ADAPTER_PLUGIN_FAILURES.labels(
                         metadata.name, metadata.domain.value
@@ -342,33 +388,6 @@ class Orchestrator:
                         }
                     )
                     continue
-
-                response_entry: dict[str, object] = {
-                    "adapter": metadata.name,
-                    "domain": metadata.domain.value,
-                    "timings": [
-                        {"stage": timing.name, "duration_ms": timing.duration_ms}
-                        for timing in result.timings
-                    ],
-                    "total_duration_ms": result.total_duration_ms,
-                    "validation": result.validation.model_dump(),
-                }
-                if result.extras:
-                    response_entry["extras"] = dict(result.extras)
-                response_entry["items"] = result.response.items
-                response_entry["warnings"] = result.response.warnings
-                response_entry["metadata"] = result.response.metadata
-
-                if not result.validation.valid:
-                    ADAPTER_PLUGIN_FAILURES.labels(
-                        metadata.name, metadata.domain.value
-                    ).inc()
-                    response_entry["error"] = "validation_failed"
-                    adapter_responses.append(response_entry)
-                    continue
-
-                adapter_versions[metadata.name] = metadata.version
-                adapter_responses.append(response_entry)
         if adapter_versions:
             metadata = entry.metadata if isinstance(entry.metadata, dict) else {}
             current_versions = dict(metadata.get("adapter_versions", {}))

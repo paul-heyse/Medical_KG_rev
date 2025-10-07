@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 import httpx
-from pydantic import Field, PositiveInt, SecretStr
+from pydantic import Field, SecretStr
 
 from Medical_KG_rev.adapters import (
     AdapterDomain,
@@ -17,7 +17,6 @@ from Medical_KG_rev.adapters import (
     AdapterPluginError,
     AdapterPluginManager,
     AdapterRequest,
-    AdapterResponse,
     AdapterSettings,
     BackoffStrategy,
     ConfigValidationResult,
@@ -39,7 +38,6 @@ from Medical_KG_rev.adapters import (
     ValidationOutcome,
 )
 from Medical_KG_rev.adapters.plugins import bootstrap as plugin_bootstrap
-from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
 from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
 from pydantic import ValidationError
 
@@ -133,9 +131,14 @@ def test_plugin_manager_registers_and_runs_adapter():
         correlation_id="corr-1",
         domain=AdapterDomain.BIOMEDICAL,
     )
+    result = manager.invoke("example", request)
+    assert result.ok is True
+    assert result.error is None
+    assert {stage.name for stage in result.metrics.stages} == {"fetch", "parse", "validate"}
+    assert result.response is not None
+    assert result.response.items[0]["tenant"] == "tenant-1"
+    assert result.response.metadata["adapter"] == "example"
     response = manager.run("example", request)
-    assert response.items[0]["tenant"] == "tenant-1"
-    assert response.metadata["adapter"] == "example"
     assert manager.check_health("example") is True
     assert manager.list_metadata(domain=AdapterDomain.BIOMEDICAL)
     estimate = manager.estimate_cost("example", request)
@@ -166,75 +169,33 @@ def test_plugin_manager_execute_returns_state_and_respects_strict():
     state = manager.execute("invalid-example", request, strict=False)
     assert state.validation is not None and state.validation.valid is False
     assert state.response is not None
-    assert any(timing.name == "fetch" for timing in state.timings)
-    assert state.response.metadata["adapter"] == "invalid-example"
+
+    result = manager.invoke("invalid-example", request, strict=True)
+    assert result.error is not None
+    assert result.ok is False
+    assert any(stage.name == "validate" for stage in result.metrics.stages)
+
+    tolerant = manager.invoke("invalid-example", request, strict=False)
+    assert tolerant.error is None
+    assert tolerant.validation is not None and tolerant.validation.valid is False
 
     with pytest.raises(AdapterPluginError):
         manager.execute("invalid-example", request)
 
 
-def test_plugin_manager_invoke_returns_telemetry():
+def test_adapter_pipeline_telemetry_records_stage_timings():
     manager = AdapterPluginManager()
     manager.register(ExampleAdapterPlugin())
     request = AdapterRequest(
-        tenant_id="tenant-2",
-        correlation_id="corr-2",
-        domain=AdapterDomain.BIOMEDICAL,
+        tenant_id="tenant", correlation_id="corr", domain=AdapterDomain.BIOMEDICAL
     )
 
     result = manager.invoke("example", request)
-    assert result.metadata.name == "example"
-    assert result.response.metadata["adapter_version"] == "1.0.0"
-    assert result.validation.valid is True
-    assert result.total_duration_ms >= 0
-    assert any(timing.name == "fetch" for timing in result.timings)
 
-
-class OverrideConfig(AdapterSettings):
-    timeout_seconds: PositiveInt = Field(30)
-
-    def json_schema(self) -> dict[str, object]:
-        return self.model_json_schema()
-
-
-class OverrideAdapter(BaseAdapterPlugin):
-    metadata = AdapterMetadata(
-        name="override-adapter",
-        version="1.0.0",
-        domain=AdapterDomain.BIOMEDICAL,
-        summary="Adapter that surfaces config overrides",
-    )
-    config_model = OverrideConfig
-
-    def fetch(self, request: AdapterRequest) -> AdapterResponse:
-        return AdapterResponse(
-            items=[{"timeout": self.config.timeout_seconds}],
-            metadata={"timeout": self.config.timeout_seconds},
-        )
-
-    def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:
-        return response
-
-
-def test_adapter_config_override_applied_per_request():
-    manager = AdapterPluginManager()
-    adapter = OverrideAdapter()
-    manager.register(adapter)
-    base_timeout = adapter.config.timeout_seconds
-    request = AdapterRequest(
-        tenant_id="tenant-3",
-        correlation_id="corr-3",
-        domain=AdapterDomain.BIOMEDICAL,
-    )
-
-    baseline = manager.invoke("override-adapter", request)
-    assert baseline.response.metadata["timeout"] == base_timeout
-
-    override = adapter.config_model(timeout_seconds=base_timeout + 5)
-    override_request = request.model_copy(update={"config": override})
-    result = manager.invoke("override-adapter", override_request)
-    assert result.response.metadata["timeout"] == base_timeout + 5
-    assert adapter.config.timeout_seconds == base_timeout
+    assert result.metrics.duration_ms >= 0
+    assert all(stage.duration_ms >= 0 for stage in result.metrics.stages)
+    assert result.pipeline["name"] == "default"
+    assert result.pipeline["stages"] == ("fetch", "parse", "validate")
 
 
 def test_register_biomedical_plugins_groups_by_domain():

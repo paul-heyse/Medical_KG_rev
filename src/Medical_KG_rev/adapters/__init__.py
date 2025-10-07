@@ -66,11 +66,12 @@ from .plugins.resilience import (
 )
 from .plugins.pipeline import (
     AdapterExecutionContext,
+    AdapterExecutionMetrics,
     AdapterExecutionState,
     AdapterPipeline,
     AdapterPipelineFactory,
     AdapterStage,
-    AdapterStageTiming,
+    StageResult,
 )
 from .plugins.runtime import AdapterExecutionPlan, AdapterInvocationResult
 
@@ -86,14 +87,15 @@ __all__ = [
     "AdapterHookSpec",
     "AdapterPluginError",
     "AdapterPluginManager",
-    "AdapterExecutionState",
     "AdapterExecutionContext",
+    "AdapterExecutionMetrics",
+    "AdapterExecutionPlan",
+    "AdapterExecutionState",
+    "AdapterInvocationResult",
     "AdapterPipeline",
     "AdapterPipelineFactory",
     "AdapterStage",
-    "AdapterStageTiming",
-    "AdapterExecutionPlan",
-    "AdapterInvocationResult",
+    "StageResult",
     "AdapterCostEstimate",
     "AdapterDomain",
     "AdapterMetadata",

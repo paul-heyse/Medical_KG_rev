@@ -64,7 +64,7 @@ openspec/changes/add-adapter-plugin-framework/
 - Register new adapters via `register_biomedical_plugins` or by defining entry points exposed through `scripts/migrate_adapter_entry_points.py`.
 - Access the singleton plugin manager via `Medical_KG_rev.adapters.get_plugin_manager()`; feature flag `MK_USE_PLUGIN_FRAMEWORK` can disable the system for rollback scenarios.
 - Domain-specific metadata helpers (`BiomedicalAdapterMetadata`, `FinancialAdapterMetadata`, `LegalAdapterMetadata`) ensure consistent documentation and filtering across REST/GraphQL surfaces.
-- `AdapterPluginManager.execute()` returns an `AdapterExecutionState`, allowing orchestration flows to compose additional stages without modifying individual plugins.
+- `AdapterPluginManager.invoke()` returns an `AdapterInvocationResult` (wrapping the `AdapterExecutionContext`), allowing orchestration flows to compose additional stages while capturing stage timings and validation outcomes without modifying individual plugins.
 
 ### 6. Migration Guide
 

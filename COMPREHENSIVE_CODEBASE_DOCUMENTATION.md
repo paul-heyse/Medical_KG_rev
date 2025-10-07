@@ -1729,10 +1729,12 @@ pytest tests/adapters/test_plugin_framework.py -k newsource
 ```
 
 The plugin manager wraps each registered adapter inside an `AdapterPipeline`
-backed by `AdapterExecutionState`. This allows orchestration and gateway
-services to reason about lifecycle progress without sprinkling adapter-specific
-conditionals. Custom plugins may override `build_pipeline` to compose bespoke
-stages while retaining compatibility with the shared execution runtime.
+backed by an `AdapterExecutionContext` and surfaces results via
+`AdapterInvocationResult`. Orchestration and gateway services can reason about
+lifecycle progress, validation, and stage timings without sprinkling
+adapter-specific conditionals. Custom plugins may override `build_pipeline` to
+compose bespoke stages while retaining compatibility with the shared execution
+runtime.
 
 ---
 

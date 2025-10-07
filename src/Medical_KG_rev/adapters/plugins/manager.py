@@ -20,7 +20,7 @@ from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 
 from .errors import AdapterPluginError
 from .pipeline import AdapterExecutionState, AdapterPipelineFactory
-from .runtime import AdapterInvocationResult, RegisteredAdapter
+from .runtime import AdapterExecutionPlan, AdapterInvocationResult, RegisteredAdapter
 
 hookspec = pluggy.HookspecMarker("medical_kg.adapters")
 hookimpl = pluggy.HookimplMarker("medical_kg.adapters")
@@ -85,13 +85,13 @@ class AdapterPluginManager:
         adapter_name = metadata.name
         pipeline = self._pipeline_factory.build(plugin, metadata)
         domain_metadata = self._registry.register(metadata)
-        registered = RegisteredAdapter(
+        plan = AdapterExecutionPlan(pipeline)
+        self._adapters[adapter_name] = RegisteredAdapter(
             plugin=plugin,
             metadata=metadata,
-            pipeline=pipeline,
+            plan=plan,
             domain_metadata=domain_metadata,
         )
-        self._adapters[adapter_name] = registered
         return metadata
 
     def unregister(self, adapter_name: str) -> None:
@@ -136,6 +136,33 @@ class AdapterPluginManager:
     # ------------------------------------------------------------------
     # Adapter lifecycle helpers
     # ------------------------------------------------------------------
+    def invoke(
+        self,
+        adapter_name: str,
+        request: AdapterRequest,
+        *,
+        strict: bool = True,
+        raise_on_error: bool = False,
+    ) -> AdapterInvocationResult:
+        registered = self._get_registered(adapter_name)
+        context = registered.new_context(request)
+        error: AdapterPluginError | None = None
+        try:
+            context = registered.plan.pipeline.execute(context)
+            if strict:
+                context.raise_for_validation()
+            context.record_success()
+        except AdapterPluginError as exc:
+            context.record_failure(exc)
+            error = exc
+
+        result = registered.build_result(context, strict=strict, error=error)
+
+        if error is not None and raise_on_error:
+            raise error
+
+        return result
+
     def execute(
         self,
         adapter_name: str,
@@ -143,11 +170,8 @@ class AdapterPluginManager:
         *,
         strict: bool = True,
     ) -> AdapterExecutionState:
-        registered = self._get_registered(adapter_name)
-        state = registered.execute(request)
-        if strict:
-            state.raise_for_validation()
-        return state
+        result = self.invoke(adapter_name, request, strict=strict, raise_on_error=True)
+        return result.context
 
     def run(
         self,
@@ -156,24 +180,8 @@ class AdapterPluginManager:
         *,
         strict: bool = True,
     ) -> AdapterResponse:
-        if strict:
-            result = self.invoke(adapter_name, request, strict=True)
-            return result.response
-        state = self.execute(adapter_name, request, strict=False)
-        return state.ensure_response()
-
-    def invoke(
-        self,
-        adapter_name: str,
-        request: AdapterRequest,
-        *,
-        strict: bool = True,
-    ) -> AdapterInvocationResult:
-        registered = self._get_registered(adapter_name)
-        state = registered.execute(request)
-        if strict:
-            state.raise_for_validation()
-        return registered.build_result(state)
+        result = self.invoke(adapter_name, request, strict=strict, raise_on_error=True)
+        return result.context.ensure_response()
 
     def check_health(self, adapter_name: str) -> bool:
         registered = self._get_registered(adapter_name)

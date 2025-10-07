@@ -3,149 +3,73 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Callable, Iterable, Tuple
-import time
+from uuid import uuid4
 
 from .errors import AdapterPluginError
-from .models import (
-    AdapterConfig,
-    AdapterMetadata,
-    AdapterRequest,
-    AdapterResponse,
-    ValidationOutcome,
-)
+from .models import AdapterMetadata, AdapterRequest, AdapterResponse, ValidationOutcome
 
-StageCallable = Callable[["AdapterExecutionState"], "AdapterExecutionState"]
+StageCallable = Callable[["AdapterExecutionContext"], "AdapterExecutionContext"]
 
 
 @dataclass(slots=True)
-class AdapterStageTiming:
-    """Timing information captured for a single stage execution."""
+class StageResult:
+    """Timing and outcome telemetry for a single pipeline stage."""
 
     name: str
-    started_at: datetime
+    started_at: float
+    completed_at: float
     duration_ms: float
+    status: str = "success"
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class AdapterExecutionMetrics:
+    """Aggregated metrics captured during adapter execution."""
+
+    started_at: float
+    completed_at: float
+    duration_ms: float
+    stages: tuple[StageResult, ...]
 
 
 @dataclass(slots=True)
 class AdapterExecutionContext:
-    """Immutable context shared across pipeline stages."""
+    """Mutable context propagated through adapter pipeline stages."""
 
     request: AdapterRequest
     metadata: AdapterMetadata
-    base_config: AdapterConfig | None = None
-    override_config: AdapterConfig | None = None
+    plugin: Any
+    execution_id: str = field(default_factory=lambda: uuid4().hex)
+    pipeline_name: str = "default"
+    response: AdapterResponse | None = None
+    validation: ValidationOutcome | None = None
     extras: dict[str, Any] = field(default_factory=dict)
-    _config: AdapterConfig | None = field(default=None, init=False, repr=False)
-
-    def __post_init__(self) -> None:
-        self._config = self._merge_configs()
-
-    @property
-    def config(self) -> AdapterConfig | None:
-        """Return the resolved configuration for this invocation."""
-
-        return self._config
+    error: AdapterPluginError | None = None
+    _stage_results: list[StageResult] = field(default_factory=list)
+    _started_at: float = field(default_factory=perf_counter)
+    _completed_at: float | None = None
 
     @property
     def canonical_metadata(self) -> dict[str, Any]:
-        """Canonical metadata injected into adapter responses."""
-
         return {
             "adapter": self.metadata.name,
             "adapter_version": self.metadata.version,
             "adapter_domain": self.metadata.domain.value,
-            "correlation_id": self.request.correlation_id,
+            "execution_id": self.execution_id,
+            "pipeline": self.pipeline_name,
         }
 
-    def _merge_configs(self) -> AdapterConfig | None:
-        base = self.base_config
-        override = self.override_config
-        if override is None:
-            return base
-        if base is None:
-            return override
-        merged: dict[str, Any] = base.model_dump()
-        merged.update(override.model_dump(exclude_unset=True))
-        target_cls = base.__class__
-        if base.__class__ is not override.__class__:
-            target_cls = override.__class__
-        return target_cls(**merged)
-
-    @classmethod
-    def from_request(
-        cls,
-        *,
-        request: AdapterRequest,
-        metadata: AdapterMetadata,
-        base_config: AdapterConfig | None = None,
-    ) -> "AdapterExecutionContext":
-        return cls(
-            request=request,
-            metadata=metadata,
-            base_config=base_config,
-            override_config=request.config,
-        )
-
-
-@dataclass(slots=True)
-class AdapterExecutionState:
-    """Mutable state propagated through adapter pipeline stages."""
-
-    context: AdapterExecutionContext
-    plugin: Any
-    response: AdapterResponse | None = None
-    validation: ValidationOutcome | None = None
-    timings: list[AdapterStageTiming] = field(default_factory=list)
-    extras: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def request(self) -> AdapterRequest:
-        return self.context.request
-
-    @property
-    def metadata(self) -> AdapterMetadata:
-        return self.context.metadata
-
-    @property
-    def config(self) -> AdapterConfig | None:
-        return self.context.config
-
-    def record_response(self, response: AdapterResponse) -> "AdapterExecutionState":
+    def record_response(self, response: AdapterResponse) -> "AdapterExecutionContext":
+        enriched_metadata = {**response.metadata, **self.canonical_metadata}
+        response.metadata = enriched_metadata
         self.response = response
         return self
 
-    def record_validation(self, outcome: ValidationOutcome) -> "AdapterExecutionState":
+    def record_validation(self, outcome: ValidationOutcome) -> "AdapterExecutionContext":
         self.validation = outcome
-        return self
-
-    def record_timing(
-        self, stage_name: str, started_at: datetime, duration_ms: float
-    ) -> "AdapterExecutionState":
-        self.timings.append(
-            AdapterStageTiming(name=stage_name, started_at=started_at, duration_ms=duration_ms)
-        )
-        return self
-
-    def add_extra(self, key: str, value: Any) -> "AdapterExecutionState":
-        self.extras[key] = value
-        return self
-
-    def apply_canonical_metadata(self) -> None:
-        if self.response is None:
-            return
-        for key, value in self.context.canonical_metadata.items():
-            self.response.metadata.setdefault(key, value)
-
-    def finalize(self) -> "AdapterExecutionState":
-        if self.response is not None:
-            self.apply_canonical_metadata()
-        if self.validation is None:
-            warnings: list[str] = []
-            if self.response is not None:
-                warnings = list(self.response.warnings)
-            self.validation = ValidationOutcome(valid=True, warnings=warnings)
         return self
 
     def ensure_response(self) -> AdapterResponse:
@@ -163,9 +87,52 @@ class AdapterExecutionState:
             f"Validation failed for adapter '{self.metadata.name}': {errors}"
         )
 
+    def record_stage_result(
+        self,
+        name: str,
+        started_at: float,
+        completed_at: float,
+        *,
+        status: str = "success",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        duration_ms = (completed_at - started_at) * 1000.0
+        self._stage_results.append(
+            StageResult(
+                name=name,
+                started_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+                status=status,
+                details=details or {},
+            )
+        )
+        self._completed_at = completed_at
+
+    def record_failure(self, error: AdapterPluginError) -> None:
+        self.error = error
+
+    def record_success(self) -> None:
+        self.error = None
+
+    def finalize(self) -> None:
+        if self._completed_at is None:
+            self._completed_at = perf_counter()
+
     @property
-    def total_duration_ms(self) -> float:
-        return sum(timing.duration_ms for timing in self.timings)
+    def metrics(self) -> AdapterExecutionMetrics:
+        completed_at = self._completed_at or self._started_at
+        duration_ms = (completed_at - self._started_at) * 1000.0
+        return AdapterExecutionMetrics(
+            started_at=self._started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            stages=tuple(self._stage_results),
+        )
+
+
+# Backwards compatibility export
+AdapterExecutionState = AdapterExecutionContext
 
 
 @dataclass(slots=True)
@@ -175,21 +142,45 @@ class AdapterStage:
     name: str
     handler: StageCallable
 
-    def __call__(self, state: AdapterExecutionState) -> AdapterExecutionState:
-        started_at = datetime.now(UTC)
-        start = time.perf_counter()
+    def __call__(self, context: AdapterExecutionContext) -> AdapterExecutionContext:
+        started_at = perf_counter()
         try:
-            new_state = self.handler(state)
-        except AdapterPluginError:
+            result = self.handler(context)
+        except AdapterPluginError as exc:
+            context.record_stage_result(
+                self.name,
+                started_at,
+                perf_counter(),
+                status="error",
+                details={"error": str(exc)},
+            )
             raise
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except Exception as exc:  # pragma: no cover - unexpected failures
+            context.record_stage_result(
+                self.name,
+                started_at,
+                perf_counter(),
+                status="error",
+                details={"error": str(exc), "exception": type(exc).__name__},
+            )
             raise AdapterPluginError(
-                f"Adapter '{state.metadata.name}' stage '{self.name}' failed: {exc}"
+                f"Adapter stage '{self.name}' failed: {exc}"
             ) from exc
-        duration_ms = (time.perf_counter() - start) * 1000
-        new_state.record_timing(self.name, started_at, duration_ms)
-        new_state.apply_canonical_metadata()
-        return new_state
+
+        if not isinstance(result, AdapterExecutionContext):
+            context.record_stage_result(
+                self.name,
+                started_at,
+                perf_counter(),
+                status="error",
+                details={"error": "Stage returned unexpected result"},
+            )
+            raise AdapterPluginError(
+                f"Adapter stage '{self.name}' must return AdapterExecutionContext"
+            )
+
+        context.record_stage_result(self.name, started_at, perf_counter())
+        return result
 
 
 class AdapterPipeline:
@@ -201,14 +192,23 @@ class AdapterPipeline:
             raise AdapterPluginError("Adapter pipelines must contain at least one stage")
         self._stages = stages_tuple
         self.name = name or "default"
+        self._stage_names = tuple(stage.name for stage in stages_tuple)
 
-    def execute(self, state: AdapterExecutionState) -> AdapterExecutionState:
-        for stage in self._stages:
-            state = stage(state)
-        return state.finalize()
+    def execute(self, context: AdapterExecutionContext) -> AdapterExecutionContext:
+        context.pipeline_name = self.name
+        try:
+            for stage in self._stages:
+                context = stage(context)
+            return context
+        finally:
+            context.finalize()
 
     def clone(self, *, name: str | None = None) -> "AdapterPipeline":
         return AdapterPipeline(self._stages, name=name or self.name)
+
+    @property
+    def stage_names(self) -> Tuple[str, ...]:
+        return self._stage_names
 
     @classmethod
     def default(cls, plugin: Any, metadata: AdapterMetadata) -> "AdapterPipeline":
@@ -303,10 +303,11 @@ class AdapterPipelineFactory:
 
 __all__ = [
     "AdapterExecutionContext",
+    "AdapterExecutionMetrics",
     "AdapterExecutionState",
     "AdapterPipeline",
     "AdapterPipelineFactory",
     "AdapterStage",
-    "AdapterStageTiming",
+    "StageResult",
 ]
 

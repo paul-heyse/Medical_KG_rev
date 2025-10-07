@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
+import csv
 import json
 import mimetypes
-import csv
 from collections import defaultdict
 from datetime import datetime, timezone
 from io import StringIO
@@ -20,6 +18,7 @@ from Medical_KG_rev.models.ir import BlockType, Document as IrDocument, Section
 from Medical_KG_rev.models.table import Table
 from Medical_KG_rev.storage.object_store import FigureStorageClient
 
+from .artifacts import MineruArtifacts, build_artifacts
 from .output_parser import ParsedBlock, ParsedDocument
 from .types import Block, Document, MineruRequest
 
@@ -46,28 +45,20 @@ class MineruPostProcessor:
         request: MineruRequest,
         provenance: dict[str, Any],
     ) -> Document:
-        tables, table_exports = self._prepare_tables(parsed.tables)
-        figures, figure_assets = self._prepare_figures(
-            request.tenant_id, request.document_id, parsed.figures
-        )
-        equations, equation_rendering = self._prepare_equations(parsed.equations)
-        table_index = {table.id: table for table in tables}
-        figure_index = {figure.id: figure for figure in figures}
-        equation_index = {equation.id: equation for equation in equations}
+        artifacts = self._prepare_artifacts(parsed, request)
 
         blocks: list[Block] = []
         ir_blocks: list[IrBlock] = []
         for raw in parsed.blocks:
-            block = self._build_block(raw, table_index, figure_index, equation_index)
+            block = self._build_block(raw, artifacts)
             blocks.append(block)
             if block.ir_block is not None:
                 ir_blocks.append(block.ir_block)
 
         metadata = dict(parsed.metadata)
         metadata.setdefault("source", "mineru-cli")
-        metadata.setdefault("table_exports", table_exports)
-        metadata.setdefault("figure_assets", figure_assets)
-        metadata.setdefault("equation_rendering", equation_rendering)
+        for key, value in artifacts.metadata_payload().items():
+            metadata.setdefault(key, value)
 
         ir_document = self._build_ir_document(
             request=request,
@@ -80,9 +71,9 @@ class MineruPostProcessor:
             document_id=request.document_id,
             tenant_id=request.tenant_id,
             blocks=blocks,
-            tables=tables,
-            figures=figures,
-            equations=equations,
+            tables=list(artifacts.tables),
+            figures=list(artifacts.figures),
+            equations=list(artifacts.equations),
             metadata=metadata,
             provenance=self._build_provenance(parsed, provenance),
             ir_document=ir_document,
@@ -91,11 +82,26 @@ class MineruPostProcessor:
             "mineru.postprocess.completed",
             document_id=request.document_id,
             blocks=len(blocks),
-            tables=len(tables),
-            figures=len(figures),
-            equations=len(equations),
+            tables=len(artifacts.tables),
+            figures=len(artifacts.figures),
+            equations=len(artifacts.equations),
         )
         return document
+
+    def _prepare_artifacts(self, parsed: ParsedDocument, request: MineruRequest) -> MineruArtifacts:
+        tables, table_exports = self._prepare_tables(parsed.tables)
+        figures, figure_assets = self._prepare_figures(
+            request.tenant_id, request.document_id, parsed.figures
+        )
+        equations, equation_rendering = self._prepare_equations(parsed.equations)
+        return build_artifacts(
+            tables=tables,
+            figures=figures,
+            equations=equations,
+            table_exports=table_exports,
+            figure_assets=figure_assets,
+            equation_rendering=equation_rendering,
+        )
 
     def _prepare_tables(
         self, tables: Iterable[Table]
@@ -104,10 +110,13 @@ class MineruPostProcessor:
         exports: dict[str, dict[str, str]] = {}
         for table in tables:
             serialisations = self._render_table_serialisations(table)
-            metadata = dict(table.metadata)
-            metadata.setdefault("headers", list(table.headers))
-            metadata.setdefault("exports", serialisations)
-            prepared.append(table.model_copy(update={"metadata": metadata}))
+            metadata_updates: dict[str, Any] = {}
+            if "headers" not in table.metadata:
+                metadata_updates["headers"] = list(table.headers)
+            if "exports" not in table.metadata:
+                metadata_updates["exports"] = serialisations
+            updated = table.with_metadata(**metadata_updates) if metadata_updates else table
+            prepared.append(updated)
             exports[table.id] = serialisations
         return prepared, exports
 
@@ -120,22 +129,15 @@ class MineruPostProcessor:
         prepared: list[Figure] = []
         assets: dict[str, dict[str, str]] = {}
         for figure in figures:
-            if not hasattr(figure, "model_copy"):
-                prepared.append(figure)
-                continue
-            metadata = dict(figure.metadata)
             storage_info: dict[str, str] = {}
             if self._figure_storage:
                 stored = self._store_figure(tenant_id, document_id, figure)
                 if stored:
-                    metadata.update(stored)
                     storage_info.update(stored)
-            figure_copy = figure.model_copy(
-                update={
-                    "metadata": metadata,
-                    "image_path": storage_info.get("url", figure.image_path),
-                }
-            )
+            metadata_updates = storage_info if storage_info else {}
+            figure_copy = figure.with_metadata(**metadata_updates) if metadata_updates else figure
+            if storage_info.get("url"):
+                figure_copy = figure_copy.model_copy(update={"image_path": storage_info["url"]})
             prepared.append(figure_copy)
             if storage_info:
                 assets[figure.id] = storage_info
@@ -147,14 +149,13 @@ class MineruPostProcessor:
         prepared: list[Equation] = []
         rendering: dict[str, str] = {}
         for equation in equations:
-            if not hasattr(equation, "model_copy"):
-                prepared.append(equation)
-                continue
-            metadata = dict(equation.metadata)
             render_mode = self._infer_equation_render_mode(equation)
-            metadata.setdefault("render_mode", render_mode)
+            metadata_updates: dict[str, Any] = {}
+            if "render_mode" not in equation.metadata:
+                metadata_updates["render_mode"] = render_mode
             rendering[equation.id] = render_mode
-            prepared.append(equation.model_copy(update={"metadata": metadata}))
+            updated = equation.with_metadata(**metadata_updates) if metadata_updates else equation
+            prepared.append(updated)
         return prepared, rendering
 
     def _render_table_serialisations(self, table: Table) -> dict[str, str]:
@@ -244,16 +245,10 @@ class MineruPostProcessor:
             return "inline"
         return "link"
 
-    def _build_block(
-        self,
-        block: ParsedBlock,
-        tables: dict[str, Any],
-        figures: dict[str, Any],
-        equations: dict[str, Any],
-    ) -> Block:
-        attached_table = tables.get(block.table_id) if block.table_id else None
-        attached_figure = figures.get(block.figure_id) if block.figure_id else None
-        attached_equation = equations.get(block.equation_id) if block.equation_id else None
+    def _build_block(self, block: ParsedBlock, artifacts: MineruArtifacts) -> Block:
+        attached_table, attached_figure, attached_equation = artifacts.attachments_for(
+            block.table_id, block.figure_id, block.equation_id
+        )
         metadata = dict(block.metadata)
         metadata.setdefault("page", block.page)
         metadata.setdefault("reading_order", block.reading_order)
@@ -261,14 +256,20 @@ class MineruPostProcessor:
             metadata.setdefault("table_id", attached_table.id)
             metadata.setdefault("is_table", True)
             metadata.setdefault("table_caption", attached_table.caption)
-            exports = attached_table.metadata.get("exports") if hasattr(attached_table, "metadata") else None
+            exports = artifacts.table_exports.get(attached_table.id, {})
             if exports:
                 metadata.setdefault("table_markdown", exports.get("markdown"))
                 metadata.setdefault("table_csv", exports.get("csv"))
         if attached_figure:
             metadata.setdefault("figure_id", attached_figure.id)
+            assets = artifacts.figure_assets.get(attached_figure.id, {})
+            if assets:
+                metadata.setdefault("figure_url", assets.get("url"))
         if attached_equation:
             metadata.setdefault("equation_id", attached_equation.id)
+            render_mode = artifacts.equation_rendering.get(attached_equation.id)
+            if render_mode:
+                metadata.setdefault("equation_render_mode", render_mode)
 
         ir_block = IrBlock(
             id=block.id,

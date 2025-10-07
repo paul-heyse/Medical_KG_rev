@@ -86,6 +86,7 @@ class ProcessingMetadata:
     cli_stdout: str
     cli_stderr: str
     cli_descriptor: str
+    planned_memory_mb: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -100,6 +101,7 @@ class ProcessingMetadata:
             "cli_stdout": self.cli_stdout,
             "cli_stderr": self.cli_stderr,
             "cli": self.cli_descriptor,
+            "planned_memory_mb": self.planned_memory_mb,
         }
 
 

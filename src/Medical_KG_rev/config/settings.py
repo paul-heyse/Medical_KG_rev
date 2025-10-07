@@ -94,6 +94,7 @@ class MineruWorkerSettings(BaseModel):
     timeout_seconds: int = Field(default=300, ge=30, le=1800)
     batch_size: int = Field(default=4, ge=1, le=32)
     device_ids: Sequence[int] | None = Field(default=None)
+    reservation_margin: float = Field(default=0.9, ge=0.5, le=1.0)
 
     @model_validator(mode="after")
     def validate_device_ids(self) -> "MineruWorkerSettings":

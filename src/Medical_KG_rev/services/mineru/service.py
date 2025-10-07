@@ -19,7 +19,14 @@ from Medical_KG_rev.config.settings import MineruSettings, get_settings
 from Medical_KG_rev.services.gpu.manager import GpuManager, GpuNotAvailableError
 from Medical_KG_rev.storage.object_store import FigureStorageClient
 
-from .cli_wrapper import MineruCliBase, MineruCliError, MineruCliInput, create_cli
+from .cli_wrapper import (
+    MineruCliBase,
+    MineruCliError,
+    MineruCliInput,
+    SimulatedMineruCli,
+    create_cli,
+)
+from .gpu_budget import GpuBudgetPlanner
 from .gpu_manager import MineruGpuManager
 from .metrics import (
     MINERU_CLI_FAILURES_TOTAL,
@@ -78,6 +85,9 @@ class MineruProcessor:
         self._mineru_version = self._ensure_mineru_version()
         self._apply_cpu_environment()
         self._mineru_gpu.ensure_cuda_version()
+        self._gpu_budget = GpuBudgetPlanner(
+            self._required_memory_mb, self._settings.workers.reservation_margin
+        )
         if fail_fast:
             try:
                 self._gpu.wait_for_gpu(timeout=max(5.0, self._settings.workers.timeout_seconds / 10))
@@ -154,26 +164,25 @@ class MineruProcessor:
         ]
 
         gpu_label: str = "unknown"
+        planned_memory_mb = 0
         try:
-            with self._gpu.device_session(
-                "mineru", required_memory_mb=self._required_memory_mb, warmup=True
-            ) as device:
-                gpu_label = f"cuda:{device.index}"
-                MINERU_GPU_MEMORY_USAGE_BYTES.labels(
-                    gpu_id=gpu_label, state="required"
-                ).set(float(self._required_memory_mb * _BYTES_PER_MB))
-                cli_result = self._cli.run_batch(cli_inputs, gpu_id=device.index)
+            cli_result, gpu_label, planned_memory_mb = self._execute_cli(cli_inputs)
         except GpuNotAvailableError:
             logger.bind(reason="gpu-unavailable", batch=batch_index).error(
                 "mineru.process.failed"
             )
-            raise
+            if self._settings.simulate_if_unavailable:
+                cli_result, gpu_label, planned_memory_mb = self._execute_simulated_cli(cli_inputs)
+            else:
+                raise
         except MineruCliError as exc:
             logger.bind(
                 reason="cli-error", error=str(exc), batch=batch_index
             ).error("mineru.process.failed")
-            self._handle_cli_failure(exc)
-            raise  # pragma: no cover - re-raised by _handle_cli_failure
+            if self._handle_cli_failure(exc):
+                cli_result, gpu_label, planned_memory_mb = self._execute_simulated_cli(cli_inputs)
+            else:
+                raise
 
         completed_at = datetime.now(timezone.utc)
         duration = time.monotonic() - start_monotonic
@@ -185,7 +194,8 @@ class MineruProcessor:
             worker_id=self._worker_id,
             gpu_id=gpu_label,
         ).observe(cli_result.duration_seconds)
-        self._record_gpu_memory(gpu_label)
+        if gpu_label.startswith("cuda:"):
+            self._record_gpu_memory(gpu_label)
 
         documents: list[Document] = []
         metadata_entries: list[ProcessingMetadata] = []
@@ -209,6 +219,7 @@ class MineruProcessor:
                 started_at=started_at,
                 completed_at=completed_at,
                 cli_result=cli_result,
+                planned_memory_mb=planned_memory_mb,
             )
             document = self._postprocessor.build_document(parsed, request, metadata.as_dict())
             documents.append(document)
@@ -238,11 +249,54 @@ class MineruProcessor:
         MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.tables))
         MINERU_FIGURE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.figures))
 
-    def _handle_cli_failure(self, exc: MineruCliError) -> None:
+    def _plan_memory_reservation(self) -> int:
+        if self._required_memory_mb <= 0:
+            return 0
+        device = self._gpu.get_device()
+        planned = self._gpu_budget.plan(device)
+        if planned < self._required_memory_mb:
+            logger.bind(
+                device=device.index,
+                configured=self._required_memory_mb,
+                planned=planned,
+                total=device.total_memory_mb,
+            ).info("mineru.gpu.memory_budget_adjusted")
+        return planned
+
+    def _execute_cli(
+        self, cli_inputs: list[MineruCliInput]
+    ) -> tuple["MineruCliResult", str, int]:
+        planned_memory_mb = self._plan_memory_reservation()
+        with self._gpu.device_session(
+            "mineru", required_memory_mb=planned_memory_mb, warmup=True
+        ) as device:
+            gpu_label = f"cuda:{device.index}"
+            MINERU_GPU_MEMORY_USAGE_BYTES.labels(
+                gpu_id=gpu_label, state="required"
+            ).set(float(planned_memory_mb * _BYTES_PER_MB))
+            cli_result = self._cli.run_batch(cli_inputs, gpu_id=device.index)
+        return cli_result, gpu_label, planned_memory_mb
+
+    def _execute_simulated_cli(
+        self, cli_inputs: list[MineruCliInput]
+    ) -> tuple["MineruCliResult", str, int]:
+        simulated = self._cli
+        if not isinstance(simulated, SimulatedMineruCli):
+            simulated = SimulatedMineruCli(self._settings)
+            self._cli = simulated
+        cli_result = simulated.run_batch(cli_inputs, gpu_id=-1)
+        MINERU_GPU_MEMORY_USAGE_BYTES.labels(gpu_id="cpu", state="required").set(0.0)
+        return cli_result, "cpu", 0
+
+    def _handle_cli_failure(self, exc: MineruCliError) -> bool:
         reason = "oom" if self._looks_like_oom(str(exc)) else "cli-error"
         MINERU_CLI_FAILURES_TOTAL.labels(reason=reason).inc()
         if reason == "oom":
             raise MineruOutOfMemoryError(str(exc)) from exc
+        if self._settings.simulate_if_unavailable and not isinstance(self._cli, SimulatedMineruCli):
+            logger.bind(reason=reason).warning("mineru.cli.fallback_to_simulation")
+            return True
+        return False
 
     def _apply_cpu_environment(self) -> None:
         for key, value in self._settings.cpu.export_environment().items():
@@ -324,6 +378,7 @@ class MineruProcessor:
         started_at: datetime,
         completed_at: datetime,
         cli_result,
+        planned_memory_mb: int,
     ) -> ProcessingMetadata:
         model_names = {
             "layout": parsed.metadata.get("layout_model", "unknown"),
@@ -342,6 +397,7 @@ class MineruProcessor:
             cli_stdout=cli_result.stdout.strip(),
             cli_stderr=cli_result.stderr.strip(),
             cli_descriptor=self._cli.describe(),
+            planned_memory_mb=planned_memory_mb,
         )
 
 

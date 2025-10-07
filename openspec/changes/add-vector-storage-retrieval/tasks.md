@@ -2,11 +2,11 @@
 
 ## 1. Core Interfaces & Models
 
-- [ ] 1.1 Define `VectorStorePort` protocol (create_or_update_collection, upsert, knn, delete)
-- [ ] 1.2 Create `IndexParams` model (kind, metric, dim, HNSW/IVF/DiskANN parameters)
-- [ ] 1.3 Create `CompressionPolicy` model (kind, pq_m, pq_nbits, opq_m)
-- [ ] 1.4 Implement namespace registry with dimension validation
-- [ ] 1.5 Create vector store factory with backend selection
+- [x] 1.1 Define `VectorStorePort` protocol (create_or_update_collection, upsert, knn, delete)
+- [x] 1.2 Create `IndexParams` model (kind, metric, dim, HNSW/IVF/DiskANN parameters)
+- [x] 1.3 Create `CompressionPolicy` model (kind, pq_m, pq_nbits, opq_m)
+- [x] 1.4 Implement namespace registry with dimension validation
+- [x] 1.5 Create vector store factory with backend selection
 
 ## 2. Dense Vector Store Adapters (Primary)
 

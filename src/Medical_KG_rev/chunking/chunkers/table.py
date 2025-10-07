@@ -9,6 +9,7 @@ from Medical_KG_rev.models.ir import Document
 from ..assembly import ChunkAssembler
 from ..models import Chunk, Granularity
 from ..provenance import ProvenanceNormalizer
+from ..tables import TableHandler
 from ..tokenization import TokenCounter, default_token_counter
 from ..ports import BaseChunker
 
@@ -28,6 +29,9 @@ class TableChunker(BaseChunker):
             raise ValueError("Unsupported table chunking mode")
         self.mode = mode
         self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
+        self.table_handler = TableHandler(
+            token_counter=self.counter, mode=mode
+        )
 
     def chunk(
         self,
@@ -54,8 +58,11 @@ class TableChunker(BaseChunker):
         )
         chunks = []
         for ctx in contexts:
-            metadata = {"mode": self.mode, "segment_type": "table"}
-            chunks.append(assembler.build([ctx], metadata=metadata))
+            for table_slice in self.table_handler.iter_slices(ctx):
+                metadata = dict(table_slice.metadata)
+                metadata.setdefault("mode", self.mode)
+                metadata.setdefault("segment_type", "table")
+                chunks.append(assembler.build(table_slice.contexts, metadata=metadata))
         return chunks
 
     def explain(self) -> dict[str, object]:

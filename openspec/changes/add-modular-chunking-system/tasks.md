@@ -10,54 +10,54 @@
 - [x] 1.6 Create `ChunkerFactory` with config-driven instantiation
 - [x] 1.7 Build `MultiGranularityPipeline` orchestrator for parallel chunking
 - [x] 1.8 Implement provenance utilities for offset tracking and title_path construction
-- [ ] 1.9 Create table handler utilities (atomic preservation, row/rowgroup/summary modes)
-- [ ] 1.10 Implement sentence splitter adapters (spaCy, NLTK Punkt, PySBD) with English focus
-- [ ] 1.11 Create coherence calculator utilities for semantic drift detection
+- [x] 1.9 Create table handler utilities (atomic preservation, row/rowgroup/summary modes)
+- [x] 1.10 Implement sentence splitter adapters (spaCy, NLTK Punkt, PySBD) with English focus
+- [x] 1.11 Create coherence calculator utilities for semantic drift detection
 - [x] 1.12 Build chunk assembly utilities for mapping IR blocks to Chunk objects
 
 ## 2. Stable Production Chunkers (10 tasks)
 
 - [x] 2.1 Implement `SectionAwareChunker` with IMRaD/CT.gov/SPL/guideline section rules
-- [ ] 2.2 Add clinical section taxonomy data files (eligibility, endpoints, outcomes, AE, dose mappings)
-- [ ] 2.3 Implement `LayoutHeuristicChunker` with heading depth, font deltas, whitespace analysis
+- [x] 2.2 Add clinical section taxonomy data files (eligibility, endpoints, outcomes, AE, dose mappings)
+- [x] 2.3 Implement `LayoutHeuristicChunker` with heading depth, font deltas, whitespace analysis
 - [x] 2.4 Create `TableChunker` with row/rowgroup/summary modes and header preservation
 - [x] 2.5 Implement `SlidingWindowChunker` with token windows and overlap
 - [x] 2.6 Create `SemanticSplitterChunker` with embedding-drift boundaries (BGE-small-en default)
 - [x] 2.7 Add coherence threshold and drift detection logic for semantic splitter
 - [x] 2.8 Implement `ClinicalRoleChunker` with lightweight role classifier/rules
 - [x] 2.9 Add role tagging for PICO, eligibility, endpoint, AE, dose sections
-- [ ] 2.10 Implement endpoint+effect pair preservation logic
+- [x] 2.10 Implement endpoint+effect pair preservation logic
 
 ## 3. Framework Integration Adapters (8 tasks)
 
-- [ ] 3.1 Create `LangChainSplitterChunker` wrapper for RecursiveCharacterTextSplitter
-- [ ] 3.2 Add LangChain adapters for TokenTextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter
-- [ ] 3.3 Add LangChain adapters for NLTKTextSplitter, SpacyTextSplitter
-- [ ] 3.4 Create `LlamaIndexNodeParserChunker` wrapper for SemanticSplitterNodeParser
-- [ ] 3.5 Add LlamaIndex adapters for HierarchicalNodeParser, SentenceSplitterNodeParser
-- [ ] 3.6 Create `HaystackPreprocessorChunker` wrapper with split_by modes (word/sentence/passage)
-- [ ] 3.7 Create `UnstructuredChunker` wrapper for chunk_by_title, chunk_by_element, chunk_by_page
-- [ ] 3.8 Implement offset mapping utilities for framework adapters to preserve provenance
+- [x] 3.1 Create `LangChainSplitterChunker` wrapper for RecursiveCharacterTextSplitter
+- [x] 3.2 Add LangChain adapters for TokenTextSplitter, MarkdownHeaderTextSplitter, HTMLHeaderTextSplitter
+- [x] 3.3 Add LangChain adapters for NLTKTextSplitter, SpacyTextSplitter
+- [x] 3.4 Create `LlamaIndexNodeParserChunker` wrapper for SemanticSplitterNodeParser
+- [x] 3.5 Add LlamaIndex adapters for HierarchicalNodeParser, SentenceSplitterNodeParser
+- [x] 3.6 Create `HaystackPreprocessorChunker` wrapper with split_by modes (word/sentence/passage)
+- [x] 3.7 Create `UnstructuredChunker` wrapper for chunk_by_title, chunk_by_element, chunk_by_page
+- [x] 3.8 Implement offset mapping utilities for framework adapters to preserve provenance
 
 ## 4. Classical Lexical/Topic Segmentation Chunkers (8 tasks)
 
-- [ ] 4.1 Implement `TextTilingChunker` with Gensim integration
-- [ ] 4.2 Add TextTiling parameter tuning (block_size, step, similarity_window, smooth_width, cutoff)
-- [ ] 4.3 Implement `C99Chunker` with rank matrix and quantization
-- [ ] 4.4 Add cosine similarity matrix computation and smoothing for C99
-- [ ] 4.5 Implement `BayesSegChunker` with probabilistic topic switches
-- [ ] 4.6 Add dynamic programming or Bayesian inference for BayesSeg
-- [ ] 4.7 Implement `LDATopicChunker` with Gensim LDA and topic variation detection
-- [ ] 4.8 Add TopicTiling heuristic on top of LDA topics
+- [x] 4.1 Implement `TextTilingChunker` with Gensim integration
+- [x] 4.2 Add TextTiling parameter tuning (block_size, step, similarity_window, smooth_width, cutoff)
+- [x] 4.3 Implement `C99Chunker` with rank matrix and quantization
+- [x] 4.4 Add cosine similarity matrix computation and smoothing for C99
+- [x] 4.5 Implement `BayesSegChunker` with probabilistic topic switches
+- [x] 4.6 Add dynamic programming or Bayesian inference for BayesSeg
+- [x] 4.7 Implement `LDATopicChunker` with Gensim LDA and topic variation detection
+- [x] 4.8 Add TopicTiling heuristic on top of LDA topics
 
 ## 5. Embedding-Driven Semantic Chunkers (6 tasks)
 
 - [x] 5.1 Enhance `SemanticSplitterChunker` with configurable embedding models
 - [x] 5.2 Add GPU availability check and fail-fast when `gpu_semantic_checks: true`
-- [ ] 5.3 Implement `SemanticClusterChunker` with HAC/HDBSCAN clustering
-- [ ] 5.4 Add contiguous span projection for cluster-based segmentation
-- [ ] 5.5 Implement `GraphPartitionChunker` with Louvain/Leiden community detection
-- [ ] 5.6 Add sentence similarity graph construction and contiguous cluster mapping
+- [x] 5.3 Implement `SemanticClusterChunker` with HAC/HDBSCAN clustering
+- [x] 5.4 Add contiguous span projection for cluster-based segmentation
+- [x] 5.5 Implement `GraphPartitionChunker` with Louvain/Leiden community detection
+- [x] 5.6 Add sentence similarity graph construction and contiguous cluster mapping
 
 ## 6. LLM-Assisted Chunking (5 tasks)
 

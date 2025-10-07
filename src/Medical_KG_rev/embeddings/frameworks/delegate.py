@@ -1,7 +1,5 @@
 """Shared helpers for framework-backed embedding adapters."""
 
-"""Utilities shared by framework-based embedding adapters."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence

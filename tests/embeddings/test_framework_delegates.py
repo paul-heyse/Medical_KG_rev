@@ -3,8 +3,6 @@ from __future__ import annotations
 from Medical_KG_rev.embeddings.frameworks.haystack import HaystackEmbedderAdapter
 from Medical_KG_rev.embeddings.frameworks.langchain import LangChainEmbedderAdapter
 from Medical_KG_rev.embeddings.frameworks.llama_index import LlamaIndexEmbedderAdapter
-from collections.abc import Sequence
-
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRequest
 
 

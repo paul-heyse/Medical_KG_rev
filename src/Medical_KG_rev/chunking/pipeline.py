@@ -8,8 +8,10 @@ from typing import Iterable, Sequence
 
 from Medical_KG_rev.models.ir import Document
 
+from .base import ContextualChunker
 from .models import Chunk, Granularity
 from .ports import BaseChunker
+from .provenance import BlockContext
 
 
 class MultiGranularityPipeline:
@@ -17,8 +19,8 @@ class MultiGranularityPipeline:
 
     def __init__(
         self,
-        *,
         chunkers: Sequence[tuple[BaseChunker, Granularity | None]],
+        *,
         enable_multi_granularity: bool = True,
     ) -> None:
         if not chunkers:
@@ -48,17 +50,62 @@ class MultiGranularityPipeline:
             yield chunker, granularity
 
     def _execute(self, document: Document, tenant_id: str) -> list[Chunk]:
+        chunker_iter = list(self._iter_chunkers())
+        if len(chunker_iter) == 1:
+            chunker, granularity = chunker_iter[0]
+            return self._run_chunker(
+                chunker, document, tenant_id=tenant_id, granularity=granularity
+            )
+
         chunks: list[Chunk] = []
-        with ThreadPoolExecutor(max_workers=len(self.chunkers)) as executor:
+        context_cache: dict[int, list[BlockContext]] = {}
+        with ThreadPoolExecutor(max_workers=len(chunker_iter)) as executor:
             futures = [
                 executor.submit(
-                    chunker.chunk,
+                    self._run_chunker,
+                    chunker,
                     document,
-                    tenant_id=tenant_id,
-                    granularity=granularity,
+                    tenant_id,
+                    granularity,
+                    context_cache,
                 )
-                for chunker, granularity in self._iter_chunkers()
+                for chunker, granularity in chunker_iter
             ]
             for future in futures:
                 chunks.extend(future.result())
         return chunks
+
+    def _run_chunker(
+        self,
+        chunker: BaseChunker,
+        document: Document,
+        tenant_id: str,
+        granularity: Granularity | None,
+        context_cache: dict[int, list[BlockContext]] | None = None,
+    ) -> list[Chunk]:
+        if isinstance(chunker, ContextualChunker):
+            contexts = self._prepare_contexts(chunker, document, context_cache)
+            return chunker.chunk_with_contexts(
+                document,
+                contexts,
+                tenant_id=tenant_id,
+                granularity=granularity,
+            )
+        return chunker.chunk(
+            document,
+            tenant_id=tenant_id,
+            granularity=granularity,
+        )
+
+    def _prepare_contexts(
+        self,
+        chunker: ContextualChunker,
+        document: Document,
+        context_cache: dict[int, list[BlockContext]] | None,
+    ) -> list[BlockContext]:
+        if context_cache is None:
+            return chunker.prepare_contexts(document)
+        key = id(chunker)
+        if key not in context_cache:
+            context_cache[key] = chunker.prepare_contexts(document)
+        return context_cache[key]

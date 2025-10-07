@@ -6,19 +6,19 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
 from .configuration import ChunkerSettings, ChunkingConfig, DEFAULT_CONFIG_PATH
 from .factory import ChunkerFactory
 from .models import Chunk, Granularity
-from .pipeline import MultiGranularityPipeline
 from .exceptions import (
     ChunkerConfigurationError,
     ChunkingUnavailableError,
     InvalidDocumentError,
 )
+from .runtime import ChunkingRuntime, ChunkerSession
 from Medical_KG_rev.observability.metrics import set_chunking_circuit_state
 
 
@@ -132,6 +132,8 @@ class ChunkingService:
     ) -> None:
         self.config = ChunkingConfig.load(config_path or DEFAULT_CONFIG_PATH)
         self.factory = registry_factory or ChunkerFactory()
+        self.runtime = ChunkingRuntime(factory=self.factory)
+        self._session_cache: dict[tuple[object, ...], ChunkerSession] = {}
         self._circuit = _ChunkingCircuitBreaker(
             failure_threshold=failure_threshold,
             base_recovery_seconds=base_recovery_seconds,
@@ -170,14 +172,16 @@ class ChunkingService:
             ChunkingUnavailableError,
         )
         with self._circuit.attempt(skip_failures=skip_failures):
-            registered = self.factory.create_many(
-                chunker_settings, allow_experimental=True
-            )
-            pipeline = MultiGranularityPipeline(
-                chunkers=[(entry.instance, entry.granularity) for entry in registered],
-                enable_multi_granularity=allow_multi,
-            )
-            chunks = pipeline.chunk(document, tenant_id=tenant_id)
+            plan_key = self._plan_key(chunker_settings, allow_multi)
+            session = self._session_cache.get(plan_key)
+            if session is None:
+                session = self.runtime.create_session(
+                    chunker_settings,
+                    allow_experimental=True,
+                    enable_multi_granularity=allow_multi,
+                )
+                self._session_cache[plan_key] = session
+            chunks = session.chunk(document, tenant_id=tenant_id)
         return chunks
 
     def chunk_text(
@@ -196,6 +200,9 @@ class ChunkingService:
     def list_strategies(self) -> list[str]:
         return sorted(self.factory.registry.list_chunkers(include_experimental=True).keys())
 
+    def clear_session_cache(self) -> None:
+        self._session_cache.clear()
+
     def _document_from_text(self, document_id: str, text: str) -> Document:
         block = Block(
             id=f"{document_id}:block:0",
@@ -212,3 +219,32 @@ class ChunkingService:
             raise InvalidDocumentError("Document contains no sections to chunk")
         if not any(section.blocks for section in document.sections):
             raise InvalidDocumentError("Document contains no blocks to chunk")
+
+    @classmethod
+    def _plan_key(
+        cls, settings: Sequence[ChunkerSettings], allow_multi: bool
+    ) -> tuple[object, ...]:
+        return (
+            allow_multi,
+            tuple(
+                (
+                    setting.strategy,
+                    setting.granularity,
+                    cls._freeze_value(setting.params),
+                )
+                for setting in settings
+            ),
+        )
+
+    @classmethod
+    def _freeze_value(cls, value: object) -> object:
+        if isinstance(value, Mapping):
+            return tuple(
+                (key, cls._freeze_value(subvalue))
+                for key, subvalue in sorted(value.items(), key=lambda item: item[0])
+            )
+        if isinstance(value, (list, tuple)):
+            return tuple(cls._freeze_value(item) for item in value)
+        if isinstance(value, set):
+            return tuple(sorted(cls._freeze_value(item) for item in value))
+        return value

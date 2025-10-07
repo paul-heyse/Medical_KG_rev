@@ -60,69 +60,22 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        fusion_service: FusionService | None = None,
-        pipeline_settings: PipelineSettings | None = None,
-        reranking_engine: RerankingEngine | None = None,
-        reranking_settings: RerankingSettings | None = None,
+        granularity_weights: Mapping[str, float] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self.router = router or RetrievalRouter()
-        self._namespace_map = dict(namespace_map or {})
-
-        fusion_cfg = reranking_settings.fusion if reranking_settings else None
-        fusion_settings = FusionSettings(
-            strategy=FusionStrategy(fusion_cfg.strategy)
-            if fusion_cfg
-            else FusionStrategy.RRF,
-            rrf_k=fusion_cfg.rrf_k if fusion_cfg else 60,
-            weights=fusion_cfg.weights if fusion_cfg else {},
-            normalization=NormalizationStrategy(fusion_cfg.normalization)
-            if fusion_cfg
-            else NormalizationStrategy.MIN_MAX,
-            deduplicate=fusion_cfg.deduplicate if fusion_cfg else True,
-        )
-        self._fusion = fusion_service or FusionService(fusion_settings)
-
-        ttl = reranking_settings.cache_ttl if reranking_settings else 3600
-        failure_threshold = (
-            reranking_settings.circuit_breaker_failures if reranking_settings else 5
-        )
-        reset_timeout = (
-            reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
-        )
-        batch_size = (
-            reranking_settings.model.batch_size if reranking_settings else 64
-        )
-        self._reranking_engine = reranking_engine or RerankingEngine(
-            factory=RerankerFactory(),
-            cache=RerankCacheManager(ttl_seconds=ttl),
-            batch_processor=BatchProcessor(max_batch_size=batch_size),
-            circuit_breaker=CircuitBreaker(
-                failure_threshold=failure_threshold, reset_timeout=reset_timeout
-            ),
-        )
-        pipeline_cfg = reranking_settings.pipeline if reranking_settings else None
-        pipeline_settings = pipeline_settings or PipelineSettings(
-            retrieve_candidates=pipeline_cfg.retrieve_candidates if pipeline_cfg else 1000,
-            rerank_candidates=pipeline_cfg.rerank_candidates if pipeline_cfg else 100,
-            return_top_k=pipeline_cfg.return_top_k if pipeline_cfg else 10,
-        )
-        self._pipeline = TwoStagePipeline(
-            fusion=self._fusion,
-            reranking=self._reranking_engine,
-            settings=pipeline_settings,
-        )
-        # Backwards compatible attribute
-        self.reranker = reranker or CrossEncoderReranker()
-        self._default_reranker = (
-            reranking_settings.model.reranker_id
-            if reranking_settings
-            else "cross_encoder:bge"
-        )
+        self._granularity_weights = {
+            "document": 0.6,
+            "section": 1.0,
+            "paragraph": 1.2,
+            "window": 0.9,
+            "table": 0.8,
+        }
+        if granularity_weights:
+            self._granularity_weights.update(granularity_weights)
 
     def search(
         self,
@@ -151,41 +104,17 @@ class RetrievalService:
             context=security_context,
         )
         dense_results = self._dense_search(query, k, security_context)
-
-        default_reranker = reranker_id or self._default_reranker
-        candidate_lists = {
-            "bm25": self._materialise_documents(
-                bm25_results, security_context, strategy="bm25"
-            ),
-            "splade": self._materialise_documents(
-                splade_results, security_context, strategy="splade"
-            ),
-            "dense": self._materialise_documents(
-                dense_results, security_context, strategy="dense"
-            ),
-        }
-        fused, metrics = self._pipeline.execute(
-            security_context,
-            query,
-            candidate_lists,
-            reranker_id=default_reranker,
-            top_k=k,
-            rerank=rerank,
-            explain=explain,
-        )
-        results: list[RetrievalResult] = []
-        for rank, document in enumerate(fused, start=1):
-            retrieval_score = float(document.metadata.get("retrieval_score", document.score))
-            results.append(
-                RetrievalResult(
-                    id=document.doc_id,
-                    text=document.content,
-                    retrieval_score=retrieval_score,
-                    rerank_score=document.score if rerank else None,
-                    highlights=list(document.highlights),
-                    metadata=dict(document.metadata),
-                )
-            )
+        fused = self._fuse_results([bm25_results, splade_results, dense_results])
+        if filters and "granularity" in filters:
+            allowed = filters["granularity"]
+            if isinstance(allowed, str):
+                allowed_set = {allowed}
+            elif isinstance(allowed, Sequence):
+                allowed_set = {str(value) for value in allowed}
+            else:
+                allowed_set = {str(allowed)}
+            fused = [result for result in fused if result.granularity in allowed_set]
+        fused = self._merge_neighbors(fused)
         if rerank:
             for result in results:
                 result.metadata.setdefault("reranking", metrics.get("reranking", {}))
@@ -273,36 +202,90 @@ class RetrievalService:
             )
             return [self._opensearch_to_match(hit, "bm25") for hit in hits]
 
-    def _materialise_documents(
-        self,
-        results: Sequence[Mapping[str, object]],
-        context: SecurityContext,
-        *,
-        strategy: str,
-    ) -> list[ScoredDocument]:
-        documents: list[ScoredDocument] = []
-        for result in results:
-            doc_id = str(result.get("_id"))
-            source = result.get("_source", {})
-            if not isinstance(source, Mapping):
-                source = {}
-            metadata = dict(source)
-            metadata.setdefault("strategy", strategy)
-            tenant = str(metadata.get("tenant_id", context.tenant_id))
-            text = str(metadata.get("text", ""))
-            score = float(result.get("_score", 0.0))
-            document = ScoredDocument(
-                doc_id=doc_id,
-                content=text,
-                tenant_id=tenant,
-                source=str(metadata.get("source", strategy)),
-                strategy_scores={strategy: score},
-                metadata=metadata,
-                highlights=list(result.get("highlight", [])),
-                score=score,
+    def _fuse_results(
+        self, result_sets: Sequence[Sequence[Mapping[str, object]]]
+    ) -> list[RetrievalResult]:
+        aggregated: dict[str, dict[str, object]] = {}
+        for results in result_sets:
+            for rank, result in enumerate(results, start=1):
+                chunk_id = result["_id"]
+                data = aggregated.setdefault(
+                    chunk_id,
+                    {
+                        "text": result["_source"].get("text", ""),
+                        "metadata": result["_source"],
+                        "highlights": list(result.get("highlight", [])),
+                        "rrf": 0.0,
+                    },
+                )
+                weight = self._granularity_weights.get(
+                    str(result["_source"].get("granularity", "paragraph")),
+                    1.0,
+                )
+                data["rrf"] += weight * (1.0 / (50 + rank))
+        fused: list[RetrievalResult] = []
+        for chunk_id, payload in aggregated.items():
+            metadata = dict(payload["metadata"])
+            granularity = str(metadata.get("granularity", "paragraph"))
+            fused.append(
+                RetrievalResult(
+                    id=chunk_id,
+                    text=str(payload["text"]),
+                    retrieval_score=float(payload["rrf"]),
+                    rerank_score=None,
+                    highlights=list(payload["highlights"]),
+                    metadata=metadata,
+                    granularity=granularity,
+                )
             )
             documents.append(document)
         return documents
+
+    def _merge_neighbors(self, results: Iterable[RetrievalResult]) -> list[RetrievalResult]:
+        merged: list[RetrievalResult] = []
+        buffer: dict[tuple[str, str], RetrievalResult] = {}
+        for result in results:
+            if result.granularity != "window":
+                merged.append(result)
+                continue
+            doc_key, chunker, index = self._parse_chunk_id(result.id)
+            key = (doc_key, chunker)
+            existing = buffer.get(key)
+            if existing is None:
+                buffer[key] = result
+                continue
+            prev_doc, prev_chunker, prev_index = self._parse_chunk_id(existing.id)
+            if prev_doc == doc_key and prev_chunker == chunker and index == prev_index + 1:
+                combined_text = existing.text + "\n" + result.text
+                combined_score = max(existing.retrieval_score, result.retrieval_score)
+                metadata = dict(existing.metadata)
+                metadata.setdefault("merged_ids", [existing.id])
+                metadata["merged_ids"].append(result.id)
+                metadata["text"] = combined_text
+                merged_result = RetrievalResult(
+                    id=result.id,
+                    text=combined_text,
+                    retrieval_score=combined_score,
+                    rerank_score=None,
+                    highlights=existing.highlights,
+                    metadata=metadata,
+                    granularity=result.granularity,
+                )
+                buffer[key] = merged_result
+            else:
+                merged.append(existing)
+                buffer[key] = result
+        merged.extend(buffer.values())
+        return merged
+
+    def _parse_chunk_id(self, chunk_id: str) -> tuple[str, str, int]:
+        parts = chunk_id.split(":")
+        if len(parts) < 4:
+            return chunk_id, "unknown", 0
+        try:
+            return parts[0], parts[1], int(parts[-1])
+        except ValueError:
+            return parts[0], parts[1], 0
 
     def _apply_rerank(
         self, query: str, results: Iterable[RetrievalResult]

@@ -10,9 +10,10 @@ import xml.etree.ElementTree as ET
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document
 
-from ..base import ContextualChunker, Segment
+from ..base import ContextualChunker
 from ..exceptions import ChunkerConfigurationError
 from ..provenance import BlockContext
+from ..segmentation import Segment
 from ..tokenization import TokenCounter
 
 

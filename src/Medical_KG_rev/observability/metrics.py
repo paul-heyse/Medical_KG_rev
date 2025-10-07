@@ -193,39 +193,13 @@ def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
 
 
-def record_reranking_operation(
-    reranker: str,
-    tenant: str,
-    batch_size: int,
-    duration_seconds: float,
-    pairs: int,
-    circuit_state: str,
-    gpu_utilisation: float | None = None,
-) -> None:
-    RERANK_OPERATIONS.labels(reranker, tenant, str(batch_size)).inc()
-    RERANK_DURATION.labels(reranker, tenant).observe(max(duration_seconds, 0.0))
-    RERANK_PAIRS.labels(reranker).inc(max(pairs, 0))
-    RERANK_CIRCUIT.labels(reranker, tenant).set(1.0 if circuit_state == "open" else 0.0)
-    if gpu_utilisation is not None:
-        RERANK_GPU.labels(reranker).set(max(gpu_utilisation, 0.0))
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
 
 
-def record_reranking_error(reranker: str, error_type: str) -> None:
-    RERANK_ERRORS.labels(reranker, error_type).inc()
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
 
 
-def record_pipeline_stage(stage: str, duration_seconds: float) -> None:
-    PIPELINE_STAGE_DURATION.labels(stage).observe(max(duration_seconds, 0.0))
-
-
-def record_cache_hit_rate(reranker: str, hit_rate: float) -> None:
-    RERANK_CACHE_HIT.labels(reranker).set(max(0.0, min(hit_rate, 1.0)))
-
-
-def record_latency_alert(reranker: str, duration_seconds: float, slo_seconds: float) -> None:
-    if duration_seconds > slo_seconds:
-        RERANK_LATENCY_ALERTS.labels(reranker).inc()
-
-
-def record_gpu_memory_alert(reranker: str) -> None:
-    RERANK_GPU_MEMORY_ALERTS.labels(reranker).inc()
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

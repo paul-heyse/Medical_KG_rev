@@ -45,6 +45,11 @@ class OpenSearchClient:
             return None
         return stored.body
 
+    def has_document(self, index: str, doc_id: str) -> bool:
+        """Check whether a document is present in the simulated index."""
+
+        return doc_id in self._indices.get(index, {})
+
     def search(
         self,
         index: str,

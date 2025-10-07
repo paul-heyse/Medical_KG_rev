@@ -84,6 +84,7 @@ class EmbeddingModelRegistry:
         register_builtin_embedders(self._registry)
         self._factory = EmbedderFactory(self._registry)
         self._prime_configs()
+        self._register_namespaces()
 
     def _load_configuration(self, config_path: str | Path | None) -> EmbeddingsConfiguration:
         path_obj = Path(config_path) if config_path else None
@@ -111,6 +112,11 @@ class EmbeddingModelRegistry:
         self._configs_by_namespace = {
             config.namespace: config for config in embedder_configs
         }
+
+    def _register_namespaces(self) -> None:
+        self.namespace_manager.reset()
+        for config in self._configs_by_namespace.values():
+            self.namespace_manager.register(config)
 
     @property
     def factory(self) -> EmbedderFactory:
@@ -179,6 +185,19 @@ class EmbeddingModelRegistry:
         msg = f"Unknown embedder configuration '{key}'"
         logger.error("embedding.registry.config_missing_entry", key=key)
         raise KeyError(msg)
+
+    def reload(self, *, config_path: str | Path | None = None) -> None:
+        """Reload embedding configurations and refresh namespace registrations."""
+
+        if config_path is not None:
+            self.config_path = config_path
+        self._config = self._load_configuration(self.config_path)
+        self._prime_configs()
+        self._register_namespaces()
+        logger.info(
+            "embedding.registry.reloaded",
+            namespaces=list(self._configs_by_namespace.keys()),
+        )
 
 
 __all__ = ["EmbeddingModelRegistry"]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from Medical_KG_rev.services.retrieval.chunking import ChunkingService
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.indexing_service import IndexingService
@@ -55,10 +57,19 @@ def test_incremental_indexing_skips_existing_chunks():
     assert second.chunk_ids == []
 
 
-def test_incremental_indexing_without_faiss_falls_back_to_text_index():
+def test_incremental_indexing_without_faiss_falls_back_to_text_index(monkeypatch: pytest.MonkeyPatch):
     chunking = ChunkingService()
     worker = _StubEmbeddingWorker()
     opensearch = OpenSearchClient()
+    calls: list[str] = []
+
+    original_has_document = opensearch.has_document
+
+    def tracking_has_document(index: str, doc_id: str) -> bool:
+        calls.append(doc_id)
+        return original_has_document(index, doc_id)
+
+    monkeypatch.setattr(opensearch, "has_document", tracking_has_document)
     service = IndexingService(chunking, worker, opensearch, faiss=None)
 
     text = "Section\nContent"
@@ -66,6 +77,7 @@ def test_incremental_indexing_without_faiss_falls_back_to_text_index():
     second = service.index_document("tenant", "doc-1", text, incremental=True)
 
     assert second.chunk_ids == []
+    assert calls
 
 
 def test_metadata_merges_embedding_and_chunk_payloads():

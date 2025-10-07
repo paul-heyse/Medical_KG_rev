@@ -5,12 +5,20 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
-from Medical_KG_rev.services.reranking.pipeline.cache import RerankCacheManager
+import structlog
+
+from Medical_KG_rev.services.embedding.service import (
+    EmbeddingRequest,
+    EmbeddingVector,
+    EmbeddingWorker,
+)
 
 from .chunking import Chunk, ChunkingOptions, ChunkingService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
+
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -58,10 +66,8 @@ class IndexingService:
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
-        self._embed_and_index(tenant_id, chunks)
-        if self.rerank_cache is not None:
-            self.rerank_cache.invalidate(tenant_id, [document_id])
-        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
+        self._embed_and_index(tenant_id, chunks, metadata)
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.chunk_id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
@@ -116,9 +122,14 @@ class IndexingService:
         if self.faiss is not None:
             known = set(self.faiss.ids)
             return {chunk_id for chunk_id in chunk_ids if chunk_id in known}
+        logger.info(
+            "retrieval.indexing.incremental_fallback",
+            reason="faiss_unavailable",
+            chunk_ids=len(chunk_ids),
+        )
         existing: set[str] = set()
         for chunk_id in chunk_ids:
-            if self.opensearch.get(self.chunk_index, chunk_id) is not None:
+            if self.opensearch.has_document(self.chunk_index, chunk_id):
                 existing.add(chunk_id)
         return existing
 

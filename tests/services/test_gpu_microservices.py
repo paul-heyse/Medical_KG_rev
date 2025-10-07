@@ -7,6 +7,8 @@ import pytest
 
 pytest.importorskip("pydantic")
 
+from Medical_KG_rev.config.settings import MineruSettings, MineruWorkerSettings
+
 
 def _build_fake_torch():
     class _Props:
@@ -148,6 +150,43 @@ def test_mineru_processor_generates_blocks(microservice_modules):
     assert response.metadata.document_id == "doc-1"
     assert response.metadata.worker_id
     assert response.document.provenance["document_id"] == "doc-1"
+
+
+def test_mineru_processor_respects_batch_size(microservice_modules):
+    settings = MineruSettings(
+        enabled=True,
+        simulate_if_unavailable=True,
+        cli_command="mineru-missing",
+        workers=MineruWorkerSettings(
+            count=1, batch_size=1, device_ids=[0], vram_per_worker_gb=1
+        ),
+    )
+    processor = microservice_modules.mineru.MineruProcessor(
+        microservice_modules.gpu_manager.GpuManager(
+            min_memory_mb=settings.workers.vram_per_worker_mb
+        ),
+        settings=settings,
+        fail_fast=False,
+    )
+    requests = [
+        microservice_modules.mineru.MineruRequest(
+            tenant_id="tenant-1",
+            document_id="doc-1",
+            content=b"Population data\nDose|Value",
+        ),
+        microservice_modules.mineru.MineruRequest(
+            tenant_id="tenant-1",
+            document_id="doc-2",
+            content=b"Secondary arm\nMetric|Result",
+        ),
+    ]
+
+    batch = processor.process_batch(requests)
+
+    assert len(batch.documents) == 2
+    assert [doc.document_id for doc in batch.documents] == ["doc-1", "doc-2"]
+    assert len(batch.metadata) == 2
+    assert batch.duration_seconds >= 0.0
 
 
 def test_embedding_worker_batches_models(microservice_modules):

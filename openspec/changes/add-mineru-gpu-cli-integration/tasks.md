@@ -56,76 +56,76 @@
   - [x] 3.2.5 Emit GPU metrics to Prometheus
   - [x] 3.2.6 Validate CUDA 12.8 availability on startup
 
-- [ ] 3.3 Update `src/Medical_KG_rev/config/settings.py`
-  - [ ] 3.3.1 Add `MineruSettings` configuration class
-  - [ ] 3.3.2 Add `MineruWorkerSettings` with default worker_count=4, vram_per_worker=7GB
-  - [ ] 3.3.3 Add validation for GPU IDs and batch sizes
-  - [ ] 3.3.4 Add performance tuning parameters (timeout, memory limits)
-  - [ ] 3.3.5 Add CPU multiprocessing configuration (core/thread allocation)
+- [x] 3.3 Update `src/Medical_KG_rev/config/settings.py`
+  - [x] 3.3.1 Add `MineruSettings` configuration class
+  - [x] 3.3.2 Add `MineruWorkerSettings` with default worker_count=4, vram_per_worker=7GB
+  - [x] 3.3.3 Add validation for GPU IDs and batch sizes
+  - [x] 3.3.4 Add performance tuning parameters (timeout, memory limits)
+  - [x] 3.3.5 Add CPU multiprocessing configuration (core/thread allocation)
 
 ## 4. Data Model Updates
 
-- [ ] 4.1 Update `src/Medical_KG_rev/models/ir.py`
-  - [ ] 4.1.1 Extend `Block` model with `layout_bbox` (bounding box coordinates)
-  - [ ] 4.1.2 Add `reading_order` field for multi-column layout
-  - [ ] 4.1.3 Add `confidence_score` from MinerU model predictions
+- [x] 4.1 Update `src/Medical_KG_rev/models/ir.py`
+  - [x] 4.1.1 Extend `Block` model with `layout_bbox` (bounding box coordinates)
+  - [x] 4.1.2 Add `reading_order` field for multi-column layout
+  - [x] 4.1.3 Add `confidence_score` from MinerU model predictions
 
-- [ ] 4.2 Create `src/Medical_KG_rev/models/table.py`
-  - [ ] 4.2.1 Define `TableCell` model (content, row, col, rowspan, colspan)
-  - [ ] 4.2.2 Define `Table` model (cells, headers, caption, bbox, page_num)
-  - [ ] 4.2.3 Add `to_markdown()` and `to_html()` serialization methods
-  - [ ] 4.2.4 Add validation for table structure integrity
+- [x] 4.2 Create `src/Medical_KG_rev/models/table.py`
+  - [x] 4.2.1 Define `TableCell` model (content, row, col, rowspan, colspan)
+  - [x] 4.2.2 Define `Table` model (cells, headers, caption, bbox, page_num)
+  - [x] 4.2.3 Add `to_markdown()` and `to_html()` serialization methods
+  - [x] 4.2.4 Add validation for table structure integrity
 
-- [ ] 4.3 Create `src/Medical_KG_rev/models/figure.py`
-  - [ ] 4.3.1 Define `Figure` model (image_path, caption, bbox, page_num, figure_type)
-  - [ ] 4.3.2 Add support for molecular structures, plots, diagrams
-  - [ ] 4.3.3 Add MIME type and dimensions metadata
+- [x] 4.3 Create `src/Medical_KG_rev/models/figure.py`
+  - [x] 4.3.1 Define `Figure` model (image_path, caption, bbox, page_num, figure_type)
+  - [x] 4.3.2 Add support for molecular structures, plots, diagrams
+  - [x] 4.3.3 Add MIME type and dimensions metadata
 
-- [ ] 4.4 Create `src/Medical_KG_rev/models/equation.py`
-  - [ ] 4.4.1 Define `Equation` model (latex, mathml, bbox, page_num)
-  - [ ] 4.4.2 Add rendering metadata (display vs inline)
+- [x] 4.4 Create `src/Medical_KG_rev/models/equation.py`
+  - [x] 4.4.1 Define `Equation` model (latex, mathml, bbox, page_num)
+  - [x] 4.4.2 Add rendering metadata (display vs inline)
 
 ## 5. gRPC Service Updates
 
-- [ ] 5.1 Update `proto/mineru_service.proto`
-  - [ ] 5.1.1 Add `BatchProcessPDFRequest` message for multiple PDFs
-  - [ ] 5.1.2 Update `ProcessPDFResponse` with tables, figures, equations fields
-  - [ ] 5.1.3 Add `ProcessingMetadata` with MinerU version, model names, GPU ID
-  - [ ] 5.1.4 Add `TableStructure`, `FigureMetadata`, `EquationData` messages
-  - [ ] 5.1.5 Regenerate Python gRPC stubs
+- [x] 5.1 Update `proto/mineru_service.proto`
+  - [x] 5.1.1 Add `BatchProcessPDFRequest` message for multiple PDFs
+  - [x] 5.1.2 Update `ProcessPDFResponse` with tables, figures, equations fields
+  - [x] 5.1.3 Add `ProcessingMetadata` with MinerU version, model names, GPU ID
+  - [x] 5.1.4 Add `TableStructure`, `FigureMetadata`, `EquationData` messages
+  - [x] 5.1.5 Regenerate Python gRPC stubs
 
-- [ ] 5.2 Update `src/Medical_KG_rev/services/mineru/grpc_server.py`
-  - [ ] 5.2.1 Implement `BatchProcessPDF` RPC handler
-  - [ ] 5.2.2 Convert parsed MinerU output to gRPC response messages
-  - [ ] 5.2.3 Add error handling with specific status codes
-  - [ ] 5.2.4 Add OpenTelemetry tracing for RPC calls
+- [x] 5.2 Update `src/Medical_KG_rev/services/mineru/grpc_server.py`
+  - [x] 5.2.1 Implement `BatchProcessPDF` RPC handler
+  - [x] 5.2.2 Convert parsed MinerU output to gRPC response messages
+  - [x] 5.2.3 Add error handling with specific status codes
+  - [x] 5.2.4 Add OpenTelemetry tracing for RPC calls
 
 ## 6. Downstream Pipeline Integration
 
-- [ ] 6.1 Update `src/Medical_KG_rev/orchestration/ingestion_pipeline.py`
-  - [ ] 6.1.1 Update PDF processing stage to call new MinerU service
-  - [ ] 6.1.2 Add post-processing stage for MinerU output transformation
-  - [ ] 6.1.3 Handle tables, figures, equations in separate processing paths
-  - [ ] 6.1.4 Update ledger states (`pdf_parsing` → `pdf_parsed` → `postpdf_processing`)
+- [x] 6.1 Update `src/Medical_KG_rev/orchestration/ingestion_pipeline.py`
+  - [x] 6.1.1 Update PDF processing stage to call new MinerU service
+  - [x] 6.1.2 Add post-processing stage for MinerU output transformation
+  - [x] 6.1.3 Handle tables, figures, equations in separate processing paths
+  - [x] 6.1.4 Update ledger states (`pdf_parsing` → `pdf_parsed` → `postpdf_processing`)
 
-- [ ] 6.2 Create `src/Medical_KG_rev/services/mineru/postprocessor.py`
-  - [ ] 6.2.1 Convert MinerU blocks to chunking-ready IR blocks
-  - [ ] 6.2.2 Extract table data and serialize to JSON/CSV
-  - [ ] 6.2.3 Upload figures to MinIO/S3 with metadata
-  - [ ] 6.2.4 Inline-render small equations, link large ones
-  - [ ] 6.2.5 Preserve reading order and layout signals
+- [x] 6.2 Create `src/Medical_KG_rev/services/mineru/postprocessor.py`
+  - [x] 6.2.1 Convert MinerU blocks to chunking-ready IR blocks
+  - [x] 6.2.2 Extract table data and serialize to JSON/CSV
+  - [x] 6.2.3 Upload figures to MinIO/S3 with metadata
+  - [x] 6.2.4 Inline-render small equations, link large ones
+  - [x] 6.2.5 Preserve reading order and layout signals
 
-- [ ] 6.3 Create `src/Medical_KG_rev/chunking/adapters/table_aware.py`
-  - [ ] 6.3.1 Implement `TableAwareChunker` using extracted table structures
-  - [ ] 6.3.2 Keep table rows/columns together in chunks
-  - [ ] 6.3.3 Add table captions to chunk metadata
-  - [ ] 6.3.4 Handle table-heavy documents (dosing schedules, trial results)
+- [x] 6.3 Create `src/Medical_KG_rev/chunking/adapters/table_aware.py`
+  - [x] 6.3.1 Implement `TableAwareChunker` using extracted table structures
+  - [x] 6.3.2 Keep table rows/columns together in chunks
+  - [x] 6.3.3 Add table captions to chunk metadata
+  - [x] 6.3.4 Handle table-heavy documents (dosing schedules, trial results)
 
-- [ ] 6.4 Update `src/Medical_KG_rev/storage/object_store.py`
-  - [ ] 6.4.1 Add `store_figure()` method for image uploads
-  - [ ] 6.4.2 Add `generate_figure_url()` for signed URLs
-  - [ ] 6.4.3 Add tenant isolation for figure storage paths
-  - [ ] 6.4.4 Add figure cleanup on document deletion
+- [x] 6.4 Update `src/Medical_KG_rev/storage/object_store.py`
+  - [x] 6.4.1 Add `store_figure()` method for image uploads
+  - [x] 6.4.2 Add `generate_figure_url()` for signed URLs
+  - [x] 6.4.3 Add tenant isolation for figure storage paths
+  - [x] 6.4.4 Add figure cleanup on document deletion
 
 ## 7. Performance Optimization
 

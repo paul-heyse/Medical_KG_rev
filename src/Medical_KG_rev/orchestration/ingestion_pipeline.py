@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -21,6 +25,8 @@ from Medical_KG_rev.observability.metrics import (
 )
 from Medical_KG_rev.services.embedding import EmbeddingRequest, EmbeddingWorker
 from Medical_KG_rev.services.ingestion import IngestionService
+from Medical_KG_rev.services.mineru.service import MineruProcessor
+from Medical_KG_rev.services.mineru.types import Document as MineruDocument, MineruRequest
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
@@ -34,6 +40,164 @@ INGEST_CHUNKS_TOPIC = "ingest.chunks.v1"
 INGEST_EMBEDDINGS_TOPIC = "ingest.embeddings.v1"
 INGEST_INDEXED_TOPIC = "ingest.indexed.v1"
 INGEST_DLQ_TOPIC = "ingest.deadletter.v1"
+
+
+@dataclass(slots=True)
+class MineruParsingStage(PipelineStage):
+    """Stage that invokes the MinerU processor on raw PDF content."""
+
+    processor: MineruProcessor
+    name: str = "pdf_parsing"
+
+    def execute(self, context: PipelineContext) -> PipelineContext:
+        pdf_bytes = self._extract_pdf_bytes(context.data)
+        if pdf_bytes is None:
+            raise StageFailure(
+                "PDF content not available for MinerU parsing",
+                status=400,
+                stage=self.name,
+                error_type="validation",
+            )
+        document_id = self._resolve_document_id(context)
+        request = MineruRequest(
+            tenant_id=context.tenant_id,
+            document_id=document_id,
+            content=pdf_bytes,
+        )
+        try:
+            response = self.processor.process(request)
+        except StageFailure:
+            raise
+        except Exception as exc:
+            raise StageFailure(
+                "MinerU parsing failed",
+                detail=str(exc),
+                stage=self.name,
+                retriable=True,
+            ) from exc
+
+        mineru_document = response.document
+        metadata = response.metadata.as_dict()
+        context.data["mineru_document"] = mineru_document
+        context.data["mineru_metadata"] = metadata
+        if mineru_document.ir_document is not None:
+            context.data["document"] = mineru_document.ir_document
+        context.data.setdefault("provenance", {})["mineru"] = metadata
+        context.data.setdefault("document_id", document_id)
+        states = context.data.setdefault("ledger_states", [])
+        if "pdf_parsing" not in states:
+            states.append("pdf_parsing")
+        if "pdf_parsed" not in states:
+            states.append("pdf_parsed")
+        context.data.setdefault("metrics", {})[self.name] = {
+            "duration_ms": round(response.duration_seconds * 1000, 3),
+            "blocks": len(mineru_document.blocks),
+            "tables": len(mineru_document.tables),
+            "figures": len(mineru_document.figures),
+            "equations": len(mineru_document.equations),
+        }
+        logger.info(
+            "mineru.stage.parsed",
+            document_id=document_id,
+            blocks=len(mineru_document.blocks),
+            tables=len(mineru_document.tables),
+            figures=len(mineru_document.figures),
+            equations=len(mineru_document.equations),
+        )
+        return context
+
+    def _extract_pdf_bytes(self, payload: Mapping[str, Any]) -> bytes | None:
+        pdf_payload = payload.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            for key in ("content", "bytes", "data"):
+                candidate = self._coerce_bytes(pdf_payload.get(key))
+                if candidate:
+                    return candidate
+            candidate = self._coerce_bytes(pdf_payload.get("path"))
+            if candidate:
+                return candidate
+        for key in ("pdf_bytes", "pdf_content", "content"):
+            candidate = self._coerce_bytes(payload.get(key))
+            if candidate:
+                return candidate
+        return None
+
+    def _coerce_bytes(self, value: Any) -> bytes | None:
+        if isinstance(value, bytes):
+            return value
+        if isinstance(value, memoryview):
+            return bytes(value)
+        if isinstance(value, Path):
+            try:
+                return value.read_bytes()
+            except OSError:
+                return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return None
+            try:
+                return base64.b64decode(stripped, validate=True)
+            except (binascii.Error, ValueError):
+                path = Path(stripped)
+                if path.exists():
+                    try:
+                        return path.read_bytes()
+                    except OSError:
+                        return None
+        return None
+
+    def _resolve_document_id(self, context: PipelineContext) -> str:
+        for key in ("document_id", "doc_id", "doc_key"):
+            value = context.data.get(key)
+            if isinstance(value, str) and value:
+                return value
+        document_payload = context.data.get("document")
+        if isinstance(document_payload, Mapping):
+            for key in ("id", "document_id"):
+                value = document_payload.get(key)
+                if isinstance(value, str) and value:
+                    return value
+        return uuid.uuid4().hex
+
+
+@dataclass(slots=True)
+class MineruPostProcessingStage(PipelineStage):
+    """Extracts MinerU tables, figures, and equations for downstream use."""
+
+    name: str = "postpdf_processing"
+
+    def execute(self, context: PipelineContext) -> PipelineContext:
+        mineru_document = context.data.get("mineru_document")
+        if not isinstance(mineru_document, MineruDocument):
+            raise StageFailure(
+                "MinerU document missing from context",
+                status=400,
+                stage=self.name,
+                error_type="validation",
+            )
+
+        if mineru_document.ir_document is not None:
+            context.data["document"] = mineru_document.ir_document
+        context.data["tables"] = [table.model_dump() for table in mineru_document.tables]
+        context.data["figures"] = [figure.model_dump() for figure in mineru_document.figures]
+        context.data["equations"] = [equation.model_dump() for equation in mineru_document.equations]
+        states = context.data.setdefault("ledger_states", [])
+        if "postpdf_processing" not in states:
+            states.append("postpdf_processing")
+        context.data.setdefault("metrics", {})[self.name] = {
+            "tables": len(mineru_document.tables),
+            "figures": len(mineru_document.figures),
+            "equations": len(mineru_document.equations),
+        }
+        logger.info(
+            "mineru.stage.postprocessed",
+            document_id=context.data.get("document_id"),
+            tables=len(mineru_document.tables),
+            figures=len(mineru_document.figures),
+            equations=len(mineru_document.equations),
+        )
+        return context
 
 
 def _coerce_document(payload: dict[str, Any]) -> Document:
@@ -307,6 +471,8 @@ def _coerce_chunking_options(options: Any) -> ChunkingOptions | None:
 
 
 __all__ = [
+    "MineruParsingStage",
+    "MineruPostProcessingStage",
     "ChunkingStage",
     "EmbeddingStage",
     "IndexingStage",

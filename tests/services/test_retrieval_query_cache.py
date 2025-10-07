@@ -17,6 +17,14 @@ class _StubEmbeddingWorker:
         self.dimension = dimension
         self.calls = 0
 
+    @property
+    def active_namespaces(self) -> list[str]:
+        return [self.namespace]
+
+    @property
+    def namespace_weights(self) -> dict[str, float]:
+        return {self.namespace: 1.0}
+
     def encode_queries(self, request):  # pragma: no cover - signature provided by EmbeddingWorker
         self.calls += 1
         vector = [0.1] * self.dimension

@@ -40,6 +40,12 @@ MINERU_FIGURE_EXTRACTION_COUNT = Histogram(
     labelnames=("worker_id",),
 )
 
+MINERU_WORKER_QUEUE_DEPTH = Gauge(
+    "mineru_worker_queue_depth",
+    "Depth of the MinerU worker queues, labelled by worker identifier.",
+    labelnames=("worker_id",),
+)
+
 __all__ = [
     "MINERU_PROCESSING_DURATION_SECONDS",
     "MINERU_GPU_MEMORY_USAGE_BYTES",
@@ -47,4 +53,5 @@ __all__ = [
     "MINERU_PDF_PAGES_PROCESSED_TOTAL",
     "MINERU_TABLE_EXTRACTION_COUNT",
     "MINERU_FIGURE_EXTRACTION_COUNT",
+    "MINERU_WORKER_QUEUE_DEPTH",
 ]

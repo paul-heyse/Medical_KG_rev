@@ -38,23 +38,23 @@
 
 ## 3. Parallel Worker Architecture
 
-- [ ] 3.1 Create `src/Medical_KG_rev/services/mineru/worker_pool.py`
-  - [ ] 3.1.1 Implement `WorkerPool` class with default of 4 parallel workers
-  - [ ] 3.1.2 Implement `Worker` class with GPU assignment (one GPU per worker)
-  - [ ] 3.1.3 Configure each worker with 7GB VRAM limit
-  - [ ] 3.1.4 Add Kafka consumer integration for `pdf.parse.requests.v1` topic
-  - [ ] 3.1.5 Implement job queue with priority support
-  - [ ] 3.1.6 Add worker health checks and auto-restart
-  - [ ] 3.1.7 Implement graceful shutdown on SIGTERM
-  - [ ] 3.1.8 Configure multiprocessing for parallel CPU utilization (prevent CPU bottleneck)
+- [x] 3.1 Create `src/Medical_KG_rev/services/mineru/worker_pool.py`
+  - [x] 3.1.1 Implement `WorkerPool` class with default of 4 parallel workers
+  - [x] 3.1.2 Implement `Worker` class with GPU assignment (one GPU per worker)
+  - [x] 3.1.3 Configure each worker with 7GB VRAM limit
+  - [x] 3.1.4 Add Kafka consumer integration for `pdf.parse.requests.v1` topic
+  - [x] 3.1.5 Implement job queue with priority support
+  - [x] 3.1.6 Add worker health checks and auto-restart
+  - [x] 3.1.7 Implement graceful shutdown on SIGTERM
+  - [x] 3.1.8 Configure multiprocessing for parallel CPU utilization (prevent CPU bottleneck)
 
-- [ ] 3.2 Create `src/Medical_KG_rev/services/mineru/gpu_manager.py`
-  - [ ] 3.2.1 Implement GPU discovery and enumeration
-  - [ ] 3.2.2 Track GPU utilization per worker (7GB VRAM allocation per worker)
-  - [ ] 3.2.3 Implement GPU memory usage monitoring
-  - [ ] 3.2.4 Add OOM detection and worker recovery
-  - [ ] 3.2.5 Emit GPU metrics to Prometheus
-  - [ ] 3.2.6 Validate CUDA 12.8 availability on startup
+- [x] 3.2 Create `src/Medical_KG_rev/services/mineru/gpu_manager.py`
+  - [x] 3.2.1 Implement GPU discovery and enumeration
+  - [x] 3.2.2 Track GPU utilization per worker (7GB VRAM allocation per worker)
+  - [x] 3.2.3 Implement GPU memory usage monitoring
+  - [x] 3.2.4 Add OOM detection and worker recovery
+  - [x] 3.2.5 Emit GPU metrics to Prometheus
+  - [x] 3.2.6 Validate CUDA 12.8 availability on startup
 
 - [ ] 3.3 Update `src/Medical_KG_rev/config/settings.py`
   - [ ] 3.3.1 Add `MineruSettings` configuration class

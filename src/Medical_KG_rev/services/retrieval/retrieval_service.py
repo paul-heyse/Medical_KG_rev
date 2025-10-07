@@ -51,9 +51,7 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        embedding_worker: EmbeddingWorker | None = None,
-        active_namespaces: Sequence[str] | None = None,
-        namespace_weights: Mapping[str, float] | None = None,
+        granularity_weights: Mapping[str, float] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -61,11 +59,15 @@ class RetrievalService:
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self.embedding_worker = embedding_worker
-        self.active_namespaces = list(active_namespaces or [vector_namespace])
-        self.namespace_weights = dict(namespace_weights or {vector_namespace: 1.0})
-        self._query_cache: OrderedDict[tuple[str, tuple[str, ...]], list[Mapping[str, Any]]] = OrderedDict()
-        self._cache_size = 32
+        self._granularity_weights = {
+            "document": 0.6,
+            "section": 1.0,
+            "paragraph": 1.2,
+            "window": 0.9,
+            "table": 0.8,
+        }
+        if granularity_weights:
+            self._granularity_weights.update(granularity_weights)
 
     def search(
         self,
@@ -89,19 +91,18 @@ class RetrievalService:
             namespace=self.vector_namespace,
             context=security_context,
         )
-        strategies = self._build_strategies(index, security_context)
-        fused_matches = self.router.execute(request, strategies)
-        fused = [
-            RetrievalResult(
-                id=match.id,
-                text=str(match.metadata.get("text", "")),
-                retrieval_score=match.score,
-                rerank_score=None,
-                highlights=list(match.metadata.get("highlights", [])),
-                metadata={key: value for key, value in match.metadata.items() if key != "highlights"},
-            )
-            for match in fused_matches
-        ]
+        dense_results = self._dense_search(query, k, security_context)
+        fused = self._fuse_results([bm25_results, splade_results, dense_results])
+        if filters and "granularity" in filters:
+            allowed = filters["granularity"]
+            if isinstance(allowed, str):
+                allowed_set = {allowed}
+            elif isinstance(allowed, Sequence):
+                allowed_set = {str(value) for value in allowed}
+            else:
+                allowed_set = {str(allowed)}
+            fused = [result for result in fused if result.granularity in allowed_set]
+        fused = self._merge_neighbors(fused)
         if rerank:
             fused = self._apply_rerank(query, fused)
         fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
@@ -184,26 +185,56 @@ class RetrievalService:
             self._query_cache_set(query, results)
         return results
 
-        def dense_handler(request: RoutingRequest) -> list[RouterMatch]:
-            return self._dense_strategy(request.query, request.top_k, context)
+    def _fuse_results(
+        self, result_sets: Sequence[Sequence[Mapping[str, object]]]
+    ) -> list[RetrievalResult]:
+        aggregated: dict[str, dict[str, object]] = {}
+        for results in result_sets:
+            for rank, result in enumerate(results, start=1):
+                chunk_id = result["_id"]
+                data = aggregated.setdefault(
+                    chunk_id,
+                    {
+                        "text": result["_source"].get("text", ""),
+                        "metadata": result["_source"],
+                        "highlights": list(result.get("highlight", [])),
+                        "rrf": 0.0,
+                    },
+                )
+                weight = self._granularity_weights.get(
+                    str(result["_source"].get("granularity", "paragraph")),
+                    1.0,
+                )
+                data["rrf"] += weight * (1.0 / (50 + rank))
+        fused: list[RetrievalResult] = []
+        for chunk_id, payload in aggregated.items():
+            metadata = dict(payload["metadata"])
+            granularity = str(metadata.get("granularity", "paragraph"))
+            fused.append(
+                RetrievalResult(
+                    id=chunk_id,
+                    text=str(payload["text"]),
+                    retrieval_score=float(payload["rrf"]),
+                    rerank_score=None,
+                    highlights=list(payload["highlights"]),
+                    metadata=metadata,
+                    granularity=granularity,
+                )
+                buffer[key] = merged_result
+            else:
+                merged.append(existing)
+                buffer[key] = result
+        merged.extend(buffer.values())
+        return merged
 
-        strategies = [
-            RetrievalStrategy(name="bm25", handler=bm25_handler),
-            RetrievalStrategy(name="splade", handler=splade_handler),
-            RetrievalStrategy(name="dense", handler=dense_handler, fusion="linear", weight=2.0),
-        ]
-        return strategies
-
-    def _opensearch_to_match(self, hit: Mapping[str, object], source: str) -> RouterMatch:
-        metadata = dict(hit.get("_source", {}))
-        metadata.setdefault("highlights", hit.get("highlight", []))
-        metadata.setdefault("text", metadata.get("text", ""))
-        return RouterMatch(
-            id=str(hit.get("_id")),
-            score=float(hit.get("_score", 0.0)),
-            metadata=metadata,
-            source=source,
-        )
+    def _parse_chunk_id(self, chunk_id: str) -> tuple[str, str, int]:
+        parts = chunk_id.split(":")
+        if len(parts) < 4:
+            return chunk_id, "unknown", 0
+        try:
+            return parts[0], parts[1], int(parts[-1])
+        except ValueError:
+            return parts[0], parts[1], 0
 
     def _merge_neighbors(self, results: Iterable[RetrievalResult]) -> list[RetrievalResult]:
         merged: list[RetrievalResult] = []

@@ -1,191 +1,124 @@
-"""High level ingestion orchestration tying chunking, embeddings, and storage."""
+"""Chunking aware ingestion helpers."""
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
+from time import perf_counter
 from typing import Mapping, Sequence
 
 import structlog
 
-from Medical_KG_rev.auth.context import SecurityContext
-from Medical_KG_rev.embeddings.storage import StorageRouter
-from Medical_KG_rev.embeddings.utils.batching import BatchProgress, iter_with_progress
-from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
-from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions, ChunkingService
-from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
-from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.vector_store.models import VectorRecord
-from Medical_KG_rev.services.vector_store.service import VectorStoreService
+from Medical_KG_rev.chunking import Chunk, ChunkingOptions, ChunkingService
+from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.observability.metrics import (
+    observe_chunking_latency,
+    record_chunk_size,
+)
 
 logger = structlog.get_logger(__name__)
 
 
 @dataclass(slots=True)
-class IngestionOptions:
-    namespaces: Sequence[str] | None = None
-    batch_size: int = 32
-    retries: int = 2
-    chunking: ChunkingOptions | None = None
-    metadata: Mapping[str, object] | None = None
-    correlation_id: str | None = None
+class ChunkingRun:
+    """Summary returned for each ingestion chunking execution."""
+
+    document_id: str
+    profile: str
+    duration_seconds: float
+    chunks: Sequence[Chunk]
+    granularity_counts: Mapping[str, int]
 
 
-@dataclass(slots=True)
-class EmbeddingBatchMetrics:
-    batches: int = 0
-    total: int = 0
-    duration_ms: float = 0.0
+class ChunkStorage:
+    """Protocol-like base class for chunk storage backends."""
+
+    def store(self, tenant_id: str, document_id: str, chunks: Sequence[Chunk]) -> None:
+        raise NotImplementedError
+
+    def list(self, tenant_id: str, document_id: str) -> list[Chunk]:
+        raise NotImplementedError
 
 
-@dataclass(slots=True)
-class IngestionResult:
-    chunk_ids: list[str] = field(default_factory=list)
-    stored: dict[str, int] = field(default_factory=dict)
-    retries: int = 0
-    metrics: EmbeddingBatchMetrics = field(default_factory=EmbeddingBatchMetrics)
+class InMemoryChunkStorage(ChunkStorage):
+    """Lightweight in-memory storage used for tests and local execution."""
+
+    def __init__(self) -> None:
+        self._storage: dict[tuple[str, str], list[Chunk]] = {}
+
+    def store(self, tenant_id: str, document_id: str, chunks: Sequence[Chunk]) -> None:
+        key = (tenant_id, document_id)
+        existing = self._storage.setdefault(key, [])
+        existing.extend(chunks)
+
+    def list(self, tenant_id: str, document_id: str) -> list[Chunk]:
+        return list(self._storage.get((tenant_id, document_id), []))
 
 
 class IngestionService:
-    """Coordinates document chunking, embedding, and persistence."""
+    """Coordinates chunking during ingestion pipelines."""
 
     def __init__(
         self,
         *,
-        chunking: ChunkingService,
-        embedding_worker: EmbeddingWorker,
-        vector_store: VectorStoreService,
-        opensearch: OpenSearchClient,
-        storage_router: StorageRouter | None = None,
-        faiss: FAISSIndex | None = None,
+        chunking_service: ChunkingService | None = None,
+        storage: ChunkStorage | None = None,
     ) -> None:
-        self.chunking = chunking
-        self.embedding_worker = embedding_worker
-        self.vector_store = vector_store
-        self.opensearch = opensearch
-        self.faiss = faiss
-        self.storage_router = storage_router or StorageRouter()
+        self.chunking = chunking_service or ChunkingService()
+        self.storage = storage or InMemoryChunkStorage()
 
-    def ingest(
+    def detect_profile(self, document: Document, source_hint: str | None) -> str:
+        return source_hint or document.source or self.chunking.config.default_profile
+
+    def chunk_document(
         self,
+        document: Document,
         *,
         tenant_id: str,
-        document_id: str,
-        text: str,
-        context: SecurityContext,
-        options: IngestionOptions | None = None,
-    ) -> IngestionResult:
-        opts = options or IngestionOptions()
-        chunks = self.chunking.chunk(tenant_id, document_id, text, opts.chunking)
-        if not chunks:
-            return IngestionResult()
-        chunk_ids = [chunk.chunk_id for chunk in chunks]
-        texts = [chunk.body for chunk in chunks]
-        metadata = opts.metadata or {}
-        batch_size = max(1, opts.batch_size)
-        retries = max(0, opts.retries)
-        request = EmbeddingRequest(
-            tenant_id=tenant_id,
-            chunk_ids=chunk_ids,
-            texts=texts,
-            batch_size=batch_size,
-            namespaces=opts.namespaces,
-            correlation_id=opts.correlation_id,
+        source_hint: str | None = None,
+        options: ChunkingOptions | None = None,
+    ) -> ChunkingRun:
+        profile = self.detect_profile(document, source_hint)
+        started = perf_counter()
+        chunks = list(
+            self.chunking.chunk_document(
+                document,
+                tenant_id=tenant_id,
+                source=profile,
+                options=options,
+            )
         )
-        attempt = 0
-        response = None
-        start = time.perf_counter()
-        while attempt <= retries:
-            try:
-                response = self.embedding_worker.run(request)
-                break
-            except Exception as exc:  # pragma: no cover - defensive logging path
-                logger.warning(
-                    "ingestion.embedding.failed",
-                    tenant_id=tenant_id,
-                    document_id=document_id,
-                    attempt=attempt,
-                    error=str(exc),
-                )
-                attempt += 1
-                if attempt > retries:
-                    raise
-        duration_ms = (time.perf_counter() - start) * 1000
-        result = IngestionResult(chunk_ids=chunk_ids, retries=attempt)
-        result.metrics = EmbeddingBatchMetrics(
-            batches=(len(texts) + batch_size - 1) // batch_size,
-            total=len(texts),
-            duration_ms=duration_ms,
-        )
-        stored_counts: dict[str, int] = {}
-        progress = BatchProgress(total=len(response.vectors), callback=self._log_progress)
-        for batch in iter_with_progress(response.vectors, batch_size, progress=progress):
-            for item in batch:
-                stored_counts.setdefault(item.kind, 0)
-                stored_counts[item.kind] += self._persist_embedding(
-                    item, metadata=metadata, context=context
-                )
-        result.stored = stored_counts
+        duration = perf_counter() - started
+        self._ensure_chunk_ids(document.id, chunks)
+        self.storage.store(tenant_id, document.id, chunks)
+        counts = defaultdict(int)
+        for chunk in chunks:
+            counts[chunk.granularity] += 1
+            record_chunk_size(profile, chunk.granularity, len(chunk.body))
+        observe_chunking_latency(profile, duration)
         logger.info(
-            "ingestion.pipeline.completed",
+            "ingestion.chunked",
+            document_id=document.id,
             tenant_id=tenant_id,
-            document_id=document_id,
-            chunks=len(chunk_ids),
-            duration_ms=duration_ms,
-            retries=attempt,
+            profile=profile,
+            chunks=len(chunks),
+            duration=round(duration, 4),
         )
-        return result
+        return ChunkingRun(
+            document_id=document.id,
+            profile=profile,
+            duration_seconds=duration,
+            chunks=chunks,
+            granularity_counts=dict(counts),
+        )
 
-    def _persist_embedding(
-        self,
-        vector,
-        *,
-        metadata: Mapping[str, object],
-        context: SecurityContext,
-    ) -> int:
-        target = self.storage_router.route(vector.kind)
-        if target.name == "qdrant" and vector.vectors:
-            record = VectorRecord(
-                vector_id=vector.id,
-                values=vector.vectors[0],
-                metadata={**metadata, **vector.metadata},
-                vector_version=vector.model,
-            )
-            self.vector_store.upsert(
-                context=context,
-                namespace=vector.namespace,
-                records=[record],
-            )
-            return 1
-        if target.name == "faiss" and self.faiss and vector.vectors:
-            first = vector.vectors[0]
-            self.faiss.add(
-                vector.id,
-                first[: self.faiss.dimension]
-                if len(first) >= self.faiss.dimension
-                else list(first) + [0.0] * (self.faiss.dimension - len(first)),
-                metadata={**metadata, **vector.metadata},
-            )
-            return 1
-        if target.name == "opensearch" and vector.terms:
-            index_name = vector.namespace.replace(".", "_")
-            body = {
-                "text": metadata.get("text", ""),
-                "rank_features": vector.terms,
-                **vector.metadata,
-            }
-            self.opensearch.index(index=index_name, doc_id=vector.id, body=body)
-            return 1
-        if target.name == "opensearch_neural" and vector.neural_fields:
-            index_name = f"neural_{vector.namespace.replace('.', '_')}"
-            body = {
-                "text": metadata.get("text", ""),
-                **vector.metadata,
-                **vector.neural_fields,
-            }
-            self.opensearch.index(index=index_name, doc_id=vector.id, body=body)
-            return 1
-        return 0
+    def list_chunks(self, tenant_id: str, document_id: str) -> list[Chunk]:
+        return self.storage.list(tenant_id, document_id)
 
-    def _log_progress(self, processed: int, total: int) -> None:
-        logger.info("ingestion.embedding.persist.progress", processed=processed, total=total)
+    def _ensure_chunk_ids(self, document_id: str, chunks: list[Chunk]) -> None:
+        for index, chunk in enumerate(chunks):
+            if chunk.chunk_id.startswith(f"{document_id}:"):
+                continue
+            updated = chunk.model_copy(update={"chunk_id": f"{document_id}:{chunk.chunker}:{chunk.granularity}:{index}"})
+            chunks[index] = updated  # type: ignore[index]
+

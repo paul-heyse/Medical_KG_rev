@@ -15,6 +15,7 @@ from .llamaindex import (
 )
 from .haystack import HaystackPreprocessorChunker
 from .unstructured_adapter import UnstructuredChunker
+from .table_aware import TableAwareChunker
 
 __all__ = [
     "LangChainSplitterChunker",
@@ -28,5 +29,6 @@ __all__ = [
     "LlamaIndexSentenceChunker",
     "HaystackPreprocessorChunker",
     "UnstructuredChunker",
+    "TableAwareChunker",
 ]
 

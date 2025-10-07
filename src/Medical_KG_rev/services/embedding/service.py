@@ -1,15 +1,20 @@
-"""Embedding microservice that generates SPLADE and Qwen-3 vectors on GPU."""
+"""Universal embedding service coordinating multiple adapters."""
 
 from __future__ import annotations
 
-import hashlib
-import math
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Sequence
 
 import structlog
 
-from ..gpu.manager import GpuManager
+from Medical_KG_rev.config.embeddings import load_embeddings_config
+from Medical_KG_rev.embeddings.namespace import NamespaceManager
+from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest as AdapterEmbeddingRequest
+from Medical_KG_rev.embeddings.providers import register_builtin_embedders
+from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
+from Medical_KG_rev.embeddings.storage import StorageRouter
+from Medical_KG_rev.embeddings.utils.gpu import ensure_available
 
 logger = structlog.get_logger(__name__)
 
@@ -22,22 +27,20 @@ class EmbeddingRequest:
     normalize: bool = False
     batch_size: int = 8
     models: Sequence[str] | None = None
+    namespaces: Sequence[str] | None = None
+    correlation_id: str | None = None
 
 
 @dataclass(slots=True)
 class EmbeddingVector:
     id: str
     model: str
-    kind: str  # "dense" or "sparse"
-    values: list[float]
+    namespace: str
+    kind: str
+    vectors: list[list[float]] | None
+    terms: dict[str, float] | None
     dimension: int
-
-
-@dataclass(slots=True)
-class EmbeddingBatch:
-    model: str
-    chunk_ids: Sequence[str]
-    texts: Sequence[str]
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -45,136 +48,107 @@ class EmbeddingResponse:
     vectors: list[EmbeddingVector] = field(default_factory=list)
 
 
-class _BaseModel:
-    name: str
-    kind: str
-    dimension: int
-
-    def __init__(self, gpu: GpuManager) -> None:
-        self.gpu = gpu
-        self._is_loaded = False
-
-    def load(self) -> None:
-        if self._is_loaded:
-            return
-        with self.gpu.device_session(f"model:{self.name}", warmup=True):
-            logger.info("embedding.model.loaded", model=self.name)
-            self._is_loaded = True
-
-    def encode(self, texts: Sequence[str]) -> list[list[float]]:  # pragma: no cover - abstract
-        raise NotImplementedError
-
-
-class SpladeModel(_BaseModel):
-    name = "splade"
-    kind = "sparse"
-    dimension = 64
-
-    def encode(self, texts: Sequence[str]) -> list[list[float]]:
-        self.load()
-        vectors: list[list[float]] = []
-        for text in texts:
-            buckets = [0.0] * self.dimension
-            tokens = [token for token in text.lower().split() if token]
-            for token in tokens:
-                bucket_index = (
-                    int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16) % self.dimension
-                )
-                buckets[bucket_index] += 1.0
-            max_value = max(buckets) if buckets else 1.0
-            normalized = [value / max_value for value in buckets]
-            vectors.append(normalized)
-        return vectors
-
-
-class QwenDenseModel(_BaseModel):
-    name = "qwen-3"
-    kind = "dense"
-    dimension = 128
-
-    def encode(self, texts: Sequence[str]) -> list[list[float]]:
-        self.load()
-        vectors: list[list[float]] = []
-        for text in texts:
-            values = [0.0] * self.dimension
-            base_hash = int(hashlib.sha256(text.encode("utf-8")).hexdigest(), 16)
-            for i in range(self.dimension):
-                rotated = (base_hash >> (i % 32)) & 0xFFFFFFFF
-                value = math.sin(rotated / (10**6))
-                values[i] = float(value)
-            vectors.append(values)
-        return vectors
-
-
-class EmbeddingModelRegistry:
-    """Caches embedding models so they are only loaded once per process."""
-
-    def __init__(self, gpu: GpuManager) -> None:
-        self.gpu = gpu
-        self._cache: dict[str, _BaseModel] = {}
-
-    def get(self, name: str) -> _BaseModel:
-        if name not in self._cache:
-            if name == SpladeModel.name:
-                self._cache[name] = SpladeModel(self.gpu)
-            elif name in {QwenDenseModel.name, "qwen"}:
-                self._cache[name] = QwenDenseModel(self.gpu)
-            else:
-                raise ValueError(f"Unknown embedding model: {name}")
-        return self._cache[name]
-
-
 class EmbeddingWorker:
-    """Coordinates batching and GPU execution for embedding generation."""
+    """Coordinates config-driven embedding generation and validation."""
 
-    def __init__(self, registry: EmbeddingModelRegistry) -> None:
-        self.registry = registry
+    def __init__(self, *, namespace_manager: NamespaceManager | None = None, config_path: str | None = None) -> None:
+        self.namespace_manager = namespace_manager or NamespaceManager()
+        self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
+        register_builtin_embedders(self.registry)
+        self.factory = EmbedderFactory(self.registry)
+        self.storage_router = StorageRouter()
+        self._config = load_embeddings_config(Path(config_path) if config_path else None)
+        self._embedder_configs = self._config.to_embedder_configs()
+        self._configs_by_name = {config.name: config for config in self._embedder_configs}
+        self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
 
-    def _batched(self, request: EmbeddingRequest) -> Iterable[EmbeddingBatch]:
-        models = tuple(request.models or (SpladeModel.name, QwenDenseModel.name))
-        for start in range(0, len(request.texts), request.batch_size):
-            end = start + request.batch_size
-            for model_name in models:
-                yield EmbeddingBatch(
-                    model=model_name,
-                    chunk_ids=request.chunk_ids[start:end],
-                    texts=request.texts[start:end],
-                )
+    def _resolve_configs(self, request: EmbeddingRequest) -> list[EmbedderConfig]:
+        if request.namespaces:
+            configs = [self._configs_by_namespace[ns] for ns in request.namespaces if ns in self._configs_by_namespace]
+            if configs:
+                return configs
+        if request.models:
+            configs = [self._configs_by_name[name] for name in request.models if name in self._configs_by_name]
+            if configs:
+                return configs
+        active = [self._configs_by_namespace[ns] for ns in self._config.active_namespaces if ns in self._configs_by_namespace]
+        if active:
+            return active
+        return list(self._embedder_configs)
 
-    def _normalize(self, vector: list[float]) -> list[float]:
-        norm = math.sqrt(sum(value * value for value in vector))
-        if norm == 0:
-            return vector
-        return [value / norm for value in vector]
+    def _adapter_request(self, request: EmbeddingRequest, config: EmbedderConfig) -> AdapterEmbeddingRequest:
+        return AdapterEmbeddingRequest(
+            tenant_id=request.tenant_id,
+            namespace=config.namespace,
+            texts=list(request.texts),
+            ids=list(request.chunk_ids),
+            correlation_id=request.correlation_id,
+        )
+
+    def _dimension_from_record(self, record: EmbeddingRecord) -> int:
+        if record.dim:
+            return record.dim
+        if record.vectors:
+            return len(record.vectors[0])
+        if record.terms:
+            return len(record.terms)
+        return 0
 
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        configs = self._resolve_configs(request)
         response = EmbeddingResponse()
-        for batch in self._batched(request):
-            model = self.registry.get(batch.model)
-            vectors = model.encode(batch.texts)
-            for chunk_id, vector_values in zip(batch.chunk_ids, vectors, strict=False):
-                if request.normalize:
-                    vector_values = self._normalize(vector_values)
+        logger.info(
+            "embedding.pipeline.start",
+            tenant_id=request.tenant_id,
+            chunks=len(request.texts),
+            models=[config.name for config in configs],
+        )
+        for config in configs:
+            ensure_available(config.requires_gpu, operation=f"embed:{config.name}")
+            embedder = self.factory.get(config)
+            adapter_request = self._adapter_request(request, config)
+            records = embedder.embed_documents(adapter_request)
+            if not records:
+                logger.warning(
+                    "embedding.pipeline.no_output",
+                    namespace=config.namespace,
+                    model=config.name,
+                )
+                continue
+            first = records[0]
+            dimension = self._dimension_from_record(first)
+            if dimension:
+                self.namespace_manager.introspect_dimension(config.namespace, dimension)
+            for record in records:
+                dim = self._dimension_from_record(record)
+                self.namespace_manager.validate_record(config.namespace, dim)
                 response.vectors.append(
                     EmbeddingVector(
-                        id=chunk_id,
-                        model=model.name,
-                        kind=model.kind,
-                        values=vector_values,
-                        dimension=model.dimension,
+                        id=record.id,
+                        model=record.model_id,
+                        namespace=record.namespace,
+                        kind=record.kind,
+                        vectors=record.vectors,
+                        terms=record.terms,
+                        dimension=dim,
+                        metadata={
+                            **record.metadata,
+                            "storage_target": self.storage_router.route(record.kind).name,
+                        },
                     )
                 )
-        logger.info(
-            "embedding.batch.completed",
-            total=len(response.vectors),
-            chunks=len(request.texts),
-            normalize=request.normalize,
-        )
+            logger.info(
+                "embedding.pipeline.completed",
+                namespace=config.namespace,
+                model=config.name,
+                total=len(records),
+            )
+        logger.info("embedding.pipeline.finish", total=len(response.vectors))
         return response
 
 
 class EmbeddingGrpcService:
-    """Async gRPC servicer for the embedding worker."""
+    """Async gRPC servicer bridging requests into the embedding worker."""
 
     def __init__(self, worker: EmbeddingWorker) -> None:
         self.worker = worker
@@ -187,6 +161,8 @@ class EmbeddingGrpcService:
             normalize=request.normalize,
             batch_size=request.batch_size or 8,
             models=list(request.models) or None,
+            namespaces=list(request.namespaces) or None,
+            correlation_id=getattr(request, "correlation_id", None),
         )
         response = self.worker.run(embed_request)
         from Medical_KG_rev.proto.gen import embedding_pb2  # type: ignore import-error
@@ -197,6 +173,13 @@ class EmbeddingGrpcService:
             message.chunk_id = vector.id
             message.model = vector.model
             message.kind = vector.kind
+            message.namespace = vector.namespace
             message.dimension = vector.dimension
-            message.values.extend(vector.values)
+            if vector.vectors:
+                for item in vector.vectors:
+                    payload = message.vectors.add()
+                    payload.values.extend(item)
+            if vector.terms:
+                message.terms.update(vector.terms)
+            message.metadata.update({key: str(value) for key, value in vector.metadata.items()})
         return reply

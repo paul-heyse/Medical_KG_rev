@@ -2,60 +2,60 @@
 
 ## 1. Core Infrastructure (15 tasks)
 
-- [ ] 1.1 Define `BaseEmbedder` protocol interface with `embed_documents()` and `embed_queries()` methods
-- [ ] 1.2 Create `EmbeddingRecord` Pydantic model supporting all paradigms (single-vector, multi-vector, sparse, neural-sparse)
-- [ ] 1.3 Define `EmbeddingKind` literal type ("single_vector", "multi_vector", "sparse", "neural_sparse")
-- [ ] 1.4 Create `EmbedderConfig` Pydantic model for configuration validation
-- [ ] 1.5 Implement embedder registry in `embeddings/registry.py` with factory pattern
-- [ ] 1.6 Create `EmbedderFactory` with config-driven instantiation
-- [ ] 1.7 Implement namespace management in `embeddings/namespace.py` with dimension governance
-- [ ] 1.8 Create namespace validation with automatic dimension introspection
-- [ ] 1.9 Build storage router mapping embedding kinds to backends (Qdrant/FAISS/OpenSearch/ColBERT)
-- [ ] 1.10 Implement batch processing utilities with configurable batch sizes
-- [ ] 1.11 Create GPU availability checker with fail-fast enforcement
-- [ ] 1.12 Implement embedding cache for expensive operations (LLM embeddings)
-- [ ] 1.13 Create normalization utilities (L2 norm for cosine similarity)
-- [ ] 1.14 Build pooling strategy implementations (mean, CLS, last-token, max)
-- [ ] 1.15 Implement prefix handler for E5-style models (query:/passage: prefixes)
+- [x] 1.1 Define `BaseEmbedder` protocol interface with `embed_documents()` and `embed_queries()` methods
+- [x] 1.2 Create `EmbeddingRecord` Pydantic model supporting all paradigms (single-vector, multi-vector, sparse, neural-sparse)
+- [x] 1.3 Define `EmbeddingKind` literal type ("single_vector", "multi_vector", "sparse", "neural_sparse")
+- [x] 1.4 Create `EmbedderConfig` Pydantic model for configuration validation
+- [x] 1.5 Implement embedder registry in `embeddings/registry.py` with factory pattern
+- [x] 1.6 Create `EmbedderFactory` with config-driven instantiation
+- [x] 1.7 Implement namespace management in `embeddings/namespace.py` with dimension governance
+- [x] 1.8 Create namespace validation with automatic dimension introspection
+- [x] 1.9 Build storage router mapping embedding kinds to backends (Qdrant/FAISS/OpenSearch/ColBERT)
+- [x] 1.10 Implement batch processing utilities with configurable batch sizes
+- [x] 1.11 Create GPU availability checker with fail-fast enforcement
+- [x] 1.12 Implement embedding cache for expensive operations (LLM embeddings)
+- [x] 1.13 Create normalization utilities (L2 norm for cosine similarity)
+- [x] 1.14 Build pooling strategy implementations (mean, CLS, last-token, max)
+- [x] 1.15 Implement prefix handler for E5-style models (query:/passage: prefixes)
 
 ## 2. Dense Bi-Encoder Adapters (12 tasks)
 
-- [ ] 2.1 Implement `SentenceTransformersEmbedder` wrapper for sentence-transformers library
-- [ ] 2.2 Add BGE model support (bge-small-en, bge-base-en, bge-large-en)
-- [ ] 2.3 Add E5 model support with automatic prefix enforcement
-- [ ] 2.4 Add GTE model support (gte-small, gte-base, gte-large)
-- [ ] 2.5 Add SPECTER model support for scientific papers
-- [ ] 2.6 Add SapBERT model support for biomedical entity matching
-- [ ] 2.7 Implement `TEIHTTPEmbedder` for HuggingFace Text-Embeddings-Inference server
-- [ ] 2.8 Add Jina v3 embedding support via TEI
-- [ ] 2.9 Implement `OpenAICompatEmbedder` for vLLM-served models (Qwen-3)
-- [ ] 2.10 Add automatic dimension introspection and validation
+- [x] 2.1 Implement `SentenceTransformersEmbedder` wrapper for sentence-transformers library
+- [x] 2.2 Add BGE model support (bge-small-en, bge-base-en, bge-large-en)
+- [x] 2.3 Add E5 model support with automatic prefix enforcement
+- [x] 2.4 Add GTE model support (gte-small, gte-base, gte-large)
+- [x] 2.5 Add SPECTER model support for scientific papers
+- [x] 2.6 Add SapBERT model support for biomedical entity matching
+- [x] 2.7 Implement `TEIHTTPEmbedder` for HuggingFace Text-Embeddings-Inference server
+- [x] 2.8 Add Jina v3 embedding support via TEI
+- [x] 2.9 Implement `OpenAICompatEmbedder` for vLLM-served models (Qwen-3)
+- [x] 2.10 Add automatic dimension introspection and validation
 - [ ] 2.11 Implement batch processing with progress tracking
 - [ ] 2.12 Add ONNX optimization support for CPU deployment (optional)
 
 ## 3. Late-Interaction Multi-Vector Adapters (6 tasks)
 
-- [ ] 3.1 Implement `ColBERTRagatouilleEmbedder` wrapper for RAGatouille library
-- [ ] 3.2 Add ColBERT-v2 model support with token-level vectors
-- [ ] 3.3 Implement max_doc_tokens truncation and padding
+- [x] 3.1 Implement `ColBERTRagatouilleEmbedder` wrapper for RAGatouille library
+- [x] 3.2 Add ColBERT-v2 model support with token-level vectors
+- [x] 3.3 Implement max_doc_tokens truncation and padding
 - [ ] 3.4 Create FAISS shard management for ColBERT indexes
 - [ ] 3.5 Implement MaxSim scoring utilities
 - [ ] 3.6 Add integration with Qdrant multivector storage (optional alternative)
 
 ## 4. Learned-Sparse Adapters (8 tasks)
 
-- [ ] 4.1 Implement `SPLADEDocEmbedder` for document-side SPLADE expansion
-- [ ] 4.2 Add SPLADE-v3-lexical model support
-- [ ] 4.3 Implement top-K term selection (default: 400 terms)
-- [ ] 4.4 Create `SPLADEQueryEmbedder` for optional query-side encoding
-- [ ] 4.5 Implement `PyseriniSparseEmbedder` wrapper for uniCOIL/DeepImpact/TILDE
+- [x] 4.1 Implement `SPLADEDocEmbedder` for document-side SPLADE expansion
+- [x] 4.2 Add SPLADE-v3-lexical model support
+- [x] 4.3 Implement top-K term selection (default: 400 terms)
+- [x] 4.4 Create `SPLADEQueryEmbedder` for optional query-side encoding
+- [x] 4.5 Implement `PyseriniSparseEmbedder` wrapper for uniCOIL/DeepImpact/TILDE
 - [ ] 4.6 Add OpenSearch rank_features field mapping utilities
 - [ ] 4.7 Implement term weight normalization strategies
 - [ ] 4.8 Add vocabulary tracking for sparse embeddings
 
 ## 5. Neural-Sparse Adapters (5 tasks)
 
-- [ ] 5.1 Implement `OpenSearchNeuralSparseEmbedder` for OS ML plugin integration
+- [x] 5.1 Implement `OpenSearchNeuralSparseEmbedder` for OS ML plugin integration
 - [ ] 5.2 Add support for encoder hosting via ML plugin
 - [ ] 5.3 Add support for external TEI endpoint
 - [ ] 5.4 Create neural query type generation for OpenSearch
@@ -63,36 +63,36 @@
 
 ## 6. Framework Integration Adapters (9 tasks)
 
-- [ ] 6.1 Create `LangChainEmbedderAdapter` wrapper for langchain.embeddings.*
-- [ ] 6.2 Add LangChain HuggingFace embeddings support
-- [ ] 6.3 Add LangChain OpenAI embeddings support (via vLLM)
-- [ ] 6.4 Create `LlamaIndexEmbedderAdapter` wrapper for llama_index.embeddings.*
-- [ ] 6.5 Add LlamaIndex HuggingFace embeddings support
-- [ ] 6.6 Add LlamaIndex OpenAI embeddings support (via vLLM)
-- [ ] 6.7 Create `HaystackEmbedderAdapter` wrapper for haystack embedders
+- [x] 6.1 Create `LangChainEmbedderAdapter` wrapper for langchain.embeddings.*
+- [x] 6.2 Add LangChain HuggingFace embeddings support
+- [x] 6.3 Add LangChain OpenAI embeddings support (via vLLM)
+- [x] 6.4 Create `LlamaIndexEmbedderAdapter` wrapper for llama_index.embeddings.*
+- [x] 6.5 Add LlamaIndex HuggingFace embeddings support
+- [x] 6.6 Add LlamaIndex OpenAI embeddings support (via vLLM)
+- [x] 6.7 Create `HaystackEmbedderAdapter` wrapper for haystack embedders
 - [ ] 6.8 Implement offset mapping for framework adapters to preserve metadata
 - [ ] 6.9 Add configuration validation for framework-specific parameters
 
 ## 7. Experimental Embedders (8 tasks)
 
-- [ ] 7.1 Implement `SimLMEmbedder` with representation bottleneck
-- [ ] 7.2 Add SimLM model loading and inference
-- [ ] 7.3 Implement `RetroMAEEmbedder` with masked autoencoder approach
-- [ ] 7.4 Add RetroMAE model loading and inference
-- [ ] 7.5 Implement `GTREmbedder` for T5-based embeddings
-- [ ] 7.6 Add GTR model support (Base/Large/XXL variants)
-- [ ] 7.7 Create `DSISearcher` skeleton for differentiable search index (optional)
-- [ ] 7.8 Mark all experimental embedders with appropriate warnings
+- [x] 7.1 Implement `SimLMEmbedder` with representation bottleneck
+- [x] 7.2 Add SimLM model loading and inference
+- [x] 7.3 Implement `RetroMAEEmbedder` with masked autoencoder approach
+- [x] 7.4 Add RetroMAE model loading and inference
+- [x] 7.5 Implement `GTREmbedder` for T5-based embeddings
+- [x] 7.6 Add GTR model support (Base/Large/XXL variants)
+- [x] 7.7 Create `DSISearcher` skeleton for differentiable search index (optional)
+- [x] 7.8 Mark all experimental embedders with appropriate warnings
 
 ## 8. Configuration System (7 tasks)
 
-- [ ] 8.1 Create `config/embeddings.yaml` with namespace configuration
-- [ ] 8.2 Add per-provider configuration blocks (driver, model_id, endpoint, parameters)
-- [ ] 8.3 Create active_namespaces configuration for query-time fusion
-- [ ] 8.4 Add embedding-specific parameters (pooling, normalization, prefixes, batch_size)
-- [ ] 8.5 Implement configuration validation with Pydantic models
-- [ ] 8.6 Add environment-based configuration overrides
-- [ ] 8.7 Create embedder registry population from configuration
+- [x] 8.1 Create `config/embeddings.yaml` with namespace configuration
+- [x] 8.2 Add per-provider configuration blocks (driver, model_id, endpoint, parameters)
+- [x] 8.3 Create active_namespaces configuration for query-time fusion
+- [x] 8.4 Add embedding-specific parameters (pooling, normalization, prefixes, batch_size)
+- [x] 8.5 Implement configuration validation with Pydantic models
+- [x] 8.6 Add environment-based configuration overrides
+- [x] 8.7 Create embedder registry population from configuration
 
 ## 9. Ingestion Service Integration (6 tasks)
 

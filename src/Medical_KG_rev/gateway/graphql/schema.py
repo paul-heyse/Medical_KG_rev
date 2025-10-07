@@ -13,6 +13,8 @@ from strawberry.scalars import JSON
 from strawberry.types import Info
 
 from ..models import (
+    AdapterMetadataView,
+    AdapterHealthView,
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
@@ -97,6 +99,23 @@ def _chunk_to_type(chunk: DocumentChunk) -> DocumentChunkType:
     )
 
 
+def _adapter_metadata_to_type(metadata: AdapterMetadataView) -> "AdapterMetadataType":
+    return AdapterMetadataType(
+        name=metadata.name,
+        version=metadata.version,
+        domain=metadata.domain.value,
+        summary=metadata.summary,
+        capabilities=metadata.capabilities,
+        maintainer=metadata.maintainer,
+        dataset=metadata.dataset,
+        config_schema=metadata.config_schema,
+    )
+
+
+def _adapter_health_to_type(health: AdapterHealthView) -> "AdapterHealthType":
+    return AdapterHealthType(name=health.name, healthy=health.healthy)
+
+
 @strawberry.type
 class OperationStatusType:
     job_id: str
@@ -109,6 +128,24 @@ class OperationStatusType:
 class BatchOperationType:
     total: int
     operations: list[OperationStatusType]
+
+
+@strawberry.type
+class AdapterMetadataType:
+    name: str
+    version: str
+    domain: str
+    summary: str
+    capabilities: list[str]
+    maintainer: str | None
+    dataset: str | None
+    config_schema: JSON
+
+
+@strawberry.type
+class AdapterHealthType:
+    name: str
+    healthy: bool
 
 
 @strawberry.type
@@ -290,6 +327,37 @@ async def _get_service(info: Info[GraphQLContext, None]) -> GatewayService:
 
 @strawberry.type
 class Query:
+    @strawberry.field
+    async def adapters(
+        self, info: Info[GraphQLContext, None], domain: str | None = None
+    ) -> list[AdapterMetadataType]:
+        service = await _get_service(info)
+        try:
+            metadata = service.list_adapters(domain)
+        except ValueError as exc:
+            raise ValueError(str(exc))
+        return [_adapter_metadata_to_type(item) for item in metadata]
+
+    @strawberry.field
+    async def adapter(
+        self, info: Info[GraphQLContext, None], name: str
+    ) -> AdapterMetadataType | None:
+        service = await _get_service(info)
+        metadata = service.get_adapter_metadata(name)
+        if metadata is None:
+            return None
+        return _adapter_metadata_to_type(metadata)
+
+    @strawberry.field
+    async def adapter_health(
+        self, info: Info[GraphQLContext, None], name: str
+    ) -> AdapterHealthType | None:
+        service = await _get_service(info)
+        health = service.get_adapter_health(name)
+        if health is None:
+            return None
+        return _adapter_health_to_type(health)
+
     @strawberry.field
     async def document(self, info: Info[GraphQLContext, None], id: ID) -> DocumentType:
         service = await _get_service(info)

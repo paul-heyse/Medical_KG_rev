@@ -14,6 +14,9 @@ from ...auth import Scopes, SecurityContext, secure_endpoint
 from ...auth.audit import get_audit_trail
 from ...services.health import HealthService
 from ..models import (
+    AdapterConfigSchemaView,
+    AdapterHealthView,
+    AdapterMetadataView,
     BatchOperationResult,
     ChunkRequest,
     EmbedRequest,
@@ -89,6 +92,65 @@ def json_api_response(
         status_code=status_code,
         media_type=JSONAPI_CONTENT_TYPE,
     )
+
+
+@router.get("/adapters", response_model=None)
+async def list_adapters(
+    domain: str | None = Query(default=None),
+    service: GatewayService = Depends(get_gateway_service),
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters")
+    ),
+) -> JSONResponse:
+    try:
+        adapters = service.list_adapters(domain)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return json_api_response(adapters, meta={"total": len(adapters)})
+
+
+@router.get("/adapters/{name}/metadata", response_model=None)
+async def get_adapter_metadata(
+    name: str = Path(..., description="Adapter name"),
+    service: GatewayService = Depends(get_gateway_service),
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/metadata")
+    ),
+) -> JSONResponse:
+    metadata = service.get_adapter_metadata(name)
+    if metadata is None:
+        raise HTTPException(status_code=404, detail="Adapter not found")
+    return json_api_response(metadata)
+
+
+@router.get("/adapters/{name}/health", response_model=None)
+async def get_adapter_health(
+    name: str,
+    service: GatewayService = Depends(get_gateway_service),
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/health")
+    ),
+) -> JSONResponse:
+    health = service.get_adapter_health(name)
+    if health is None:
+        raise HTTPException(status_code=404, detail="Adapter not found")
+    return json_api_response(health)
+
+
+@router.get("/adapters/{name}/config-schema", response_model=None)
+async def get_adapter_config_schema(
+    name: str,
+    service: GatewayService = Depends(get_gateway_service),
+    security: SecurityContext = Depends(
+        secure_endpoint(
+            scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/config-schema"
+        )
+    ),
+) -> JSONResponse:
+    schema = service.get_adapter_config_schema(name)
+    if schema is None:
+        raise HTTPException(status_code=404, detail="Adapter not found")
+    return json_api_response(schema)
 
 
 @health_router.get("/health", include_in_schema=True)

@@ -1,27 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import pytest
 
 from Medical_KG_rev.services.retrieval.chunking import ChunkingService
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.indexing_service import IndexingService
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-
-
-@dataclass
-class _Vector:
-    id: str
-    model: str = "qwen-3"
-    kind: str = "dense"
-    values: list[float] | None = None
-    dimension: int = 4
+from Medical_KG_rev.services.embedding.service import EmbeddingVector
 
 
 class _StubEmbeddingWorker:
     def run(self, request):
         vectors = []
         for chunk_id in request.chunk_ids:
-            vectors.append(_Vector(id=chunk_id, values=[1.0, 0.0, 0.0, 0.0]))
+            vectors.append(
+                EmbeddingVector(
+                    id=chunk_id,
+                    model="qwen-3",
+                    namespace="default",
+                    kind="single_vector",
+                    vectors=[[1.0, 0.0, 0.0, 0.0]],
+                    terms=None,
+                    dimension=4,
+                    metadata={"foo": "bar", "vector_id": chunk_id},
+                )
+            )
         return type("Response", (), {"vectors": vectors})()
 
 
@@ -52,3 +55,43 @@ def test_incremental_indexing_skips_existing_chunks():
     second = service.index_document("tenant", "doc-1", text, incremental=True)
 
     assert second.chunk_ids == []
+
+
+def test_incremental_indexing_without_faiss_falls_back_to_text_index(monkeypatch: pytest.MonkeyPatch):
+    chunking = ChunkingService()
+    worker = _StubEmbeddingWorker()
+    opensearch = OpenSearchClient()
+    calls: list[str] = []
+
+    original_has_document = opensearch.has_document
+
+    def tracking_has_document(index: str, doc_id: str) -> bool:
+        calls.append(doc_id)
+        return original_has_document(index, doc_id)
+
+    monkeypatch.setattr(opensearch, "has_document", tracking_has_document)
+    service = IndexingService(chunking, worker, opensearch, faiss=None)
+
+    text = "Section\nContent"
+    service.index_document("tenant", "doc-1", text)
+    second = service.index_document("tenant", "doc-1", text, incremental=True)
+
+    assert second.chunk_ids == []
+    assert calls
+
+
+def test_metadata_merges_embedding_and_chunk_payloads():
+    chunking = ChunkingService()
+    worker = _StubEmbeddingWorker()
+    opensearch = OpenSearchClient()
+    faiss = FAISSIndex(dimension=4)
+    service = IndexingService(chunking, worker, opensearch, faiss)
+
+    text = "Intro\nBody"
+    service.index_document("tenant", "doc-1", text, metadata={"source": "pdf"})
+
+    assert faiss.metadata
+    stored_metadata = faiss.metadata[0]
+    assert stored_metadata["foo"] == "bar"
+    assert stored_metadata["source"] == "pdf"
+    assert stored_metadata["vector_kind"] == "single_vector"

@@ -7,12 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from Medical_KG_rev.config.settings import AppSettings
-from Medical_KG_rev.utils.logging import configure_logging, configure_tracing
-
-from .metrics import register_metrics
-from .sentry import initialise_sentry
-from .tracing import instrument_application
+if TYPE_CHECKING:  # pragma: no cover - import hints only
+    from fastapi import FastAPI
+    from Medical_KG_rev.config.settings import AppSettings
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper
     from fastapi import FastAPI
@@ -25,7 +22,7 @@ logger = structlog.get_logger(__name__)
 _FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
 
 
-def setup_observability(app: FastAPI, settings: AppSettings) -> None:
+def setup_observability(app: "FastAPI", settings: "AppSettings") -> None:
     """Configure logging, tracing, metrics, and error tracking for the app."""
 
     if not _FASTAPI_AVAILABLE:

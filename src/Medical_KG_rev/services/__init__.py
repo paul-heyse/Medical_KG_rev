@@ -1,4 +1,4 @@
-"""GPU-enabled microservices for the Medical_KG_rev project."""
+"""Lazy exports for service utilities to avoid optional dependency issues."""
 
 from __future__ import annotations
 

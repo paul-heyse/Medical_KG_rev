@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from typing import Mapping
 from time import perf_counter
 from typing import Any
 
@@ -30,6 +31,7 @@ from prometheus_client import (  # type: ignore
 )
 
 from Medical_KG_rev.config.settings import AppSettings
+from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
     get_correlation_id,
@@ -52,6 +54,20 @@ JOB_DURATION = Histogram(
     "job_duration_seconds",
     "Duration of ingest/retrieve operations",
     labelnames=("operation",),
+)
+CHUNKING_LATENCY = Histogram(
+    "chunking_latency_seconds",
+    "Latency distribution for chunking profiles",
+    labelnames=("profile",),
+)
+CHUNK_SIZE = Histogram(
+    "chunk_size_characters",
+    "Distribution of chunk sizes by granularity",
+    labelnames=("profile", "granularity"),
+)
+CHUNKING_CIRCUIT_STATE = Gauge(
+    "chunking_circuit_breaker_state",
+    "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
 )
 GPU_UTILISATION = Gauge(
     "gpu_utilization_percent",
@@ -117,7 +133,7 @@ RERANK_GPU_MEMORY_ALERTS = Counter(
 )
 
 
-def _normalise_path(request: Request) -> str:
+def _normalise_path(request: "Request") -> str:
     route = request.scope.get("route")
     return getattr(route, "path", request.url.path)
 
@@ -185,10 +201,34 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: igno
 
         if token is not None:
             reset_correlation_id(token)
+
+
+def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
+    labelled = metric.labels(*labels)
+    correlation_id = get_correlation_id()
+    kwargs: dict[str, object] = {}
+    if correlation_id:
+        try:  # pragma: no cover - exemplar support optional
+            kwargs["exemplar"] = {"correlation_id": correlation_id}
+        except TypeError:
+            kwargs = {}
+    labelled.observe(max(value, 0.0), **kwargs)
+
+
+def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.0) -> None:
+    labelled = metric.labels(*labels)
+    correlation_id = get_correlation_id()
+    kwargs: dict[str, object] = {}
+    if correlation_id:
+        try:  # pragma: no cover - exemplar support optional
+            kwargs["exemplar"] = {"correlation_id": correlation_id}
+        except TypeError:
+            kwargs = {}
+    labelled.inc(amount, **kwargs)
         return response
 
     @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> Response:
+    async def metrics_endpoint() -> "Response":
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

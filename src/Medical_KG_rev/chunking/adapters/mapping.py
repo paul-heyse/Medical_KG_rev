@@ -31,6 +31,7 @@ def _clone_context(
         start_char=base.start_char + start_offset,
         end_char=base.start_char + end_offset,
         token_count=counter.count(text),
+        page_no=base.page_no,
     )
 
 

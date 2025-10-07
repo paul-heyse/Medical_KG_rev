@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from __future__ import annotations
+
+from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
 from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.services.embedding.service import (
+    EmbeddingRequest as QueryEmbeddingRequest,
+    EmbeddingVector,
+    EmbeddingWorker,
+)
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
@@ -29,6 +38,7 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
+    granularity: str
 
 
 class RetrievalService:
@@ -46,7 +56,6 @@ class RetrievalService:
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
-        self.reranker = reranker or CrossEncoderReranker()
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
@@ -62,6 +71,7 @@ class RetrievalService:
         rerank: bool = False,
         embedding_kind: str | None = None,
         *,
+        reranker_id: str | None = None,
         context: SecurityContext | None = None,
     ) -> list[RetrievalResult]:
         security_context = context or (
@@ -91,9 +101,9 @@ class RetrievalService:
             for match in fused_matches
         ]
         if rerank:
-            fused = self._apply_rerank(query, fused)
-        fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
-        return fused
+            for result in results:
+                result.metadata.setdefault("reranking", metrics.get("reranking", {}))
+        return results
 
     def _dense_strategy(
         self, namespace: str, query: str, k: int, context: SecurityContext
@@ -219,6 +229,36 @@ class RetrievalService:
                     rerank_score=score_map.get(result.id),
                     highlights=result.highlights,
                     metadata=result.metadata,
+                    granularity=result.granularity,
                 )
             )
         return reranked
+
+    def _encode_query(self, query: str, context: SecurityContext) -> Sequence[EmbeddingVector]:
+        if not self.embedding_worker:
+            return []
+        namespaces = self.active_namespaces or [self.vector_namespace]
+        request = QueryEmbeddingRequest(
+            tenant_id=context.tenant_id,
+            chunk_ids=[f"query:{index}" for index in range(len(namespaces))],
+            texts=[query] * len(namespaces),
+            namespaces=namespaces,
+            batch_size=1,
+            actor=context.subject,
+        )
+        response = self.embedding_worker.encode_queries(request)
+        return response.vectors
+
+    def _query_cache_get(self, query: str) -> list[Mapping[str, object]] | None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        if key in self._query_cache:
+            value = self._query_cache.pop(key)
+            self._query_cache[key] = value
+            return value
+        return None
+
+    def _query_cache_set(self, query: str, results: list[Mapping[str, object]]) -> None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        self._query_cache[key] = results
+        if len(self._query_cache) > self._cache_size:
+            self._query_cache.popitem(last=False)

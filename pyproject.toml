@@ -78,6 +78,7 @@ dependencies = [
 
     # Vector Search
     "faiss-cpu>=1.7.4",  # Use faiss-gpu for GPU support
+    "qdrant-client>=1.15.0",
 
     # ML/AI Libraries
     "torch>=2.1.0",  # Deep learning framework

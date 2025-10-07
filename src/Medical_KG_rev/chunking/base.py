@@ -1,0 +1,169 @@
+"""Shared abstractions for contextual chunkers."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Iterable, Sequence
+
+from Medical_KG_rev.models.ir import Document
+
+from .assembly import ChunkAssembler
+from .exceptions import ChunkerConfigurationError
+from .models import Chunk, Granularity
+from .ports import BaseChunker
+from .provenance import BlockContext, ProvenanceNormalizer
+from .tokenization import TokenCounter, default_token_counter
+
+
+@dataclass
+class Segment:
+    """A contiguous span of block contexts to assemble into a chunk."""
+
+    contexts: list[BlockContext]
+    metadata: dict[str, object] | None = None
+
+
+class ContextualChunker(BaseChunker, ABC):
+    """Base class with common assembly logic for block-context chunkers."""
+
+    default_granularity: Granularity = "paragraph"
+    segment_type: str | None = None
+    include_tables: bool = False
+
+    def __init__(self, *, token_counter: TokenCounter | None = None) -> None:
+        self.counter = token_counter or default_token_counter()
+        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
+
+    def chunk(
+        self,
+        document: Document,
+        *,
+        tenant_id: str,
+        granularity: Granularity | None = None,
+        blocks: Sequence | None = None,
+    ) -> list[Chunk]:
+        contexts = self.collect_contexts(document, blocks=blocks)
+        if not contexts:
+            return []
+        assembler = ChunkAssembler(
+            document,
+            tenant_id=tenant_id,
+            chunker_name=self.name,
+            chunker_version=self.version,
+            granularity=granularity or self.default_granularity,
+            token_counter=self.counter,
+        )
+        chunks: list[Chunk] = []
+        for segment in self.segment_contexts(contexts):
+            if not segment.contexts:
+                continue
+            metadata = self._merge_metadata(segment.metadata)
+            chunks.append(
+                assembler.build(list(segment.contexts), metadata=metadata)
+            )
+        return chunks
+
+    def collect_contexts(
+        self,
+        document: Document,
+        *,
+        blocks: Sequence | None = None,
+    ) -> list[BlockContext]:
+        contexts: list[BlockContext] = []
+        for context in self.normalizer.iter_block_contexts(document):
+            if self._accept_context(context):
+                contexts.append(context)
+        return contexts
+
+    def _accept_context(self, context: BlockContext) -> bool:
+        if not context.text:
+            return False
+        if not self.include_tables and context.is_table:
+            return False
+        return True
+
+    def _merge_metadata(
+        self, metadata: dict[str, object] | None
+    ) -> dict[str, object]:
+        merged: dict[str, object] = {}
+        if metadata:
+            merged.update(metadata)
+        if self.segment_type and "segment_type" not in merged:
+            merged["segment_type"] = self.segment_type
+        return merged
+
+    def explain(self) -> dict[str, object]:  # pragma: no cover - overridable default
+        return {}
+
+    @abstractmethod
+    def segment_contexts(
+        self, contexts: Sequence[BlockContext]
+    ) -> Iterable[Segment]:
+        """Yield contiguous segments of contexts for chunk assembly."""
+
+
+def resolve_sentence_encoder(
+    model_name: str,
+    *,
+    gpu_semantic_checks: bool,
+    encoder: object | None,
+) -> object:
+    """Resolve a sentence transformer encoder with optional GPU placement."""
+
+    if encoder is not None:
+        return encoder
+    try:  # pragma: no cover - optional dependency
+        from sentence_transformers import SentenceTransformer  # type: ignore
+    except Exception as exc:  # pragma: no cover - optional dependency
+        raise ChunkerConfigurationError(
+            "sentence-transformers must be installed for semantic chunkers"
+        ) from exc
+    resolved = SentenceTransformer(model_name)
+    if gpu_semantic_checks:
+        try:  # pragma: no cover - optional dependency
+            import torch
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise RuntimeError(
+                "GPU semantic checks requested but torch is unavailable"
+            ) from exc
+        if not torch.cuda.is_available():  # pragma: no cover - runtime guard
+            raise RuntimeError(
+                "GPU semantic checks requested but CUDA is not available"
+            )
+        resolved = resolved.to("cuda")
+    return resolved
+
+
+class EmbeddingContextualChunker(ContextualChunker, ABC):
+    """Contextual chunker base class that provides embedding utilities."""
+
+    def __init__(
+        self,
+        *,
+        token_counter: TokenCounter | None = None,
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        gpu_semantic_checks: bool = False,
+        encoder: object | None = None,
+    ) -> None:
+        super().__init__(token_counter=token_counter)
+        self.model = resolve_sentence_encoder(
+            model_name,
+            gpu_semantic_checks=gpu_semantic_checks,
+            encoder=encoder,
+        )
+
+    def encode_contexts(
+        self, contexts: Sequence[BlockContext]
+    ) -> "np.ndarray":  # type: ignore[name-defined]
+        import numpy as np
+
+        sentences = [ctx.text for ctx in contexts]
+        if not sentences:
+            return np.empty((0, 1))
+        encode = getattr(self.model, "encode", None)
+        if encode is None:
+            raise ChunkerConfigurationError("Encoder does not expose an encode() method")
+        embeddings = encode(sentences, convert_to_numpy=True)  # type: ignore[arg-type]
+        return np.asarray(embeddings)
+

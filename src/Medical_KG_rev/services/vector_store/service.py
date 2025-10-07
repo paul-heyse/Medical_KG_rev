@@ -12,7 +12,6 @@ from Medical_KG_rev.auth.context import SecurityContext
 
 from .errors import (
     BackendUnavailableError,
-    DimensionMismatchError,
     NamespaceNotFoundError,
     ResourceExhaustedError,
     ScopeError,
@@ -65,11 +64,28 @@ class VectorStoreService:
             version=config.version,
         )
         self.registry.register(tenant_id=context.tenant_id, config=config)
+        metadata_payload: dict[str, object] = {"version": config.version, **(metadata or {})}
+        if config.named_vectors:
+            metadata_payload.setdefault(
+                "named_vectors",
+                {
+                    name: {
+                        "dimension": params.dimension,
+                        "metric": params.metric,
+                        "kind": params.kind,
+                        "ef_construct": params.ef_construct,
+                        "m": params.m,
+                    }
+                    for name, params in config.named_vectors.items()
+                },
+            )
         self.store.create_or_update_collection(
             tenant_id=context.tenant_id,
             namespace=config.name,
             params=config.params,
-            metadata={"version": config.version, **(metadata or {})},
+            compression=config.compression,
+            metadata=metadata_payload,
+            named_vectors=config.named_vectors,
         )
 
     # ------------------------------------------------------------------
@@ -89,7 +105,20 @@ class VectorStoreService:
             tenant_id=context.tenant_id, namespace=namespace
         )
         for record in records:
-            self._validate_dimension(namespace_config, len(record.values))
+            if record.values:
+                self.registry.ensure_dimension(
+                    tenant_id=context.tenant_id,
+                    namespace=namespace,
+                    vector_length=len(record.values),
+                )
+            if record.named_vectors:
+                for vector_name, values in record.named_vectors.items():
+                    self.registry.ensure_dimension(
+                        tenant_id=context.tenant_id,
+                        namespace=namespace,
+                        vector_length=len(values),
+                        vector_name=vector_name,
+                    )
         start = time.perf_counter()
         try:
             self._guard_circuit_breaker()
@@ -139,6 +168,7 @@ class VectorStoreService:
             tenant_id=context.tenant_id,
             namespace=namespace,
             vector_length=len(query.values),
+            vector_name=query.vector_name,
         )
         start = time.perf_counter()
         try:
@@ -215,12 +245,6 @@ class VectorStoreService:
     # ------------------------------------------------------------------
     # Helper utilities
     # ------------------------------------------------------------------
-    def _validate_dimension(self, config: NamespaceConfig, dimension: int) -> None:
-        if config.params.dimension != dimension:
-            raise DimensionMismatchError(
-                config.params.dimension, dimension, namespace=config.name
-            )
-
     def _require_scope(self, context: SecurityContext, scope: str) -> None:
         if not context.has_scope(scope):
             raise ScopeError(required_scope=scope)

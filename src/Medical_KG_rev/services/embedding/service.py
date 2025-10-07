@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Iterator, Mapping, Sequence
@@ -23,6 +24,9 @@ from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
 from Medical_KG_rev.embeddings.storage import StorageRouter
 from Medical_KG_rev.embeddings.utils.batching import BatchProgress
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
+from Medical_KG_rev.services.vector_store.models import VectorRecord
+from Medical_KG_rev.services.vector_store.service import VectorStoreService
+from Medical_KG_rev.auth.context import SecurityContext
 
 logger = structlog.get_logger(__name__)
 
@@ -205,6 +209,7 @@ class EmbeddingWorker:
         self.storage_router = storage_router or StorageRouter()
         self._configs_by_name = {config.name: config for config in self._embedder_configs}
         self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
+        self.vector_store = vector_store
 
     def _resolve_configs(self, request: EmbeddingRequest) -> list[EmbedderConfig]:
         if request.namespaces:
@@ -269,6 +274,8 @@ class EmbeddingWorker:
             )
 
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        if self._legacy_registry is not None:
+            return self._run_legacy(request)
         configs = self._resolve_configs(request)
         response = EmbeddingResponse()
         logger.info(
@@ -316,6 +323,7 @@ class EmbeddingWorker:
             dimension = self._dimension_from_record(first)
             if dimension:
                 self.namespace_manager.introspect_dimension(config.namespace, dimension)
+            vector_records: list[VectorRecord] = []
             for record in records:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
@@ -356,6 +364,42 @@ class EmbeddingWorker:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
             response.extend_from_records(records, storage_router=self.storage_router)
+        return response
+
+    def _run_legacy(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        models = request.models or self._legacy_registry.list_models()
+        response = EmbeddingResponse()
+        for model_name in models:
+            model = self._legacy_registry.get(model_name)
+            for chunk_id, text in zip(request.chunk_ids, request.texts, strict=False):
+                result = model.embed(chunk_id, text)
+                metadata = {"source": "legacy"}
+                if model.kind == "dense":
+                    response.vectors.append(
+                        EmbeddingVector(
+                            id=result["id"],
+                            model=model.name,
+                            namespace=model.name,
+                            kind="dense",
+                            vectors=[result["values"]],
+                            terms=None,
+                            dimension=model.dimension,
+                            metadata=metadata,
+                        )
+                    )
+                else:
+                    response.vectors.append(
+                        EmbeddingVector(
+                            id=result["id"],
+                            model=model.name,
+                            namespace=model.name,
+                            kind="sparse",
+                            vectors=None,
+                            terms=result["terms"],
+                            dimension=model.dimension,
+                            metadata=metadata,
+                        )
+                    )
         return response
 
 

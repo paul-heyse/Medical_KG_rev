@@ -222,7 +222,7 @@ async def ingest_pmc(
 async def chunk_document(
     request: ChunkRequest,
     security: SecurityContext = Depends(
-        secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/chunk")
+        secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/chunk")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:

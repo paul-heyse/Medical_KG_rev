@@ -24,6 +24,7 @@ from Medical_KG_rev.services.vector_store.service import VectorStoreService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
 from .reranker import CrossEncoderReranker
+from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
 
 
 logger = structlog.get_logger(__name__)
@@ -37,6 +38,7 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
+    granularity: str
 
 
 class RetrievalService:
@@ -55,7 +57,6 @@ class RetrievalService:
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
-        self.reranker = reranker or CrossEncoderReranker()
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
@@ -73,6 +74,7 @@ class RetrievalService:
         k: int = 10,
         rerank: bool = False,
         *,
+        reranker_id: str | None = None,
         context: SecurityContext | None = None,
     ) -> list[RetrievalResult]:
         security_context = context or (
@@ -80,41 +82,74 @@ class RetrievalService:
             if self._context_factory
             else SecurityContext(subject="system", tenant_id="system", scopes={"*"})
         )
-        bm25_results = self.opensearch.search(
-            index, query, strategy="bm25", filters=filters, size=k
-        )
-        splade_results = self.opensearch.search(
-            index, query, strategy="splade", filters=filters, size=k
+        request = RoutingRequest(
+            query=query,
+            top_k=k,
+            filters=filters or {},
+            namespace=self.vector_namespace,
+            context=security_context,
         )
         dense_results = self._dense_search(query, k, security_context)
-        fused = self._fuse_results([bm25_results, splade_results, dense_results])
-        if rerank:
-            fused = self._apply_rerank(query, fused)
-        fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
-        return fused
 
-    def _dense_search(
+        default_reranker = reranker_id or self._default_reranker
+        candidate_lists = {
+            "bm25": self._materialise_documents(
+                bm25_results, security_context, strategy="bm25"
+            ),
+            "splade": self._materialise_documents(
+                splade_results, security_context, strategy="splade"
+            ),
+            "dense": self._materialise_documents(
+                dense_results, security_context, strategy="dense"
+            ),
+        }
+        fused, metrics = self._pipeline.execute(
+            security_context,
+            query,
+            candidate_lists,
+            reranker_id=default_reranker,
+            top_k=k,
+            rerank=rerank,
+        )
+        results: list[RetrievalResult] = []
+        for rank, document in enumerate(fused, start=1):
+            retrieval_score = float(document.metadata.get("retrieval_score", document.score))
+            results.append(
+                RetrievalResult(
+                    id=document.doc_id,
+                    text=document.content,
+                    retrieval_score=retrieval_score,
+                    rerank_score=document.score if rerank else None,
+                    highlights=list(document.highlights),
+                    metadata=dict(document.metadata),
+                )
+            )
+        if rerank:
+            for result in results:
+                result.metadata.setdefault("reranking", metrics.get("reranking", {}))
+        return results
+
+    def _dense_strategy(
         self, query: str, k: int, context: SecurityContext
     ) -> list[Mapping[str, object]]:
         if self.vector_store is not None and self.embedding_worker is not None:
             return self._vector_store_search(query, k, context)
         if not self.faiss or not self.faiss.ids:
             return []
-        pseudo_query = [float(hash(token) % 100) for token in query.split()]
         if len(pseudo_query) < self.faiss.dimension:
             pseudo_query.extend([0.0] * (self.faiss.dimension - len(pseudo_query)))
         elif len(pseudo_query) > self.faiss.dimension:
             pseudo_query = pseudo_query[: self.faiss.dimension]
         hits = self.faiss.search(pseudo_query, k=k)
-        results: list[Mapping[str, object]] = []
         for chunk_id, score, metadata in hits:
+            meta = {"text": metadata.get("text", ""), **metadata}
             results.append(
-                {
-                    "_id": chunk_id,
-                    "_score": score,
-                    "_source": {"text": metadata.get("text", ""), **metadata},
-                    "highlight": [],
-                }
+                RouterMatch(
+                    id=chunk_id,
+                    score=float(score),
+                    metadata=meta,
+                    source="faiss",
+                )
             )
         return results
 
@@ -171,37 +206,36 @@ class RetrievalService:
             self._query_cache_set(query, results)
         return results
 
-    def _fuse_results(
-        self, result_sets: Sequence[Sequence[Mapping[str, object]]]
-    ) -> list[RetrievalResult]:
-        aggregated: dict[str, dict[str, object]] = {}
-        for results in result_sets:
-            for rank, result in enumerate(results, start=1):
-                chunk_id = result["_id"]
-                data = aggregated.setdefault(
-                    chunk_id,
-                    {
-                        "text": result["_source"].get("text", ""),
-                        "metadata": result["_source"],
-                        "highlights": list(result.get("highlight", [])),
-                        "rrf": 0.0,
-                    },
-                )
-                data["rrf"] += 1.0 / (50 + rank)
-        fused: list[RetrievalResult] = []
-        for chunk_id, payload in aggregated.items():
-            fused.append(
-                RetrievalResult(
-                    id=chunk_id,
-                    text=str(payload["text"]),
-                    retrieval_score=float(payload["rrf"]),
-                    rerank_score=None,
-                    highlights=list(payload["highlights"]),
-                    metadata=dict(payload["metadata"]),
-                )
+    def _materialise_documents(
+        self,
+        results: Sequence[Mapping[str, object]],
+        context: SecurityContext,
+        *,
+        strategy: str,
+    ) -> list[ScoredDocument]:
+        documents: list[ScoredDocument] = []
+        for result in results:
+            doc_id = str(result.get("_id"))
+            source = result.get("_source", {})
+            if not isinstance(source, Mapping):
+                source = {}
+            metadata = dict(source)
+            metadata.setdefault("strategy", strategy)
+            tenant = str(metadata.get("tenant_id", context.tenant_id))
+            text = str(metadata.get("text", ""))
+            score = float(result.get("_score", 0.0))
+            document = ScoredDocument(
+                doc_id=doc_id,
+                content=text,
+                tenant_id=tenant,
+                source=str(metadata.get("source", strategy)),
+                strategy_scores={strategy: score},
+                metadata=metadata,
+                highlights=list(result.get("highlight", [])),
+                score=score,
             )
-        fused.sort(key=lambda item: item.retrieval_score, reverse=True)
-        return fused
+            documents.append(document)
+        return documents
 
     def _apply_rerank(
         self, query: str, results: Iterable[RetrievalResult]
@@ -222,6 +256,7 @@ class RetrievalService:
                     rerank_score=score_map.get(result.id),
                     highlights=result.highlights,
                     metadata=result.metadata,
+                    granularity=result.granularity,
                 )
             )
         return reranked

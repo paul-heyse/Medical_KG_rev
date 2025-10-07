@@ -78,6 +78,8 @@ class SentenceTransformersEmbedder:
         self,
         request: EmbeddingRequest,
         vectors: list[list[float]],
+        *,
+        offset: int = 0,
     ) -> list[EmbeddingRecord]:
         builder = RecordBuilder(self.config, normalized_override=self._normalize)
         return builder.dense(

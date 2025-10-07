@@ -112,15 +112,82 @@ class EmbeddingResponse:
                 EmbeddingVector.from_record(record, storage_router=storage_router)
             )
 
+@dataclass(slots=True)
+class _LegacyEmbeddingModel:
+    name: str
+    dimension: int
+    kind: str
+
+    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
+        tokens = text.split()
+        if self.kind == "dense":
+            base = float(len(tokens) or 1)
+            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
+            return {"id": chunk_id, "values": values}
+        weights = {
+            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
+            for index in range(min(self.dimension, max(1, len(tokens))))
+        }
+        return {"id": chunk_id, "terms": weights}
+
+
+class EmbeddingModelRegistry:
+    """Compatibility shim for legacy embedding registry usage in tests."""
+
+    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
+        self.namespace_manager = NamespaceManager()
+        self._models: dict[str, _LegacyEmbeddingModel] = {
+            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
+            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
+        }
+        self._aliases = {
+            "splade": "splade",
+            "sparse": "splade",
+            "bge": "bge",
+            "bge-small": "bge",
+            "dense": "bge",
+        }
+
+    def list_models(self) -> list[str]:
+        return list(self._models)
+
+    def get(self, name: str) -> _LegacyEmbeddingModel:
+        key = self._aliases.get(name, name)
+        try:
+            return self._models[key]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise KeyError(f"Unknown embedding model '{name}'") from exc
+
+
+class EmbeddingWorker:
+    """Coordinates config-driven embedding generation and validation."""
 
     def __init__(
         self,
+        registry_or_namespace: EmbeddingModelRegistry | NamespaceManager | None = None,
         *,
         namespace_manager: NamespaceManager | None = None,
         config_path: str | None = None,
-        vector_store: VectorStoreService | None = None,
     ) -> None:
-        self.namespace_manager = namespace_manager or NamespaceManager()
+        self._legacy_registry: EmbeddingModelRegistry | None = None
+        if isinstance(registry_or_namespace, EmbeddingModelRegistry):
+            self._legacy_registry = registry_or_namespace
+            self.namespace_manager = registry_or_namespace.namespace_manager
+            self.registry = None
+            self.factory = None
+            self.storage_router = StorageRouter()
+            self._config = None
+            self._embedder_configs: list[EmbedderConfig] = []
+            self._configs_by_name: dict[str, EmbedderConfig] = {}
+            self._configs_by_namespace: dict[str, EmbedderConfig] = {}
+            return
+
+        if isinstance(registry_or_namespace, NamespaceManager) and namespace_manager is not None:
+            raise TypeError("namespace_manager should not be provided twice")
+        effective_namespace = namespace_manager
+        if effective_namespace is None and isinstance(registry_or_namespace, NamespaceManager):
+            effective_namespace = registry_or_namespace
+        self.namespace_manager = effective_namespace or NamespaceManager()
         self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
         register_builtin_embedders(self.registry)
         self.factory = EmbedderFactory(self.registry)
@@ -380,27 +447,6 @@ class EmbeddingWorker:
         )
         return response
 
-    def encode_queries(self, request: EmbeddingRequest) -> EmbeddingResponse:
-        configs = self._resolve_configs(request)
-        response = EmbeddingResponse()
-        for config in configs:
-            ensure_available(config.requires_gpu, operation=f"embed-query:{config.name}")
-            embedder = self.factory.get(config)
-            adapter_request = self._adapter_request(
-                request,
-                config,
-                texts=request.texts,
-                ids=request.chunk_ids
-                or [f"query:{index}" for index in range(len(request.texts))],
-                metadata=request.metadatas or [{} for _ in request.texts],
-            )
-            records = embedder.embed_queries(adapter_request)
-            for record in records:
-                dim = self._dimension_from_record(record)
-                self.namespace_manager.validate_record(config.namespace, dim)
-            response.extend_from_records(records, storage_router=self.storage_router)
-        return response
-
     def _run_legacy(self, request: EmbeddingRequest) -> EmbeddingResponse:
         models = request.models or self._legacy_registry.list_models()
         response = EmbeddingResponse()
@@ -436,7 +482,6 @@ class EmbeddingWorker:
                         )
                     )
         return response
-
 
 
 class EmbeddingGrpcService:

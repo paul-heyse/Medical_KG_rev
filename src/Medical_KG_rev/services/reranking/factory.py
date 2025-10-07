@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict
+from typing import Any, Callable, Dict, Sequence
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
-from .errors import UnknownRerankerError
-from .late_interaction import ColBERTReranker
+from .errors import RerankingError, UnknownRerankerError
+from .late_interaction import (
+    ColBERTReranker,
+    QdrantColBERTReranker,
+    RagatouilleColBERTReranker,
+)
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import RerankerConfig
@@ -28,6 +32,13 @@ class RerankerFactory:
                 "cross_encoder:monot5": lambda: MonoT5Reranker(),
                 "cross_encoder:qwen": lambda: QwenReranker(),
                 "late_interaction:colbert": lambda: ColBERTReranker(),
+                "late_interaction:ragatouille": lambda: RagatouilleColBERTReranker(
+                    index=_LazyRagatouille()
+                ),
+                "late_interaction:qdrant": lambda: QdrantColBERTReranker(
+                    client=_LazyQdrant(),
+                    collection="colbert",
+                ),
                 "lexical:bm25": lambda: BM25Reranker(),
                 "lexical:bm25f": lambda: BM25FReranker(),
                 "ltr:opensearch": lambda: OpenSearchLTRReranker(),
@@ -58,3 +69,37 @@ class RerankerFactory:
             if hasattr(reranker, "quantization") and config.quantization:
                 setattr(reranker, "quantization", config.quantization)
         return reranker
+class _LazyRagatouille:
+    """Placeholder index that raises helpful errors until configured."""
+
+    def encode_queries(self, queries: Sequence[str]) -> Sequence[Sequence[Sequence[float]]]:
+        raise RerankingError(
+            title="RAGatouille not configured",
+            status=503,
+            detail=(
+                "RAGatouille integration requires providing an index instance via "
+                "RerankerFactory.register('late_interaction:ragatouille', ...)"
+            ),
+        )
+
+    def get_document_vectors(self, doc_id: str) -> Sequence[Sequence[float]]:
+        raise RerankingError(
+            title="RAGatouille not configured",
+            status=503,
+            detail="RAGatouille index instance has not been initialised",
+        )
+
+
+class _LazyQdrant:
+    """Placeholder client providing descriptive errors until configured."""
+
+    def retrieve(self, *args: Any, **kwargs: Any) -> Sequence[Any]:  # pragma: no cover - simple guard
+        raise RerankingError(
+            title="Qdrant not configured",
+            status=503,
+            detail=(
+                "Qdrant integration requires registering a configured client via "
+                "RerankerFactory.register('late_interaction:qdrant', ...)"
+            ),
+        )
+

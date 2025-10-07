@@ -12,6 +12,7 @@ from .settings import (
     TelemetrySettings,
     get_settings,
     load_settings,
+    migrate_reranking_config,
 )
 from .vector_store import (
     CompressionConfig as VectorCompressionConfig,
@@ -29,6 +30,7 @@ __all__ = [
     "LoggingSettings",
     "ObservabilitySettings",
     "RerankingSettings",
+    "migrate_reranking_config",
     "SecretResolver",
     "TelemetrySettings",
     "get_settings",

@@ -21,14 +21,14 @@
 
 ### 2.2 FAISS
 
-- [ ] 2.2.1 Implement `FAISSStore` with Flat/IVF_FLAT/HNSW support
-- [ ] 2.2.2 Add IVF_PQ with training pipeline
-- [ ] 2.2.3 Implement OPQ+IVF_PQ via index_factory
-- [ ] 2.2.4 Add GPU variants (GpuIndexFlatL2, GpuIndexIVFPQ)
-- [ ] 2.2.5 Implement scalar quantization (SQ8, fp16)
-- [ ] 2.2.6 Add reorder functionality for PQ
-- [ ] 2.2.7 Create sidecar KV store (SQLite/LMDB) for payloads
-- [ ] 2.2.8 Implement index persistence (write_index/read_index)
+- [x] 2.2.1 Implement `FAISSStore` with Flat/IVF_FLAT/HNSW support
+- [x] 2.2.2 Add IVF_PQ with training pipeline
+- [x] 2.2.3 Implement OPQ+IVF_PQ via index_factory
+- [x] 2.2.4 Add GPU variants (GpuIndexFlatL2, GpuIndexIVFPQ)
+- [x] 2.2.5 Implement scalar quantization (SQ8, fp16)
+- [x] 2.2.6 Add reorder functionality for PQ
+- [x] 2.2.7 Create sidecar KV store (SQLite/LMDB) for payloads
+- [x] 2.2.8 Implement index persistence (write_index/read_index)
 
 ### 2.3 Milvus/Milvus-Lite
 

@@ -32,6 +32,11 @@ class IndexParams:
     nlist: int | None = None
     nprobe: int | None = None
     replicas: int | None = None
+    use_gpu: bool = False
+    gpu_id: int | None = None
+    reorder_k: int | None = None
+    train_size: int | None = None
+    storage_path: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

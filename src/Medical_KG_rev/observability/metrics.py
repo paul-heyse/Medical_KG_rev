@@ -5,27 +5,82 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from time import perf_counter
+from typing import TYPE_CHECKING, Any
 
 try:  # pragma: no cover - optional dependency
     import torch
 except Exception:  # pragma: no cover - torch is optional in CPU-only environments
     torch = None  # type: ignore
 
-from fastapi import FastAPI, Request, Response
-from prometheus_client import (  # type: ignore
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from fastapi import FastAPI, Request, Response
+else:  # pragma: no cover - optional dependency handling
+    try:
+        from fastapi import FastAPI, Request, Response
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+        FastAPI = Request = Response = Any  # type: ignore[assignment]
+        _FASTAPI_IMPORT_ERROR: ModuleNotFoundError | None = exc
+    else:
+        _FASTAPI_IMPORT_ERROR = None
 
-from Medical_KG_rev.config.settings import AppSettings
-from Medical_KG_rev.utils.logging import (
-    bind_correlation_id,
-    get_correlation_id,
-    reset_correlation_id,
-)
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from Medical_KG_rev.config.settings import AppSettings
+else:  # pragma: no cover - optional dependency handling
+    try:
+        from Medical_KG_rev.config.settings import AppSettings
+    except (ModuleNotFoundError, ImportError) as exc:  # pragma: no cover - optional dependency
+        AppSettings = Any  # type: ignore[assignment]
+        _APP_SETTINGS_IMPORT_ERROR: Exception | None = exc
+    else:
+        _APP_SETTINGS_IMPORT_ERROR = None
+
+try:  # pragma: no cover - optional dependency
+    from prometheus_client import (  # type: ignore
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
+
+    class _NoopMetric:
+        def labels(self, *args, **kwargs):  # noqa: ANN002, ANN003 - signature mirrors prometheus
+            return self
+
+        def inc(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+        def observe(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+        def set(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return None
+
+    def _noop_metric(*args, **kwargs):  # noqa: ANN002, ANN003
+        return _NoopMetric()
+
+    Counter = Gauge = Histogram = _noop_metric  # type: ignore[assignment]
+
+    def generate_latest() -> bytes:  # type: ignore[override]
+        return b""
+
+try:  # pragma: no cover - optional dependency chain
+    from Medical_KG_rev.utils.logging import (
+        bind_correlation_id,
+        get_correlation_id,
+        reset_correlation_id,
+    )
+except Exception:  # pragma: no cover - optional dependency chain
+    def bind_correlation_id(*args, **kwargs):  # noqa: ANN002, ANN003
+        return None
+
+    def get_correlation_id() -> str | None:
+        return None
+
+    def reset_correlation_id(_token) -> None:  # noqa: ANN001
+        return None
 
 REQUEST_COUNTER = Counter(
     "api_requests",
@@ -42,6 +97,20 @@ JOB_DURATION = Histogram(
     "Duration of ingest/retrieve operations",
     labelnames=("operation",),
 )
+CHUNKING_LATENCY = Histogram(
+    "chunking_latency_seconds",
+    "Latency distribution for chunking profiles",
+    labelnames=("profile",),
+)
+CHUNK_SIZE = Histogram(
+    "chunk_size_characters",
+    "Distribution of chunk sizes by granularity",
+    labelnames=("profile", "granularity"),
+)
+CHUNKING_CIRCUIT_STATE = Gauge(
+    "chunking_circuit_breaker_state",
+    "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
+)
 GPU_UTILISATION = Gauge(
     "gpu_utilization_percent",
     "GPU memory utilisation percentage",
@@ -54,7 +123,7 @@ BUSINESS_EVENTS = Counter(
 )
 
 
-def _normalise_path(request: Request) -> str:
+def _normalise_path(request: "Request") -> str:
     route = request.scope.get("route")
     return getattr(route, "path", request.url.path)
 
@@ -71,7 +140,16 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
-def register_metrics(app: FastAPI, settings: AppSettings) -> None:
+def register_metrics(app: "FastAPI", settings: AppSettings) -> None:
+    if "_FASTAPI_IMPORT_ERROR" in globals() and _FASTAPI_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "FastAPI is required to register metrics. Install the 'fastapi' extra."
+        ) from _FASTAPI_IMPORT_ERROR
+    if "_APP_SETTINGS_IMPORT_ERROR" in globals() and _APP_SETTINGS_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "Medical_KG_rev configuration settings are unavailable. Install project dependencies."
+        ) from _APP_SETTINGS_IMPORT_ERROR
+
     if not settings.observability.metrics.enabled:
         return
 
@@ -115,7 +193,7 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:
         return response
 
     @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> Response:
+    async def metrics_endpoint() -> "Response":
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -125,3 +203,15 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
+
+
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
+
+
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
+
+
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

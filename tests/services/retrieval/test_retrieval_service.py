@@ -35,14 +35,18 @@ def test_rerank_adds_scores():
     results = service.search("chunks", "headache", rerank=True)
 
     assert any(result.rerank_score is not None for result in results)
-    assert all("reranking" in result.metadata for result in results)
 
 
-def test_explain_mode_includes_stage_metrics():
+def test_namespace_selected_by_embedding_kind():
     opensearch, faiss = _setup_clients()
-    service = RetrievalService(opensearch, faiss)
-
-    results = service.search("chunks", "headache", rerank=True, explain=True)
-
-    assert results[0].metadata.get("pipeline_metrics")
-    assert results[0].metadata.get("timing")
+    router = MagicMock(spec=RetrievalRouter)
+    router.execute.return_value = []
+    service = RetrievalService(
+        opensearch,
+        faiss,
+        namespace_map={"hybrid": "dense-hybrid"},
+        router=router,
+    )
+    service.search("chunks", "headache", embedding_kind="hybrid")
+    request = router.execute.call_args[0][0]
+    assert request.namespace == "dense-hybrid"

@@ -1,4 +1,4 @@
-"""Tests that embedding worker pushes vectors into the vector store."""
+"""Tests ensuring embedding worker outputs metadata-rich vectors."""
 
 from __future__ import annotations
 
@@ -7,32 +7,30 @@ from collections.abc import Sequence
 import pytest
 
 from Medical_KG_rev.embeddings.namespace import NamespaceManager, NamespaceConfig as EmbeddingNamespaceConfig
-from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.services.embedding.service import (
     EmbeddingRequest,
     EmbeddingWorker,
 )
 from Medical_KG_rev.services.vector_store.models import NamespaceConfig, IndexParams
 from Medical_KG_rev.services.vector_store.registry import NamespaceRegistry
-from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 
 class DummyEmbedder:
     def embed_documents(self, request):  # type: ignore[override]
         class Record:
-            def __init__(self) -> None:
+            def __init__(self, namespace: str, metadata: Sequence[dict[str, object]]) -> None:
                 self.id = "chunk-1"
                 self.model_id = "test"
-                self.namespace = request.namespace
+                self.namespace = namespace
                 self.kind = "single_vector"
                 self.vectors = [
                     [float(i) / 100 for i in range(128)]
                 ]
                 self.terms = None
-                self.metadata = {"foo": "bar"}
+                self.metadata = {"foo": "bar", **(metadata[0] if metadata else {})}
                 self.dim = 128
 
-        return [Record()]
+        return [Record(request.namespace, request.metadata)]
 
 
 class StubEmbedderFactory:
@@ -41,27 +39,6 @@ class StubEmbedderFactory:
 
     def get(self, config):  # type: ignore[override]
         return DummyEmbedder()
-
-
-class StubVectorStore:
-    def __init__(self) -> None:
-        self.records: list[tuple[str, Sequence[float]]] = []
-
-    def create_or_update_collection(self, **kwargs):  # type: ignore[override]
-        pass
-
-    def list_collections(self, **kwargs):  # type: ignore[override]
-        return []
-
-    def upsert(self, *, tenant_id: str, namespace: str, records):  # type: ignore[override]
-        for record in records:
-            self.records.append((record.vector_id, record.values))
-
-    def query(self, **kwargs):  # type: ignore[override]
-        return []
-
-    def delete(self, **kwargs):  # type: ignore[override]
-        return 0
 
 
 @pytest.fixture()
@@ -98,30 +75,30 @@ def embedding_worker(monkeypatch: pytest.MonkeyPatch):
         embedder_name="fake",
     )
     registry = NamespaceRegistry()
-    vector_store_adapter = StubVectorStore()
-    service = VectorStoreService(vector_store_adapter, registry)
-    worker = EmbeddingWorker(namespace_manager=namespace_manager, vector_store=service)
+    worker = EmbeddingWorker(namespace_manager=namespace_manager)
     fake_config = FakeConfig()
     monkeypatch.setattr(worker, "_resolve_configs", lambda request: [fake_config])
     monkeypatch.setattr(worker, "factory", StubEmbedderFactory(worker))
-    service.ensure_namespace(
-        context=SecurityContext(subject="tester", tenant_id="tenant", scopes={"index:write"}),
+    registry.register(
+        tenant_id="tenant",
         config=NamespaceConfig(
             name="default",
             params=IndexParams(dimension=128),
         ),
     )
-    assert registry.get(tenant_id="tenant", namespace="default")
-    return worker, vector_store_adapter
+    return worker
 
 
-def test_worker_upserts_vectors(embedding_worker) -> None:
-    worker, vector_store = embedding_worker
+def test_worker_generates_metadata_rich_vectors(embedding_worker) -> None:
+    worker = embedding_worker
     request = EmbeddingRequest(
         tenant_id="tenant",
         chunk_ids=["chunk-1"],
         texts=["sample"],
+        metadatas=[{"document_id": "doc-1", "text": "sample"}],
     )
     response = worker.run(request)
-    assert response.vectors[0].metadata["storage_target"]
-    assert vector_store.records[0][0] == "chunk-1"
+    assert response.vectors[0].metadata["storage_target"] == "qdrant"
+    assert response.vectors[0].metadata["document_id"] == "doc-1"
+    buffered = worker.storage_router.buffered("qdrant")
+    assert buffered and buffered[0].metadata["document_id"] == "doc-1"

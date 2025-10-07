@@ -42,6 +42,20 @@ JOB_DURATION = Histogram(
     "Duration of ingest/retrieve operations",
     labelnames=("operation",),
 )
+CHUNKING_LATENCY = Histogram(
+    "chunking_latency_seconds",
+    "Latency distribution for chunking profiles",
+    labelnames=("profile",),
+)
+CHUNK_SIZE = Histogram(
+    "chunk_size_characters",
+    "Distribution of chunk sizes by granularity",
+    labelnames=("profile", "granularity"),
+)
+CHUNKING_CIRCUIT_STATE = Gauge(
+    "chunking_circuit_breaker_state",
+    "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
+)
 GPU_UTILISATION = Gauge(
     "gpu_utilization_percent",
     "GPU memory utilisation percentage",
@@ -125,3 +139,15 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_business_event(event: str, amount: int = 1) -> None:
     BUSINESS_EVENTS.labels(event=event).inc(amount)
+
+
+def observe_chunking_latency(profile: str, duration_seconds: float) -> None:
+    CHUNKING_LATENCY.labels(profile=profile).observe(max(duration_seconds, 0.0))
+
+
+def record_chunk_size(profile: str, granularity: str, characters: int) -> None:
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(max(characters, 0))
+
+
+def set_chunking_circuit_state(state: int) -> None:
+    CHUNKING_CIRCUIT_STATE.set(float(state))

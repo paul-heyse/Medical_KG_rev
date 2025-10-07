@@ -44,6 +44,8 @@ class ChunkAssembler:
         end = max(context.end_char for context in blocks)
         title_path = blocks[0].title_path
         section_title = blocks[0].section_title
+        page_numbers = [context.page_no for context in blocks if context.page_no is not None]
+        page_no = page_numbers[0] if page_numbers else None
         chunk_id = make_chunk_id(self.document.id, self.chunker_name, self.granularity, self._index)
         self._index += 1
         token_count = self.counter.count(body)
@@ -52,6 +54,8 @@ class ChunkAssembler:
             "section_id": blocks[0].section.id,
             "token_count": token_count,
         }
+        if page_numbers:
+            meta.setdefault("page_numbers", page_numbers)
         if metadata:
             meta.update(metadata)
         return Chunk(
@@ -66,5 +70,6 @@ class ChunkAssembler:
             granularity=self.granularity,
             chunker=self.chunker_name,
             chunker_version=self.chunker_version,
+            page_no=page_no,
             meta=meta,
         )

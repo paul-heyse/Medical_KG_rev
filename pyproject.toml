@@ -188,6 +188,16 @@ docs = [
     "mkdocstrings[python]>=0.24.0",
     "pdoc>=14.0.0",
 ]
+chunking = [
+    "langchain-text-splitters>=0.0.1",
+    "llama-index-core>=0.10.0",
+    "haystack-ai>=2.0.0",
+    "unstructured>=0.11.8",
+    "hdbscan>=0.8.33",
+    "networkx>=3.2.1",
+    "layoutparser>=0.3.4",
+    "docling>=0.0.4",
+]
 
 [project.urls]
 Homepage = "https://github.com/your-org/Medical_KG_rev"

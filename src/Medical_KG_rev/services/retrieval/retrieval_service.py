@@ -37,6 +37,7 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
+    granularity: str
 
 
 class RetrievalService:
@@ -49,9 +50,7 @@ class RetrievalService:
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
         context_factory: Callable[[], SecurityContext] | None = None,
-        embedding_worker: EmbeddingWorker | None = None,
-        active_namespaces: Sequence[str] | None = None,
-        namespace_weights: Mapping[str, float] | None = None,
+        granularity_weights: Mapping[str, float] | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -59,11 +58,15 @@ class RetrievalService:
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
-        self.embedding_worker = embedding_worker
-        self.active_namespaces = list(active_namespaces or [vector_namespace])
-        self.namespace_weights = dict(namespace_weights or {vector_namespace: 1.0})
-        self._query_cache: OrderedDict[tuple[str, tuple[str, ...]], list[Mapping[str, Any]]] = OrderedDict()
-        self._cache_size = 32
+        self._granularity_weights = {
+            "document": 0.6,
+            "section": 1.0,
+            "paragraph": 1.2,
+            "window": 0.9,
+            "table": 0.8,
+        }
+        if granularity_weights:
+            self._granularity_weights.update(granularity_weights)
 
     def search(
         self,
@@ -88,6 +91,16 @@ class RetrievalService:
         )
         dense_results = self._dense_search(query, k, security_context)
         fused = self._fuse_results([bm25_results, splade_results, dense_results])
+        if filters and "granularity" in filters:
+            allowed = filters["granularity"]
+            if isinstance(allowed, str):
+                allowed_set = {allowed}
+            elif isinstance(allowed, Sequence):
+                allowed_set = {str(value) for value in allowed}
+            else:
+                allowed_set = {str(allowed)}
+            fused = [result for result in fused if result.granularity in allowed_set]
+        fused = self._merge_neighbors(fused)
         if rerank:
             fused = self._apply_rerank(query, fused)
         fused.sort(key=lambda item: item.rerank_score or item.retrieval_score, reverse=True)
@@ -187,9 +200,15 @@ class RetrievalService:
                         "rrf": 0.0,
                     },
                 )
-                data["rrf"] += 1.0 / (50 + rank)
+                weight = self._granularity_weights.get(
+                    str(result["_source"].get("granularity", "paragraph")),
+                    1.0,
+                )
+                data["rrf"] += weight * (1.0 / (50 + rank))
         fused: list[RetrievalResult] = []
         for chunk_id, payload in aggregated.items():
+            metadata = dict(payload["metadata"])
+            granularity = str(metadata.get("granularity", "paragraph"))
             fused.append(
                 RetrievalResult(
                     id=chunk_id,
@@ -197,11 +216,58 @@ class RetrievalService:
                     retrieval_score=float(payload["rrf"]),
                     rerank_score=None,
                     highlights=list(payload["highlights"]),
-                    metadata=dict(payload["metadata"]),
+                    metadata=metadata,
+                    granularity=granularity,
                 )
             )
         fused.sort(key=lambda item: item.retrieval_score, reverse=True)
         return fused
+
+    def _merge_neighbors(self, results: Iterable[RetrievalResult]) -> list[RetrievalResult]:
+        merged: list[RetrievalResult] = []
+        buffer: dict[tuple[str, str], RetrievalResult] = {}
+        for result in results:
+            if result.granularity != "window":
+                merged.append(result)
+                continue
+            doc_key, chunker, index = self._parse_chunk_id(result.id)
+            key = (doc_key, chunker)
+            existing = buffer.get(key)
+            if existing is None:
+                buffer[key] = result
+                continue
+            prev_doc, prev_chunker, prev_index = self._parse_chunk_id(existing.id)
+            if prev_doc == doc_key and prev_chunker == chunker and index == prev_index + 1:
+                combined_text = existing.text + "\n" + result.text
+                combined_score = max(existing.retrieval_score, result.retrieval_score)
+                metadata = dict(existing.metadata)
+                metadata.setdefault("merged_ids", [existing.id])
+                metadata["merged_ids"].append(result.id)
+                metadata["text"] = combined_text
+                merged_result = RetrievalResult(
+                    id=result.id,
+                    text=combined_text,
+                    retrieval_score=combined_score,
+                    rerank_score=None,
+                    highlights=existing.highlights,
+                    metadata=metadata,
+                    granularity=result.granularity,
+                )
+                buffer[key] = merged_result
+            else:
+                merged.append(existing)
+                buffer[key] = result
+        merged.extend(buffer.values())
+        return merged
+
+    def _parse_chunk_id(self, chunk_id: str) -> tuple[str, str, int]:
+        parts = chunk_id.split(":")
+        if len(parts) < 4:
+            return chunk_id, "unknown", 0
+        try:
+            return parts[0], parts[1], int(parts[-1])
+        except ValueError:
+            return parts[0], parts[1], 0
 
     def _apply_rerank(
         self, query: str, results: Iterable[RetrievalResult]
@@ -222,6 +288,7 @@ class RetrievalService:
                     rerank_score=score_map.get(result.id),
                     highlights=result.highlights,
                     metadata=result.metadata,
+                    granularity=result.granularity,
                 )
             )
         return reranked

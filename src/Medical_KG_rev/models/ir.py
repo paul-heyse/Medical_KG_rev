@@ -16,6 +16,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .equation import Equation
+from .figure import Figure
+from .table import Table, TableCell
 
 class IRBaseModel(BaseModel):
     """Base model that enforces strict validation across the IR."""
@@ -47,6 +50,7 @@ class BlockType(str, Enum):
     FIGURE = "figure"
     HEADER = "header"
     FOOTNOTE = "footnote"
+    EQUATION = "equation"
 
 
 class Block(IRBaseModel):
@@ -57,37 +61,18 @@ class Block(IRBaseModel):
     text: str | None = Field(default=None, description="Plain-text content")
     spans: Sequence[Span] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    layout_bbox: tuple[float, float, float, float] | None = Field(default=None)
+    reading_order: int | None = Field(default=None, ge=0)
+    confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    table: Table | None = Field(default=None)
+    figure: Figure | None = Field(default=None)
+    equation: Equation | None = Field(default=None)
 
     @field_validator("spans")
     @classmethod
     def _ensure_spans_sorted(cls, value: Sequence[Span]) -> Sequence[Span]:
         if any(value[i].start > value[i + 1].start for i in range(len(value) - 1)):
             raise ValueError("Block spans must be ordered by start offset")
-        return value
-
-
-class TableCell(IRBaseModel):
-    """Represents a cell inside a table block."""
-
-    row: int = Field(ge=0)
-    column: int = Field(ge=0)
-    content: str
-    span: Span | None = None
-
-
-class Table(IRBaseModel):
-    """Structured table representation embedded inside a block."""
-
-    cells: Sequence[TableCell] = Field(default_factory=list)
-    headers: Sequence[str] = Field(default_factory=tuple)
-    caption: str | None = None
-
-    @field_validator("cells")
-    @classmethod
-    def _validate_cells(cls, value: Sequence[TableCell]) -> Sequence[TableCell]:
-        seen = {(cell.row, cell.column) for cell in value}
-        if len(seen) != len(value):
-            raise ValueError("Duplicate table cells detected")
         return value
 
 

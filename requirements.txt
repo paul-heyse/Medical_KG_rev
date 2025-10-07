@@ -1,1 +1,2 @@
 -e .[chunking,reranking]
+mineru[gpu]>=2.5.4

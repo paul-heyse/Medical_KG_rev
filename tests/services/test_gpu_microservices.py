@@ -5,6 +5,8 @@ import types
 
 import pytest
 
+pytest.importorskip("pydantic")
+
 
 def _build_fake_torch():
     class _Props:
@@ -71,7 +73,12 @@ def _build_fake_torch():
         def utilization(index: int) -> float:
             return 25.0
 
-    return types.SimpleNamespace(cuda=_Cuda)
+        @staticmethod
+        def memory_reserved(index: int) -> int:  # pragma: no cover - used via hasattr
+            return 256 * 1024 * 1024
+    fake = types.SimpleNamespace(cuda=_Cuda, version=types.SimpleNamespace(cuda="12.8"))
+    fake.__spec__ = types.SimpleNamespace(loader=None)  # type: ignore[attr-defined]
+    return fake
 
 
 @pytest.fixture(scope="module")
@@ -138,6 +145,9 @@ def test_mineru_processor_generates_blocks(microservice_modules):
     assert response.document.document_id == "doc-1"
     assert any(block.kind == "table" for block in response.document.blocks)
     assert all(block.text for block in response.document.blocks)
+    assert response.metadata.document_id == "doc-1"
+    assert response.metadata.worker_id
+    assert response.document.provenance["document_id"] == "doc-1"
 
 
 def test_embedding_worker_batches_models(microservice_modules):

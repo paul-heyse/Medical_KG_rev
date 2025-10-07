@@ -279,6 +279,60 @@ class SecuritySettings(BaseModel):
         return self
 
 
+class RerankerModelSettings(BaseModel):
+    """Configuration block describing the active reranker implementation."""
+
+    reranker_id: str = Field(default="cross_encoder:bge")
+    model: str = Field(default="BAAI/bge-reranker-v2-m3")
+    batch_size: int = Field(default=32, ge=1, le=256)
+    device: str = Field(default="cpu")
+    precision: Literal["fp32", "fp16", "int8"] = "fp16"
+    onnx_optimize: bool = False
+    quantization: Literal["int8", "fp16"] | None = None
+    requires_gpu: bool = False
+
+
+class FusionAlgorithmSettings(BaseModel):
+    """Fusion algorithm configuration."""
+
+    strategy: Literal["rrf", "weighted", "learned"] = "rrf"
+    rrf_k: int = Field(default=60, ge=1, le=1000)
+    weights: dict[str, float] = Field(default_factory=dict)
+    normalization: Literal["min_max", "z_score", "softmax"] = "min_max"
+    deduplicate: bool = True
+    aggregation: Literal["max", "mean", "sum"] = "max"
+
+    @model_validator(mode="after")
+    def validate_weights(self) -> FusionAlgorithmSettings:
+        if self.strategy in {"weighted", "learned"}:
+            if not self.weights:
+                raise ValueError("Fusion weights are required for weighted strategies")
+            total = sum(float(value) for value in self.weights.values())
+            if total <= 0:
+                raise ValueError("Fusion weights must sum to a positive value")
+        return self
+
+
+class PipelineStageSettings(BaseModel):
+    """Two-stage pipeline sizing configuration."""
+
+    retrieve_candidates: int = Field(default=1000, ge=10, le=5000)
+    rerank_candidates: int = Field(default=100, ge=1, le=1000)
+    return_top_k: int = Field(default=10, ge=1, le=200)
+
+
+class RerankingSettings(BaseModel):
+    """Top level reranking configuration exposed in settings."""
+
+    enabled: bool = True
+    cache_ttl: int = Field(default=3600, ge=0)
+    circuit_breaker_failures: int = Field(default=5, ge=1, le=50)
+    circuit_breaker_reset: float = Field(default=30.0, ge=1.0, le=600.0)
+    model: RerankerModelSettings = Field(default_factory=RerankerModelSettings)
+    fusion: FusionAlgorithmSettings = Field(default_factory=FusionAlgorithmSettings)
+    pipeline: PipelineStageSettings = Field(default_factory=PipelineStageSettings)
+
+
 class AppSettings(BaseSettings):
     """Top-level application settings."""
 
@@ -302,6 +356,7 @@ class AppSettings(BaseSettings):
             )
         )
     )
+    reranking: RerankingSettings = Field(default_factory=RerankingSettings)
     caching: CachingSettings = Field(
         default_factory=lambda: CachingSettings(
             default=EndpointCachePolicy(ttl=30, scope="private"),

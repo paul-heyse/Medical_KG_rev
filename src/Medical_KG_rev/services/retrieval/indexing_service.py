@@ -42,7 +42,12 @@ class IndexingService:
         chunk_options: ChunkingOptions | None = None,
         incremental: bool = False,
     ) -> IndexingResult:
-        chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
+        chunks = self.chunking.chunk(
+            document_id,
+            text,
+            chunk_options,
+            tenant_id=tenant_id,
+        )
         if incremental:
             chunks = [chunk for chunk in chunks if getattr(chunk, "chunk_id", getattr(chunk, "id", "")) not in self.faiss.ids]
         if not chunks:

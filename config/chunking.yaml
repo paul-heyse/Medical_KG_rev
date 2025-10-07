@@ -1,0 +1,46 @@
+# Default configuration for the modular chunking system.
+# Profiles may be extended per document source (pmc, dailymed, ctgov, etc.).
+
+default_profile: default
+profiles:
+  default:
+    enable_multi_granularity: true
+    primary:
+      strategy: semantic_splitter
+      granularity: paragraph
+      params:
+        tau_coh: 0.82
+        min_tokens: 200
+    auxiliaries:
+      - strategy: section_aware
+        granularity: section
+        params:
+          target_tokens: 450
+          min_tokens: 180
+      - strategy: sliding_window
+        granularity: window
+        params:
+          target_tokens: 512
+          overlap_ratio: 0.25
+  pmc:
+    enable_multi_granularity: true
+    primary:
+      strategy: section_aware
+      granularity: section
+      params:
+        target_tokens: 420
+        min_tokens: 160
+    auxiliaries:
+      - strategy: semantic_splitter
+        granularity: paragraph
+        params:
+          tau_coh: 0.8
+          min_tokens: 180
+  dailymed:
+    enable_multi_granularity: false
+    primary:
+      strategy: section_aware
+      granularity: section
+      params:
+        target_tokens: 480
+        min_tokens: 200

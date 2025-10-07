@@ -2,30 +2,30 @@
 
 ## 1. Core Infrastructure (12 tasks)
 
-- [ ] 1.1 Define `BaseChunker` interface in `chunking/ports.py` with `chunk()`, `explain()` methods
-- [ ] 1.2 Create `Chunk` Pydantic model with chunk_id, doc_id, body, title_path, section, start_char, end_char, granularity, meta fields
-- [ ] 1.3 Define `Granularity` literal type ("window", "paragraph", "section", "document", "table")
-- [ ] 1.4 Create `ChunkerConfig` Pydantic model for configuration validation
-- [ ] 1.5 Implement chunker registry in `chunking/registry.py` with factory pattern
-- [ ] 1.6 Create `ChunkerFactory` with config-driven instantiation
-- [ ] 1.7 Build `MultiGranularityPipeline` orchestrator for parallel chunking
-- [ ] 1.8 Implement provenance utilities for offset tracking and title_path construction
+- [x] 1.1 Define `BaseChunker` interface in `chunking/ports.py` with `chunk()`, `explain()` methods
+- [x] 1.2 Create `Chunk` Pydantic model with chunk_id, doc_id, body, title_path, section, start_char, end_char, granularity, meta fields
+- [x] 1.3 Define `Granularity` literal type ("window", "paragraph", "section", "document", "table")
+- [x] 1.4 Create `ChunkerConfig` Pydantic model for configuration validation
+- [x] 1.5 Implement chunker registry in `chunking/registry.py` with factory pattern
+- [x] 1.6 Create `ChunkerFactory` with config-driven instantiation
+- [x] 1.7 Build `MultiGranularityPipeline` orchestrator for parallel chunking
+- [x] 1.8 Implement provenance utilities for offset tracking and title_path construction
 - [ ] 1.9 Create table handler utilities (atomic preservation, row/rowgroup/summary modes)
 - [ ] 1.10 Implement sentence splitter adapters (spaCy, NLTK Punkt, PySBD) with English focus
 - [ ] 1.11 Create coherence calculator utilities for semantic drift detection
-- [ ] 1.12 Build chunk assembly utilities for mapping IR blocks to Chunk objects
+- [x] 1.12 Build chunk assembly utilities for mapping IR blocks to Chunk objects
 
 ## 2. Stable Production Chunkers (10 tasks)
 
-- [ ] 2.1 Implement `SectionAwareChunker` with IMRaD/CT.gov/SPL/guideline section rules
+- [x] 2.1 Implement `SectionAwareChunker` with IMRaD/CT.gov/SPL/guideline section rules
 - [ ] 2.2 Add clinical section taxonomy data files (eligibility, endpoints, outcomes, AE, dose mappings)
 - [ ] 2.3 Implement `LayoutHeuristicChunker` with heading depth, font deltas, whitespace analysis
-- [ ] 2.4 Create `TableChunker` with row/rowgroup/summary modes and header preservation
-- [ ] 2.5 Implement `SlidingWindowChunker` with token windows and overlap
-- [ ] 2.6 Create `SemanticSplitterChunker` with embedding-drift boundaries (BGE-small-en default)
-- [ ] 2.7 Add coherence threshold and drift detection logic for semantic splitter
-- [ ] 2.8 Implement `ClinicalRoleChunker` with lightweight role classifier/rules
-- [ ] 2.9 Add role tagging for PICO, eligibility, endpoint, AE, dose sections
+- [x] 2.4 Create `TableChunker` with row/rowgroup/summary modes and header preservation
+- [x] 2.5 Implement `SlidingWindowChunker` with token windows and overlap
+- [x] 2.6 Create `SemanticSplitterChunker` with embedding-drift boundaries (BGE-small-en default)
+- [x] 2.7 Add coherence threshold and drift detection logic for semantic splitter
+- [x] 2.8 Implement `ClinicalRoleChunker` with lightweight role classifier/rules
+- [x] 2.9 Add role tagging for PICO, eligibility, endpoint, AE, dose sections
 - [ ] 2.10 Implement endpoint+effect pair preservation logic
 
 ## 3. Framework Integration Adapters (8 tasks)
@@ -52,8 +52,8 @@
 
 ## 5. Embedding-Driven Semantic Chunkers (6 tasks)
 
-- [ ] 5.1 Enhance `SemanticSplitterChunker` with configurable embedding models
-- [ ] 5.2 Add GPU availability check and fail-fast when `gpu_semantic_checks: true`
+- [x] 5.1 Enhance `SemanticSplitterChunker` with configurable embedding models
+- [x] 5.2 Add GPU availability check and fail-fast when `gpu_semantic_checks: true`
 - [ ] 5.3 Implement `SemanticClusterChunker` with HAC/HDBSCAN clustering
 - [ ] 5.4 Add contiguous span projection for cluster-based segmentation
 - [ ] 5.5 Implement `GraphPartitionChunker` with Louvain/Leiden community detection
@@ -77,13 +77,13 @@
 
 ## 8. Configuration System (8 tasks)
 
-- [ ] 8.1 Create `config/chunking.yaml` with strategy selection and parameters
-- [ ] 8.2 Add per-family configuration blocks (lexical, semantic, llm, tables)
-- [ ] 8.3 Create profile configurations for PMC, DailyMed, CT.gov sources
-- [ ] 8.4 Add multi-granularity toggle and auxiliary chunker configuration
-- [ ] 8.5 Implement configuration validation with Pydantic models
-- [ ] 8.6 Add default parameters for each chunker with English-first models
-- [ ] 8.7 Create chunker registry population from configuration
+- [x] 8.1 Create `config/chunking.yaml` with strategy selection and parameters
+- [x] 8.2 Add per-family configuration blocks (lexical, semantic, llm, tables)
+- [x] 8.3 Create profile configurations for PMC, DailyMed, CT.gov sources
+- [x] 8.4 Add multi-granularity toggle and auxiliary chunker configuration
+- [x] 8.5 Implement configuration validation with Pydantic models
+- [x] 8.6 Add default parameters for each chunker with English-first models
+- [x] 8.7 Create chunker registry population from configuration
 - [ ] 8.8 Add environment-based configuration overrides
 
 ## 9. Ingestion Service Integration (6 tasks)
@@ -116,8 +116,8 @@
 
 ## 12. Testing (12 tasks)
 
-- [ ] 12.1 Create unit tests for BaseChunker interface and Chunk model
-- [ ] 12.2 Add tests for each stable chunker with mock document inputs
+- [x] 12.1 Create unit tests for BaseChunker interface and Chunk model
+- [x] 12.2 Add tests for each stable chunker with mock document inputs
 - [ ] 12.3 Create tests for framework adapters with real library integration
 - [ ] 12.4 Add tests for classical chunkers (TextTiling, C99, BayesSeg)
 - [ ] 12.5 Create tests for semantic chunkers with mock embeddings
@@ -127,7 +127,7 @@
 - [ ] 12.9 Create tests for table atomic preservation
 - [ ] 12.10 Add tests for clinical role detection and boundary rules
 - [ ] 12.11 Create performance tests for chunking latency
-- [ ] 12.12 Add tests for configuration validation and registry
+- [x] 12.12 Add tests for configuration validation and registry
 
 ## 13. Documentation (5 tasks)
 

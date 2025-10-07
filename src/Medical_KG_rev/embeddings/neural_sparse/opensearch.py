@@ -5,20 +5,29 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+import structlog
+
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
+
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(slots=True)
 class OpenSearchNeuralSparseEmbedder:
     config: EmbedderConfig
     _neural_field: str = "neural_embedding"
+    _ml_model_id: str | None = None
+    _external_endpoint: str | None = None
     name: str = ""
     kind: str = ""
 
     def __post_init__(self) -> None:
         params = self.config.parameters
         self._neural_field = params.get("field", "neural_embedding")
+        self._ml_model_id = params.get("ml_model_id")
+        self._external_endpoint = params.get("external_endpoint")
         self.name = self.config.name
         self.kind = self.config.kind
 
@@ -29,6 +38,24 @@ class OpenSearchNeuralSparseEmbedder:
         ints = [int.from_bytes(data[i : i + 4], "big") for i in range(0, len(data), 4)]
         scale = float(2**32)
         return [(value / scale) * 2 - 1 for value in ints][:dim]
+
+    def _metadata(self) -> dict[str, object]:
+        metadata: dict[str, object] = {"provider": self.config.provider}
+        if self._ml_model_id:
+            metadata["ml_model_id"] = self._ml_model_id
+        if self._external_endpoint:
+            metadata["external_encoder"] = self._external_endpoint
+        return metadata
+
+    def _neural_query(self, text: str, namespace: str) -> dict[str, object]:
+        return {
+            "neural": {
+                "query": text,
+                "field": self._neural_field,
+                "model_id": self._ml_model_id or "inline",
+                "namespace": namespace,
+            }
+        }
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
         dim = int(self.config.dim or 768)
@@ -47,14 +74,25 @@ class OpenSearchNeuralSparseEmbedder:
                     dim=dim,
                     neural_fields={self._neural_field: vector},
                     vectors=[vector],
-                    metadata={"provider": self.config.provider},
+                    metadata=self._metadata(),
                     correlation_id=request.correlation_id,
                 )
             )
         return records
 
     def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        return self.embed_documents(request)
+        documents = self.embed_documents(request)
+        for record in documents:
+            record.metadata = {
+                **record.metadata,
+                "neural_query": self._neural_query(" ".join(request.texts), record.namespace),
+            }
+        logger.debug(
+            "opensearch.neural.query",
+            namespace=request.namespace,
+            external_encoder=self._external_endpoint,
+        )
+        return documents
 
 
 def register_neural_sparse(registry: EmbedderRegistry) -> None:

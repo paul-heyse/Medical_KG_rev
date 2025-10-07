@@ -75,6 +75,7 @@ def test_sentence_transformers_embedder_generates_vectors() -> None:
     assert len(records) == 1
     assert len(records[0].vectors or []) == 1
     assert pytest.approx(sum(v * v for v in records[0].vectors[0]), rel=1e-3) == pytest.approx(1.0, rel=1e-3)
+    assert records[0].metadata["onnx_optimized"] is False
 
 
 def test_embedding_worker_runs_with_default_config() -> None:

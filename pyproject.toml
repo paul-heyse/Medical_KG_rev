@@ -84,6 +84,13 @@ dependencies = [
     "torch>=2.1.0",  # Deep learning framework
     "transformers>=4.37.0",  # Hugging Face models
     "sentence-transformers>=2.3.0",  # Dense embeddings
+    "huggingface-hub>=0.20.0",  # Model downloads
+    "onnxruntime>=1.16.0",  # ONNX runtime for CPU acceleration
+    "ragatouille>=0.0.9",  # ColBERT utilities
+    "qdrant-client>=1.7.3",  # Multivector storage integration
+    "langchain>=0.1.0",  # Framework adapters
+    "llama-index>=0.9.48",  # Framework adapters
+    "farm-haystack>=1.23.0",  # Haystack adapter support
 
     # PDF Processing (MinerU dependencies)
     "pypdf>=4.0.0",

@@ -66,6 +66,47 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+ORCHESTRATION_OPERATIONS = Counter(
+    "orchestration_operations_total",
+    "Total orchestration operations grouped by operation/tenant/status",
+    labelnames=("operation", "tenant", "status"),
+)
+ORCHESTRATION_END_TO_END_DURATION = Histogram(
+    "orchestration_end_to_end_duration_seconds",
+    "Distribution of end-to-end orchestration latency",
+    labelnames=("operation", "pipeline"),
+    buckets=(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
+)
+ORCHESTRATION_STAGE_DURATION = Histogram(
+    "orchestration_stage_duration_seconds",
+    "Latency distribution per orchestration stage",
+    labelnames=("operation", "stage"),
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5),
+)
+ORCHESTRATION_ERRORS = Counter(
+    "orchestration_errors_total",
+    "Total orchestration errors grouped by operation/stage/type",
+    labelnames=("operation", "stage", "error_type"),
+)
+ORCHESTRATION_QUEUE_DEPTH = Gauge(
+    "orchestration_job_queue_depth",
+    "Number of queued jobs per orchestration stage",
+    labelnames=("stage",),
+)
+ORCHESTRATION_CIRCUIT_STATE = Gauge(
+    "orchestration_circuit_breaker_state",
+    "Circuit breaker state for orchestration dependencies",
+    labelnames=("service",),
+)
+ORCHESTRATION_DLQ_EVENTS = Counter(
+    "orchestration_dead_letter_total",
+    "Total messages routed to orchestration dead letter queue",
+    labelnames=("stage", "error_type"),
+)
+ORCHESTRATION_DLQ_DEPTH = Gauge(
+    "orchestration_dead_letter_queue_depth",
+    "Depth of the orchestration dead letter queue",
+)
 RERANK_OPERATIONS = Counter(
     "reranking_operations_total",
     "Total reranking invocations",
@@ -191,3 +232,52 @@ def record_reranking_operation(
 
 def record_reranking_error(reranker: str, error_type: str) -> None:
     RERANK_ERRORS.labels(reranker, error_type).inc()
+
+
+def record_orchestration_operation(operation: str, tenant: str, status: str) -> None:
+    """Increment orchestration operation counter."""
+
+    ORCHESTRATION_OPERATIONS.labels(operation, tenant, status).inc()
+
+
+def observe_orchestration_duration(operation: str, pipeline: str, duration: float) -> None:
+    """Record end-to-end orchestration latency."""
+
+    ORCHESTRATION_END_TO_END_DURATION.labels(operation, pipeline).observe(max(duration, 0.0))
+
+
+def observe_orchestration_stage(operation: str, stage: str, duration: float) -> None:
+    """Record per-stage orchestration latency."""
+
+    ORCHESTRATION_STAGE_DURATION.labels(operation, stage).observe(max(duration, 0.0))
+
+
+def record_orchestration_error(operation: str, stage: str, error_type: str) -> None:
+    """Increment orchestration error counters."""
+
+    ORCHESTRATION_ERRORS.labels(operation, stage, error_type).inc()
+
+
+def set_orchestration_queue_depth(stage: str, depth: int) -> None:
+    """Update queue depth gauge for a stage."""
+
+    ORCHESTRATION_QUEUE_DEPTH.labels(stage).set(max(depth, 0))
+
+
+def set_orchestration_circuit_state(service: str, state: str) -> None:
+    """Set circuit breaker state gauge for a downstream service."""
+
+    value = {"closed": 0, "half_open": 0.5, "open": 1}.get(state, 0)
+    ORCHESTRATION_CIRCUIT_STATE.labels(service).set(value)
+
+
+def record_dead_letter_event(stage: str, error_type: str) -> None:
+    """Track when a message is routed to the dead letter queue."""
+
+    ORCHESTRATION_DLQ_EVENTS.labels(stage, error_type).inc()
+
+
+def set_dead_letter_queue_depth(depth: int) -> None:
+    """Update the depth of the orchestration dead letter queue."""
+
+    ORCHESTRATION_DLQ_DEPTH.set(max(depth, 0))

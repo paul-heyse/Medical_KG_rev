@@ -96,7 +96,7 @@ class QdrantMultiVectorAdapter:
 
 
 @dataclass(slots=True)
-class ColBERTRagatouilleEmbedder:
+class ColbertIndexerEmbedder:
     config: EmbedderConfig
     _dim: int = 0
     _max_tokens: int = 0
@@ -169,4 +169,4 @@ class ColBERTRagatouilleEmbedder:
 
 
 def register_colbert(registry: EmbedderRegistry) -> None:
-    registry.register("colbert", lambda config: ColBERTRagatouilleEmbedder(config=config))
+    registry.register("colbert", lambda config: ColbertIndexerEmbedder(config=config))

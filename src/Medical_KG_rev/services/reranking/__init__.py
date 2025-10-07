@@ -3,7 +3,7 @@
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .factory import RerankerFactory
 from .fusion.service import FusionService
-from .late_interaction import ColBERTReranker, QdrantColBERTReranker, RagatouilleColBERTReranker
+from .late_interaction import ColBERTReranker, ColbertIndexReranker, QdrantColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import (
@@ -31,7 +31,7 @@ __all__ = [
     "MonoT5Reranker",
     "QwenReranker",
     "ColBERTReranker",
-    "RagatouilleColBERTReranker",
+    "ColbertIndexReranker",
     "QdrantColBERTReranker",
     "BM25Reranker",
     "BM25FReranker",

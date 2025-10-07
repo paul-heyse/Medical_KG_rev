@@ -227,7 +227,7 @@ The system SHALL provide SPLADE document and query encoders for learned-sparse r
 
 ### Requirement: ColBERT Multi-Vector Embedder
 
-The system SHALL provide ColBERT-v2 late-interaction embeddings via RAGatouille.
+The system SHALL provide ColBERT-v2 late-interaction embeddings via the ColBERT indexer.
 
 #### Scenario: Token-level vector generation
 
@@ -384,7 +384,7 @@ The system SHALL provide embedding quality evaluation via retrieval metrics.
 
 - **Upstream**: `add-modular-chunking-system` (chunks are inputs)
 - **Downstream**: `add-vector-storage-retrieval` (embeddings → vector stores), `add-retrieval-pipeline-orchestration` (embedding stage)
-- **Python packages**: `torch>=2.4.0`, `transformers>=4.44.0`, `sentence-transformers>=3.1.0`, `FlagEmbedding`, `ragatouille`, `pyserini`, `httpx`
+- **Python packages**: `torch>=2.8.0`, `transformers>=4.44.0`, `sentence-transformers>=3.1.0`, `FlagEmbedding`, `colbert-ai`, `pyserini`, `httpx`
 - **Models**:
   - Dense: `BAAI/bge-large-en-v1.5`, `intfloat/e5-large-v2`, `Alibaba-NLP/gte-large-en-v1.5`
   - Sparse: `naver/splade-v3-lexical`, `naver/efficient-splade-VI-BT-large-doc`

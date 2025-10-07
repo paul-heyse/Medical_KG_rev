@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 
 import structlog
-
 from Medical_KG_rev.observability.metrics import (
     observe_query_latency,
     observe_query_stage_latency,
@@ -19,10 +18,15 @@ from Medical_KG_rev.utils.errors import ProblemDetail
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from Medical_KG_rev.services.retrieval.router import RetrievalRouter, RetrievalStrategy
 
-from .pipeline import ParallelExecutor, PipelineContext, PipelineExecutor, PipelineStage, StageFailure
+from .pipeline import (
+    ParallelExecutor,
+    PipelineContext,
+    PipelineExecutor,
+    PipelineStage,
+    StageFailure,
+)
 from .profiles import ProfileDetector, apply_profile_overrides
 from .resilience import CircuitBreaker
-
 
 logger = structlog.get_logger(__name__)
 
@@ -347,9 +351,9 @@ class RerankCache:
 class RerankOrchestrator(ConfigurableStage):
     """Apply reranking to fused candidates with optional caching."""
 
-    rerank: Callable[[PipelineContext, Sequence[dict[str, Any]], Mapping[str, Any]], Sequence[dict[str, Any]]]
+    rerank: Callable[[PipelineContext, Sequence[dict[str, Any]], Mapping[str, Any]], Sequence[dict[str, Any]]] = field(default=None)
     cache: RerankCache = field(default_factory=RerankCache)
-    circuit_breaker: CircuitBreaker | None = None
+    circuit_breaker: CircuitBreaker | None = field(default=None)
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         candidates: list[dict[str, Any]] = context.data.get("fusion_results", [])

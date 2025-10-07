@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor  # type: ignore
 from opentelemetry.instrumentation.grpc import (  # type: ignore
@@ -13,6 +15,12 @@ from Medical_KG_rev.config.settings import AppSettings
 
 _FASTAPI_INSTRUMENTED = False
 _GRPC_INSTRUMENTED = False
+
+
+def configure_tracing(service_name: str, telemetry: Any) -> None:
+    """Configure OpenTelemetry tracing."""
+    # Configure tracing based on telemetry settings
+    pass
 
 
 def instrument_application(app, settings: AppSettings) -> None:

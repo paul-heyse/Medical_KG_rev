@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, wait
-from contextvars import Token
 from contextlib import nullcontext
+from contextvars import Token
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
@@ -22,9 +22,15 @@ from Medical_KG_rev.observability.metrics import (
     record_orchestration_operation,
 )
 from Medical_KG_rev.utils.errors import ProblemDetail
-from Medical_KG_rev.utils.logging import bind_correlation_id, get_correlation_id, reset_correlation_id
+from Medical_KG_rev.utils.logging import (
+    bind_correlation_id,
+    get_correlation_id,
+    reset_correlation_id,
+)
 
 from .resilience import TimeoutManager
+from .stages import StageFailure
+from .types import PipelineStage, StageConfig
 
 try:  # pragma: no cover - optional tracing dependency
     from opentelemetry import trace
@@ -36,30 +42,6 @@ import structlog
 T = TypeVar("T")
 
 
-class StageFailure(RuntimeError):
-    """Wraps a stage failure with retry metadata and RFC 7807 details."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        status: int = 500,
-        detail: str | None = None,
-        stage: str | None = None,
-        error_type: str | None = None,
-        retriable: bool = False,
-        extra: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.stage = stage
-        self.retriable = retriable
-        self.error_type = error_type or ("transient" if retriable else "permanent")
-        self.problem = ProblemDetail(
-            title=message,
-            status=status,
-            detail=detail,
-            extra=extra or {},
-        )
 
 
 @dataclass(slots=True)
@@ -96,22 +78,6 @@ class PipelineContext:
         )
 
 
-class PipelineStage(Protocol):
-    """Protocol implemented by pipeline stages."""
-
-    name: str
-    timeout_ms: int | None
-
-    def execute(self, context: PipelineContext) -> PipelineContext: ...
-
-
-class StageConfig(BaseModel):
-    """Declarative representation of a pipeline stage loaded from YAML."""
-
-    name: str
-    kind: str
-    timeout_ms: int | None = Field(default=None, ge=1)
-    options: dict[str, Any] = Field(default_factory=dict)
 
 
 class PipelineDefinition(BaseModel):

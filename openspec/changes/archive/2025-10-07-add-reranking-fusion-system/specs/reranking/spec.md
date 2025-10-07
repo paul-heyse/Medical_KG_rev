@@ -185,10 +185,10 @@ The system SHALL provide cross-encoder rerankers for pointwise query-document re
 
 The system SHALL provide ColBERTv2 late-interaction reranking via MaxSim.
 
-#### Scenario: RAGatouille ColBERT reranking
+#### Scenario: ColBERT index reranking
 
-- **WHEN** configured with `method: late_interaction` and `source: ragatouille`
-- **THEN** the system SHALL use RAGatouille ColBERT index
+- **WHEN** configured with `method: late_interaction` and `source: colbert_index`
+- **THEN** the system SHALL use the external ColBERT indexer
 - **AND** compute MaxSim (max cosine per query token)
 - **AND** achieve high accuracy for abbreviation-heavy queries
 
@@ -507,7 +507,7 @@ pipeline:
 
 - **Upstream**: `add-vector-storage-retrieval` (retrieval provides candidates for reranking)
 - **Downstream**: `add-retrieval-pipeline-orchestration` (orchestration integrates reranking)
-- **Python packages**: `sentence-transformers`, `transformers`, `ragatouille`, `onnxruntime`, OpenSearch LTR plugin, Vespa client
+- **Python packages**: `sentence-transformers`, `transformers`, `colbert-ai`, `onnxruntime`, OpenSearch LTR plugin, Vespa client
 
 ---
 

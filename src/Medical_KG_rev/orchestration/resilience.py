@@ -9,14 +9,12 @@ from enum import Enum
 from typing import Iterator
 
 import structlog
-
 from Medical_KG_rev.observability.metrics import (
     record_timeout_breach,
     set_orchestration_circuit_state,
 )
 
-from .pipeline import StageFailure
-
+from .stages import StageFailure
 
 logger = structlog.get_logger(__name__)
 

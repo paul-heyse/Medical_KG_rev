@@ -3,6 +3,9 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
+  - numpy>=2.3
+  - py-opencv
+  - ffmpeg
   - pip
   - ruff
   - black
@@ -13,3 +16,4 @@ dependencies:
   - pre-commit
   - pip:
       - python-dotenv
+      - mineru[gpu]

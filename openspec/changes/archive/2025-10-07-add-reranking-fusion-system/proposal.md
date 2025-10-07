@@ -42,7 +42,7 @@ This system enables 5-15% nDCG@10 improvement over fusion-only via intelligent c
 
 3. **Late-Interaction Reranking**
    - **ColBERTv2**: MaxSim over token vectors
-   - Integration with RAGatouille or Qdrant multivector storage
+   - Integration with ColBERT indexer or Qdrant multivector storage
    - Efficient for abbreviation-heavy queries (drugs, outcomes)
 
 4. **Lexical Reranking**
@@ -85,7 +85,7 @@ reranking:
 
   late_interaction:
     model: colbert-ir/colbertv2.0
-    source: ragatouille  # or qdrant_multivector
+    source: colbert_index  # or qdrant_multivector
     max_doc_tokens: 200
 
   lexical:

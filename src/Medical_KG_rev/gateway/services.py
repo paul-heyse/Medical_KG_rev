@@ -4,20 +4,19 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections.abc import Mapping, Sequence, Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
-
 from typing import Any
 
 import structlog
-
 from Medical_KG_rev.chunking.exceptions import (
     ChunkerConfigurationError,
     ChunkingUnavailableError,
     InvalidDocumentError,
 )
+
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
@@ -38,10 +37,15 @@ from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
-from ..services.retrieval.router import RetrievalRouter, RetrievalStrategy, RouterMatch, RoutingRequest
+from ..services.retrieval.router import (
+    RetrievalRouter,
+    RetrievalStrategy,
+    RouterMatch,
+    RoutingRequest,
+)
+from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
-from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from .models import (
     BatchError,
     BatchOperationResult,
@@ -346,7 +350,7 @@ class GatewayService:
         duration = perf_counter() - started
         observe_job_duration("ingest", duration)
         if request.items:
-            record_business_event("documents_ingested", len(request.items))
+            record_business_event("documents_ingested", request.tenant_id)
         return result
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
@@ -567,9 +571,9 @@ class GatewayService:
 
         duration = perf_counter() - started
         observe_job_duration("retrieve", duration)
-        record_business_event("retrieval_requests")
+        record_business_event("retrieval_requests", request.tenant_id)
         if result.total:
-            record_business_event("documents_retrieved", result.total)
+            record_business_event("documents_retrieved", request.tenant_id)
 
         ledger_metadata = {
             "documents": result.total,

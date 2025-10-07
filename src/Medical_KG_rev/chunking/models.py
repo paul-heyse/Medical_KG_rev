@@ -15,7 +15,7 @@ class Chunk(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    chunk_id: str = Field(pattern=r"^[\w:-]+$")
+    chunk_id: str = Field(pattern=r"^[\w:.-]+$")
     doc_id: str
     tenant_id: str
     body: str = Field(min_length=1)

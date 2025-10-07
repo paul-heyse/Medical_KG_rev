@@ -7,7 +7,7 @@ The universal embedding system ships with the following adapter families.
 | SentenceTransformersEmbedder | single_vector | BGE, E5, GTE, SPECTER, SapBERT | `batch_size`, `normalize`, `prefixes`, `onnx` | General dense retrieval, scientific search, biomedical entity linking |
 | TEIHTTPEmbedder | single_vector | Jina v3, Hugging Face TEI hosted models | `endpoint`, `headers`, `timeout` | Offloading inference to TEI servers |
 | OpenAICompatEmbedder | single_vector | Qwen-3, vLLM-hosted OpenAI compatible models | `endpoint`, `api_key`, `model_id` | LLM-based embeddings served through OpenAI-compatible APIs |
-| ColBERTRagatouilleEmbedder | multi_vector | ColBERT-v2 | `max_doc_tokens`, `shards`, `shard_capacity`, `qdrant_collection` | Late interaction retrieval with FAISS shards or Qdrant |
+| ColbertIndexerEmbedder | multi_vector | ColBERT-v2 | `max_doc_tokens`, `shards`, `shard_capacity`, `qdrant_collection` | Late interaction retrieval with FAISS shards or Qdrant |
 | SPLADEDocEmbedder / SPLADEQueryEmbedder | sparse | SPLADE v3 | `top_k`, `normalization` | Learned sparse document and query expansion |
 | PyseriniSparseEmbedder | sparse | uniCOIL, DeepImpact, TILDE | `weighting`, `normalization` | BM25-style sparse encoders with learned weights |
 | OpenSearchNeuralSparseEmbedder | neural_sparse | OpenSearch ML Plugin models | `field`, `ml_model_id`, `external_endpoint` | Neural sparse retrieval with OpenSearch neural fields |

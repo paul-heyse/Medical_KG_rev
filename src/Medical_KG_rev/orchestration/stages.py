@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
-from .pipeline import PipelineStage, StageConfig
+from Medical_KG_rev.utils.errors import ProblemDetail
+
+from .types import PipelineStage, StageConfig
 
 
 class StageBuilder(Protocol):
@@ -46,4 +48,30 @@ class StageRegistry:
         return StageRegistry(dict(self._builders))
 
 
-__all__ = ["StageBuilder", "StageRegistry"]
+class StageFailure(RuntimeError):
+    """Wraps a stage failure with retry metadata and RFC 7807 details."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int = 500,
+        detail: str | None = None,
+        stage: str | None = None,
+        error_type: str | None = None,
+        retriable: bool = False,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.retriable = retriable
+        self.error_type = error_type or ("transient" if retriable else "permanent")
+        self.problem = ProblemDetail(
+            title=message,
+            status=status,
+            detail=detail,
+            extra=extra or {},
+        )
+
+
+__all__ = ["StageBuilder", "StageRegistry", "StageFailure"]

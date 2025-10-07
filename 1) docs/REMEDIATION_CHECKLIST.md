@@ -295,7 +295,8 @@ The {SERVICE_NAME} SHALL include comprehensive test coverage with contract, perf
 - Size limit: 10MB (batch input)
 - Upstream: `add-modular-chunking-system`
 - Downstream: `add-vector-storage-retrieval`
-- Packages: `torch`, `transformers`, `sentence-transformers`, `ragatouille`, `pyserini`
+- Packages: `torch`, `transformers`, `sentence-transformers`, `colbert-ai`, `pyserini`
+- GPU builds: install `torch==2.8.0+cu128` (and matching `torchvision`, `torchaudio`) via `https://download.pytorch.org/whl/cu128`
 
 #### Vector Storage
 

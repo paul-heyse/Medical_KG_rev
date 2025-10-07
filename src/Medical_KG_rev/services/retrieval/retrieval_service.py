@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import structlog
-
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.config import RerankingSettings
 from Medical_KG_rev.services.reranking import (
@@ -24,6 +23,7 @@ from Medical_KG_rev.services.reranking import (
     RerankingEngine,
     ScoredDocument,
 )
+from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
@@ -31,8 +31,7 @@ from Medical_KG_rev.services.vector_store.service import VectorStoreService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
 from .reranker import CrossEncoderReranker
-from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
-
+from .router import RetrievalRouter
 
 logger = structlog.get_logger(__name__)
 

@@ -7,7 +7,7 @@ Where I restate facts (e.g., why/when to use dense vs. late‑interaction; field
 ## A. What changes versus your current scaffold
 
 1. **Final universal interface** spans **single‑vector**, **multi‑vector (late‑interaction)**, **learned‑sparse**, and **neural‑sparse**; each instance is identified by a **namespace** (e.g., `dense.bge.1024.v1`).
-2. **Adapter inventory** now includes: Sentence‑Transformers/FlagEmbedding, HF **TEI** server, **vLLM** (Qwen‑3), **RAGatouille/ColBERT‑v2**, **SPLADE/uniCOIL/DeepImpact** (Pyserini), **OpenSearch neural‑sparse** encoders, and “experimental” tracks (SimLM/RetroMAE/GTR; DSI adapter skeleton).
+2. **Adapter inventory** now includes: Sentence‑Transformers/FlagEmbedding, HF **TEI** server, **vLLM** (Qwen‑3), **ColBERT‑v2 indexer**, **SPLADE/uniCOIL/DeepImpact** (Pyserini), **OpenSearch neural‑sparse** encoders, and “experimental” tracks (SimLM/RetroMAE/GTR; DSI adapter skeleton).
 3. **Per‑namespace storage mapping**: dense→Qdrant/FAISS/Milvus; learned‑sparse→OpenSearch `rank_features`; neural‑sparse→OpenSearch **neural** fields; ColBERT→its FAISS shards with metadata pointers.
 4. **Strict dimension/version governance** (auto‑introspection + refusal on mismatch) and **English‑only presets**.
 5. **Eval harness**: side‑by‑side indexing + Recall@K/nDCG@K leaderboard by namespace; regression guards baked into CI.
@@ -78,7 +78,7 @@ embeddings:
       namespace: sparse.splade.v3.v1
       topk_terms: 400
 
-    - driver: colbert_ragatouille
+    - driver: colbert_indexer
       model_id: colbert-ir/colbertv2.0
       namespace: multi.colbertv2.128.v1
       max_doc_tokens: 200
@@ -101,7 +101,7 @@ embeddings:
 | `kind`          | Default store & mapping                                                                                  |
 | --------------- | -------------------------------------------------------------------------------------------------------- |
 | `single_vector` | **Qdrant** collection per namespace (`size=dim`, `cosine`), snapshots, optional scalar/PQ quantization.  |
-| `multi_vector`  | **ColBERT** FAISS shards via RAGatouille; store a `colbert://index=.../docid` pointer in chunk payload.  |
+| `multi_vector`  | **ColBERT** FAISS shards managed by the internal indexer; store a `colbert://index=.../docid` pointer in chunk payload.  |
 | `sparse`        | **OpenSearch** `rank_features` field for SPLADE/uniCOIL/DeepImpact weights.                              |
 | `neural_sparse` | **OpenSearch** neural‑sparse fields + `neural` query type (OpenSearch ML encoder hosting or remote TEI). |
 
@@ -117,7 +117,7 @@ med/embeddings/
   st_embedder.py                  # SentenceTransformersEmbedder (BGE/E5/GTE/SPECTER/SapBERT/SimCSE/RetroMAE/SimLM/GTR)
   tei_embedder.py                 # TEIHTTPEmbedder (HF Text-Embeddings-Inference: Jina v3, E5, GTE, etc.)
   openai_compat_embedder.py       # Qwen-3 via vLLM (OpenAI-compatible)
-  colbert_ragatouille.py          # ColbertRagatouilleEmbedder (multi-vector)
+  colbert_indexer.py              # ColbertIndexerEmbedder (multi-vector)
   splade_doc.py                   # SpladeDocExpander (doc-side term weights)
   pyserini_sparse.py              # uniCOIL / DeepImpact / TILDE exporters to OpenSearch rank_features
   neural_sparse_os.py             # OpenSearchNeuralSparseEmbedder (encoder-hosted fields)
@@ -131,7 +131,7 @@ med/embeddings/
 
 * **Dense/bi‑encoders** (BERT/SBERT/E5/GTE; scientific/biomed SPECTER, SapBERT), trained via contrastive/ranking losses, are your default English retrievers.
 * **LLM‑based embeddings** (e.g., **Qwen‑3‑Embedding**) give long‑context, high‑dimensional vectors (e.g., **4096‑D**), but require GPU serving—vLLM path is pre‑wired.
-* **Late‑interaction** (**ColBERT‑v2**) is multi‑vector with MaxSim scoring—excellent for precise biomedical terms; we integrate with RAGatouille.
+* **Late-interaction** (**ColBERT-v2**) is multi-vector with MaxSim scoring—excellent for precise biomedical terms; we ship an internal indexer backed by ColBERT.
 * **Learned sparse** (**SPLADE**, **uniCOIL/DeepImpact**) and **neural‑sparse** (OpenSearch) bring powerful lexical alignment at inverted‑index speeds; both mapped in OS.
 * **Experimental dense** (**SimLM**, **RetroMAE**, **GTR**): each is a plug‑in of `SentenceTransformersEmbedder` or TEI; we enforce correct dims and pooling.
 * **DSI** is supported as a *separate Searcher* (optional research), because it bypasses vector indexes.
@@ -181,8 +181,8 @@ namespace validation and metadata propagation.
 
 ### E3) Late‑interaction (ColBERT‑v2)
 
-**Adapter:** `colbert_ragatouille.py`.
-**Build:** tokenize chunks (cap ~200 tokens), run ColBERT to produce token vectors, build FAISS shards via RAGatouille.
+**Adapter:** `colbert_indexer.py`.
+**Build:** tokenize chunks (cap ~200 tokens), run ColBERT to produce token vectors, build FAISS shards via the internal indexer.
 **Query:** embed query tokens; MaxSim across doc token vectors; return scored doc/chunk IDs.
 **Storage:** ColBERT’s native index path stored in payload (`colbert://…`) for traceability; fuse rankings with dense/sparse before rerank.
 
@@ -326,7 +326,7 @@ The report recommends feeding **section headings/title with paragraph text** to 
 
 ### L1) Off‑the‑shelf tools we explicitly support (English‑first)
 
-* **Libraries**: `sentence-transformers`, `FlagEmbedding` (BGE), `transformers`, `RAGatouille` (ColBERT), `pyserini` (uniCOIL/DeepImpact), OpenSearch ML client.
+* **Libraries**: `sentence-transformers`, `FlagEmbedding` (BGE), `transformers`, `colbert-ai` (ColBERT), `pyserini` (uniCOIL/DeepImpact), OpenSearch ML client.
 * **Servers**: **HF Text‑Embeddings‑Inference (TEI)**, **vLLM**.
 * **Stores**: **Qdrant** (dense), **FAISS/Milvus** (optional dense), **OpenSearch** (BM25 + SPLADE + neural‑sparse).
 * **Framework adapters for experiments**: LangChain, LlamaIndex, Haystack—wrapped so they return our `EmbeddingRecord` (no lock‑in).
@@ -363,7 +363,7 @@ The report recommends feeding **section headings/title with paragraph text** to 
 from .st_embedder import SentenceTransformersEmbedder
 from .tei_embedder import TEIHTTPEmbedder
 from .openai_compat_embedder import OpenAICompatEmbedder
-from .colbert_ragatouille import ColbertRagatouilleEmbedder
+from .colbert_indexer import ColbertIndexerEmbedder
 from .splade_doc import SpladeDocExpander
 from .pyserini_sparse import PyseriniSparseExporter
 from .neural_sparse_os import OpenSearchNeuralSparseEmbedder
@@ -372,7 +372,7 @@ REGISTRY = {
   "sentence_transformers": SentenceTransformersEmbedder,
   "tei_http": TEIHTTPEmbedder,
   "openai_compat": OpenAICompatEmbedder,
-  "colbert_ragatouille": ColbertRagatouilleEmbedder,
+  "colbert_indexer": ColbertIndexerEmbedder,
   "splade_torch": SpladeDocExpander,
   "pyserini_sparse": PyseriniSparseExporter,
   "neural_sparse_os": OpenSearchNeuralSparseEmbedder,

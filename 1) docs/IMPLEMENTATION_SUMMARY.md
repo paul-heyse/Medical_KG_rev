@@ -47,7 +47,7 @@ Successfully authored **5 comprehensive OpenSpec change proposals** implementing
 - Universal `BaseEmbedder` protocol with `EmbeddingRecord` model
 - Dense bi-encoders: Sentence-Transformers (BGE, E5, GTE, SPECTER, SapBERT)
 - LLM-based: Qwen-3 via vLLM OpenAI-compatible endpoint
-- Late-interaction: ColBERTv2 (RAGatouille)
+- Late-interaction: ColBERTv2 (internal indexer / Qdrant multivector)
 - Learned sparse: SPLADE, uniCOIL, DeepImpact (Pyserini integration)
 - Neural sparse: OpenSearch neural-sparse encoders
 - Per-namespace configuration with dimension governance
@@ -93,7 +93,7 @@ Successfully authored **5 comprehensive OpenSpec change proposals** implementing
 
 - Universal `RerankerPort` protocol with batch scoring
 - **Cross-encoder rerankers**: BGE-reranker-v2-m3, MiniLM, MonoT5, Qwen (via vLLM)
-- **Late-interaction**: ColBERTv2 MaxSim (RAGatouille or Qdrant multivector)
+- **Late-interaction**: ColBERTv2 MaxSim (external indexer or Qdrant multivector)
 - **Lexical reranking**: BM25/BM25F candidate re-scoring
 - **Learned-to-rank**: OpenSearch LTR (LambdaMART/XGBoost), Vespa rank profiles
 - **Fusion algorithms**: RRF (parameter-free), weighted linear, learned

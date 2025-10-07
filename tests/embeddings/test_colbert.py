@@ -1,5 +1,5 @@
 from Medical_KG_rev.embeddings.multi_vector.colbert import (
-    ColBERTRagatouilleEmbedder,
+    ColbertIndexerEmbedder,
     ColbertShardManager,
     maxsim_score,
 )
@@ -31,7 +31,7 @@ def test_colbert_embedder_records_shard_metadata() -> None:
         dim=128,
         parameters={"shards": 2},
     )
-    embedder = ColBERTRagatouilleEmbedder(config)
+    embedder = ColbertIndexerEmbedder(config)
     request = EmbeddingRequest(
         tenant_id="tenant",
         namespace=config.namespace,

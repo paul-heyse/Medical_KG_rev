@@ -7,8 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from ..utils.logging import configure_logging
+from .metrics import register_metrics
+from .sentry import initialise_sentry
+from .tracing import configure_tracing, instrument_application
+
 if TYPE_CHECKING:  # pragma: no cover - import hints only
     from fastapi import FastAPI
+
     from Medical_KG_rev.config.settings import AppSettings
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from typing import Mapping
 from time import perf_counter
-from typing import Any
+from typing import Any, Mapping
 
 import structlog
 
@@ -22,20 +21,19 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
     Request = Any  # type: ignore[assignment]
     Response = Any  # type: ignore[assignment]
 
-from prometheus_client import (  # type: ignore
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
-
 from Medical_KG_rev.config.settings import AppSettings
 from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
     get_correlation_id,
     reset_correlation_id,
+)
+from prometheus_client import (  # type: ignore
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
 )
 
 logger = structlog.get_logger(__name__)
@@ -78,6 +76,11 @@ BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
+)
+JOB_STATUS_COUNTS = Gauge(
+    "job_status_counts",
+    "Current count of jobs by status",
+    labelnames=("status",),
 )
 RERANK_OPERATIONS = Counter(
     "reranking_operations_total",
@@ -150,6 +153,12 @@ def _update_gpu_metrics() -> None:
         GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
 
 
+def instrument_application(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
+    """Instrument FastAPI application with metrics."""
+    # Add middleware for request metrics
+    pass
+
+
 def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
     if FastAPI is None:
         logger.info(
@@ -202,6 +211,12 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: igno
         if token is not None:
             reset_correlation_id(token)
 
+        return response
+
+    @app.get(path, include_in_schema=False)
+    async def metrics_endpoint() -> "Response":
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
     labelled = metric.labels(*labels)
@@ -225,19 +240,12 @@ def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.
         except TypeError:
             kwargs = {}
     labelled.inc(amount, **kwargs)
-        return response
-
-    @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> "Response":
-        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 def observe_job_duration(operation: str, duration_seconds: float) -> None:
     JOB_DURATION.labels(operation=operation).observe(max(duration_seconds, 0.0))
 
 
-def record_business_event(event: str, amount: int = 1) -> None:
-    BUSINESS_EVENTS.labels(event=event).inc(amount)
 
 
 def record_reranking_operation(
@@ -276,3 +284,201 @@ def record_latency_alert(reranker: str, duration_seconds: float, slo_seconds: fl
 
 def record_gpu_memory_alert(reranker: str) -> None:
     RERANK_GPU_MEMORY_ALERTS.labels(reranker).inc()
+
+
+def set_chunking_circuit_state(state: int) -> None:
+    """Set the chunking circuit breaker state."""
+    CHUNKING_CIRCUIT_STATE.set(max(0.0, min(state, 2.0)))
+
+
+def update_job_status_metrics(counts: dict[str, int]) -> None:
+    """Update job status metrics with current counts."""
+    for status, count in counts.items():
+        JOB_STATUS_COUNTS.labels(status=status).set(count)
+
+
+def observe_orchestration_duration(operation: str, pipeline: str, duration: float) -> None:
+    """Observe orchestration operation duration."""
+    ORCHESTRATION_DURATION.labels(operation=operation, pipeline=pipeline).observe(duration)
+
+
+def observe_orchestration_stage(operation: str, stage: str, duration: float) -> None:
+    """Observe orchestration stage duration."""
+    ORCHESTRATION_STAGE_DURATION.labels(operation=operation, stage=stage).observe(duration)
+
+
+def record_orchestration_error(operation: str, error_type: str) -> None:
+    """Record orchestration error."""
+    ORCHESTRATION_ERRORS.labels(operation=operation, error_type=error_type).inc()
+
+
+def record_orchestration_operation(operation: str, tenant_id: str, status: str) -> None:
+    """Record orchestration operation."""
+    ORCHESTRATION_OPERATIONS.labels(operation=operation, status=status).inc()
+
+
+def record_timeout_breach(operation: str, timeout_seconds: float) -> None:
+    """Record timeout breach."""
+    TIMEOUT_BREACHES.labels(operation=operation).inc()
+
+
+def set_orchestration_circuit_state(state: int) -> None:
+    """Set the orchestration circuit breaker state."""
+    ORCHESTRATION_CIRCUIT_STATE.set(max(0.0, min(state, 2.0)))
+
+
+def observe_chunking_latency(profile: str, duration: float) -> None:
+    """Observe chunking operation latency."""
+    CHUNKING_LATENCY.labels(profile=profile).observe(duration)
+
+
+def record_chunk_size(profile: str, granularity: str, size: int) -> None:
+    """Record chunk size distribution."""
+    CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(size)
+
+
+def observe_query_latency(strategy: str, duration: float) -> None:
+    """Observe query latency."""
+    QUERY_LATENCY.labels(strategy=strategy).observe(duration)
+
+
+def observe_query_stage_latency(stage: str, duration: float) -> None:
+    """Observe query stage latency."""
+    QUERY_STAGE_LATENCY.labels(stage=stage).observe(duration)
+
+
+def record_query_operation(strategy: str, tenant_id: str, status: str) -> None:
+    """Record query operation."""
+    QUERY_OPERATIONS.labels(strategy=strategy, status=status).inc()
+
+
+def record_dead_letter_event(queue: str, reason: str) -> None:
+    """Record dead letter event."""
+    DEAD_LETTER_EVENTS.labels(queue=queue, reason=reason).inc()
+
+
+def set_dead_letter_queue_depth(queue: str, depth: int) -> None:
+    """Set dead letter queue depth."""
+    DEAD_LETTER_QUEUE_DEPTH.labels(queue=queue).set(max(0, depth))
+
+
+def set_orchestration_queue_depth(queue: str, depth: int) -> None:
+    """Set orchestration queue depth."""
+    ORCHESTRATION_QUEUE_DEPTH.labels(queue=queue).set(max(0, depth))
+
+
+def observe_ingestion_stage_latency(stage: str, duration: float) -> None:
+    """Observe ingestion stage latency."""
+    INGESTION_STAGE_LATENCY.labels(stage=stage).observe(duration)
+
+
+def record_business_event(event_type: str, tenant_id: str) -> None:
+    """Record business event."""
+    BUSINESS_EVENTS.labels(event=f"{event_type}:{tenant_id}").inc()
+
+
+def record_ingestion_document(tenant_id: str, doc_type: str) -> None:
+    """Record ingestion document."""
+    INGESTION_DOCUMENTS.labels(tenant_id=tenant_id, doc_type=doc_type).inc()
+
+
+def record_ingestion_error(tenant_id: str, error_type: str) -> None:
+    """Record ingestion error."""
+    INGESTION_ERRORS.labels(tenant_id=tenant_id, error_type=error_type).inc()
+
+
+# Additional metric definitions
+ORCHESTRATION_DURATION = Histogram(
+    "orchestration_duration_seconds",
+    "Duration of orchestration operations",
+    labelnames=("operation", "pipeline"),
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+ORCHESTRATION_STAGE_DURATION = Histogram(
+    "orchestration_stage_duration_seconds",
+    "Duration of orchestration stages",
+    labelnames=("operation", "stage"),
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+ORCHESTRATION_ERRORS = Counter(
+    "orchestration_errors_total",
+    "Total number of orchestration errors",
+    labelnames=("operation", "error_type"),
+)
+
+ORCHESTRATION_OPERATIONS = Counter(
+    "orchestration_operations_total",
+    "Total number of orchestration operations",
+    labelnames=("operation", "status"),
+)
+
+TIMEOUT_BREACHES = Counter(
+    "timeout_breaches_total",
+    "Total number of timeout breaches",
+    labelnames=("operation",),
+)
+
+ORCHESTRATION_CIRCUIT_STATE = Gauge(
+    "orchestration_circuit_state",
+    "Orchestration circuit breaker state (0=closed, 1=half-open, 2=open)",
+)
+
+QUERY_LATENCY = Histogram(
+    "query_latency_seconds",
+    "Query latency distribution",
+    labelnames=("strategy",),
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+QUERY_STAGE_LATENCY = Histogram(
+    "query_stage_latency_seconds",
+    "Query stage latency distribution",
+    labelnames=("stage",),
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+QUERY_OPERATIONS = Counter(
+    "query_operations_total",
+    "Total number of query operations",
+    labelnames=("strategy", "status"),
+)
+
+DEAD_LETTER_EVENTS = Counter(
+    "dead_letter_events_total",
+    "Total number of dead letter events",
+    labelnames=("queue", "reason"),
+)
+
+DEAD_LETTER_QUEUE_DEPTH = Gauge(
+    "dead_letter_queue_depth",
+    "Current depth of dead letter queues",
+    labelnames=("queue",),
+)
+
+ORCHESTRATION_QUEUE_DEPTH = Gauge(
+    "orchestration_queue_depth",
+    "Current depth of orchestration queues",
+    labelnames=("queue",),
+)
+
+INGESTION_STAGE_LATENCY = Histogram(
+    "ingestion_stage_latency_seconds",
+    "Ingestion stage latency distribution",
+    labelnames=("stage",),
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
+)
+
+
+INGESTION_DOCUMENTS = Counter(
+    "ingestion_documents_total",
+    "Total number of ingested documents",
+    labelnames=("tenant_id", "doc_type"),
+)
+
+INGESTION_ERRORS = Counter(
+    "ingestion_errors_total",
+    "Total number of ingestion errors",
+    labelnames=("tenant_id", "error_type"),
+)

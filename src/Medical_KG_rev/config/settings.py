@@ -421,7 +421,11 @@ class AppSettings(BaseSettings):
 
 
 ENVIRONMENT_DEFAULTS: Mapping[Environment, dict[str, Any]] = {
-    Environment.DEV: {"debug": True, "telemetry": {"exporter": "console"}},
+    Environment.DEV: {
+        "debug": True,
+        "telemetry": {"exporter": "console"},
+        "security": {"enforce_https": False},
+    },
     Environment.STAGING: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.25}},
     Environment.PROD: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.05}},
 }
@@ -461,6 +465,16 @@ class SecretResolver:
             return {"value": raw}
 
 
+def _deep_update(target: dict[str, Any], updates: Mapping[str, Any]) -> dict[str, Any]:
+    for key, value in updates.items():
+        current = target.get(key)
+        if isinstance(current, dict) and isinstance(value, Mapping):
+            target[key] = _deep_update(dict(current), value)
+        else:
+            target[key] = value
+    return target
+
+
 def load_settings(environment: str | None = None) -> AppSettings:
     """Load application settings with environment specific defaults applied."""
 
@@ -472,7 +486,7 @@ def load_settings(environment: str | None = None) -> AppSettings:
     except ValidationError as err:
         raise RuntimeError(f"Invalid configuration: {err}") from err
     merged = base_settings.model_dump()
-    merged.update(defaults)
+    merged = _deep_update(merged, defaults)
     merged["environment"] = env
     return AppSettings.model_validate(merged)
 

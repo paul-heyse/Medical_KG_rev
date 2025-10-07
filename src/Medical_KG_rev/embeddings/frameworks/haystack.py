@@ -1,8 +1,8 @@
 """Adapter for Haystack embedding components."""
 
-"""Haystack embedding adapter based on the shared delegate helper."""
-
 from __future__ import annotations
+
+"""Haystack embedding adapter based on the shared delegate helper."""
 
 from dataclasses import dataclass
 

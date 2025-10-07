@@ -7,11 +7,7 @@ from typing import Any, Callable, Dict, Sequence
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .errors import RerankingError, UnknownRerankerError
-from .late_interaction import (
-    ColBERTReranker,
-    QdrantColBERTReranker,
-    RagatouilleColBERTReranker,
-)
+from .late_interaction import ColBERTReranker, ColbertIndexReranker, QdrantColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import RerankerConfig
@@ -32,8 +28,8 @@ class RerankerFactory:
                 "cross_encoder:monot5": lambda: MonoT5Reranker(),
                 "cross_encoder:qwen": lambda: QwenReranker(),
                 "late_interaction:colbert": lambda: ColBERTReranker(),
-                "late_interaction:ragatouille": lambda: RagatouilleColBERTReranker(
-                    index=_LazyRagatouille()
+                "late_interaction:colbert_index": lambda: ColbertIndexReranker(
+                    index=_LazyColbertIndex()
                 ),
                 "late_interaction:qdrant": lambda: QdrantColBERTReranker(
                     client=_LazyQdrant(),
@@ -69,24 +65,24 @@ class RerankerFactory:
             if hasattr(reranker, "quantization") and config.quantization:
                 setattr(reranker, "quantization", config.quantization)
         return reranker
-class _LazyRagatouille:
+class _LazyColbertIndex:
     """Placeholder index that raises helpful errors until configured."""
 
     def encode_queries(self, queries: Sequence[str]) -> Sequence[Sequence[Sequence[float]]]:
         raise RerankingError(
-            title="RAGatouille not configured",
+            title="ColBERT index not configured",
             status=503,
             detail=(
-                "RAGatouille integration requires providing an index instance via "
-                "RerankerFactory.register('late_interaction:ragatouille', ...)"
+                "External ColBERT integration requires providing an index instance via "
+                "RerankerFactory.register('late_interaction:colbert_index', ...)"
             ),
         )
 
     def get_document_vectors(self, doc_id: str) -> Sequence[Sequence[float]]:
         raise RerankingError(
-            title="RAGatouille not configured",
+            title="ColBERT index not configured",
             status=503,
-            detail="RAGatouille index instance has not been initialised",
+            detail="External ColBERT index instance has not been initialised",
         )
 
 
@@ -102,4 +98,3 @@ class _LazyQdrant:
                 "RerankerFactory.register('late_interaction:qdrant', ...)"
             ),
         )
-

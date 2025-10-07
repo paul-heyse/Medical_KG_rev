@@ -35,7 +35,7 @@
 
 ## 3. Late-Interaction Multi-Vector Adapters (6 tasks)
 
-- [x] 3.1 Implement `ColBERTRagatouilleEmbedder` wrapper for RAGatouille library
+- [x] 3.1 Implement `ColbertIndexerEmbedder` wrapper for external ColBERT indexes
 - [x] 3.2 Add ColBERT-v2 model support with token-level vectors
 - [x] 3.3 Implement max_doc_tokens truncation and padding
 - [x] 3.4 Create FAISS shard management for ColBERT indexes

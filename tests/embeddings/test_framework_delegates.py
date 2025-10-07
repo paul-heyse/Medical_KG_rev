@@ -35,6 +35,7 @@ def _config(name: str, namespace: str, class_path: str, dim: int = 3) -> Embedde
         namespace=namespace,
         model_id="dummy",
         dim=dim,
+        normalize=False,  # Disable normalization for tests to get raw mock values
         parameters={"class_path": class_path, "init": {}},
     )
 
@@ -43,7 +44,7 @@ def test_langchain_adapter_batches_when_only_embed_available() -> None:
     config = _config(
         "langchain-test",
         "single_vector.langchain_test.3.v1",
-        "tests.embeddings.test_framework_delegates._BatchOnly",
+        "Medical_KG_rev.embeddings.frameworks.test_mocks.BatchOnly",
     )
     adapter = LangChainEmbedderAdapter(config=config)
     request = EmbeddingRequest(
@@ -64,7 +65,7 @@ def test_haystack_adapter_uses_query_delegate_per_text() -> None:
     config = _config(
         "haystack-test",
         "single_vector.haystack_test.2.v1",
-        "tests.embeddings.test_framework_delegates._QueryOnly",
+        "Medical_KG_rev.embeddings.frameworks.test_mocks.QueryOnly",
         dim=2,
     )
     adapter = HaystackEmbedderAdapter(config=config)
@@ -84,7 +85,7 @@ def test_llama_adapter_prefers_get_text_embedding() -> None:
     config = _config(
         "llama-index-test",
         "single_vector.llama_index_test.3.v1",
-        "tests.embeddings.test_framework_delegates._LlamaStyle",
+        "Medical_KG_rev.embeddings.frameworks.test_mocks.LlamaStyle",
     )
     adapter = LlamaIndexEmbedderAdapter(config=config)
     request = EmbeddingRequest(

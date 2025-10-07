@@ -42,7 +42,7 @@
 ## 3. Late-Interaction Reranking (ColBERT)
 
 - [x] 3.1 Implement `ColBERTReranker` base class
-- [x] 3.2 Add RAGatouille integration (ColBERTv2 index)
+- [x] 3.2 Add ColBERT indexer integration (ColBERTv2 index)
 - [x] 3.3 Implement Qdrant multivector integration (fetch token vectors)
 - [x] 3.4 Add MaxSim computation (max cosine per query token)
 - [x] 3.5 Implement batch MaxSim for efficiency

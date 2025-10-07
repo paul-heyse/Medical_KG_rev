@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+import structlog
 from Medical_KG_rev.services.embedding.service import EmbeddingRequest, EmbeddingWorker
 from Medical_KG_rev.services.reranking.pipeline.cache import RerankCacheManager
 
 from .chunking import Chunk, ChunkingOptions, ChunkingService
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
-
 
 logger = structlog.get_logger(__name__)
 

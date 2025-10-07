@@ -250,7 +250,7 @@ These shapes match your existing OpenSearch mapping (doc text fields + `rank_fea
 
 ### 6.3 Late‑interaction reranker (ColBERTv2)
 
-* `rerank/colbert_reranker.py` — either use **RAGatouille** index for fast MaxSim, or **Qdrant multivector**: fetch token vectors and compute MaxSim locally for top‑N. Good for strings/abbreviations (drugs, outcomes).
+* `rerank/colbert_reranker.py` — either use the **ColBERT indexer** for fast MaxSim, or **Qdrant multivector**: fetch token vectors and compute MaxSim locally for top‑N. Good for strings/abbreviations (drugs, outcomes).
 
 ### 6.4 LTR/ONNX profiles (engine‑native)
 
@@ -380,7 +380,7 @@ Build with `diskannpy.build`, serve via Python wrapper; ideal when vectors >> RA
 1. **Dense**: KNN from default dense namespace (Qdrant/FAISS/Milvus/OS/Weaviate)
 2. **Lexical**: BM25/BM25F (OpenSearch)
 3. **Learned‑sparse**: SPLADE or neural‑sparse (OpenSearch ML)
-4. **Optional**: ColBERT retriever (use RAGatouille or Qdrant multivector)
+4. **Optional**: ColBERT retriever (use the ColBERT indexer or Qdrant multivector)
 5. **Fuse**: Weighted or **RRF**; protect exact ID hits (NCT/PMID)
 6. **Rerank**: cross‑encoder or ColBERT MaxSim on top‑N
 
@@ -444,7 +444,7 @@ med/
     neural_sparse_os.py       # OpenSearch ML neural-sparse pipeline
   rerank/
     ce_bge_reranker.py | ce_mini_lm.py | ce_monoT5.py | ce_qwen_reranker.py
-    colbert_reranker.py       # MaxSim on top-N (RAGatouille or Qdrant multivector)
+    colbert_reranker.py       # MaxSim on top-N (ColBERT indexer or Qdrant multivector)
     ltr_ranker.py             # OS-LTR or Vespa rank profile
 ```
 

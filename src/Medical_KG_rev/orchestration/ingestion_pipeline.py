@@ -8,7 +8,6 @@ from time import perf_counter
 from typing import Any, Iterable, Mapping, Sequence
 
 import structlog
-
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.chunking import Chunk
 from Medical_KG_rev.chunking.service import ChunkingOptions
@@ -110,7 +109,7 @@ class ChunkingStage(PipelineStage):
         }
         record_ingestion_document(context.pipeline_version or "default")
         observe_ingestion_stage_latency(self.name, run.duration_seconds)
-        record_business_event("ingestion.chunked")
+        record_business_event("ingestion.chunked", context.tenant_id)
         return context
 
 
@@ -192,7 +191,7 @@ class EmbeddingStage(PipelineStage):
             "duration_ms": round(duration * 1000, 3),
         }
         observe_ingestion_stage_latency(self.name, duration)
-        record_business_event("ingestion.embedded")
+        record_business_event("ingestion.embedded", context.tenant_id)
         return context
 
 
@@ -261,7 +260,7 @@ class IndexingStage(PipelineStage):
             "namespaces": {name: count for name, count in upserts.items()},
         }
         context.data["index_result"] = upserts
-        record_business_event("ingestion.indexed")
+        record_business_event("ingestion.indexed", context.tenant_id)
         return context
 
 

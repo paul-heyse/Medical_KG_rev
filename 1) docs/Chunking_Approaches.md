@@ -851,7 +851,7 @@ If you want, I can immediately follow with: (i) the concrete adapter classes for
 [2]: https://www.research.ed.ac.uk/files/18572356/Choi_Wiemer_Hastings_ET_AL_2001_Latent_Semantic_Analysis_for_Text_Segmentation.pdf?utm_source=chatgpt.com "Latent Semantic Analysis for Text Segmentation"
 [3]: https://arxiv.org/pdf/1511.08411?utm_source=chatgpt.com "a Novel Approach to Text Segmentation using Ontological ..."
 [4]: https://aclanthology.org/P01-1064/?utm_source=chatgpt.com "A Statistical Model for Domain-Independent Text ..."
-[5]: https://github.com/AnswerDotAI/RAGatouille?utm_source=chatgpt.com "AnswerDotAI/RAGatouille"
+[5]: https://github.com/stanford-futuredata/ColBERT?utm_source=chatgpt.com "ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction"
 [6]: https://dl.acm.org/doi/10.3115/1073012.1073076?utm_source=chatgpt.com "A statistical model for domain-independent text segmentation"
 [7]: https://github.com/microsoft/graphrag?utm_source=chatgpt.com "microsoft/graphrag: A modular graph-based Retrieval ..."
 [8]: https://ptrckprry.com/course/ssd/reading/Read12.pdf?utm_source=chatgpt.com "Sentence Boundary Detection: A Long Solved Problem?"

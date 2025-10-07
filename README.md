@@ -59,7 +59,7 @@ Medical_KG_rev is a production-ready, enterprise-grade platform that unifies fra
 - GPU (optional, for ML services)
 - API keys for external services (see `.env.example`)
 
-### Installation
+### Installation (pip / venv)
 
 ```bash
 # Clone repository
@@ -73,12 +73,39 @@ source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
 # Install dependencies
 pip install -e ".[dev]"
 
+# Optional: Install GPU wheels (CUDA 12.8)
+# Uses the official PyTorch index and stable release builds
+pip install --upgrade --index-url https://download.pytorch.org/whl/cu128 \
+  torch>=2.8.0+cu128 torchvision>=0.19.0+cu128 torchaudio>=2.5.0+cu128
+
+# Optional: Install OpenCV with NumPy 2.3+ support (required for mineru[gpu])
+# Use conda-forge wheels—PyPI's opencv-python currently pins numpy<2.3.
+# Example with micromamba/conda:
+#   micromamba install -y -c conda-forge opencv "numpy>=2.3"
+# (Remove any existing pip-installed opencv-* packages first.)
+
 # Install pre-commit hooks
 pre-commit install
 
 # Copy environment template
 cp .env.example .env
 # Edit .env with your API keys and configuration
+```
+
+### Optional: Installation via micromamba/conda (OpenCV + GPU stack)
+
+If you prefer conda-forge managed binaries (recommended when enabling `mineru[gpu]` or other GPU
+microservices), apply the provided `environment.yml` before installing the Python extras:
+
+```bash
+# Create or update the environment (installs py-opencv, ffmpeg, numpy>=2.3, etc.)
+micromamba create -y -n medkg -f environment.yml   # or: micromamba env update -n medkg -f environment.yml
+micromamba activate medkg
+
+# Install project Python dependencies
+pip install -e ".[dev]"
+
+# (Optional) Install CUDA-enabled PyTorch wheels afterwards, as described above.
 ```
 
 ### Running Locally

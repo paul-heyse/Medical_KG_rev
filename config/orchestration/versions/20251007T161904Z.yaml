@@ -1,0 +1,81 @@
+version: "1.0"
+ingestion:
+  default:
+    name: default
+    stages:
+      - name: chunking
+        kind: chunk
+        timeout_ms: 5000
+        options:
+          profile: auto
+      - name: embedding
+        kind: embed
+        timeout_ms: 1000
+        options:
+          namespaces:
+            - dense.default.v1
+            - sparse.default.v1
+      - name: indexing
+        kind: index
+        timeout_ms: 2000
+        options:
+          batch_size: 100
+query:
+  hybrid:
+    name: hybrid
+    stages:
+      - name: retrieval
+        kind: retrieval
+        timeout_ms: 50
+        options:
+          strategies:
+            - bm25
+            - dense
+            - splade
+      - name: fusion
+        kind: fusion
+        timeout_ms: 5
+        options:
+          method: rrf
+      - name: rerank
+        kind: rerank
+        timeout_ms: 50
+        options:
+          rerank_candidates: 100
+      - name: final
+        kind: final
+        timeout_ms: 5
+        options:
+          top_k: 10
+profiles:
+  pmc:
+    name: pmc
+    ingestion: default
+    query: hybrid
+    overrides:
+      chunking:
+        profile: pmc
+      retrieval:
+        strategies:
+          - bm25
+          - dense
+  dailymed:
+    name: dailymed
+    extends: pmc
+    overrides:
+      chunking:
+        profile: dailymed
+      retrieval:
+        strategies:
+          - bm25
+          - splade
+  clinicaltrials:
+    name: clinicaltrials
+    extends: pmc
+    overrides:
+      chunking:
+        profile: clinicaltrials
+      retrieval:
+        strategies:
+          - dense
+          - splade

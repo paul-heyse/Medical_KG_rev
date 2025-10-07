@@ -17,7 +17,7 @@ All rerankers implement the `RerankerPort` interface defined under `Medical_KG_r
 | Low latency CPU workloads | `cross_encoder:minilm` | Balances lexical and dense features with optional INT8 quantisation. |
 | Generative scoring | `cross_encoder:monot5` | Applies prompt-style relevance estimation. |
 | LLM-backed reranking | `cross_encoder:qwen` | Calls vLLM/OpenAI compatible endpoints. |
-| ColBERT late interaction | `late_interaction:ragatouille` | Fetches token vectors from a RAGatouille index. |
+| ColBERT late interaction | `late_interaction:colbert_index` | Fetches token vectors from an external ColBERT index. |
 | OpenSearch first/second phase ranking | `ltr:opensearch` | Integrates with SLTR feature stores. |
 
 ## Fusion Algorithms & Trade-offs

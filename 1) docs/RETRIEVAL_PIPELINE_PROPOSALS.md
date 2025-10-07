@@ -43,7 +43,7 @@ This document summarizes the comprehensive set of OpenSpec change proposals crea
 - Namespace management with dimension/version governance
 - Dense adapters: SentenceTransformers (BGE/E5/GTE/SPECTER/SapBERT), TEI, vLLM (Qwen-3)
 - Sparse adapters: SPLADE, uniCOIL, DeepImpact
-- Multi-vector: ColBERT via RAGatouille
+- Multi-vector: ColBERT via internal indexer
 - Neural-sparse: OpenSearch ML integration
 - Framework adapters: LangChain, LlamaIndex, Haystack
 - Experimental: SimLM, RetroMAE, GTR
@@ -183,7 +183,7 @@ All proposals follow these principles from the architecture documents:
 
 - Sentence-Transformers, FlagEmbedding (BGE), HuggingFace TEI
 - SPLADE, uniCOIL, DeepImpact (Pyserini)
-- ColBERT (RAGatouille)
+- ColBERT (internal indexer)
 - vLLM (Qwen-3 embeddings)
 
 ### Storage

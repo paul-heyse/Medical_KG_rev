@@ -400,7 +400,7 @@ X-RateLimit-Reset: 1696712400  # Unix timestamp
 python = "^3.12"
 pydantic = "^2.8.0"
 fastapi = "^0.115.0"
-torch = "^2.4.0"
+torch = "^2.8.0"
 transformers = "^4.44.0"
 sentence-transformers = "^3.1.0"
 qdrant-client = "^1.11.0"

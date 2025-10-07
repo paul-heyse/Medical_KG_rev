@@ -1,8 +1,8 @@
 """Adapter for llama_index embedding classes."""
 
-"""LlamaIndex embedding adapter built atop the delegate helper."""
-
 from __future__ import annotations
+
+"""LlamaIndex embedding adapter built atop the delegate helper."""
 
 from dataclasses import dataclass
 

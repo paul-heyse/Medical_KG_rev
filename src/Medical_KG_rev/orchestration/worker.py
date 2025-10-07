@@ -23,19 +23,17 @@ from ..services.ingestion import IngestionService
 from ..services.vector_store.service import VectorStoreService
 from ..utils.logging import bind_correlation_id, get_correlation_id, reset_correlation_id
 from .ingestion_pipeline import (
-    ChunkingStage,
-    EmbeddingStage,
-    IndexingStage,
     INGEST_CHUNKING_TOPIC,
     INGEST_CHUNKS_TOPIC,
     INGEST_DLQ_TOPIC,
     INGEST_EMBEDDINGS_TOPIC,
     INGEST_INDEXED_TOPIC,
+    ChunkingStage,
+    EmbeddingStage,
+    IndexingStage,
 )
 from .kafka import KafkaClient, KafkaMessage
 from .ledger import JobLedger, JobLedgerEntry
-from .pipeline import PipelineContext, PipelineExecutor, StageFailure, ensure_correlation_id
-from .profiles import ProfileDetector, apply_profile_overrides
 from .orchestrator import (
     DEAD_LETTER_TOPIC,
     INGEST_REQUESTS_TOPIC,
@@ -44,9 +42,12 @@ from .orchestrator import (
     OrchestrationError,
     Orchestrator,
 )
+from .pipeline import PipelineContext, PipelineExecutor, StageFailure, ensure_correlation_id
+from .profiles import ProfileDetector, apply_profile_overrides
 
 try:  # pragma: no cover - optional telemetry
-    from opentelemetry.context import attach as otel_attach, detach as otel_detach
+    from opentelemetry.context import attach as otel_attach
+    from opentelemetry.context import detach as otel_detach
     from opentelemetry.propagate import get_global_textmap
 except Exception:  # pragma: no cover - telemetry optional
     otel_attach = otel_detach = None
@@ -124,8 +125,8 @@ class RetryPolicy:
 class PipelineWorkerBase(WorkerBase):
     """Base class for ingestion pipeline workers handling retries and metrics."""
 
-    stage: object
-    pipeline_name: str
+    stage: object = field(default=None)
+    pipeline_name: str = field(default="")
     operation: str = "ingest"
     output_topic: str | None = None
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)

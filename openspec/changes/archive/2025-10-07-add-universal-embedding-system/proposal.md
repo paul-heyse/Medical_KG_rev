@@ -36,7 +36,7 @@ This is critical for achieving state-of-the-art retrieval through hybrid strateg
 
 ### Late-Interaction Multi-Vector Adapters
 
-- `ColBERTRagatouilleEmbedder` - ColBERT-v2 via RAGatouille with MaxSim scoring
+- `ColbertIndexerEmbedder` - ColBERT-v2 via external index with MaxSim scoring
 - Token-level vector generation and storage integration
 - FAISS shard management for ColBERT indexes
 
@@ -116,10 +116,10 @@ This is critical for achieving state-of-the-art retrieval through hybrid strateg
 - `sentence-transformers>=2.3.0` (dense embeddings)
 - `FlagEmbedding>=1.2.0` (BGE models)
 - `text-embeddings-inference[client]>=1.0.0` (TEI integration)
-- `ragatouille>=0.0.7` (ColBERT integration)
+- `colbert-ai>=0.2.22` (ColBERT integration)
 - `pyserini>=0.22.0` (sparse embeddings - uniCOIL/DeepImpact)
 - `transformers>=4.37.0` (model loading)
-- `torch>=2.1.0` (GPU support)
+- `torch>=2.8.0` (GPU support)
 - `onnxruntime-gpu>=1.16.0` (ONNX optimization, optional)
 
 ### Breaking Changes

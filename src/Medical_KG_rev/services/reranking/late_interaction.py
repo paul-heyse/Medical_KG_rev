@@ -174,8 +174,8 @@ class ColBERTReranker(BaseReranker):
         return clamp(max_sim / len(query_vectors))
 
 
-class RagatouilleColBERTReranker(ColBERTReranker):
-    """Fetch token vectors from a RAGatouille ColBERT index."""
+class ColbertIndexReranker(ColBERTReranker):
+    """Fetch token vectors from an external ColBERT-style index."""
 
     def __init__(
         self,
@@ -185,7 +185,7 @@ class RagatouilleColBERTReranker(ColBERTReranker):
         cache_ttl: int = 300,
     ) -> None:
         super().__init__(batch_size=batch_size, cache_ttl=cache_ttl)
-        self.identifier = "colbertv2-ragatouille"
+        self.identifier = "colbertv2-external-index"
         self._index = index
 
     def _prepare_vectors(
@@ -195,9 +195,9 @@ class RagatouilleColBERTReranker(ColBERTReranker):
             self._index, "get_document_vectors"
         ):
             raise RerankingError(
-                title="RAGatouille integration error",
+                title="ColBERT integration error",
                 status=500,
-                detail="RAGatouille index is missing required methods",
+                detail="External index is missing required ColBERT interfaces",
             )
         queries = [pair.query for pair in pairs]
         encoded = self._index.encode_queries(queries)

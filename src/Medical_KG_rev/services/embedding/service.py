@@ -2,26 +2,23 @@
 
 from __future__ import annotations
 
-"""Embedding worker service coordinating adapter execution and persistence."""
-
-from __future__ import annotations
-
 import time
 from dataclasses import dataclass, field
 from typing import Sequence
 
 import structlog
-
+from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.ports import (
     EmbedderConfig,
     EmbeddingRecord,
+)
+from Medical_KG_rev.embeddings.ports import (
     EmbeddingRequest as AdapterEmbeddingRequest,
 )
-from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
-from Medical_KG_rev.auth.context import SecurityContext
 
 from .registry import EmbeddingModelRegistry
 

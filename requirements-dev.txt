@@ -1,2 +1,4 @@
 -r requirements.txt
-.[dev]
+-e .[dev]
+# OpenCV note: if mineru[gpu] is enabled, install opencv via conda-forge
+# (PyPI wheels require numpy<2.3 and conflict with our pinned numpy>=2.3.3).

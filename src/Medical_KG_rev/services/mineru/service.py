@@ -17,6 +17,7 @@ except Exception:  # pragma: no cover
 
 from Medical_KG_rev.config.settings import MineruSettings, get_settings
 from Medical_KG_rev.services.gpu.manager import GpuManager, GpuNotAvailableError
+from Medical_KG_rev.storage.object_store import FigureStorageClient
 
 from .cli_wrapper import MineruCliBase, MineruCliError, MineruCliInput, create_cli
 from .gpu_manager import MineruGpuManager
@@ -59,6 +60,7 @@ class MineruProcessor:
         cli: MineruCliBase | None = None,
         parser: MineruOutputParser | None = None,
         postprocessor: MineruPostProcessor | None = None,
+        figure_storage: FigureStorageClient | None = None,
         min_memory_mb: int | None = None,
         worker_id: str | None = None,
         fail_fast: bool = True,
@@ -67,7 +69,9 @@ class MineruProcessor:
         self._gpu = gpu
         self._cli = cli or create_cli(self._settings)
         self._parser = parser or MineruOutputParser()
-        self._postprocessor = postprocessor or MineruPostProcessor()
+        self._postprocessor = postprocessor or MineruPostProcessor(
+            figure_storage=figure_storage
+        )
         self._required_memory_mb = min_memory_mb or self._settings.workers.vram_per_worker_mb
         self._worker_id = worker_id or threading.current_thread().name
         self._mineru_gpu = MineruGpuManager(gpu, self._settings)

@@ -102,30 +102,30 @@
 
 ## 6. Downstream Pipeline Integration
 
-- [ ] 6.1 Update `src/Medical_KG_rev/orchestration/ingestion_pipeline.py`
-  - [ ] 6.1.1 Update PDF processing stage to call new MinerU service
-  - [ ] 6.1.2 Add post-processing stage for MinerU output transformation
-  - [ ] 6.1.3 Handle tables, figures, equations in separate processing paths
-  - [ ] 6.1.4 Update ledger states (`pdf_parsing` → `pdf_parsed` → `postpdf_processing`)
+- [x] 6.1 Update `src/Medical_KG_rev/orchestration/ingestion_pipeline.py`
+  - [x] 6.1.1 Update PDF processing stage to call new MinerU service
+  - [x] 6.1.2 Add post-processing stage for MinerU output transformation
+  - [x] 6.1.3 Handle tables, figures, equations in separate processing paths
+  - [x] 6.1.4 Update ledger states (`pdf_parsing` → `pdf_parsed` → `postpdf_processing`)
 
-- [ ] 6.2 Create `src/Medical_KG_rev/services/mineru/postprocessor.py`
-  - [ ] 6.2.1 Convert MinerU blocks to chunking-ready IR blocks
-  - [ ] 6.2.2 Extract table data and serialize to JSON/CSV
-  - [ ] 6.2.3 Upload figures to MinIO/S3 with metadata
-  - [ ] 6.2.4 Inline-render small equations, link large ones
-  - [ ] 6.2.5 Preserve reading order and layout signals
+- [x] 6.2 Create `src/Medical_KG_rev/services/mineru/postprocessor.py`
+  - [x] 6.2.1 Convert MinerU blocks to chunking-ready IR blocks
+  - [x] 6.2.2 Extract table data and serialize to JSON/CSV
+  - [x] 6.2.3 Upload figures to MinIO/S3 with metadata
+  - [x] 6.2.4 Inline-render small equations, link large ones
+  - [x] 6.2.5 Preserve reading order and layout signals
 
-- [ ] 6.3 Create `src/Medical_KG_rev/chunking/adapters/table_aware.py`
-  - [ ] 6.3.1 Implement `TableAwareChunker` using extracted table structures
-  - [ ] 6.3.2 Keep table rows/columns together in chunks
-  - [ ] 6.3.3 Add table captions to chunk metadata
-  - [ ] 6.3.4 Handle table-heavy documents (dosing schedules, trial results)
+- [x] 6.3 Create `src/Medical_KG_rev/chunking/adapters/table_aware.py`
+  - [x] 6.3.1 Implement `TableAwareChunker` using extracted table structures
+  - [x] 6.3.2 Keep table rows/columns together in chunks
+  - [x] 6.3.3 Add table captions to chunk metadata
+  - [x] 6.3.4 Handle table-heavy documents (dosing schedules, trial results)
 
-- [ ] 6.4 Update `src/Medical_KG_rev/storage/object_store.py`
-  - [ ] 6.4.1 Add `store_figure()` method for image uploads
-  - [ ] 6.4.2 Add `generate_figure_url()` for signed URLs
-  - [ ] 6.4.3 Add tenant isolation for figure storage paths
-  - [ ] 6.4.4 Add figure cleanup on document deletion
+- [x] 6.4 Update `src/Medical_KG_rev/storage/object_store.py`
+  - [x] 6.4.1 Add `store_figure()` method for image uploads
+  - [x] 6.4.2 Add `generate_figure_url()` for signed URLs
+  - [x] 6.4.3 Add tenant isolation for figure storage paths
+  - [x] 6.4.4 Add figure cleanup on document deletion
 
 ## 7. Performance Optimization
 

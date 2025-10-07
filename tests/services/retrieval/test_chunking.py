@@ -15,7 +15,10 @@ def _sample_document() -> str:
 def test_section_chunking_preserves_headers():
     service = ChunkingService()
     chunks = service.chunk(
-        "doc-1", _sample_document(), ChunkingOptions(strategy="section", max_tokens=50)
+        "tenant",
+        "doc-1",
+        _sample_document(),
+        ChunkingOptions(strategy="section", max_tokens=50),
     )
     assert any("Introduction" in chunk.text for chunk in chunks)
     assert any("Methods" in chunk.text for chunk in chunks)
@@ -25,7 +28,10 @@ def test_section_chunking_preserves_headers():
 def test_paragraph_chunking_respects_boundaries():
     service = ChunkingService()
     chunks = service.chunk(
-        "doc-1", _sample_document(), ChunkingOptions(strategy="paragraph", max_tokens=20)
+        "tenant",
+        "doc-1",
+        _sample_document(),
+        ChunkingOptions(strategy="paragraph", max_tokens=20),
     )
     assert all("\n\n" not in chunk.text for chunk in chunks)
     assert all(chunk.metadata.get("segment_type") == "paragraph" for chunk in chunks)
@@ -34,7 +40,10 @@ def test_paragraph_chunking_respects_boundaries():
 def test_table_chunking_keeps_table_intact():
     service = ChunkingService()
     chunks = service.chunk(
-        "doc-1", _sample_document(), ChunkingOptions(strategy="table", max_tokens=50)
+        "tenant",
+        "doc-1",
+        _sample_document(),
+        ChunkingOptions(strategy="table", max_tokens=50),
     )
     table_chunks = [chunk for chunk in chunks if chunk.metadata.get("segment_type") == "table"]
     assert len(table_chunks) == 1
@@ -44,7 +53,7 @@ def test_table_chunking_keeps_table_intact():
 def test_sliding_window_overlap():
     service = ChunkingService()
     text = " ".join(f"token{i}" for i in range(50))
-    chunks = service.sliding_window("doc-1", text, max_tokens=10, overlap=0.5)
+    chunks = service.sliding_window("tenant", "doc-1", text, max_tokens=10, overlap=0.5)
     assert len(chunks) > 1
     assert all(chunk.metadata.get("segment_type") == "window" for chunk in chunks)
     assert chunks[0].token_count == 10

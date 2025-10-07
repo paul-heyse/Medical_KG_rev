@@ -29,4 +29,8 @@ __all__ = [
     "TelemetrySettings",
     "get_settings",
     "load_settings",
+    "VectorCompressionConfig",
+    "VectorNamespaceConfig",
+    "VectorStoreConfig",
+    "load_vector_store_config",
 ]

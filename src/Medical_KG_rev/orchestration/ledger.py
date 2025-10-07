@@ -39,6 +39,10 @@ class JobLedgerEntry:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     history: list[JobTransition] = field(default_factory=list)
+    completed_at: datetime | None = None
+    duration_seconds: float | None = None
+    error_reason: str | None = None
+    retry_count: int = 0
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
@@ -58,6 +62,10 @@ class JobLedgerEntry:
             created_at=self.created_at,
             updated_at=self.updated_at,
             history=list(self.history),
+            completed_at=self.completed_at,
+            duration_seconds=self.duration_seconds,
+            error_reason=self.error_reason,
+            retry_count=self.retry_count,
         )
 
 
@@ -167,7 +175,10 @@ class JobLedger:
     def mark_completed(
         self, job_id: str, *, metadata: dict[str, object] | None = None
     ) -> JobLedgerEntry:
-        return self._update(job_id, status="completed", stage="completed", metadata=metadata)
+        entry = self._update(job_id, status="completed", stage="completed", metadata=metadata)
+        entry.completed_at = datetime.utcnow()
+        entry.duration_seconds = (entry.completed_at - entry.created_at).total_seconds()
+        return entry
 
     def mark_failed(
         self,
@@ -177,13 +188,17 @@ class JobLedger:
         reason: str,
         metadata: dict[str, object] | None = None,
     ) -> JobLedgerEntry:
-        return self._update(
+        entry = self._update(
             job_id,
             status="failed",
             stage=stage,
             metadata=metadata,
             reason=reason,
         )
+        entry.error_reason = reason
+        entry.completed_at = datetime.utcnow()
+        entry.duration_seconds = (entry.completed_at - entry.created_at).total_seconds()
+        return entry
 
     def mark_cancelled(self, job_id: str, *, reason: str | None = None) -> JobLedgerEntry:
         return self._update(job_id, status="cancelled", stage="cancelled", reason=reason)
@@ -193,6 +208,7 @@ class JobLedger:
             raise JobLedgerError(f"Job {job_id} not found")
         entry = self._entries[job_id]
         entry.attempts += 1
+        entry.retry_count = entry.attempts
         entry.updated_at = datetime.utcnow()
         return entry.attempts
 

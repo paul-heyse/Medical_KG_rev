@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from __future__ import annotations
+
+from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
@@ -43,6 +47,7 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
+    granularity: str
 
 
 class RetrievalService:
@@ -65,6 +70,15 @@ class RetrievalService:
         self.vector_store = vector_store
         self.vector_namespace = vector_namespace
         self._context_factory = context_factory
+        self._granularity_weights = {
+            "document": 0.6,
+            "section": 1.0,
+            "paragraph": 1.2,
+            "window": 0.9,
+            "table": 0.8,
+        }
+        if granularity_weights:
+            self._granularity_weights.update(granularity_weights)
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
@@ -133,11 +147,12 @@ class RetrievalService:
             if self._context_factory
             else SecurityContext(subject="system", tenant_id="system", scopes={"*"})
         )
-        bm25_results = self.opensearch.search(
-            index, query, strategy="bm25", filters=filters, size=k
-        )
-        splade_results = self.opensearch.search(
-            index, query, strategy="splade", filters=filters, size=k
+        request = RoutingRequest(
+            query=query,
+            top_k=k,
+            filters=filters or {},
+            namespace=self.vector_namespace,
+            context=security_context,
         )
         dense_results = self._dense_search(query, k, security_context)
 
@@ -179,49 +194,65 @@ class RetrievalService:
                 result.metadata.setdefault("reranking", metrics.get("reranking", {}))
         return results
 
-    def _dense_search(
+    def _dense_strategy(
         self, query: str, k: int, context: SecurityContext
     ) -> list[Mapping[str, object]]:
-        if self.vector_store is not None:
+        if self.vector_store is not None and self.embedding_worker is not None:
             return self._vector_store_search(query, k, context)
         if not self.faiss or not self.faiss.ids:
             return []
-        pseudo_query = [float(hash(token) % 100) for token in query.split()]
         if len(pseudo_query) < self.faiss.dimension:
             pseudo_query.extend([0.0] * (self.faiss.dimension - len(pseudo_query)))
         elif len(pseudo_query) > self.faiss.dimension:
             pseudo_query = pseudo_query[: self.faiss.dimension]
         hits = self.faiss.search(pseudo_query, k=k)
-        results: list[Mapping[str, object]] = []
         for chunk_id, score, metadata in hits:
+            meta = {"text": metadata.get("text", ""), **metadata}
             results.append(
-                {
-                    "_id": chunk_id,
-                    "_score": score,
-                    "_source": {"text": metadata.get("text", ""), **metadata},
-                    "highlight": [],
-                }
+                RouterMatch(
+                    id=chunk_id,
+                    score=float(score),
+                    metadata=meta,
+                    source="faiss",
+                )
             )
         return results
 
     def _vector_store_search(
         self, query: str, k: int, context: SecurityContext
     ) -> list[Mapping[str, object]]:
-        pseudo_query = [float(hash(token) % 100) for token in query.split()]
+        cached = self._query_cache_get(query)
+        if cached is not None:
+            return cached
+        embeddings = self._encode_query(query, context)
         namespace = self.vector_namespace
         try:
-            dimension = self.vector_store.registry.get(
-                tenant_id=context.tenant_id, namespace=namespace
-            ).params.dimension
-            if len(pseudo_query) < dimension:
-                pseudo_query.extend([0.0] * (dimension - len(pseudo_query)))
-            elif len(pseudo_query) > dimension:
-                pseudo_query = pseudo_query[:dimension]
-            matches = self.vector_store.query(
-                context=context,
-                namespace=namespace,
-                query=VectorQuery(values=pseudo_query, top_k=k),
-            )
+            results: list[Mapping[str, object]] = []
+            for embedding in embeddings:
+                if not embedding.vectors:
+                    continue
+                dimension = self.vector_store.registry.get(
+                    tenant_id=context.tenant_id, namespace=embedding.namespace
+                ).params.dimension
+                values = list(embedding.vectors[0])
+                if len(values) < dimension:
+                    values.extend([0.0] * (dimension - len(values)))
+                elif len(values) > dimension:
+                    values = values[:dimension]
+                matches = self.vector_store.query(
+                    context=context,
+                    namespace=embedding.namespace,
+                    query=VectorQuery(values=values, top_k=k),
+                )
+                results.extend(
+                    {
+                        "_id": match.vector_id,
+                        "_score": match.score * self.namespace_weights.get(embedding.namespace, 1.0),
+                        "_source": {"text": str(match.metadata.get("text", "")), **match.metadata},
+                        "highlight": [],
+                    }
+                    for match in matches
+                )
         except VectorStoreError as exc:
             logger.warning(
                 "retrieval.vector_search.failed",
@@ -236,19 +267,8 @@ class RetrievalService:
                 error=str(exc),
             )
             return []
-        results: list[Mapping[str, object]] = []
-        for match in matches:
-            results.append(
-                {
-                    "_id": match.vector_id,
-                    "_score": match.score,
-                    "_source": {
-                        "text": str(match.metadata.get("text", "")),
-                        **match.metadata,
-                    },
-                    "highlight": [],
-                }
-            )
+        if results:
+            self._query_cache_set(query, results)
         return results
 
     def _materialise_documents(
@@ -301,6 +321,35 @@ class RetrievalService:
                     rerank_score=score_map.get(result.id),
                     highlights=result.highlights,
                     metadata=result.metadata,
+                    granularity=result.granularity,
                 )
             )
         return reranked
+
+    def _encode_query(self, query: str, context: SecurityContext) -> Sequence[EmbeddingVector]:
+        if not self.embedding_worker:
+            return []
+        namespaces = self.active_namespaces or [self.vector_namespace]
+        request = QueryEmbeddingRequest(
+            tenant_id=context.tenant_id,
+            chunk_ids=[f"query:{index}" for index in range(len(namespaces))],
+            texts=[query] * len(namespaces),
+            namespaces=namespaces,
+            batch_size=1,
+        )
+        response = self.embedding_worker.encode_queries(request)
+        return response.vectors
+
+    def _query_cache_get(self, query: str) -> list[Mapping[str, object]] | None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        if key in self._query_cache:
+            value = self._query_cache.pop(key)
+            self._query_cache[key] = value
+            return value
+        return None
+
+    def _query_cache_set(self, query: str, results: list[Mapping[str, object]]) -> None:
+        key = (query, tuple(sorted(self.active_namespaces)))
+        self._query_cache[key] = results
+        if len(self._query_cache) > self._cache_size:
+            self._query_cache.popitem(last=False)

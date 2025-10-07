@@ -84,6 +84,13 @@ dependencies = [
     "torch>=2.1.0",  # Deep learning framework
     "transformers>=4.37.0",  # Hugging Face models
     "sentence-transformers>=2.3.0",  # Dense embeddings
+    "huggingface-hub>=0.20.0",  # Model downloads
+    "onnxruntime>=1.16.0",  # ONNX runtime for CPU acceleration
+    "ragatouille>=0.0.9",  # ColBERT utilities
+    "qdrant-client>=1.7.3",  # Multivector storage integration
+    "langchain>=0.1.0",  # Framework adapters
+    "llama-index>=0.9.48",  # Framework adapters
+    "farm-haystack>=1.23.0",  # Haystack adapter support
 
     # PDF Processing (MinerU dependencies)
     "pypdf>=4.0.0",
@@ -180,6 +187,16 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24.0",
     "pdoc>=14.0.0",
+]
+chunking = [
+    "langchain-text-splitters>=0.0.1",
+    "llama-index-core>=0.10.0",
+    "haystack-ai>=2.0.0",
+    "unstructured>=0.11.8",
+    "hdbscan>=0.8.33",
+    "networkx>=3.2.1",
+    "layoutparser>=0.3.4",
+    "docling>=0.0.4",
 ]
 
 [project.urls]

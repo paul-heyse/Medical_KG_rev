@@ -21,23 +21,23 @@
 
 ### 2.2 FAISS
 
-- [ ] 2.2.1 Implement `FAISSStore` with Flat/IVF_FLAT/HNSW support
-- [ ] 2.2.2 Add IVF_PQ with training pipeline
-- [ ] 2.2.3 Implement OPQ+IVF_PQ via index_factory
-- [ ] 2.2.4 Add GPU variants (GpuIndexFlatL2, GpuIndexIVFPQ)
-- [ ] 2.2.5 Implement scalar quantization (SQ8, fp16)
-- [ ] 2.2.6 Add reorder functionality for PQ
-- [ ] 2.2.7 Create sidecar KV store (SQLite/LMDB) for payloads
-- [ ] 2.2.8 Implement index persistence (write_index/read_index)
+- [x] 2.2.1 Implement `FAISSStore` with Flat/IVF_FLAT/HNSW support
+- [x] 2.2.2 Add IVF_PQ with training pipeline
+- [x] 2.2.3 Implement OPQ+IVF_PQ via index_factory
+- [x] 2.2.4 Add GPU variants (GpuIndexFlatL2, GpuIndexIVFPQ)
+- [x] 2.2.5 Implement scalar quantization (SQ8, fp16)
+- [x] 2.2.6 Add reorder functionality for PQ
+- [x] 2.2.7 Create sidecar KV store (SQLite/LMDB) for payloads
+- [x] 2.2.8 Implement index persistence (write_index/read_index)
 
 ### 2.3 Milvus/Milvus-Lite
 
-- [ ] 2.3.1 Implement `MilvusStore` with IVF_FLAT/IVF_PQ/HNSW
-- [ ] 2.3.2 Add GPU IVF/PQ support
-- [ ] 2.3.3 Implement GPU_CAGRA for high-QPS graphs
-- [ ] 2.3.4 Add DiskANN option
-- [ ] 2.3.5 Implement hybrid vector+scalar filters
-- [ ] 2.3.6 Add Milvus-Lite embedded mode support
+- [x] 2.3.1 Implement `MilvusStore` with IVF_FLAT/IVF_PQ/HNSW
+- [x] 2.3.2 Add GPU IVF/PQ support
+- [x] 2.3.3 Implement GPU_CAGRA for high-QPS graphs
+- [x] 2.3.4 Add DiskANN option
+- [x] 2.3.5 Implement hybrid vector+scalar filters
+- [x] 2.3.6 Add Milvus-Lite embedded mode support
 
 ### 2.4 OpenSearch k-NN
 
@@ -73,25 +73,25 @@
 
 ## 5. Compression Infrastructure
 
-- [ ] 5.1 Implement `CompressionManager` (policy validation and routing)
-- [ ] 5.2 Add int8 scalar quantization utilities
-- [ ] 5.3 Add fp16 scalar quantization utilities
-- [ ] 5.4 Implement PQ training pipeline (k-means on subvectors)
-- [ ] 5.5 Implement OPQ rotation matrix learning
-- [ ] 5.6 Add binary quantization utilities (bit packing/unpacking)
-- [ ] 5.7 Implement two-stage search (compressed + float reorder)
-- [ ] 5.8 Create compression evaluation harness (recall vs latency)
+- [x] 5.1 Implement `CompressionManager` (policy validation and routing)
+- [x] 5.2 Add int8 scalar quantization utilities
+- [x] 5.3 Add fp16 scalar quantization utilities
+- [x] 5.4 Implement PQ training pipeline (k-means on subvectors)
+- [x] 5.5 Implement OPQ rotation matrix learning
+- [x] 5.6 Add binary quantization utilities (bit packing/unpacking)
+- [x] 5.7 Implement two-stage search (compressed + float reorder)
+- [x] 5.8 Create compression evaluation harness (recall vs latency)
 
 ## 6. Retrieval Orchestration
 
-- [ ] 6.1 Implement `RetrievalRouter` (multi-strategy orchestration)
-- [ ] 6.2 Add parallel fan-out to multiple namespaces
-- [ ] 6.3 Implement weighted linear fusion
-- [ ] 6.4 Implement RRF (Reciprocal Rank Fusion)
-- [ ] 6.5 Add per-namespace result routing
-- [ ] 6.6 Implement single-engine hybrid mode (Weaviate, OpenSearch)
-- [ ] 6.7 Add result aggregation and deduplication
-- [ ] 6.8 Implement filter propagation to backends
+- [x] 6.1 Implement `RetrievalRouter` (multi-strategy orchestration)
+- [x] 6.2 Add parallel fan-out to multiple namespaces
+- [x] 6.3 Implement weighted linear fusion
+- [x] 6.4 Implement RRF (Reciprocal Rank Fusion)
+- [x] 6.5 Add per-namespace result routing
+- [x] 6.6 Implement single-engine hybrid mode (Weaviate, OpenSearch)
+- [x] 6.7 Add result aggregation and deduplication
+- [x] 6.8 Implement filter propagation to backends
 
 ## 7. GPU Integration
 
@@ -104,16 +104,16 @@
 
 ## 8. Configuration & Validation
 
-- [ ] 8.1 Extend YAML schema for vector_store configuration
-- [ ] 8.2 Add per-namespace index parameter validation
-- [ ] 8.3 Implement dimension governance (strict validation)
-- [ ] 8.4 Add compression policy validation
+- [x] 8.1 Extend YAML schema for vector_store configuration
+- [x] 8.2 Add per-namespace index parameter validation
+- [x] 8.3 Implement dimension governance (strict validation)
+- [x] 8.4 Add compression policy validation
 - [ ] 8.5 Create backend capability detection (GPU, compression types)
 - [ ] 8.6 Implement configuration migration utilities
 
 ## 9. Integration with Existing Services
 
-- [ ] 9.1 Integrate `EmbeddingService` output → vector store upsert
+- [x] 9.1 Integrate `EmbeddingService` output → vector store upsert
 - [ ] 9.2 Extend `IngestionService` to write to configured namespaces
 - [ ] 9.3 Update `RetrievalService` to use `RetrievalRouter`
 - [ ] 9.4 Add namespace selection based on embedding kind
@@ -132,8 +132,8 @@
 ## 11. Testing
 
 - [x] 11.1 Unit tests for `VectorStorePort` implementations
-- [ ] 11.2 Unit tests for compression utilities
-- [ ] 11.3 Unit tests for fusion algorithms (weighted, RRF)
+- [x] 11.2 Unit tests for compression utilities
+- [x] 11.3 Unit tests for fusion algorithms (weighted, RRF)
 - [ ] 11.4 Integration tests for each backend (Qdrant, FAISS, Milvus, OpenSearch)
 - [ ] 11.5 Performance tests for compression methods
 - [ ] 11.6 End-to-end tests for multi-strategy retrieval

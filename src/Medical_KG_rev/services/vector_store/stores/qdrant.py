@@ -237,11 +237,11 @@ class QdrantVectorStore(VectorStorePort):
                 )
             )
         if kind in {"binary", "bq"}:
+            config_kwargs: dict[str, object] = {"always_ram": True}
+            if hasattr(qm, "BinaryQuantizationEncoding"):
+                config_kwargs["encoding"] = qm.BinaryQuantizationEncoding.ONE_BIT
             return qm.BinaryQuantization(
-                binary=qm.BinaryQuantizationConfig(
-                    encoding=qm.BinaryQuantizationEncoding.ONE_BIT,
-                    always_ram=True,
-                )
+                binary=qm.BinaryQuantizationConfig(**config_kwargs)
             )
         if kind in {"pq", "opq_pq"}:
             ratio = self._infer_pq_ratio(compression)

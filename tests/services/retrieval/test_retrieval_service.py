@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
+from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalRouter, RetrievalService
 
 
 def _setup_clients():
@@ -32,3 +34,18 @@ def test_rerank_adds_scores():
     results = service.search("chunks", "headache", rerank=True)
 
     assert any(result.rerank_score is not None for result in results)
+
+
+def test_namespace_selected_by_embedding_kind():
+    opensearch, faiss = _setup_clients()
+    router = MagicMock(spec=RetrievalRouter)
+    router.execute.return_value = []
+    service = RetrievalService(
+        opensearch,
+        faiss,
+        namespace_map={"hybrid": "dense-hybrid"},
+        router=router,
+    )
+    service.search("chunks", "headache", embedding_kind="hybrid")
+    request = router.execute.call_args[0][0]
+    assert request.namespace == "dense-hybrid"

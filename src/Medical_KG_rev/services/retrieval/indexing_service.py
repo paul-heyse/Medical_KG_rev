@@ -44,12 +44,12 @@ class IndexingService:
     ) -> IndexingResult:
         chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
         if incremental:
-            chunks = [chunk for chunk in chunks if chunk.id not in self.faiss.ids]
+            chunks = [chunk for chunk in chunks if chunk.chunk_id not in self.faiss.ids]
         if not chunks:
             return IndexingResult(document_id=document_id, chunk_ids=[])
         self._index_chunks(chunks, metadata)
         self._embed_and_index(tenant_id, chunks)
-        return IndexingResult(document_id=document_id, chunk_ids=[chunk.id for chunk in chunks])
+        return IndexingResult(document_id=document_id, chunk_ids=[chunk.chunk_id for chunk in chunks])
 
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []

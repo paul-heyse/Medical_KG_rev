@@ -3,7 +3,7 @@
 from .base import CacheBackend, LedgerStore, ObjectMetadata, ObjectStore, StorageError
 from .cache import InMemoryCache, RedisCache
 from .ledger import InMemoryLedger, LedgerRecord
-from .object_store import InMemoryObjectStore, S3ObjectStore
+from .object_store import FigureStorageClient, InMemoryObjectStore, S3ObjectStore
 
 __all__ = [
     "CacheBackend",
@@ -15,6 +15,7 @@ __all__ = [
     "ObjectMetadata",
     "ObjectStore",
     "RedisCache",
+    "FigureStorageClient",
     "S3ObjectStore",
     "StorageError",
 ]

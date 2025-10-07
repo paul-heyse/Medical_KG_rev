@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+from datetime import datetime, timezone
 
 import grpc
 
@@ -71,12 +72,40 @@ class MineruService(mineru_pb2_grpc.MineruServiceServicer if mineru_pb2_grpc els
         chunks = self.service.chunk_document(chunk_request)
         if mineru_pb2 is None:
             return None
+        started_at = datetime.now(timezone.utc)
         response = mineru_pb2.ProcessPdfResponse()
+        document = response.document
+        document.document_id = request.document_id
+        document.tenant_id = request.tenant_id
         for chunk in chunks:
-            response.chunks.add(
-                document_id=chunk.document_id, index=chunk.chunk_index, text=chunk.content
-            )
+            block = document.blocks.add()
+            block.id = f"{chunk.document_id}-chunk-{chunk.chunk_index}"
+            block.page = getattr(chunk, "page", 0)
+            block.kind = "chunk"
+            block.text = chunk.content or ""
+            block.confidence = 1.0
+            block.reading_order = int(chunk.chunk_index)
+        metadata = response.metadata
+        metadata.document_id = request.document_id
+        metadata.worker_id = "gateway"
+        metadata.started_at = started_at.isoformat()
+        metadata.completed_at = datetime.now(timezone.utc).isoformat()
+        metadata.duration_seconds = 0.0
         return response
+
+    async def BatchProcessPdf(self, request, context):  # type: ignore[override]
+        if mineru_pb2 is None:
+            return None
+        reply = mineru_pb2.BatchProcessPdfResponse()
+        for item in request.requests:
+            single = await self.ProcessPdf(item, context)
+            if single is None:
+                continue
+            document = reply.documents.add()
+            document.CopyFrom(single.document)
+            metadata = reply.metadata.add()
+            metadata.CopyFrom(single.metadata)
+        return reply
 
 
 class EmbeddingService(

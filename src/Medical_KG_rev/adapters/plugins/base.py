@@ -65,3 +65,4 @@ class ReadOnlyAdapterPlugin(BaseAdapterPlugin):
 
     def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:
         return response
+

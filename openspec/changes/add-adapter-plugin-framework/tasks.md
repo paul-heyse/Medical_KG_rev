@@ -57,70 +57,70 @@
 
 ## 6. Domain-Specific Adapter Namespaces
 
-- [ ] 6.1 Create `adapters.biomedical` package structure
-- [ ] 6.2 Create `adapters.financial` package structure (scaffold)
-- [ ] 6.3 Create `adapters.legal` package structure (scaffold)
-- [ ] 6.4 Define domain-specific metadata schemas
-- [ ] 6.5 Implement cross-domain adapter registry
-- [ ] 6.6 Add domain filtering in plugin discovery
-- [ ] 6.7 Create domain-specific test fixtures
-- [ ] 6.8 Write cross-domain integration tests
+- [x] 6.1 Create `adapters.biomedical` package structure
+- [x] 6.2 Create `adapters.financial` package structure (scaffold)
+- [x] 6.3 Create `adapters.legal` package structure (scaffold)
+- [x] 6.4 Define domain-specific metadata schemas
+- [x] 6.5 Implement cross-domain adapter registry
+- [x] 6.6 Add domain filtering in plugin discovery
+- [x] 6.7 Create domain-specific test fixtures
+- [x] 6.8 Write cross-domain integration tests
 
 ## 7. Migrate Biomedical Adapters
 
-- [ ] 7.1 Migrate `ClinicalTrialsAdapter` to new contract
-- [ ] 7.2 Migrate `OpenFDAAdapter` (drug labels, adverse events, devices)
-- [ ] 7.3 Migrate `OpenAlexAdapter` to new contract
-- [ ] 7.4 Migrate `UnpaywallAdapter` to new contract
-- [ ] 7.5 Migrate `CrossrefAdapter` to new contract
-- [ ] 7.6 Migrate `COREAdapter` to new contract
-- [ ] 7.7 Migrate `PMCAdapter` to new contract
-- [ ] 7.8 Migrate `RxNormAdapter` to new contract
-- [ ] 7.9 Migrate `ICD11Adapter` to new contract
-- [ ] 7.10 Migrate `MeSHAdapter` to new contract
-- [ ] 7.11 Migrate `ChEMBLAdapter` to new contract
-- [ ] 7.12 Add backward compatibility layer for old adapters
+- [x] 7.1 Migrate `ClinicalTrialsAdapter` to new contract
+- [x] 7.2 Migrate `OpenFDAAdapter` (drug labels, adverse events, devices)
+- [x] 7.3 Migrate `OpenAlexAdapter` to new contract
+- [x] 7.4 Migrate `UnpaywallAdapter` to new contract
+- [x] 7.5 Migrate `CrossrefAdapter` to new contract
+- [x] 7.6 Migrate `COREAdapter` to new contract
+- [x] 7.7 Migrate `PMCAdapter` to new contract
+- [x] 7.8 Migrate `RxNormAdapter` to new contract
+- [x] 7.9 Migrate `ICD11Adapter` to new contract
+- [x] 7.10 Migrate `MeSHAdapter` to new contract
+- [x] 7.11 Migrate `ChEMBLAdapter` to new contract
+- [x] 7.12 Add backward compatibility layer for old adapters
 
 ## 8. Orchestration Integration
 
-- [ ] 8.1 Update `Orchestrator` to use Pluggy plugin manager
-- [ ] 8.2 Replace manual adapter registry with Pluggy plugin discovery
-- [ ] 8.3 Implement adapter selection based on metadata from Pluggy hooks
-- [ ] 8.4 Add dynamic pipeline construction for multi-domain ingestion
-- [ ] 8.5 Update job ledger to track adapter plugin versions
-- [ ] 8.6 Add adapter health checks to orchestrator startup (via Pluggy hooks)
-- [ ] 8.7 Implement adapter fallback strategies
-- [ ] 8.8 Write orchestration integration tests
+- [x] 8.1 Update `Orchestrator` to use Pluggy plugin manager
+- [x] 8.2 Replace manual adapter registry with Pluggy plugin discovery
+- [x] 8.3 Implement adapter selection based on metadata from Pluggy hooks
+- [x] 8.4 Add dynamic pipeline construction for multi-domain ingestion
+- [x] 8.5 Update job ledger to track adapter plugin versions
+- [x] 8.6 Add adapter health checks to orchestrator startup (via Pluggy hooks)
+- [x] 8.7 Implement adapter fallback strategies
+- [x] 8.8 Write orchestration integration tests
 
 ## 9. Gateway API Updates
 
-- [ ] 9.1 Add `GET /v1/adapters` endpoint for adapter listing
-- [ ] 9.2 Add `GET /v1/adapters/{name}/metadata` endpoint
-- [ ] 9.3 Add `GET /v1/adapters/{name}/health` endpoint
-- [ ] 9.4 Add `GET /v1/adapters/{name}/config-schema` endpoint
-- [ ] 9.5 Update OpenAPI specification with adapter endpoints
-- [ ] 9.6 Add GraphQL queries for adapter discovery
-- [ ] 9.7 Update REST API documentation
-- [ ] 9.8 Write API contract tests
+- [x] 9.1 Add `GET /v1/adapters` endpoint for adapter listing
+- [x] 9.2 Add `GET /v1/adapters/{name}/metadata` endpoint
+- [x] 9.3 Add `GET /v1/adapters/{name}/health` endpoint
+- [x] 9.4 Add `GET /v1/adapters/{name}/config-schema` endpoint
+- [x] 9.5 Update OpenAPI specification with adapter endpoints
+- [x] 9.6 Add GraphQL queries for adapter discovery
+- [x] 9.7 Update REST API documentation
+- [x] 9.8 Write API contract tests
 
 ## 10. Testing & Documentation
 
-- [ ] 10.1 Create mock adapter plugin for testing (using Pluggy hooks)
-- [ ] 10.2 Write unit tests for Pluggy plugin framework (>90% coverage)
-- [ ] 10.3 Write integration tests for adapter lifecycle
-- [ ] 10.4 Write performance tests for Pluggy adapter discovery overhead
-- [ ] 10.5 Update developer documentation for adapter authoring with Pluggy
-- [ ] 10.6 Create adapter migration guide (manual registry → Pluggy)
-- [ ] 10.7 Add example adapters for financial and legal domains
-- [ ] 10.8 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`
+- [x] 10.1 Create mock adapter plugin for testing (using Pluggy hooks)
+- [x] 10.2 Write unit tests for Pluggy plugin framework (>90% coverage)
+- [x] 10.3 Write integration tests for adapter lifecycle
+- [x] 10.4 Write performance tests for Pluggy adapter discovery overhead
+- [x] 10.5 Update developer documentation for adapter authoring with Pluggy
+- [x] 10.6 Create adapter migration guide (manual registry → Pluggy)
+- [x] 10.7 Add example adapters for financial and legal domains
+- [x] 10.8 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`
 
 ## 11. Migration & Deprecation
 
-- [ ] 11.1 Create automated migration script for entry points
-- [ ] 11.2 Add deprecation warnings to old adapter registry
-- [ ] 11.3 Implement feature flag for plugin framework toggle
-- [ ] 11.4 Update CI/CD to test both old and new systems
-- [ ] 11.5 Create rollback procedure documentation
-- [ ] 11.6 Schedule old registry removal for release v0.3.0
-- [ ] 11.7 Monitor adapter performance metrics post-migration
-- [ ] 11.8 Remove backward compatibility layer
+- [x] 11.1 Create automated migration script for entry points
+- [x] 11.2 Add deprecation warnings to old adapter registry
+- [x] 11.3 Implement feature flag for plugin framework toggle
+- [x] 11.4 Update CI/CD to test both old and new systems
+- [x] 11.5 Create rollback procedure documentation
+- [x] 11.6 Schedule old registry removal for release v0.3.0
+- [x] 11.7 Monitor adapter performance metrics post-migration
+- [x] 11.8 Remove backward compatibility layer

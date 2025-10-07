@@ -1406,28 +1406,42 @@ pytest tests/performance/ -v -m performance
 **Adding New Adapters**
 
 ```bash
-# 1. Create adapter class in src/Medical_KG_rev/adapters/
-class NewSourceAdapter(BaseAdapter):
-    def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
-        # Implementation here
-        pass
+# 1. Implement a plugin in src/Medical_KG_rev/adapters/plugins/domains/
+from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
+from Medical_KG_rev.adapters.plugins.domains.metadata import BiomedicalAdapterMetadata
+from Medical_KG_rev.adapters.plugins.models import AdapterRequest, AdapterResponse
 
-    def parse(self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext) -> Sequence[Document]:
-        # Implementation here
-        pass
 
-# 2. Add configuration to adapters/config/
-echo "source: newsource
-base_url: https://api.newsource.com
-rate_limit:
-  requests_per_second: 5" > src/Medical_KG_rev/adapters/config/newsource.yaml
+class NewSourcePlugin(BaseAdapterPlugin):
+    metadata = BiomedicalAdapterMetadata(
+        name="newsource",
+        version="1.0.0",
+        summary="New source adapter",
+        capabilities=["records"],
+        maintainer="Data Platform",
+        dataset="newsource",
+    )
 
-# 3. Register adapter in registry
-# src/Medical_KG_rev/adapters/registry.py
-ADAPTERS["newsource"] = NewSourceAdapter
+    def fetch(self, request: AdapterRequest) -> AdapterResponse:
+        payloads = call_external_api(request.parameters)  # pseudo-code
+        return AdapterResponse(items=payloads)
 
-# 4. Add tests
-# tests/adapters/test_newsource_adapter.py
+    def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:
+        response.items = transform(payloads=response.items)  # pseudo-code
+        return response
+
+# 2. Register locally via entry points
+python scripts/migrate_adapter_entry_points.py --print
+
+# 3. Update pyproject.toml
+[project.entry-points."medical_kg.adapters"]
+newsource = "Medical_KG_rev.adapters.plugins.domains.biomedical:NewSourcePlugin"
+
+# 4. Validate through REST/GraphQL
+curl -H "X-API-Key: $KEY" http://localhost:8000/v1/adapters/newsource/metadata
+
+# 5. Add tests (unit + orchestration + gateway)
+pytest tests/adapters/test_plugin_framework.py -k newsource
 ```
 
 ---

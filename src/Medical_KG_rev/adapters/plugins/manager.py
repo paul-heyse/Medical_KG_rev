@@ -16,6 +16,7 @@ from Medical_KG_rev.adapters.plugins.models import (
     ValidationOutcome,
     AdapterCostEstimate,
 )
+from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 
 hookspec = pluggy.HookspecMarker("medical_kg.adapters")
 hookimpl = pluggy.HookimplMarker("medical_kg.adapters")
@@ -62,6 +63,7 @@ class AdapterPluginManager:
         self._adapters: dict[str, Any] = {}
         self._metadata: dict[str, AdapterMetadata] = {}
         self._project_name = project_name
+        self._registry = DomainAdapterRegistry()
 
     # ------------------------------------------------------------------
     # Registration & discovery
@@ -75,6 +77,7 @@ class AdapterPluginManager:
         adapter_name = metadata.name
         self._adapters[adapter_name] = plugin
         self._metadata[adapter_name] = metadata
+        self._registry.register(metadata)
         return metadata
 
     def unregister(self, adapter_name: str) -> None:
@@ -83,6 +86,7 @@ class AdapterPluginManager:
             raise AdapterPluginError(f"Adapter '{adapter_name}' is not registered")
         self._metadata.pop(adapter_name, None)
         self._pm.unregister(plugin)
+        self._registry.unregister(adapter_name)
 
     def discover_entry_points(self, group: str = "medical_kg.adapters") -> list[AdapterMetadata]:
         """Discover adapters declared via Python entry points."""
@@ -106,10 +110,16 @@ class AdapterPluginManager:
             raise AdapterPluginError(f"Adapter '{adapter_name}' is not registered") from exc
 
     def list_metadata(self, domain: AdapterDomain | None = None) -> list[AdapterMetadata]:
-        values: Iterable[AdapterMetadata] = self._metadata.values()
-        if domain is not None:
-            values = (meta for meta in values if meta.domain == domain)
+        if domain is None:
+            values: Iterable[AdapterMetadata] = self._metadata.values()
+        else:
+            values = self._registry.list(domain)
         return sorted(values, key=lambda meta: meta.name)
+
+    def domains(self) -> dict[AdapterDomain, tuple[str, ...]]:
+        """Return mapping of domains to registered adapter names."""
+
+        return {domain: names for domain, names in self._registry.domains().items()}
 
     # ------------------------------------------------------------------
     # Adapter lifecycle helpers

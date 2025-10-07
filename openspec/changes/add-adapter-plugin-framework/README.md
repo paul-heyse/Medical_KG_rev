@@ -58,6 +58,20 @@ openspec/changes/add-adapter-plugin-framework/
 - Shared `BaseAdapter` contract
 - Cross-domain ingestion support
 
+### 5. Developer Workflow
+
+- Implement adapters by subclassing `Medical_KG_rev.adapters.plugins.base.BaseAdapterPlugin` (or the domain-specific helpers) and explicitly composing any legacy adapters that still power the integration logic.
+- Register new adapters via `register_biomedical_plugins` or by defining entry points exposed through `scripts/migrate_adapter_entry_points.py`.
+- Access the singleton plugin manager via `Medical_KG_rev.adapters.get_plugin_manager()`; feature flag `MK_USE_PLUGIN_FRAMEWORK` can disable the system for rollback scenarios.
+- Domain-specific metadata helpers (`BiomedicalAdapterMetadata`, `FinancialAdapterMetadata`, `LegalAdapterMetadata`) ensure consistent documentation and filtering across REST/GraphQL surfaces.
+
+### 6. Migration Guide
+
+- Run `python scripts/migrate_adapter_entry_points.py --print` to inspect recommended entry points for legacy adapters.
+- Use the new REST endpoints (`/v1/adapters`, `/v1/adapters/{name}/metadata`, `/v1/adapters/{name}/health`, `/v1/adapters/{name}/config-schema`) to validate plugin registration and configuration.
+- GraphQL queries `adapters`, `adapter`, and `adapterHealth` expose the same metadata for multi-protocol clients.
+- Existing YAML-based adapters can be wrapped by the domain-specific plugins (for example `ClinicalTrialsAdapterPlugin`) while teams migrate business logic into first-class plugin implementations.
+
 ## 📋 Specification Deltas
 
 ### biomedical-adapters

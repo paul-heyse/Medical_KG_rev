@@ -17,9 +17,6 @@ from .biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
-from .example import ExampleAdapter
-from .registry import registry
-from .testing import run_adapter
 from .yaml_parser import AdapterConfig, create_adapter_from_config, load_adapter_config
 from .plugins.base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
 from .plugins.config import (
@@ -31,6 +28,17 @@ from .plugins.config import (
     migrate_yaml_to_env,
     validate_on_startup,
 )
+from .plugins.bootstrap import (
+    get_plugin_manager,
+    list_adapters_by_domain,
+    plugin_framework_enabled,
+)
+from .plugins.domains.biomedical import (
+    BIOMEDICAL_PLUGINS,
+    register_biomedical_plugins,
+)
+from .plugins.domains.financial import FinancialNewsAdapterPlugin
+from .plugins.domains.legal import LegalPrecedentAdapterPlugin
 from .plugins.manager import AdapterHookSpec, AdapterPluginError, AdapterPluginManager
 from .plugins.models import (
     AdapterCostEstimate,
@@ -65,7 +73,6 @@ __all__ = [
     "ChEMBLAdapter",
     "ClinicalTrialsAdapter",
     "CrossrefAdapter",
-    "ExampleAdapter",
     "AdapterHookSpec",
     "AdapterPluginError",
     "AdapterPluginManager",
@@ -99,16 +106,21 @@ __all__ = [
     "load_adapter_config",
     "migrate_yaml_to_env",
     "rate_limit",
-    "registry",
     "retry_on_failure",
-    "run_adapter",
     "validate_on_startup",
     "VaultSecretProvider",
     "apply_env_overrides",
     "BiomedicalPayload",
     "FinancialPayload",
+    "FinancialNewsAdapterPlugin",
     "LegalPayload",
+    "LegalPrecedentAdapterPlugin",
     "ValidationOutcome",
     "ConfigValidationResult",
     "ReadOnlyAdapterPlugin",
+    "get_plugin_manager",
+    "plugin_framework_enabled",
+    "list_adapters_by_domain",
+    "BIOMEDICAL_PLUGINS",
+    "register_biomedical_plugins",
 ]

@@ -64,7 +64,7 @@ def _configure_security(monkeypatch):
     monkeypatch.setenv("MK_SECURITY__OAUTH__CLIENT_SECRET", "dev-secret")
     monkeypatch.setenv(
         "MK_SECURITY__OAUTH__SCOPES",
-        '["ingest:write", "kg:read", "jobs:read", "jobs:write", "process:write", "kg:write", "audit:read"]',
+        '["ingest:write", "kg:read", "jobs:read", "jobs:write", "process:write", "kg:write", "audit:read", "adapters:read"]',
     )
     if get_settings is not None:
         get_settings.cache_clear()

@@ -11,24 +11,33 @@ import pytest
 import httpx
 from pydantic import Field, SecretStr
 
+import time
+
 from Medical_KG_rev.adapters import (
     AdapterDomain,
-    AdapterRequest,
+    AdapterMetadata,
     AdapterPluginManager,
+    AdapterRequest,
     AdapterSettings,
     BackoffStrategy,
     ConfigValidationResult,
+    FinancialNewsAdapterPlugin,
+    LegalPrecedentAdapterPlugin,
     ResilienceConfig,
     ResilientHTTPClient,
     SettingsHotReloader,
     VaultSecretProvider,
     apply_env_overrides,
     circuit_breaker,
+    get_plugin_manager,
+    list_adapters_by_domain,
     migrate_yaml_to_env,
     rate_limit,
+    register_biomedical_plugins,
     retry_on_failure,
     validate_on_startup,
 )
+from Medical_KG_rev.adapters.plugins import bootstrap as plugin_bootstrap
 from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
 from pydantic import ValidationError
 
@@ -130,6 +139,47 @@ def test_plugin_manager_registers_and_runs_adapter():
     assert manager.list_metadata(domain=AdapterDomain.BIOMEDICAL)
     estimate = manager.estimate_cost("example", request)
     assert estimate.estimated_requests >= 1
+
+
+def test_register_biomedical_plugins_groups_by_domain():
+    manager = AdapterPluginManager()
+    metadata = register_biomedical_plugins(manager)
+    manager.register(FinancialNewsAdapterPlugin())
+    manager.register(LegalPrecedentAdapterPlugin())
+    mapping = manager.domains()
+    assert AdapterDomain.BIOMEDICAL in mapping
+    biomedical_names = mapping[AdapterDomain.BIOMEDICAL]
+    assert all(meta.name in biomedical_names for meta in metadata)
+    assert AdapterDomain.FINANCIAL in mapping and "financial-news" in mapping[AdapterDomain.FINANCIAL]
+    assert AdapterDomain.LEGAL in mapping and "legal-precedent" in mapping[AdapterDomain.LEGAL]
+
+
+
+def test_get_plugin_manager_lists_domains(monkeypatch):
+    manager = get_plugin_manager(refresh=True)
+    assert manager.list_metadata()
+    domains = list_adapters_by_domain()
+    assert AdapterDomain.BIOMEDICAL in domains
+    assert isinstance(domains[AdapterDomain.BIOMEDICAL], tuple)
+
+
+def test_plugin_discovery_performance():
+    start = time.perf_counter()
+    manager = AdapterPluginManager()
+    register_biomedical_plugins(manager)
+    duration = time.perf_counter() - start
+    assert duration < 1.0
+
+
+def test_plugin_framework_feature_flag(monkeypatch):
+    monkeypatch.setenv("MK_USE_PLUGIN_FRAMEWORK", "0")
+    import importlib
+
+    importlib.reload(plugin_bootstrap)
+    with pytest.raises(RuntimeError):
+        plugin_bootstrap.get_plugin_manager()
+    monkeypatch.setenv("MK_USE_PLUGIN_FRAMEWORK", "1")
+    importlib.reload(plugin_bootstrap)
 
 
 def test_adapter_request_requires_identifiers():

@@ -2,58 +2,58 @@
 
 ## 1. Plugin Framework Infrastructure
 
-- [ ] 1.1 Install and configure **Pluggy** dependency (pluggy>=1.3.0)
-- [ ] 1.2 Define `AdapterHookSpec` with Pluggy hook specifications using `@hookspec`
-- [ ] 1.3 Implement `PluginManager` for adapter discovery using Pluggy's `PluginManager` class
-- [ ] 1.4 Create adapter metadata model (`AdapterMetadata` Pydantic class)
-- [ ] 1.5 Add entry point specification in `pyproject.toml` template (group: `medical_kg.adapters`)
-- [ ] 1.6 Implement dynamic adapter loading from entry points using `importlib.metadata`
-- [ ] 1.7 Add adapter capability querying API via Pluggy hook calls
-- [ ] 1.8 Write unit tests for Pluggy plugin manager
+- [x] 1.1 Install and configure **Pluggy** dependency (pluggy>=1.3.0)
+- [x] 1.2 Define `AdapterHookSpec` with Pluggy hook specifications using `@hookspec`
+- [x] 1.3 Implement `PluginManager` for adapter discovery using Pluggy's `PluginManager` class
+- [x] 1.4 Create adapter metadata model (`AdapterMetadata` Pydantic class)
+- [x] 1.5 Add entry point specification in `pyproject.toml` template (group: `medical_kg.adapters`)
+- [x] 1.6 Implement dynamic adapter loading from entry points using `importlib.metadata`
+- [x] 1.7 Add adapter capability querying API via Pluggy hook calls
+- [x] 1.8 Write unit tests for Pluggy plugin manager
 
 ## 2. Canonical Data Models
 
-- [ ] 2.1 Define `AdapterRequest` Pydantic model with tenant context
-- [ ] 2.2 Define `AdapterResponse` model with pagination support
-- [ ] 2.3 Define `ValidationOutcome` model with error details
-- [ ] 2.4 Define `AdapterConfig` base model with pydantic-settings
-- [ ] 2.5 Create domain-specific payload extensions (Medical, Financial, Legal)
-- [ ] 2.6 Add JSON Schema export for API documentation
-- [ ] 2.7 Implement model versioning strategy
-- [ ] 2.8 Write comprehensive model validation tests
+- [x] 2.1 Define `AdapterRequest` Pydantic model with tenant context
+- [x] 2.2 Define `AdapterResponse` model with pagination support
+- [x] 2.3 Define `ValidationOutcome` model with error details
+- [x] 2.4 Define `AdapterConfig` base model with pydantic-settings
+- [x] 2.5 Create domain-specific payload extensions (Medical, Financial, Legal)
+- [x] 2.6 Add JSON Schema export for API documentation
+- [x] 2.7 Implement model versioning strategy
+- [x] 2.8 Write comprehensive model validation tests
 
 ## 3. Unified Resilience Layer
 
-- [ ] 3.1 Create `ResilienceConfig` Pydantic model
-- [ ] 3.2 Implement `@retry_on_failure` decorator using **Tenacity** (tenacity>=8.2.0)
-- [ ] 3.3 Implement `@rate_limit` decorator with token bucket algorithm
-- [ ] 3.4 Add circuit breaker pattern for external services using Tenacity
-- [ ] 3.5 Create `BackoffStrategy` enum (exponential, linear, jitter)
-- [ ] 3.6 Implement `ResilientHTTPClient` wrapper with Tenacity automatic retries
-- [ ] 3.7 Add Prometheus metrics for retry attempts and circuit breaker state
-- [ ] 3.8 Write resilience layer integration tests
+- [x] 3.1 Create `ResilienceConfig` Pydantic model
+- [x] 3.2 Implement `@retry_on_failure` decorator using **Tenacity** (tenacity>=8.2.0)
+- [x] 3.3 Implement `@rate_limit` decorator with token bucket algorithm
+- [x] 3.4 Add circuit breaker pattern for external services using Tenacity
+- [x] 3.5 Create `BackoffStrategy` enum (exponential, linear, jitter)
+- [x] 3.6 Implement `ResilientHTTPClient` wrapper with Tenacity automatic retries
+- [x] 3.7 Add Prometheus metrics for retry attempts and circuit breaker state
+- [x] 3.8 Write resilience layer integration tests
 
 ## 4. Configuration & Secret Management
 
-- [ ] 4.1 Define `AdapterSettings` using **pydantic-settings** (pydantic-settings>=2.0.0)
-- [ ] 4.2 Implement Vault secret provider integration
-- [ ] 4.3 Add environment variable mapping with `MK_ADAPTER_` prefix
-- [ ] 4.4 Create configuration validation on startup
-- [ ] 4.5 Implement hot-reload for configuration changes
-- [ ] 4.6 Add configuration schema documentation generator
-- [ ] 4.7 Migrate existing YAML configs to environment-based settings
-- [ ] 4.8 Write configuration management tests
+- [x] 4.1 Define `AdapterSettings` using **pydantic-settings** (pydantic-settings>=2.0.0)
+- [x] 4.2 Implement Vault secret provider integration
+- [x] 4.3 Add environment variable mapping with `MK_ADAPTER_` prefix
+- [x] 4.4 Create configuration validation on startup
+- [x] 4.5 Implement hot-reload for configuration changes
+- [x] 4.6 Add configuration schema documentation generator
+- [x] 4.7 Migrate existing YAML configs to environment-based settings
+- [x] 4.8 Write configuration management tests
 
 ## 5. BaseAdapter Contract Rewrite
 
-- [ ] 5.1 Define new `BaseAdapter` abstract class with Pluggy `@hookimpl` decorators
-- [ ] 5.2 Implement `fetch()` method signature with `AdapterRequest`
-- [ ] 5.3 Implement `parse()` method signature with `AdapterResponse`
-- [ ] 5.4 Add `validate()` hook for schema validation
-- [ ] 5.5 Add `get_metadata()` method for capability declaration (Pluggy hook)
-- [ ] 5.6 Implement `health_check()` for adapter readiness (Pluggy hook)
-- [ ] 5.7 Add `estimate_cost()` for rate limit planning (Pluggy hook)
-- [ ] 5.8 Write BaseAdapter contract tests
+- [x] 5.1 Define new `BaseAdapter` abstract class with Pluggy `@hookimpl` decorators
+- [x] 5.2 Implement `fetch()` method signature with `AdapterRequest`
+- [x] 5.3 Implement `parse()` method signature with `AdapterResponse`
+- [x] 5.4 Add `validate()` hook for schema validation
+- [x] 5.5 Add `get_metadata()` method for capability declaration (Pluggy hook)
+- [x] 5.6 Implement `health_check()` for adapter readiness (Pluggy hook)
+- [x] 5.7 Add `estimate_cost()` for rate limit planning (Pluggy hook)
+- [x] 5.8 Write BaseAdapter contract tests
 
 ## 6. Domain-Specific Adapter Namespaces
 

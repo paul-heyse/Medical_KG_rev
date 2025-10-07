@@ -21,6 +21,7 @@ class BlockContext:
     start_char: int
     end_char: int
     token_count: int
+    page_no: int | None
 
     @property
     def section_title(self) -> str:
@@ -29,6 +30,20 @@ class BlockContext:
     @property
     def is_table(self) -> bool:
         return self.block.type == BlockType.TABLE or self.block.metadata.get("is_table", False)
+
+
+def _extract_page_number(metadata: dict[str, object]) -> int | None:
+    """Best-effort extraction of page number from block metadata."""
+
+    for key in ("page", "page_number", "page_no", "pageIndex"):
+        value = metadata.get(key)
+        if isinstance(value, int) and value >= 1:
+            return value
+        if isinstance(value, str) and value.isdigit():
+            page = int(value)
+            if page >= 1:
+                return page
+    return None
 
 
 class ProvenanceNormalizer:
@@ -50,6 +65,7 @@ class ProvenanceNormalizer:
                 end = start + block_length
                 if block_length:
                     cursor = end + 1  # account for newline separators
+                page = _extract_page_number(block.metadata)
                 yield BlockContext(
                     block=block,
                     section=section,
@@ -58,6 +74,7 @@ class ProvenanceNormalizer:
                     start_char=start,
                     end_char=max(end, start + 1),
                     token_count=token_count,
+                    page_no=page,
                 )
 
     def total_tokens(self, contexts: Sequence[BlockContext]) -> int:

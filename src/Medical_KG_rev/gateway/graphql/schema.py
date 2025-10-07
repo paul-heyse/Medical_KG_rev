@@ -50,6 +50,7 @@ def _document_to_type(document: DocumentSummary) -> DocumentType:
         summary=document.summary,
         source=document.source,
         metadata=document.metadata,
+        explain=document.explain,
     )
 
 
@@ -58,6 +59,22 @@ def _retrieval_to_type(result: RetrievalResult) -> RetrievalResultType:
         query=result.query,
         total=result.total,
         documents=[_document_to_type(document) for document in result.documents],
+        pipeline_version=result.pipeline_version,
+        partial=result.partial,
+        degraded=result.degraded,
+        stage_timings=result.stage_timings,
+        rerank_metrics=result.rerank_metrics,
+        errors=[_problem_to_type(problem) for problem in result.errors],
+    )
+
+
+def _problem_to_type(problem) -> ProblemDetailType:
+    return ProblemDetailType(
+        type=problem.type,
+        title=problem.title,
+        status=problem.status,
+        detail=problem.detail,
+        extensions=problem.extensions,
     )
 
 
@@ -116,6 +133,7 @@ class DocumentType:
     summary: str | None
     source: str
     metadata: JSON
+    explain: JSON | None = None
 
     @strawberry.field
     async def organization(
@@ -138,6 +156,21 @@ class RetrievalResultType:
     query: str
     total: int
     documents: list[DocumentType]
+    pipeline_version: str | None
+    partial: bool
+    degraded: bool
+    rerank_metrics: JSON
+    stage_timings: JSON
+    errors: list[ProblemDetailType]
+
+
+@strawberry.type
+class ProblemDetailType:
+    type: str
+    title: str
+    status: int
+    detail: str | None
+    extensions: JSON
 
 
 @strawberry.type
@@ -190,6 +223,7 @@ class IngestionInput:
     items: JSON
     priority: str = "normal"
     metadata: JSON = strawberry.field(default_factory=dict)
+    profile: str | None = None
 
 
 @strawberry.input
@@ -214,6 +248,12 @@ class RetrieveInput:
     query: str
     top_k: int = 5
     filters: JSON = strawberry.field(default_factory=dict)
+    rerank: bool = True
+    rerank_top_k: int = 10
+    rerank_overflow: bool = False
+    profile: str | None = None
+    metadata: JSON = strawberry.field(default_factory=dict)
+    explain: bool = False
 
 
 @strawberry.input
@@ -287,6 +327,7 @@ class Mutation:
             items=_ensure_sequence(input.items),
             priority=input.priority,  # type: ignore[arg-type]
             metadata=dict(input.metadata or {}),
+            profile=input.profile,
         )
         result = service.ingest(dataset, request)
         return BatchOperationType(

@@ -2,10 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass
 from typing import TypeVar
 
 T = TypeVar("T")
+
+
+@dataclass(slots=True)
+class BatchProgress:
+    """Tracks progress while iterating through batches."""
+
+    total: int
+    callback: Callable[[int, int], None] | None = None
+    processed: int = 0
+
+    def step(self, processed: int) -> None:
+        self.processed += processed
+        if self.callback:
+            self.callback(self.processed, self.total)
 
 
 def batched(items: Sequence[T], batch_size: int) -> Iterator[Sequence[T]]:
@@ -28,3 +43,17 @@ def paired_batches(
         raise ValueError("Sequences must be equal length")
     for left_batch, right_batch in zip(batched(left, batch_size), batched(right, batch_size), strict=True):
         yield left_batch, right_batch
+
+
+def iter_with_progress(
+    items: Sequence[T],
+    batch_size: int,
+    *,
+    progress: BatchProgress | None = None,
+) -> Iterator[Sequence[T]]:
+    """Iterate over *items* in batches while updating the provided progress tracker."""
+
+    for batch in batched(items, batch_size):
+        yield batch
+        if progress:
+            progress.step(len(batch))

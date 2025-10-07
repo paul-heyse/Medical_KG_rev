@@ -30,12 +30,14 @@ class IndexingService:
         opensearch: OpenSearchClient,
         faiss: FAISSIndex | None,
         chunk_index: str = "chunks",
+        rerank_cache: RerankCacheManager | None = None,
     ) -> None:
         self.chunking = chunking
         self.embedding_worker = embedding_worker
         self.opensearch = opensearch
         self.faiss = faiss
         self.chunk_index = chunk_index
+        self.rerank_cache = rerank_cache
 
     def index_document(
         self,
@@ -46,7 +48,12 @@ class IndexingService:
         chunk_options: ChunkingOptions | None = None,
         incremental: bool = False,
     ) -> IndexingResult:
-        chunks = self.chunking.chunk(tenant_id, document_id, text, chunk_options)
+        chunks = self.chunking.chunk(
+            document_id,
+            text,
+            chunk_options,
+            tenant_id=tenant_id,
+        )
         if incremental:
             chunk_ids = [chunk.chunk_id for chunk in chunks]
             existing = self._existing_chunk_ids(chunk_ids)
@@ -60,14 +67,15 @@ class IndexingService:
     def _index_chunks(self, chunks: Sequence[Chunk], metadata: Mapping[str, object] | None) -> None:
         documents = []
         for chunk in chunks:
+            chunk_meta = getattr(chunk, "meta", None) or getattr(chunk, "metadata", {})
             doc = {
                 "id": chunk.chunk_id,
                 "text": chunk.body,
                 "doc_id": chunk.doc_id,
                 "granularity": chunk.granularity,
                 "chunker": chunk.chunker,
-                **chunk.meta,
             }
+            doc.update(chunk_meta)
             if metadata:
                 doc.update(metadata)
             documents.append(doc)
@@ -86,6 +94,7 @@ class IndexingService:
             chunk_ids=[chunk.chunk_id for chunk in chunks],
             texts=[chunk.body for chunk in chunks],
             normalize=True,
+            metadatas=chunk_metadata,
         )
         response = self.embedding_worker.run(request)
         dense_vectors = [vector for vector in response.vectors if vector.values]

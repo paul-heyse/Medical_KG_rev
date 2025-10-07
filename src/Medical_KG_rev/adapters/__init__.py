@@ -17,10 +17,52 @@ from .biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
-from .example import ExampleAdapter
-from .registry import registry
-from .testing import run_adapter
 from .yaml_parser import AdapterConfig, create_adapter_from_config, load_adapter_config
+from .plugins.base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
+from .plugins.config import (
+    AdapterSettings,
+    ConfigValidationResult,
+    SettingsHotReloader,
+    VaultSecretProvider,
+    apply_env_overrides,
+    migrate_yaml_to_env,
+    validate_on_startup,
+)
+from .plugins.bootstrap import (
+    get_plugin_manager,
+    list_adapters_by_domain,
+    plugin_framework_enabled,
+)
+from .plugins.domains.biomedical import (
+    BIOMEDICAL_PLUGINS,
+    register_biomedical_plugins,
+)
+from .plugins.domains.financial import FinancialNewsAdapterPlugin
+from .plugins.domains.legal import LegalPrecedentAdapterPlugin
+from .plugins.manager import AdapterHookSpec, AdapterPluginError, AdapterPluginManager
+from .plugins.models import (
+    AdapterCostEstimate,
+    AdapterDomain,
+    AdapterMetadata,
+    AdapterRequest,
+    AdapterResponse,
+    AdapterResponseEnvelope,
+    BiomedicalPayload,
+    FinancialPayload,
+    LegalPayload,
+    Pagination,
+    ValidationOutcome,
+)
+from .plugins.resilience import (
+    BackoffStrategy,
+    CircuitBreaker,
+    CircuitState,
+    ResilienceConfig,
+    ResilientHTTPClient,
+    circuit_breaker,
+    rate_limit,
+    retry_on_failure,
+)
 
 __all__ = [
     "AdapterConfig",
@@ -31,19 +73,54 @@ __all__ = [
     "ChEMBLAdapter",
     "ClinicalTrialsAdapter",
     "CrossrefAdapter",
-    "ExampleAdapter",
+    "AdapterHookSpec",
+    "AdapterPluginError",
+    "AdapterPluginManager",
+    "AdapterCostEstimate",
+    "AdapterDomain",
+    "AdapterMetadata",
+    "AdapterRequest",
+    "AdapterResponse",
+    "AdapterResponseEnvelope",
+    "AdapterSettings",
+    "BackoffStrategy",
+    "BaseAdapterPlugin",
     "ICD11Adapter",
+    "CircuitBreaker",
+    "CircuitState",
     "MeSHAdapter",
     "OpenAlexAdapter",
     "OpenFDADeviceAdapter",
     "OpenFDADrugEventAdapter",
     "OpenFDADrugLabelAdapter",
     "PMCAdapter",
+    "Pagination",
     "RxNormAdapter",
+    "ResilienceConfig",
+    "ResilientHTTPClient",
+    "SettingsHotReloader",
     "SemanticScholarAdapter",
     "UnpaywallAdapter",
     "create_adapter_from_config",
+    "circuit_breaker",
     "load_adapter_config",
-    "registry",
-    "run_adapter",
+    "migrate_yaml_to_env",
+    "rate_limit",
+    "retry_on_failure",
+    "validate_on_startup",
+    "VaultSecretProvider",
+    "apply_env_overrides",
+    "BiomedicalPayload",
+    "FinancialPayload",
+    "FinancialNewsAdapterPlugin",
+    "LegalPayload",
+    "LegalPrecedentAdapterPlugin",
+    "ValidationOutcome",
+    "ConfigValidationResult",
+    "ReadOnlyAdapterPlugin",
+    "get_plugin_manager",
+    "plugin_framework_enabled",
+    "list_adapters_by_domain",
+    "BIOMEDICAL_PLUGINS",
+    "register_biomedical_plugins",
 ]

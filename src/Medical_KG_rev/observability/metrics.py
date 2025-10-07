@@ -414,6 +414,18 @@ ORCHESTRATION_OPERATIONS = Counter(
     labelnames=("operation", "status"),
 )
 
+ADAPTER_PLUGIN_INVOCATIONS = Counter(
+    "adapter_plugin_invocations_total",
+    "Total number of adapter plugin executions",
+    labelnames=("adapter", "domain"),
+)
+
+ADAPTER_PLUGIN_FAILURES = Counter(
+    "adapter_plugin_failures_total",
+    "Total number of adapter plugin failures",
+    labelnames=("adapter", "domain"),
+)
+
 TIMEOUT_BREACHES = Counter(
     "timeout_breaches_total",
     "Total number of timeout breaches",

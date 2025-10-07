@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "GateCondition": {
+      "additionalProperties": false,
+      "description": "Predicate evaluated against Job Ledger entries to resume a pipeline.",
+      "properties": {
+        "equals": {
+          "title": "Equals"
+        },
+        "field": {
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Field",
+          "type": "string"
+        },
+        "poll_interval_seconds": {
+          "default": 5.0,
+          "maximum": 60.0,
+          "minimum": 0.5,
+          "title": "Poll Interval Seconds",
+          "type": "number"
+        },
+        "timeout_seconds": {
+          "anyOf": [
+            {
+              "maximum": 3600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Seconds"
+        }
+      },
+      "required": [
+        "field",
+        "equals"
+      ],
+      "title": "GateCondition",
+      "type": "object"
+    },
+    "GateDefinition": {
+      "additionalProperties": false,
+      "description": "Declarative definition for a pipeline gate.",
+      "properties": {
+        "condition": {
+          "$ref": "#/$defs/GateCondition"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "resume_stage": {
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Resume Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "condition",
+        "resume_stage"
+      ],
+      "title": "GateDefinition",
+      "type": "object"
+    },
+    "PipelineMetadata": {
+      "description": "Optional metadata about the pipeline.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "title": "PipelineMetadata",
+      "type": "object"
+    },
+    "StageDefinition": {
+      "additionalProperties": false,
+      "description": "Declarative stage specification for topology YAML files.",
+      "properties": {
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy"
+        },
+        "type": {
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "title": "StageDefinition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Complete topology definition for a pipeline.",
+  "properties": {
+    "applicable_sources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Sources",
+      "type": "array"
+    },
+    "gates": {
+      "items": {
+        "$ref": "#/$defs/GateDefinition"
+      },
+      "title": "Gates",
+      "type": "array"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PipelineMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "name": {
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "title": "Name",
+      "type": "string"
+    },
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/StageDefinition"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[A-Za-z0-9]+)?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "version",
+    "stages"
+  ],
+  "title": "PipelineTopologyConfig",
+  "type": "object"
+}

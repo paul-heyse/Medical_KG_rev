@@ -12,8 +12,11 @@ standardising the ingestion lifecycle.
 3. `validate(response, request)` → Enforce structural rules before the
    orchestrator persists or forwards the documents.
 
-The `AdapterPluginManager` calls the hooks in order via `manager.run(name,
-request)`, ensuring a consistent lifecycle for all plugins.
+The `AdapterPluginManager` materialises this lifecycle as an
+`AdapterPipeline`. When you call `manager.execute(name, request)` the manager
+creates an `AdapterExecutionState`, runs it through each pipeline stage, and
+returns the enriched state object. `manager.run(...)` is a thin wrapper that
+enforces validation and returns the final `AdapterResponse` for convenience.
 
 ## Registry
 
@@ -34,15 +37,17 @@ implementations.
 ## Testing
 
 Instantiate a plugin directly (or use `AdapterPluginManager`) to exercise the
-full lifecycle in tests:
+full lifecycle in tests. Using the manager exposes the pipeline state so you
+can assert on intermediate artefacts:
 
 ```python
 request = AdapterRequest(
     tenant_id="tenant", correlation_id="corr", domain=AdapterDomain.BIOMEDICAL
 )
-plugin = ClinicalTrialsAdapterPlugin()
-response = plugin.fetch(request)
-response = plugin.parse(response, request)
-outcome = plugin.validate(response, request)
-assert outcome.valid
+manager = AdapterPluginManager()
+manager.register(ClinicalTrialsAdapterPlugin())
+state = manager.execute("clinicaltrials", request)
+state.raise_for_validation()  # optional in tests
+response = state.ensure_response()
+assert response.items
 ```

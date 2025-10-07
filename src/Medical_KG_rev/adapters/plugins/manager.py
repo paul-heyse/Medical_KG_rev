@@ -18,6 +18,10 @@ from Medical_KG_rev.adapters.plugins.models import (
 )
 from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 
+from .errors import AdapterPluginError
+from .pipeline import AdapterExecutionState, AdapterPipelineFactory
+from .runtime import RegisteredAdapter
+
 hookspec = pluggy.HookspecMarker("medical_kg.adapters")
 hookimpl = pluggy.HookimplMarker("medical_kg.adapters")
 
@@ -50,42 +54,50 @@ class AdapterHookSpec:
         """Estimate upstream cost (API calls, latency) for the provided request."""
 
 
-class AdapterPluginError(RuntimeError):
-    """Raised when adapter plugin operations fail."""
-
-
 class AdapterPluginManager:
     """Wrapper around :class:`pluggy.PluginManager` for adapter lifecycle."""
 
     def __init__(self, project_name: str = "medical_kg.adapters") -> None:
         self._pm = pluggy.PluginManager(project_name)
         self._pm.add_hookspecs(AdapterHookSpec)
-        self._adapters: dict[str, Any] = {}
-        self._metadata: dict[str, AdapterMetadata] = {}
+        self._adapters: dict[str, RegisteredAdapter] = {}
         self._project_name = project_name
         self._registry = DomainAdapterRegistry()
+        self._pipeline_factory = AdapterPipelineFactory()
 
     # ------------------------------------------------------------------
     # Registration & discovery
     # ------------------------------------------------------------------
-    def register(self, plugin: Any, name: str | None = None) -> AdapterMetadata:
+    def register(
+        self,
+        plugin: Any,
+        name: str | None = None,
+        *,
+        entry_point: str | None = None,
+    ) -> AdapterMetadata:
         """Register a plugin object and cache its metadata."""
 
         registration_name = name or getattr(plugin, "__name__", plugin.__class__.__name__)
         self._pm.register(plugin, name=registration_name)
         metadata = self._resolve_metadata(plugin)
+        if entry_point:
+            metadata = metadata.model_copy(update={"entry_point": entry_point})
         adapter_name = metadata.name
-        self._adapters[adapter_name] = plugin
-        self._metadata[adapter_name] = metadata
-        self._registry.register(metadata)
+        pipeline = self._pipeline_factory.build(plugin, metadata)
+        domain_metadata = self._registry.register(metadata)
+        self._adapters[adapter_name] = RegisteredAdapter(
+            plugin=plugin,
+            metadata=metadata,
+            pipeline=pipeline,
+            domain_metadata=domain_metadata,
+        )
         return metadata
 
     def unregister(self, adapter_name: str) -> None:
-        plugin = self._adapters.pop(adapter_name, None)
-        if plugin is None:
+        registered = self._adapters.pop(adapter_name, None)
+        if registered is None:
             raise AdapterPluginError(f"Adapter '{adapter_name}' is not registered")
-        self._metadata.pop(adapter_name, None)
-        self._pm.unregister(plugin)
+        self._pm.unregister(registered.plugin)
         self._registry.unregister(adapter_name)
 
     def discover_entry_points(self, group: str = "medical_kg.adapters") -> list[AdapterMetadata]:
@@ -95,8 +107,7 @@ class AdapterPluginManager:
         for entry_point in metadata.entry_points().select(group=group):
             plugin = entry_point.load()
             plugin_instance = plugin() if callable(plugin) else plugin
-            meta = self.register(plugin_instance)
-            meta.entry_point = entry_point.value
+            meta = self.register(plugin_instance, entry_point=entry_point.value)
             discovered.append(meta)
         return discovered
 
@@ -105,13 +116,13 @@ class AdapterPluginManager:
     # ------------------------------------------------------------------
     def get_metadata(self, adapter_name: str) -> AdapterMetadata:
         try:
-            return self._metadata[adapter_name]
+            return self._adapters[adapter_name].metadata
         except KeyError as exc:  # pragma: no cover - defensive
             raise AdapterPluginError(f"Adapter '{adapter_name}' is not registered") from exc
 
     def list_metadata(self, domain: AdapterDomain | None = None) -> list[AdapterMetadata]:
         if domain is None:
-            values: Iterable[AdapterMetadata] = self._metadata.values()
+            values: Iterable[AdapterMetadata] = (registered.metadata for registered in self._adapters.values())
         else:
             values = self._registry.list(domain)
         return sorted(values, key=lambda meta: meta.name)
@@ -124,24 +135,36 @@ class AdapterPluginManager:
     # ------------------------------------------------------------------
     # Adapter lifecycle helpers
     # ------------------------------------------------------------------
-    def run(self, adapter_name: str, request: AdapterRequest) -> AdapterResponse:
-        plugin = self._get_plugin(adapter_name)
-        response = self._call_single(plugin, "fetch", request)
-        response = self._call_single(plugin, "parse", response, request)
-        outcome = self._call_single(plugin, "validate", response, request)
-        if not outcome.valid:
-            raise AdapterPluginError(
-                f"Validation failed for adapter '{adapter_name}': {', '.join(outcome.errors)}"
-            )
-        return response
+    def execute(
+        self,
+        adapter_name: str,
+        request: AdapterRequest,
+        *,
+        strict: bool = True,
+    ) -> AdapterExecutionState:
+        registered = self._get_registered(adapter_name)
+        state = registered.pipeline.execute(registered.new_state(request))
+        if strict:
+            state.raise_for_validation()
+        return state
+
+    def run(
+        self,
+        adapter_name: str,
+        request: AdapterRequest,
+        *,
+        strict: bool = True,
+    ) -> AdapterResponse:
+        state = self.execute(adapter_name, request, strict=strict)
+        return state.ensure_response()
 
     def check_health(self, adapter_name: str) -> bool:
-        plugin = self._get_plugin(adapter_name)
-        return bool(self._call_single(plugin, "health_check"))
+        registered = self._get_registered(adapter_name)
+        return bool(self._call_hook(registered.plugin, "health_check"))
 
     def estimate_cost(self, adapter_name: str, request: AdapterRequest) -> AdapterCostEstimate:
-        plugin = self._get_plugin(adapter_name)
-        return self._call_single(plugin, "estimate_cost", request)
+        registered = self._get_registered(adapter_name)
+        return self._call_hook(registered.plugin, "estimate_cost", request)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -155,13 +178,13 @@ class AdapterPluginManager:
             raise AdapterPluginError("Adapter metadata must be an AdapterMetadata instance")
         return metadata
 
-    def _get_plugin(self, adapter_name: str) -> Any:
+    def _get_registered(self, adapter_name: str) -> RegisteredAdapter:
         try:
             return self._adapters[adapter_name]
         except KeyError as exc:  # pragma: no cover - defensive
             raise AdapterPluginError(f"Adapter '{adapter_name}' is not registered") from exc
 
-    def _call_single(self, plugin: Any, hook_name: str, *args: Any) -> Any:
+    def _call_hook(self, plugin: Any, hook_name: str, *args: Any) -> Any:
         hook = getattr(plugin, hook_name, None)
         if hook is None:
             raise AdapterPluginError(f"Plugin '{plugin}' does not implement hook '{hook_name}'")

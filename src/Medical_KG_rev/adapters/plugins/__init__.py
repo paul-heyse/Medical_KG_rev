@@ -10,7 +10,8 @@ from .config import (
     migrate_yaml_to_env,
     validate_on_startup,
 )
-from .manager import AdapterHookSpec, AdapterPluginError, AdapterPluginManager, hookimpl, hookspec
+from .errors import AdapterPluginError
+from .manager import AdapterHookSpec, AdapterPluginManager, hookimpl, hookspec
 from .models import (
     AdapterConfig,
     AdapterCostEstimate,
@@ -24,6 +25,12 @@ from .models import (
     LegalPayload,
     Pagination,
     ValidationOutcome,
+)
+from .pipeline import (
+    AdapterExecutionState,
+    AdapterPipeline,
+    AdapterPipelineFactory,
+    AdapterStage,
 )
 from .resilience import (
     BackoffStrategy,
@@ -40,6 +47,10 @@ __all__ = [
     "AdapterHookSpec",
     "AdapterPluginError",
     "AdapterPluginManager",
+    "AdapterExecutionState",
+    "AdapterPipeline",
+    "AdapterPipelineFactory",
+    "AdapterStage",
     "AdapterConfig",
     "AdapterCostEstimate",
     "AdapterDomain",

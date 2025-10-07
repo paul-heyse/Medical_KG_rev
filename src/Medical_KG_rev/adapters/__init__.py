@@ -39,7 +39,8 @@ from .plugins.domains.biomedical import (
 )
 from .plugins.domains.financial import FinancialNewsAdapterPlugin
 from .plugins.domains.legal import LegalPrecedentAdapterPlugin
-from .plugins.manager import AdapterHookSpec, AdapterPluginError, AdapterPluginManager
+from .plugins.errors import AdapterPluginError
+from .plugins.manager import AdapterHookSpec, AdapterPluginManager
 from .plugins.models import (
     AdapterCostEstimate,
     AdapterDomain,
@@ -63,6 +64,12 @@ from .plugins.resilience import (
     rate_limit,
     retry_on_failure,
 )
+from .plugins.pipeline import (
+    AdapterExecutionState,
+    AdapterPipeline,
+    AdapterPipelineFactory,
+    AdapterStage,
+)
 
 __all__ = [
     "AdapterConfig",
@@ -76,6 +83,10 @@ __all__ = [
     "AdapterHookSpec",
     "AdapterPluginError",
     "AdapterPluginManager",
+    "AdapterExecutionState",
+    "AdapterPipeline",
+    "AdapterPipelineFactory",
+    "AdapterStage",
     "AdapterCostEstimate",
     "AdapterDomain",
     "AdapterMetadata",

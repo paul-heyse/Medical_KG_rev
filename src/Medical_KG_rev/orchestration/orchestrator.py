@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..adapters.plugins.bootstrap import get_plugin_manager
-from ..adapters.plugins.manager import AdapterPluginError
+from ..adapters import AdapterPluginError
 from ..adapters.plugins.models import AdapterDomain, AdapterRequest
 from ..gateway.models import JobEvent
 from ..gateway.sse.manager import EventStreamManager

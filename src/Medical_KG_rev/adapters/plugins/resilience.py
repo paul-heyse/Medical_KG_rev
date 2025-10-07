@@ -200,23 +200,36 @@ def circuit_breaker(config: ResilienceConfig):
 class ResilientHTTPClient:
     """HTTP client wrapper applying retry and rate limiting."""
 
-    def __init__(self, config: ResilienceConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: ResilienceConfig | None = None,
+        *,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.config = config or ResilienceConfig()
-        self._client = httpx.AsyncClient()
+        self._client = client or httpx.AsyncClient()
         self._history: deque[float] = deque(maxlen=20)
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         async def _request() -> httpx.Response:
-            async with self._client as client:
-                response = await client.get(url, **kwargs)
-                response.raise_for_status()
-                return response
+            response = await self._client.get(url, **kwargs)
+            response.raise_for_status()
+            return response
 
         start = time.perf_counter()
         wrapped = retry_on_failure(self.config)(_request)
         response = await wrapped()
         await self._record_latency(time.perf_counter() - start)
         return response
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "ResilientHTTPClient":
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.aclose()
 
     async def _record_latency(self, elapsed: float) -> None:
         self._history.append(elapsed)

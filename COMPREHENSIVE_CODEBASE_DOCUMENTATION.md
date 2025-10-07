@@ -1444,6 +1444,12 @@ curl -H "X-API-Key: $KEY" http://localhost:8000/v1/adapters/newsource/metadata
 pytest tests/adapters/test_plugin_framework.py -k newsource
 ```
 
+The plugin manager wraps each registered adapter inside an `AdapterPipeline`
+backed by `AdapterExecutionState`. This allows orchestration and gateway
+services to reason about lifecycle progress without sprinkling adapter-specific
+conditionals. Custom plugins may override `build_pipeline` to compose bespoke
+stages while retaining compatibility with the shared execution runtime.
+
 ---
 
 ## Testing Strategy and Examples

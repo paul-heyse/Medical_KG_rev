@@ -11,11 +11,10 @@ import pytest
 import httpx
 from pydantic import Field, SecretStr
 
-import time
-
 from Medical_KG_rev.adapters import (
     AdapterDomain,
     AdapterMetadata,
+    AdapterPluginError,
     AdapterPluginManager,
     AdapterRequest,
     AdapterSettings,
@@ -36,6 +35,7 @@ from Medical_KG_rev.adapters import (
     register_biomedical_plugins,
     retry_on_failure,
     validate_on_startup,
+    ValidationOutcome,
 )
 from Medical_KG_rev.adapters.plugins import bootstrap as plugin_bootstrap
 from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
@@ -93,7 +93,7 @@ def test_retry_on_failure_retries_until_success():
     assert len(attempts) == 2
 
 
-def test_resilient_http_client_uses_retry(monkeypatch):
+def test_resilient_http_client_uses_retry():
     responses: list[str] = []
 
     class DummyResponse:
@@ -103,21 +103,19 @@ def test_resilient_http_client_uses_retry(monkeypatch):
             responses.append("raised")
 
     class DummyClient:
-        async def __aenter__(self) -> "DummyClient":
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb) -> None:  # pragma: no cover - nothing to do
-            return None
-
         async def get(self, url: str, **kwargs):
             return DummyResponse()
 
+        async def aclose(self) -> None:
+            responses.append("closed")
+
     async def _run() -> None:
-        monkeypatch.setattr(httpx, "AsyncClient", lambda: DummyClient())
-        client = ResilientHTTPClient()
+        client = ResilientHTTPClient(client=DummyClient())
         response = await client.get("https://example.com")
         assert response.status_code == 200
-        assert responses
+        assert "raised" in responses
+        await client.aclose()
+        assert "closed" in responses
 
     asyncio.run(_run())
 
@@ -139,6 +137,35 @@ def test_plugin_manager_registers_and_runs_adapter():
     assert manager.list_metadata(domain=AdapterDomain.BIOMEDICAL)
     estimate = manager.estimate_cost("example", request)
     assert estimate.estimated_requests >= 1
+
+
+def test_plugin_manager_execute_returns_state_and_respects_strict():
+    manager = AdapterPluginManager()
+
+    class InvalidAdapter(ExampleAdapterPlugin):
+        metadata = AdapterMetadata(
+            name="invalid-example",
+            version="1.0.0",
+            domain=AdapterDomain.BIOMEDICAL,
+            summary="Invalid adapter for testing",
+        )
+
+        def validate(self, response, request):
+            return ValidationOutcome(valid=False, errors=["boom"])
+
+    manager.register(InvalidAdapter())
+    request = AdapterRequest(
+        tenant_id="tenant-1",
+        correlation_id="corr-1",
+        domain=AdapterDomain.BIOMEDICAL,
+    )
+
+    state = manager.execute("invalid-example", request, strict=False)
+    assert state.validation is not None and state.validation.valid is False
+    assert state.response is not None
+
+    with pytest.raises(AdapterPluginError):
+        manager.execute("invalid-example", request)
 
 
 def test_register_biomedical_plugins_groups_by_domain():

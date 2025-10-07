@@ -169,6 +169,16 @@ med/embeddings/
 **Namespace:** `dense.qwen3.4096.v1` (or `.1024.` if you choose a smaller checkpoint).
 **Indexing:** Qdrant with optional **scalar quantization** to reduce 4k‑D footprint; keep snapshots on.
 
+### E2a) Framework adapters (LangChain, Haystack, LlamaIndex)
+
+Framework-backed embedders are normalised through the shared
+`DelegatedFrameworkAdapter`. Each adapter simply declares the delegate
+class path and a fallback order of delegate methods (e.g.,
+`embed_documents`, `embed_query`, `get_text_embedding`). The helper handles
+delegate loading, L2 normalisation, offset extraction, and construction of
+`EmbeddingRecord` objects so framework integrations automatically inherit
+namespace validation and metadata propagation.
+
 ### E3) Late‑interaction (ColBERT‑v2)
 
 **Adapter:** `colbert_ragatouille.py`.

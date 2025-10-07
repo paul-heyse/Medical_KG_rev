@@ -95,6 +95,7 @@ class IngestionService:
                 "chunker": getattr(chunk, "chunker", "unknown"),
                 "granularity": getattr(chunk, "granularity", "paragraph"),
                 "text": getattr(chunk, "body", ""),
+                "tenant_id": tenant_id,
             }
             raw_meta = getattr(chunk, "metadata", getattr(chunk, "meta", {})) or {}
             base_metadata.update(dict(raw_meta))

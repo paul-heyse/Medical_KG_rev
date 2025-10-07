@@ -63,3 +63,7 @@ def test_ingestion_pipeline_persists_embeddings() -> None:
     )
     assert result.stored["single_vector"] >= 1
     assert result.metrics.total == 1
+    namespace_state = store._state["tenant"][namespace]
+    assert namespace_state.metadata
+    stored_meta = next(iter(namespace_state.metadata.values()))
+    assert stored_meta.get("tenant_id") == "tenant"

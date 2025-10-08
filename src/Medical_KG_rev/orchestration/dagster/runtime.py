@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 from uuid import uuid4
 
 from dagster import (
@@ -42,7 +42,7 @@ from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
-from Medical_KG_rev.orchestration.stages.contracts import StageContext
+from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -77,14 +77,14 @@ class StageFactory:
 
 @op(
     name="bootstrap",
-    out=Out(dict),
+    out=Out(PipelineState),
     config_schema={
         "context": dict,
         "adapter_request": dict,
         "payload": dict,
     },
 )
-def bootstrap_op(context) -> dict[str, Any]:
+def bootstrap_op(context) -> PipelineState:
     """Initialise the orchestration state for a Dagster run."""
 
     ctx_payload = context.op_config["context"]
@@ -102,90 +102,17 @@ def bootstrap_op(context) -> dict[str, Any]:
     )
     adapter_request = AdapterRequest.model_validate(adapter_payload)
 
-    state = {
-        "context": stage_ctx,
-        "adapter_request": adapter_request,
-        "payload": payload,
-        "results": {},
-        "job_id": stage_ctx.job_id,
-    }
+    state = PipelineState.initialise(
+        context=stage_ctx,
+        adapter_request=adapter_request,
+        payload=payload,
+    )
     logger.debug(
         "dagster.bootstrap.initialised",
         tenant_id=stage_ctx.tenant_id,
         pipeline=stage_ctx.pipeline_name,
     )
     return state
-
-
-def _stage_state_key(stage_type: str) -> str:
-    return {
-        "ingest": "payloads",
-        "parse": "document",
-        "ir-validation": "document",
-        "chunk": "chunks",
-        "embed": "embedding_batch",
-        "index": "index_receipt",
-        "extract": "extraction",
-        "knowledge-graph": "graph_receipt",
-    }.get(stage_type, stage_type)
-
-
-def _apply_stage_output(
-    stage_type: str,
-    stage_name: str,
-    state: dict[str, Any],
-    output: Any,
-) -> dict[str, Any]:
-    if stage_type == "ingest":
-        state["payloads"] = output
-    elif stage_type in {"parse", "ir-validation"}:
-        state["document"] = output
-    elif stage_type == "chunk":
-        state["chunks"] = output
-    elif stage_type == "embed":
-        state["embedding_batch"] = output
-    elif stage_type == "index":
-        state["index_receipt"] = output
-    elif stage_type == "extract":
-        entities, claims = output
-        state["entities"] = entities
-        state["claims"] = claims
-    elif stage_type == "knowledge-graph":
-        state["graph_receipt"] = output
-    else:  # pragma: no cover - guard for future expansion
-        state[_stage_state_key(stage_type)] = output
-    state.setdefault("results", {})[stage_name] = {
-        "type": stage_type,
-        "output": state.get(_stage_state_key(stage_type)),
-    }
-    return state
-
-
-def _infer_output_count(stage_type: str, output: Any) -> int:
-    if output is None:
-        return 0
-    if stage_type in {"ingest", "chunk"} and isinstance(output, Sequence):
-        return len(output)
-    if stage_type in {"parse", "ir-validation"}:
-        return 1
-    if stage_type == "embed" and hasattr(output, "vectors"):
-        vectors = getattr(output, "vectors")
-        if isinstance(vectors, Sequence):
-            return len(vectors)
-    if stage_type == "index" and hasattr(output, "chunks_indexed"):
-        indexed = getattr(output, "chunks_indexed")
-        if isinstance(indexed, int):
-            return indexed
-    if stage_type == "extract" and isinstance(output, tuple) and len(output) == 2:
-        entities, claims = output
-        entity_count = len(entities) if isinstance(entities, Sequence) else 0
-        claim_count = len(claims) if isinstance(claims, Sequence) else 0
-        return entity_count + claim_count
-    if stage_type == "knowledge-graph" and hasattr(output, "nodes_written"):
-        nodes = getattr(output, "nodes_written", 0)
-        if isinstance(nodes, int):
-            return nodes
-    return 1
 
 
 def _make_stage_op(
@@ -198,8 +125,8 @@ def _make_stage_op(
 
     @op(
         name=stage_name,
-        ins={"state": In(dict)},
-        out=Out(dict),
+        ins={"state": In(PipelineState)},
+        out=Out(PipelineState),
         required_resource_keys={
             "stage_factory",
             "resilience_policies",
@@ -207,7 +134,7 @@ def _make_stage_op(
             "event_emitter",
         },
     )
-    def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
+    def _stage_op(context, state: PipelineState) -> PipelineState:
         stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 
@@ -220,7 +147,7 @@ def _make_stage_op(
         }
 
         def _on_retry(retry_state: Any) -> None:
-            job_identifier = state.get("job_id")
+            job_identifier = state.job_id
             if job_identifier:
                 ledger.increment_retry(job_identifier, stage_name)
             sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
@@ -228,7 +155,7 @@ def _make_stage_op(
             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
             reason = str(error) if error else "retry"
             emitter.emit_retrying(
-                state["context"],
+                state.context,
                 stage_name,
                 attempt=attempt_number,
                 backoff_ms=int(sleep_seconds * 1000),
@@ -252,57 +179,47 @@ def _make_stage_op(
 
         wrapped = policy_loader.apply(policy_name, stage_name, execute, hooks=hooks)
 
-        stage_ctx: StageContext = state["context"]
-        job_id = stage_ctx.job_id or state.get("job_id")
+        stage_ctx: StageContext = state.context
+        job_id = state.job_id or stage_ctx.job_id
 
         initial_attempt = 1
         if job_id:
             entry = ledger.mark_stage_started(job_id, stage_name)
             initial_attempt = entry.retry_count_per_stage.get(stage_name, 0) + 1
+            state.job_id = entry.job_id
+            stage_ctx.job_id = entry.job_id
         emitter.emit_started(stage_ctx, stage_name, attempt=initial_attempt)
 
         start_time = time.perf_counter()
 
         try:
-            if stage_type == "ingest":
-                adapter_request: AdapterRequest = state["adapter_request"]
-                result = wrapped(stage_ctx, adapter_request)
-            elif stage_type in {"parse", "ir-validation"}:
-                payloads = state.get("payloads", [])
-                result = wrapped(stage_ctx, payloads)
-            elif stage_type == "chunk":
-                document = state.get("document")
-                result = wrapped(stage_ctx, document)
-            elif stage_type == "embed":
-                chunks = state.get("chunks", [])
-                result = wrapped(stage_ctx, chunks)
-            elif stage_type == "index":
-                batch = state.get("embedding_batch")
-                result = wrapped(stage_ctx, batch)
-            elif stage_type == "extract":
-                document = state.get("document")
-                result = wrapped(stage_ctx, document)
-            elif stage_type == "knowledge-graph":
-                entities = state.get("entities", [])
-                claims = state.get("claims", [])
-                result = wrapped(stage_ctx, entities, claims)
-            else:  # pragma: no cover - guard for future expansion
-                upstream = state.get(_stage_state_key(stage_type))
-                result = wrapped(stage_ctx, upstream)
+            state.validate_transition(stage_type)
+            result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
             if job_id:
                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
+            state.record_stage_metrics(
+                stage_name,
+                stage_type=stage_type,
+                attempts=attempts,
+                error=str(exc),
+            )
             raise
 
-        updated = dict(state)
-        _apply_stage_output(stage_type, stage_name, updated, result)
-        output = updated.get(_stage_state_key(stage_type))
+        state.apply_stage_output(stage_type, stage_name, result)
         attempts = execution_state.get("attempts") or 1
         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
         duration_ms = int(duration_seconds * 1000)
-        output_count = _infer_output_count(stage_type, output)
+        output_count = state.infer_output_count(stage_type, result)
+        state.record_stage_metrics(
+            stage_name,
+            stage_type=stage_type,
+            attempts=attempts,
+            duration_ms=duration_ms,
+            output_count=output_count,
+        )
 
         if job_id:
             ledger.update_metadata(
@@ -330,7 +247,7 @@ def _make_stage_op(
             duration_ms=duration_ms,
             output_count=output_count,
         )
-        return updated
+        return state
 
     return _stage_op
 
@@ -423,7 +340,7 @@ class DagsterRunResult:
 
     pipeline: str
     success: bool
-    state: dict[str, Any]
+    state: PipelineState
     dagster_result: ExecuteInProcessResult
 
 

@@ -9,6 +9,7 @@ from Medical_KG_rev.gateway.services import GatewayService
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration.dagster.configuration import PipelineConfigLoader
 from Medical_KG_rev.orchestration.dagster.runtime import DagsterRunResult
+from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 from Medical_KG_rev.orchestration.ledger import JobLedger
 
 
@@ -32,10 +33,15 @@ class _StubOrchestrator:
                 "payload": payload,
             }
         )
+        state = PipelineState.initialise(
+            context=context,
+            adapter_request=adapter_request,
+            payload=payload,
+        )
         return DagsterRunResult(
             pipeline=pipeline,
             success=True,
-            state={"context": context, "payload": payload},
+            state=state,
             dagster_result=SimpleNamespace(success=True),
         )
 
@@ -97,6 +103,7 @@ def test_submit_dagster_job_records_pdf_metadata(gateway_service: GatewayService
     assert status.status == "completed"
     assert status.metadata["pipeline"] == "pdf-two-phase"
     assert status.metadata["duplicate"] is False
+    assert status.metadata["state"]["context"]["pipeline_name"] == "pdf-two-phase"
     assert orchestrator.submissions, "expected Dagster submission"
     submission = orchestrator.submissions[0]
     assert submission["pipeline"] == "pdf-two-phase"

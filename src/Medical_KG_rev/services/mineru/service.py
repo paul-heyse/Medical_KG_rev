@@ -324,6 +324,12 @@ class MineruProcessor:
         if not healthy:
             raise MineruGpuUnavailableError()
 
+    @property
+    def vllm_client(self) -> VLLMClient:
+        """Expose the configured vLLM client for observability and testing."""
+
+        return self._vllm_client
+
 
 class MineruGrpcService:
     """Async gRPC servicer bridging proto definitions to the processor."""

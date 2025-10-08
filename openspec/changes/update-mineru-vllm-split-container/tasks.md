@@ -1146,7 +1146,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 4.2 Integration Tests
 
-- [ ] **4.2.1** Create vLLM integration test
+- [x] **4.2.1** Create vLLM integration test
   - **File**: `tests/integration/test_vllm_integration.py`
   - **Specification**:
 
@@ -1204,12 +1204,12 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 4.3 End-to-End Tests
 
-- [ ] **4.3.1** Create E2E PDF processing test
+- [x] **4.3.1** Create E2E PDF processing test
   - **File**: `tests/integration/test_pdf_e2e.py`
   - **Specification**: Process sample PDF through full pipeline (worker → vLLM → output), validate structure
   - **Validation**: `pytest tests/integration/test_pdf_e2e.py -m e2e -v`
 
-- [ ] **4.3.2** Create baseline comparison test
+- [x] **4.3.2** Create baseline comparison test
   - **File**: `tests/integration/test_quality_baseline.py`
   - **Specification**: Process 20 PDFs, compare outputs with baseline, assert >95% similarity
   - **Validation**: `pytest tests/integration/test_quality_baseline.py -v`
@@ -1283,15 +1283,15 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 5.1 Local Development Deployment
 
-- [ ] **5.1.1** Deploy vLLM server locally
+- [x] **5.1.1** Deploy vLLM server locally
   - **Command**: `docker-compose -f docker-compose.vllm.yml up -d`
   - **Validation**: `curl http://localhost:8000/health`
 
-- [ ] **5.1.2** Update workers in main docker-compose
+- [x] **5.1.2** Update workers in main docker-compose
   - **Command**: `docker-compose up -d --build mineru-worker`
   - **Validation**: `docker-compose ps | grep mineru-worker`
 
-- [ ] **5.1.3** Run smoke test
+- [x] **5.1.3** Run smoke test
   - **Command**: `bash scripts/test_vllm_api.sh && pytest tests/integration/test_pdf_e2e.py -m e2e`
   - **Validation**: All tests pass
 
@@ -1326,7 +1326,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
   - **Command**: `curl -X POST http://grafana:3000/api/dashboards/import -d @ops/monitoring/grafana/dashboards/vllm-server.json`
   - **Validation**: Dashboard appears in Grafana UI
 
-- [ ] **5.3.2** Apply Prometheus alert rules
+- [x] **5.3.2** Apply Prometheus alert rules
   - **Command**: `kubectl apply -f ops/monitoring/alerts-vllm.yml`
   - **Validation**: `promtool check rules ops/monitoring/alerts-vllm.yml`
 
@@ -1348,7 +1348,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
   - **Command**: `python tests/performance/vllm_load_test.py`
   - **Validation**: P95 latency <10s, no errors
 
-- [ ] **6.1.3** Run quality comparison test
+- [x] **6.1.3** Run quality comparison test
   - **Command**: `pytest tests/integration/test_quality_baseline.py -v`
   - **Validation**: ≥95% similarity with baseline
 

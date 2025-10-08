@@ -29,7 +29,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 1.1 Docker Configuration
 
-- [ ] **1.1.1** Create vLLM server Docker Compose configuration
+- [x] **1.1.1** Create vLLM server Docker Compose configuration
   - **File**: `docker-compose.vllm.yml`
   - **Specification**:
 
@@ -78,12 +78,12 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `docker-compose -f docker-compose.vllm.yml up -d && curl http://localhost:8000/health`
 
-- [ ] **1.1.2** Add vLLM server to main docker-compose.yml
+- [x] **1.1.2** Add vLLM server to main docker-compose.yml
   - **File**: `docker-compose.yml`
   - **Action**: Add vLLM server service definition from above, ensure it connects to `medical-kg-net`
   - **Validation**: `docker-compose up -d vllm-server && docker ps | grep vllm-server`
 
-- [ ] **1.1.3** Create vLLM server test script
+- [x] **1.1.3** Create vLLM server test script
   - **File**: `scripts/test_vllm_api.sh`
   - **Specification**:
 
@@ -111,7 +111,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 1.2 Kubernetes Configuration
 
-- [ ] **1.2.1** Create vLLM server Deployment manifest
+- [x] **1.2.1** Create vLLM server Deployment manifest
   - **File**: `ops/k8s/base/deployment-vllm-server.yaml`
   - **Specification**:
 
@@ -206,7 +206,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/deployment-vllm-server.yaml --dry-run=client`
 
-- [ ] **1.2.2** Create vLLM server Service manifest
+- [x] **1.2.2** Create vLLM server Service manifest
   - **File**: `ops/k8s/base/service-vllm-server.yaml`
   - **Specification**:
 
@@ -231,7 +231,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/service-vllm-server.yaml --dry-run=client`
 
-- [ ] **1.2.3** Create vLLM server ConfigMap
+- [x] **1.2.3** Create vLLM server ConfigMap
   - **File**: `ops/k8s/base/configmap-vllm-server.yaml`
   - **Specification**:
 
@@ -251,7 +251,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/configmap-vllm-server.yaml --dry-run=client`
 
-- [ ] **1.2.4** Create NetworkPolicy for vLLM server
+- [x] **1.2.4** Create NetworkPolicy for vLLM server
   - **File**: `ops/k8s/base/networkpolicy-vllm-server.yaml`
   - **Specification**:
 
@@ -279,7 +279,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/networkpolicy-vllm-server.yaml --dry-run=client`
 
-- [ ] **1.2.5** Create PersistentVolumeClaim for HuggingFace cache
+- [x] **1.2.5** Create PersistentVolumeClaim for HuggingFace cache
   - **File**: `ops/k8s/base/pvc-huggingface-cache.yaml`
   - **Specification**:
 
@@ -302,7 +302,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 1.3 Monitoring Configuration
 
-- [ ] **1.3.1** Create Prometheus ServiceMonitor for vLLM
+- [x] **1.3.1** Create Prometheus ServiceMonitor for vLLM
   - **File**: `ops/k8s/base/servicemonitor-vllm-server.yaml`
   - **Specification**:
 
@@ -327,7 +327,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/servicemonitor-vllm-server.yaml --dry-run=client`
 
-- [ ] **1.3.2** Create Grafana dashboard for vLLM server
+- [x] **1.3.2** Create Grafana dashboard for vLLM server
   - **File**: `ops/monitoring/grafana/dashboards/vllm-server.json`
   - **Specification**: Dashboard with panels for:
     - GPU utilization (gauge, 0-100%)
@@ -340,7 +340,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
     - KV cache usage (gauge)
   - **Validation**: Import dashboard into Grafana, verify panels render
 
-- [ ] **1.3.3** Create Prometheus alerting rules for vLLM
+- [x] **1.3.3** Create Prometheus alerting rules for vLLM
   - **File**: `ops/monitoring/alerts-vllm.yml`
   - **Specification**:
 
@@ -402,7 +402,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 2.1 VLLMClient Core Implementation
 
-- [ ] **2.1.1** Create VLLMClient class
+- [x] **2.1.1** Create VLLMClient class
   - **File**: `src/Medical_KG_rev/services/mineru/vllm_client.py`
   - **Specification**:
 
@@ -563,7 +563,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `python -m pytest tests/services/mineru/test_vllm_client.py -v`
 
-- [ ] **2.1.2** Create Prometheus metrics for VLLMClient
+- [x] **2.1.2** Create Prometheus metrics for VLLMClient
   - **File**: `src/Medical_KG_rev/observability/metrics.py`
   - **Action**: Add these metrics to existing metrics module:
 
@@ -598,7 +598,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 2.2 Circuit Breaker Implementation
 
-- [ ] **2.2.1** Create CircuitBreaker class
+- [x] **2.2.1** Create CircuitBreaker class
   - **File**: `src/Medical_KG_rev/services/mineru/circuit_breaker.py`
   - **Specification**:
 
@@ -745,7 +745,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `python -m pytest tests/services/mineru/test_circuit_breaker.py -v`
 
-- [ ] **2.2.2** Integrate CircuitBreaker with VLLMClient
+- [x] **2.2.2** Integrate CircuitBreaker with VLLMClient
   - **File**: `src/Medical_KG_rev/services/mineru/vllm_client.py`
   - **Action**: Add circuit breaker to VLLMClient:
 
@@ -790,7 +790,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 3.1 Configuration Implementation
 
-- [ ] **3.1.1** Update mineru configuration file
+- [x] **3.1.1** Update mineru configuration file
   - **File**: `config/mineru.yaml`
   - **Specification**:
 
@@ -828,7 +828,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: Config loads without errors
 
-- [ ] **3.1.2** Create Pydantic config models
+- [x] **3.1.2** Create Pydantic config models
   - **File**: `src/Medical_KG_rev/models/config/mineru.py`
   - **Specification**:
 
@@ -1014,7 +1014,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `kubectl apply -f ops/k8s/base/deployment-mineru-workers.yaml --dry-run=client`
 
-- [ ] **3.3.2** Update worker Docker image
+- [x] **3.3.2** Update worker Docker image
   - **File**: `ops/docker/Dockerfile.mineru-worker`
   - **Specification**: Remove vLLM and GPU dependencies:
 
@@ -1049,7 +1049,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 4.1 Unit Tests
 
-- [ ] **4.1.1** Create VLLMClient unit tests
+- [x] **4.1.1** Create VLLMClient unit tests
   - **File**: `tests/services/mineru/test_vllm_client.py`
   - **Specification**:
 
@@ -1139,7 +1139,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `pytest tests/services/mineru/test_vllm_client.py -v`
 
-- [ ] **4.1.2** Create CircuitBreaker unit tests
+- [x] **4.1.2** Create CircuitBreaker unit tests
   - **File**: `tests/services/mineru/test_circuit_breaker.py`
   - **Specification**: Tests for all state transitions (CLOSED→OPEN, OPEN→HALF_OPEN, HALF_OPEN→CLOSED, HALF_OPEN→OPEN)
   - **Validation**: `pytest tests/services/mineru/test_circuit_breaker.py -v`

@@ -1,0 +1,163 @@
+{
+  "title": "vLLM Server Overview",
+  "uid": "vllm-server",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "type": "gauge",
+      "title": "GPU Utilization",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg(vllm_gpu_utilization_ratio) * 100",
+          "legendFormat": "GPU"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "GPU Memory Usage (GB)",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 32,
+          "unit": "decgbytes",
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 24 },
+              { "color": "red", "value": 30 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg(vllm_gpu_memory_usage_bytes) / 1024 / 1024 / 1024",
+          "legendFormat": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Request Queue Depth",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "avg(vllm_request_queue_depth)",
+          "legendFormat": "Queue Depth"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Latency (P50/P95/P99)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(vllm_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(vllm_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(vllm_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Throughput (req/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(vllm_requests_total[1m]))",
+          "legendFormat": "Requests"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate (%)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(vllm_request_errors_total[5m])) / sum(rate(vllm_requests_total[5m])) * 100",
+          "legendFormat": "Error Rate"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Model Loaded",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "No" }, "1": { "text": "Yes" } } }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "max(vllm_model_loaded)",
+          "legendFormat": "Loaded"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "KV Cache Usage (%)",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg(vllm_kv_cache_usage_ratio) * 100",
+          "legendFormat": "KV Cache"
+        }
+      ]
+    }
+  ]
+}

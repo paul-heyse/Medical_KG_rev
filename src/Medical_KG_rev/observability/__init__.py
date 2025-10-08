@@ -7,10 +7,37 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from ..utils.logging import configure_logging
-from .metrics import register_metrics
-from .sentry import initialise_sentry
-from .tracing import configure_tracing, instrument_application
+try:  # pragma: no cover - optional observability dependencies
+    from ..utils.logging import configure_logging
+except Exception:  # pragma: no cover - provide no-op when logging extras unavailable
+    import logging
+
+    def configure_logging(*_, **__) -> None:  # type: ignore[override]
+        logging.getLogger(__name__).warning(
+            "observability.logging.unavailable",
+            message="Logging configuration skipped due to missing dependencies",
+        )
+
+try:  # pragma: no cover - metrics module optional in minimal envs
+    from .metrics import register_metrics
+except Exception:  # pragma: no cover - provide noop fallback
+    def register_metrics(*_, **__) -> None:  # type: ignore[override]
+        return None
+
+try:  # pragma: no cover - sentry optional
+    from .sentry import initialise_sentry
+except Exception:  # pragma: no cover - provide noop fallback
+    def initialise_sentry(*_, **__) -> None:  # type: ignore[override]
+        return None
+
+try:  # pragma: no cover - tracing optional
+    from .tracing import configure_tracing, instrument_application
+except Exception:  # pragma: no cover - provide noop fallback
+    def configure_tracing(*_, **__) -> None:  # type: ignore[override]
+        return None
+
+    def instrument_application(*_, **__) -> None:  # type: ignore[override]
+        return None
 
 if TYPE_CHECKING:  # pragma: no cover - import hints only
     from fastapi import FastAPI

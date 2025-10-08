@@ -163,11 +163,11 @@ PDF Download → MinerU (GPU) → pdf_ir_ready → HALT
 ```txt
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0
 transformers>=4.38.0
+pydantic>=2.6.0
 ```
 
 ### Removed Dependencies
@@ -181,7 +181,7 @@ transformers>=4.38.0
 | Risk | Mitigation |
 |------|------------|
 | Profile tuning complexity | Start with conservative defaults, iterate based on metrics |
-| scispaCy performance overhead (10x slower) | Use syntok for batches, scispaCy only when biomedical accuracy critical |
+| Hugging Face tokenizer availability | Download tokenizer artifacts during deployment and configure `MEDICAL_KG_SENTENCE_MODEL` |
 | MinerU gate workflow change | Document runbook, add Dagster UI shortcuts, implement auto-sensor |
 | Library version management | Pin exact versions, test upgrades in staging, maintain golden output tests |
 

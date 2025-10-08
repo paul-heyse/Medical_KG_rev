@@ -310,6 +310,52 @@ def create_app() -> FastAPI:
 - Event-driven architecture support
 - AsyncAPI 3.0 specification compliance
 
+### 3.5 Clinical-Aware Chunking Architecture
+
+The legacy bespoke chunkers have been fully decommissioned in favor of a
+library-backed runtime with strict metadata guarantees. The new architecture is
+centered around a lightweight ``ChunkerPort`` protocol that exposes a
+``chunk(document, profile)`` method. Concrete implementations are registered via
+``register_defaults()`` during service initialization so callers can simply
+invoke ``chunk_document``.
+
+Key components:
+
+- **ChunkerPort Protocol** – Defines the contract for chunkers and enforces
+  metadata requirements (section labels, intent hints, provenance offsets).
+- **Runtime Registry** – Maps profile names to concrete chunker classes and
+  injects shared filters/validators before returning results.
+- **Profile Loader** – YAML-driven configuration under
+  ``config/chunking/profiles/*.yaml`` describing domain, target token budgets,
+  sentence splitter, and filters.
+- **Sentence Segmentation** – Delegates to Hugging Face tokenizers configured
+  via the ``MEDICAL_KG_SENTENCE_MODEL`` environment variable with a heuristics
+  fallback for development.
+- **Filter Pipeline** – Normalizes documents prior to chunking (boilerplate
+  removal, reference pruning, table preservation) so downstream systems receive
+  clean inputs.
+
+Example usage:
+
+```python
+from Medical_KG_rev.services.chunking import chunk_document
+
+chunks = chunk_document(document, profile="pmc-imrad")
+assert all(chunk.metadata["chunking_profile"] == "pmc-imrad" for chunk in chunks)
+```
+
+Profile summary:
+
+| Profile | Chunker Type | Sentence Splitter | Intent Highlights |
+|---------|--------------|-------------------|-------------------|
+| ``pmc-imrad`` | LangChain recursive splitter respecting sections/tables | Hugging Face tokenizer | Abstract/IMRaD narrative vs. outcome emphasis |
+| ``ctgov-registry`` | Domain-specific registry chunker | syntok | Eligibility, outcome, AE, results |
+| ``spl-label`` | SPL-aware section chunker with LOINC mapping | Hugging Face tokenizer | Indications, dosage, safety, adverse reactions |
+| ``guideline`` | Recommendation/evidence chunker | syntok | Recommendation statements with attached evidence |
+
+The runtime validates every chunk with a Pydantic schema before returning it to
+callers, ensuring ordered offsets and provenance metadata are always present.
+
 ### 4. Biomedical Adapter Ecosystem
 
 #### 4.1 Adapter Plugin Framework Architecture
@@ -1005,17 +1051,25 @@ spec:
 **Chunking Profiles:**
 
 ```yaml
-profiles:
-  default:
-    enable_multi_granularity: true
-    primary:
-      strategy: semantic_splitter
-      granularity: paragraph
-  pmc:
-    enable_multi_granularity: true
-    primary:
-      strategy: section_aware
-      granularity: section
+# config/chunking/profiles/pmc-imrad.yaml
+name: pmc-imrad
+domain: literature
+chunker_type: langchain_recursive
+target_tokens: 450
+overlap_tokens: 50
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: huggingface
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+  - exclude_references
+  - deduplicate_page_furniture
+metadata:
+  intent_hints:
+    Abstract: narrative
+    Results: outcome
 ```
 
 ### 13. Testing Strategy
@@ -1498,46 +1552,28 @@ namespaces:
       max_doc_tokens: 180
 ```
 
-**Chunking Configuration** (`chunking.yaml`)
+**Chunking Configuration** (`config/chunking/profiles/*.yaml`)
 
 ```yaml
-default_profile: default
-
-profiles:
-  default:
-    enable_multi_granularity: true
-    primary:
-      strategy: semantic_splitter
-      granularity: paragraph
-      params:
-        tau_coh: 0.82
-        min_tokens: 200
-    auxiliaries:
-      - strategy: section_aware
-        granularity: section
-        params:
-          target_tokens: 450
-          min_tokens: 180
-      - strategy: sliding_window
-        granularity: window
-        params:
-          target_tokens: 512
-          overlap_ratio: 0.25
-
-  pmc:
-    enable_multi_granularity: true
-    primary:
-      strategy: section_aware
-      granularity: section
-      params:
-        target_tokens: 420
-        min_tokens: 160
-    auxiliaries:
-      - strategy: semantic_splitter
-        granularity: paragraph
-        params:
-          tau_coh: 0.8
-          min_tokens: 180
+# config/chunking/profiles/ctgov-registry.yaml
+name: ctgov-registry
+domain: registry
+chunker_type: ctgov_registry
+target_tokens: 300
+overlap_tokens: 0
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: syntok
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+metadata:
+  intent_hints:
+    Eligibility Criteria: eligibility
+    Outcome Measures: outcome
+    Adverse Events: ae
+    Results: results
 ```
 
 #### Environment Variables

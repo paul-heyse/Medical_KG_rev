@@ -6,6 +6,7 @@ __all__ = [
     "MineruRequest",
     "MineruResponse",
     "MineruOutOfMemoryError",
+    "MineruGpuUnavailableError",
 ]
 
 
@@ -13,6 +14,7 @@ def __getattr__(name: str):  # pragma: no cover - simple lazy import helper
     if name in __all__:
         from .service import (
             MineruGrpcService,
+            MineruGpuUnavailableError,
             MineruOutOfMemoryError,
             MineruProcessor,
             MineruRequest,
@@ -25,5 +27,6 @@ def __getattr__(name: str):  # pragma: no cover - simple lazy import helper
             "MineruRequest": MineruRequest,
             "MineruResponse": MineruResponse,
             "MineruOutOfMemoryError": MineruOutOfMemoryError,
+            "MineruGpuUnavailableError": MineruGpuUnavailableError,
         }[name]
     raise AttributeError(name)

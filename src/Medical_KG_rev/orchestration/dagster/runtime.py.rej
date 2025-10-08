@@ -1,0 +1,772 @@
+diff a/src/Medical_KG_rev/orchestration/dagster/runtime.py b/src/Medical_KG_rev/orchestration/dagster/runtime.py	(rejected hunks)
+@@ -1,237 +1,451 @@
+ """Dagster runtime orchestration primitives."""
+
+ from __future__ import annotations
+
+-from dataclasses import dataclass
++import importlib
++import warnings
++from collections.abc import Iterable
++from dataclasses import dataclass, field, replace
+ import re
+ import time
+ from pathlib import Path
+-from typing import Any, Callable, Mapping, Sequence
++from typing import Any, Callable, Mapping
+ from uuid import uuid4
+
+ from dagster import (
+     Definitions,
+     ExecuteInProcessResult,
+     In,
+     Out,
+     ResourceDefinition,
+     RunRequest,
+     SensorEvaluationContext,
+     SkipReason,
+     graph,
+     op,
+     sensor,
+ )
+
+ from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
+ from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
+ from Medical_KG_rev.adapters.plugins.models import AdapterRequest
+ from Medical_KG_rev.orchestration.dagster.configuration import (
+     PipelineConfigLoader,
+     PipelineTopologyConfig,
+     StageExecutionHooks,
+     ResiliencePolicyLoader,
+     StageDefinition,
++    StageMetadataOverrides,
++)
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StagePlugin,
++    StageRegistration,
++    StageRegistry,
++    StageRegistryError,
+ )
+ from Medical_KG_rev.orchestration.dagster.stages import (
+     HaystackPipelineResource,
+     build_default_stage_factory,
+     create_default_pipeline_resource,
+ )
+ from Medical_KG_rev.orchestration.events import StageEventEmitter
+ from Medical_KG_rev.orchestration.kafka import KafkaClient
+ from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
+ from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
+ from Medical_KG_rev.orchestration.stages.contracts import StageContext
++from Medical_KG_rev.observability.metrics import (
++    STAGE_METADATA_OVERRIDE_APPLIED,
++    STAGE_PLUGIN_REGISTRATION_FAILURES,
++    STAGE_PLUGIN_REGISTRATIONS,
++)
+ from Medical_KG_rev.utils.logging import get_logger
+
+ logger = get_logger(__name__)
+
+
+ class StageResolutionError(RuntimeError):
+     """Raised when a stage cannot be resolved from the registry."""
+
+
+-@dataclass(slots=True)
++@dataclass(slots=True, init=False)
+ class StageFactory:
+     """Resolve orchestration stages by topology stage type."""
+
+-    registry: Mapping[str, Callable[[StageDefinition], object]]
++    _registry: StageRegistry
++    _pipeline_plugins: dict[str, set[str]]
++    _metadata_overrides: dict[str, dict[str, StageMetadata]]
++
++    def __init__(self, registry: StageRegistry | None = None) -> None:
++        self._registry = registry or StageRegistry()
++        self._pipeline_plugins = {}
++        self._metadata_overrides = {}
++
++    @property
++    def registry(self) -> StageRegistry:
++        warnings.warn(
++            "Direct access to StageFactory.registry is deprecated; use register_stage() or load_plugins().",
++            DeprecationWarning,
++            stacklevel=2,
++        )
++        return self._registry
+
+     def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+         try:
+-            factory = self.registry[stage.stage_type]
+-        except KeyError as exc:  # pragma: no cover - defensive guard
++            builder = self._registry.get_builder(stage.stage_type)
++            metadata = self._registry.get_metadata(stage.stage_type)
++        except StageRegistryError as exc:  # pragma: no cover - defensive guard
+             raise StageResolutionError(
+                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+             ) from exc
+-        instance = factory(stage)
++        instance = builder(stage)
+         logger.debug(
+             "dagster.stage.resolved",
+             pipeline=pipeline,
+             stage=stage.name,
+             stage_type=stage.stage_type,
++            description=metadata.description,
+         )
+         return instance
+
++    def get_metadata(self, stage_type: str) -> StageMetadata:
++        return self._registry.get_metadata(stage_type)
++
++    def metadata_for_stage(self, pipeline: str, stage: StageDefinition) -> StageMetadata:
++        overrides = self._metadata_overrides.get(pipeline, {})
++        if stage.name in overrides:
++            return overrides[stage.name]
++        try:
++            return self._registry.get_metadata(stage.stage_type)
++        except StageRegistryError as exc:
++            raise StageResolutionError(
++                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
++            ) from exc
++
++    def register_stage(
++        self,
++        *,
++        metadata: StageMetadata,
++        builder: Callable[[StageDefinition], object],
++        replace: bool = False,
++    ) -> None:
++        self._registry.register_stage(metadata=metadata, builder=builder, replace=replace)
++
++    def load_plugins(self) -> list[str]:
++        return self._registry.load_plugins()
++
++    def apply_pipeline_extensions(self, topology: PipelineTopologyConfig) -> list[str]:
++        start = time.perf_counter()
++        loaded: list[str] = []
++        cache = self._pipeline_plugins.setdefault(topology.name, set())
++        for plugin_ref in topology.plugins.stage_plugins:
++            if plugin_ref.identifier in cache and not plugin_ref.replace:
++                logger.debug(
++                    "dagster.stage.plugins.pipeline_cached",
++                    pipeline=topology.name,
++                    plugin=plugin_ref.identifier,
++                )
++                continue
++            try:
++                plugin_callable = self._load_stage_plugin(plugin_ref.target)
++            except Exception as exc:
++                logger.warning(
++                    "dagster.stage.plugins.import_failed",
++                    pipeline=topology.name,
++                    target=plugin_ref.target,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="import_error",
++                ).inc()
++                continue
++            try:
++                registrations = plugin_callable()
++            except Exception as exc:
++                logger.warning(
++                    "dagster.stage.plugins.invoke_failed",
++                    pipeline=topology.name,
++                    target=plugin_ref.target,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="call_error",
++                ).inc()
++                continue
++            if isinstance(registrations, Iterable) and not isinstance(registrations, StageRegistration):
++                registration_items = list(registrations)
++            else:
++                registration_items = [registrations]
++            for registration in registration_items:
++                if not isinstance(registration, StageRegistration):
++                    logger.warning(
++                        "dagster.stage.plugins.invalid_registration",
++                        pipeline=topology.name,
++                        plugin=plugin_ref.identifier,
++                        registration_type=type(registration).__name__,
++                    )
++                    STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                        source="pipeline",
++                        reason="invalid",
++                    ).inc()
++                    continue
++                stage_type = registration.metadata.stage_type
++                if not plugin_ref.replace and stage_type in self._registry.stage_types():
++                    logger.debug(
++                        "dagster.stage.plugins.already_registered",
++                        pipeline=topology.name,
++                        stage_type=stage_type,
++                    )
++                    continue
++                try:
++                    self._registry.register(registration, replace=plugin_ref.replace)
++                except StageRegistryError as exc:
++                    logger.warning(
++                        "dagster.stage.plugins.pipeline_conflict",
++                        pipeline=topology.name,
++                        stage_type=stage_type,
++                        error=str(exc),
++                    )
++                    STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                        source="pipeline",
++                        reason="conflict",
++                    ).inc()
++                    continue
++                loaded.append(stage_type)
++                cache.add(plugin_ref.identifier)
++                STAGE_PLUGIN_REGISTRATIONS.labels(
++                    stage_type=stage_type,
++                    source="pipeline",
++                    pipeline=topology.name,
++                ).inc()
++        overrides_applied = 0
++        overrides: dict[str, StageMetadata] = {}
++        for stage in topology.stages:
++            if not stage.metadata_overrides:
++                continue
++            try:
++                base_metadata = self._registry.get_metadata(stage.stage_type)
++            except StageRegistryError as exc:
++                logger.warning(
++                    "dagster.stage.metadata.override_missing",
++                    pipeline=topology.name,
++                    stage=stage.name,
++                    stage_type=stage.stage_type,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="missing_metadata",
++                ).inc()
++                continue
++            updated = self._apply_overrides(base_metadata, stage.metadata_overrides)
++            if updated is base_metadata:
++                continue
++            overrides[stage.name] = updated
++            overrides_applied += 1
++            STAGE_METADATA_OVERRIDE_APPLIED.labels(
++                pipeline=topology.name,
++                stage=stage.name,
++            ).inc()
++        if overrides:
++            self._metadata_overrides[topology.name] = overrides
++        elif topology.name in self._metadata_overrides:
++            self._metadata_overrides.pop(topology.name, None)
++        duration_ms = int((time.perf_counter() - start) * 1000)
++        logger.debug(
++            "dagster.stage.registry.pipeline_extensions",
++            pipeline=topology.name,
++            plugins=len(loaded),
++            overrides=overrides_applied,
++            duration_ms=duration_ms,
++        )
++        return loaded
++
++    def prune_pipelines(self, active: set[str]) -> None:
++        for pipeline in list(self._metadata_overrides):
++            if pipeline not in active:
++                self._metadata_overrides.pop(pipeline, None)
++        for pipeline in list(self._pipeline_plugins):
++            if pipeline not in active:
++                self._pipeline_plugins.pop(pipeline, None)
++
++    def _load_stage_plugin(self, target: str) -> StagePlugin:
++        module_path, _, attribute = target.partition(":")
++        module = importlib.import_module(module_path)
++        obj: Any = module
++        for part in attribute.split("."):
++            obj = getattr(obj, part)
++        if not callable(obj):
++            raise TypeError(f"Stage plugin '{target}' is not callable")
++        return obj  # type: ignore[return-value]
++
++    def _apply_overrides(
++        self,
++        metadata: StageMetadata,
++        overrides: StageMetadataOverrides,
++    ) -> StageMetadata:
++        updates: dict[str, Any] = {}
++        if "state_key" in overrides.model_fields_set:
++            updates["state_key"] = overrides.state_key
++        if "description" in overrides.model_fields_set and overrides.description:
++            updates["description"] = overrides.description
++        if "dependencies" in overrides.model_fields_set and overrides.dependencies is not None:
++            updates["dependencies"] = tuple(overrides.dependencies)
++        if not updates:
++            return metadata
++        return replace(metadata, **updates)
++
+
+ @op(
+     name="bootstrap",
+     out=Out(dict),
+     config_schema={
+         "context": dict,
+         "adapter_request": dict,
+         "payload": dict,
+     },
+ )
+ def bootstrap_op(context) -> dict[str, Any]:
+     """Initialise the orchestration state for a Dagster run."""
+
+     ctx_payload = context.op_config["context"]
+     adapter_payload = context.op_config["adapter_request"]
+     payload = context.op_config.get("payload", {})
+
+     stage_ctx = StageContext(
+         tenant_id=ctx_payload["tenant_id"],
+         job_id=ctx_payload.get("job_id"),
+         doc_id=ctx_payload.get("doc_id"),
+         correlation_id=ctx_payload.get("correlation_id"),
+         metadata=ctx_payload.get("metadata", {}),
+         pipeline_name=ctx_payload.get("pipeline_name"),
+         pipeline_version=ctx_payload.get("pipeline_version"),
+     )
+     adapter_request = AdapterRequest.model_validate(adapter_payload)
+
+     state = {
+         "context": stage_ctx,
+         "adapter_request": adapter_request,
+         "payload": payload,
+         "results": {},
+         "job_id": stage_ctx.job_id,
+     }
+     logger.debug(
+         "dagster.bootstrap.initialised",
+         tenant_id=stage_ctx.tenant_id,
+         pipeline=stage_ctx.pipeline_name,
+     )
+     return state
+
+
+-def _stage_state_key(stage_type: str) -> str:
+-    return {
+-        "ingest": "payloads",
+-        "parse": "document",
+-        "ir-validation": "document",
+-        "chunk": "chunks",
+-        "embed": "embedding_batch",
+-        "index": "index_receipt",
+-        "extract": "extraction",
+-        "knowledge-graph": "graph_receipt",
+-    }.get(stage_type, stage_type)
+-
+-
+ def _apply_stage_output(
+-    stage_type: str,
++    metadata: StageMetadata,
+     stage_name: str,
+     state: dict[str, Any],
+     output: Any,
+ ) -> dict[str, Any]:
+-    if stage_type == "ingest":
+-        state["payloads"] = output
+-    elif stage_type in {"parse", "ir-validation"}:
+-        state["document"] = output
+-    elif stage_type == "chunk":
+-        state["chunks"] = output
+-    elif stage_type == "embed":
+-        state["embedding_batch"] = output
+-    elif stage_type == "index":
+-        state["index_receipt"] = output
+-    elif stage_type == "extract":
+-        entities, claims = output
+-        state["entities"] = entities
+-        state["claims"] = claims
+-    elif stage_type == "knowledge-graph":
+-        state["graph_receipt"] = output
+-    else:  # pragma: no cover - guard for future expansion
+-        state[_stage_state_key(stage_type)] = output
++    metadata.output_handler(state, stage_name, output)
++    snapshot = metadata.result_snapshot(state, output)
+     state.setdefault("results", {})[stage_name] = {
+-        "type": stage_type,
+-        "output": state.get(_stage_state_key(stage_type)),
++        "type": metadata.stage_type,
++        "output": snapshot,
+     }
+     return state
+
+
+-def _infer_output_count(stage_type: str, output: Any) -> int:
+-    if output is None:
++def _infer_output_count(metadata: StageMetadata, output: Any) -> int:
++    try:
++        count = metadata.output_counter(output)
++    except Exception:  # pragma: no cover - defensive guard
+         return 0
+-    if stage_type in {"ingest", "chunk"} and isinstance(output, Sequence):
+-        return len(output)
+-    if stage_type in {"parse", "ir-validation"}:
+-        return 1
+-    if stage_type == "embed" and hasattr(output, "vectors"):
+-        vectors = getattr(output, "vectors")
+-        if isinstance(vectors, Sequence):
+-            return len(vectors)
+-    if stage_type == "index" and hasattr(output, "chunks_indexed"):
+-        indexed = getattr(output, "chunks_indexed")
+-        if isinstance(indexed, int):
+-            return indexed
+-    if stage_type == "extract" and isinstance(output, tuple) and len(output) == 2:
+-        entities, claims = output
+-        entity_count = len(entities) if isinstance(entities, Sequence) else 0
+-        claim_count = len(claims) if isinstance(claims, Sequence) else 0
+-        return entity_count + claim_count
+-    if stage_type == "knowledge-graph" and hasattr(output, "nodes_written"):
+-        nodes = getattr(output, "nodes_written", 0)
+-        if isinstance(nodes, int):
+-            return nodes
+-    return 1
++    if not isinstance(count, int):  # pragma: no cover - defensive guard
++        try:
++            count = int(count)
++        except Exception:
++            return 0
++    return max(count, 0)
++
++
++def _resolve_upstream_value(
++    state: Mapping[str, Any], metadata: StageMetadata, stage_factory: StageFactory
++) -> Any:
++    if metadata.dependencies:
++        aggregated: dict[str, Any] = {}
++        for dependency in metadata.dependencies:
++            try:
++                dep_metadata = stage_factory.get_metadata(dependency)
++            except StageRegistryError:  # pragma: no cover - defensive guard
++                continue
++            dep_keys = dep_metadata.state_keys
++            if not dep_keys:
++                continue
++            if len(dep_keys) == 1:
++                key = dep_keys[0]
++                aggregated[key] = state.get(key)
++            else:
++                aggregated[dependency] = {key: state.get(key) for key in dep_keys}
++        if aggregated:
++            if len(aggregated) == 1:
++                return next(iter(aggregated.values()))
++            return aggregated
++    keys = metadata.state_keys
++    if keys is None or not keys:
++        return state.get(metadata.stage_type)
++    if len(keys) == 1:
++        return state.get(keys[0])
++    return {key: state.get(key) for key in keys}
+
+
+ def _make_stage_op(
+     topology: PipelineTopologyConfig,
+     stage_definition: StageDefinition,
+ ):
+     stage_type = stage_definition.stage_type
+     stage_name = stage_definition.name
+     policy_name = stage_definition.policy or "default"
+
+     @op(
+         name=stage_name,
+         ins={"state": In(dict)},
+         out=Out(dict),
+         required_resource_keys={
+             "stage_factory",
+             "resilience_policies",
+             "job_ledger",
+             "event_emitter",
+         },
+     )
+     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
+-        stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
++        stage_factory: StageFactory = context.resources.stage_factory
++        stage = stage_factory.resolve(topology.name, stage_definition)
++        metadata = stage_factory.metadata_for_stage(topology.name, stage_definition)
+         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
++        ledger: JobLedger = context.resources.job_ledger
++        emitter: StageEventEmitter = context.resources.event_emitter
+
+         execute = getattr(stage, "execute")
+         execution_state: dict[str, Any] = {
+             "attempts": 0,
+             "duration": 0.0,
+             "failed": False,
+             "error": None,
+         }
+
+         def _on_retry(retry_state: Any) -> None:
+             job_identifier = state.get("job_id")
+             if job_identifier:
+                 ledger.increment_retry(job_identifier, stage_name)
+             sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
+             attempt_number = getattr(retry_state, "attempt_number", 0) + 1
+             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
+             reason = str(error) if error else "retry"
+             emitter.emit_retrying(
+                 state["context"],
+                 stage_name,
+                 attempt=attempt_number,
+                 backoff_ms=int(sleep_seconds * 1000),
+                 reason=reason,
+             )
+
+@@ -264,67 +478,91 @@ def _make_stage_op(
+         start_time = time.perf_counter()
+
+         try:
+             if stage_type == "ingest":
+                 adapter_request: AdapterRequest = state["adapter_request"]
+                 result = wrapped(stage_ctx, adapter_request)
+             elif stage_type in {"parse", "ir-validation"}:
+                 payloads = state.get("payloads", [])
+                 result = wrapped(stage_ctx, payloads)
+             elif stage_type == "chunk":
+                 document = state.get("document")
+                 result = wrapped(stage_ctx, document)
+             elif stage_type == "embed":
+                 chunks = state.get("chunks", [])
+                 result = wrapped(stage_ctx, chunks)
+             elif stage_type == "index":
+                 batch = state.get("embedding_batch")
+                 result = wrapped(stage_ctx, batch)
+             elif stage_type == "extract":
+                 document = state.get("document")
+                 result = wrapped(stage_ctx, document)
+             elif stage_type == "knowledge-graph":
+                 entities = state.get("entities", [])
+                 claims = state.get("claims", [])
+                 result = wrapped(stage_ctx, entities, claims)
++            elif stage_type == "gate":
++                upstream = _resolve_upstream_value(state, metadata, stage_factory)
++                ledger_entry = ledger.get(job_id) if job_id else None
++                ledger_snapshot: dict[str, Any] = {}
++                if ledger_entry is not None:
++                    ledger_snapshot = {
++                        "job_id": ledger_entry.job_id,
++                        "status": ledger_entry.status,
++                        "stage": ledger_entry.stage,
++                        "current_stage": ledger_entry.current_stage,
++                        "attempts": ledger_entry.attempts,
++                        "retry_count": ledger_entry.retry_count,
++                        "metadata": dict(ledger_entry.metadata),
++                        "pdf_downloaded": ledger_entry.pdf_downloaded,
++                        "pdf_ir_ready": ledger_entry.pdf_ir_ready,
++                    }
++                if ledger_snapshot:
++                    stage_ctx = stage_ctx.with_metadata(ledger=ledger_snapshot)
++                gate_payload = {
++                    "value": upstream,
++                    "upstream": upstream,
++                    "ledger": ledger_snapshot,
++                }
++                result = wrapped(stage_ctx, gate_payload)
+             else:  # pragma: no cover - guard for future expansion
+-                upstream = state.get(_stage_state_key(stage_type))
++                upstream = _resolve_upstream_value(state, metadata, stage_factory)
+                 result = wrapped(stage_ctx, upstream)
+         except Exception as exc:
+             attempts = execution_state.get("attempts") or 1
+             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
+             if job_id:
+                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
+             raise
+
+         updated = dict(state)
+-        _apply_stage_output(stage_type, stage_name, updated, result)
+-        output = updated.get(_stage_state_key(stage_type))
++        updated["context"] = stage_ctx
++        _apply_stage_output(metadata, stage_name, updated, result)
+         attempts = execution_state.get("attempts") or 1
+         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
+         duration_ms = int(duration_seconds * 1000)
+-        output_count = _infer_output_count(stage_type, output)
++        output_count = _infer_output_count(metadata, result)
+
+         if job_id:
+             ledger.update_metadata(
+                 job_id,
+                 {
+                     f"stage.{stage_name}.attempts": attempts,
+                     f"stage.{stage_name}.output_count": output_count,
+                     f"stage.{stage_name}.duration_ms": duration_ms,
+                 },
+             )
+         emitter.emit_completed(
+             stage_ctx,
+             stage_name,
+             attempt=attempts,
+             duration_ms=duration_ms,
+             output_count=output_count,
+         )
+         logger.debug(
+             "dagster.stage.completed",
+             pipeline=topology.name,
+             stage=stage_name,
+             stage_type=stage_type,
+             policy=policy_name,
+             attempts=attempts,
+             duration_ms=duration_ms,
+@@ -359,51 +597,53 @@ def _topological_order(stages: list[StageDefinition]) -> list[str]:
+
+
+ @dataclass(slots=True)
+ class BuiltPipelineJob:
+     job_name: str
+     job_definition: Any
+     final_node: str
+     version: str
+
+
+ def _normalise_name(name: str) -> str:
+     """Return a Dagster-safe identifier derived from the pipeline name."""
+
+     candidate = re.sub(r"[^0-9A-Za-z_]+", "_", name)
+     if not candidate:
+         return "pipeline"
+     if candidate[0].isdigit():
+         candidate = f"p_{candidate}"
+     return candidate
+
+
+ def _build_pipeline_job(
+     topology: PipelineTopologyConfig,
+     *,
+     resource_defs: Mapping[str, ResourceDefinition],
++    stage_factory: StageFactory,
+ ) -> BuiltPipelineJob:
++    stage_factory.apply_pipeline_extensions(topology)
+     stage_ops = {
+         stage.name: _make_stage_op(topology, stage)
+         for stage in topology.stages
+     }
+     order = _topological_order(topology.stages)
+
+     safe_name = _normalise_name(topology.name)
+
+     @graph(name=f"{safe_name}_graph")
+     def _pipeline_graph():
+         state = bootstrap_op.alias("bootstrap")()
+         for stage_name in order:
+             op_def = stage_ops[stage_name].alias(stage_name)
+             state = op_def(state)
+         return state
+
+     job = _pipeline_graph.to_job(
+         name=f"{safe_name}_job",
+         resource_defs={
+             **resource_defs,
+         },
+         tags={
+             "medical_kg.pipeline": topology.name,
+             "medical_kg.pipeline_version": topology.version,
+         },
+@@ -425,93 +665,102 @@ class DagsterRunResult:
+     success: bool
+     state: dict[str, Any]
+     dagster_result: ExecuteInProcessResult
+
+
+ class DagsterOrchestrator:
+     """Submit orchestration jobs to Dagster using declarative topology configs."""
+
+     def __init__(
+         self,
+         pipeline_loader: PipelineConfigLoader,
+         resilience_loader: ResiliencePolicyLoader,
+         stage_factory: StageFactory,
+         *,
+         plugin_manager: AdapterPluginManager | None = None,
+         job_ledger: JobLedger | None = None,
+         kafka_client: KafkaClient | None = None,
+         event_emitter: StageEventEmitter | None = None,
+         openlineage_emitter: OpenLineageEmitter | None = None,
+         pipeline_resource: HaystackPipelineResource | None = None,
+         base_path: str | Path | None = None,
+     ) -> None:
+         self.pipeline_loader = pipeline_loader
+         self.resilience_loader = resilience_loader
+         self.stage_factory = stage_factory
++        loaded_plugins = self.stage_factory.load_plugins()
++        if loaded_plugins:
++            logger.info(
++                "dagster.stage.plugins.entrypoints_loaded",
++                count=len(loaded_plugins),
++                stage_types=loaded_plugins,
++            )
+         self.plugin_manager = plugin_manager or get_plugin_manager()
+         self.base_path = Path(base_path or pipeline_loader.base_path)
+         self.job_ledger = job_ledger or JobLedger()
+         self.kafka_client = kafka_client or KafkaClient()
+         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
+         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
+         self.openlineage = openlineage_emitter or OpenLineageEmitter()
+         self._resource_defs: dict[str, ResourceDefinition] = {
+             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
+             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
+             "job_ledger": ResourceDefinition.hardcoded_resource(self.job_ledger),
+             "event_emitter": ResourceDefinition.hardcoded_resource(self.event_emitter),
+             "haystack_pipeline": ResourceDefinition.hardcoded_resource(self.pipeline_resource),
+             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
+             "kafka": ResourceDefinition.hardcoded_resource(self.kafka_client),
+             "openlineage": ResourceDefinition.hardcoded_resource(self.openlineage),
+         }
+         self._jobs: dict[str, BuiltPipelineJob] = {}
+         self._definitions: Definitions | None = None
+         self._refresh_jobs()
+
+     @property
+     def definitions(self) -> Definitions:
+         if self._definitions is None:
+             jobs = [entry.job_definition for entry in self._jobs.values()]
+             self._definitions = Definitions(
+                 jobs=jobs,
+                 resources=self._resource_defs,
+                 sensors=[pdf_ir_ready_sensor],
+             )
+         return self._definitions
+
+     def available_pipelines(self) -> list[str]:
+         return sorted(self._jobs)
+
+     def _refresh_jobs(self) -> None:
+         job_entries: dict[str, BuiltPipelineJob] = {}
+         for path in sorted(self.base_path.glob("*.yaml")):
+             topology = self.pipeline_loader.load(path.stem)
+             job_entries[topology.name] = _build_pipeline_job(
+                 topology,
+                 resource_defs=self._resource_defs,
++                stage_factory=self.stage_factory,
+             )
++        self.stage_factory.prune_pipelines(set(job_entries))
+         self._jobs = job_entries
+         self._definitions = None
+
+     def _record_job_attempt(self, job_id: str | None) -> int:
+         if not job_id:
+             return 1
+         try:
+             return self.job_ledger.record_attempt(job_id)
+         except JobLedgerError:
+             logger.debug("dagster.ledger.missing_job", job_id=job_id)
+             return 1
+
+     def submit(
+         self,
+         *,
+         pipeline: str,
+         context: StageContext,
+         adapter_request: AdapterRequest,
+         payload: Mapping[str, Any],
+     ) -> DagsterRunResult:
+         if pipeline not in self._jobs:
+             self._refresh_jobs()
+         try:
+             job = self._jobs[pipeline]
+         except KeyError as exc:  # pragma: no cover - defensive guard

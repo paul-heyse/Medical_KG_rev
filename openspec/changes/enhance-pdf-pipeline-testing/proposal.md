@@ -1,28 +1,22 @@
-## Why
+# Proposal: enhance-pdf-pipeline-testing
 
-The current PDF "integration" test only exercises the MinerU simulator and vLLM proxy, not the actual ingestion pipeline with real downloads, state transitions, and Dagster job execution. The test validates infrastructure components but doesn't test the end-to-end PDF processing workflow that users would experience.
+This implementation-focused change tightens regression coverage for the PDF ingestion pipeline by exercising the gateway routing
+logic, validating ledger metadata for MinerU resumptions, and asserting the Dagster resume sensor contract. No production code is
+modified beyond test scaffolding; the goal is to lock in behaviour defined by the existing topology specifications.
 
-## What Changes
+## Objectives
 
-- **🧪 Comprehensive PDF Testing**: Create tests that exercise the complete PDF pipeline from ingestion to completion
-- **⬇️ Real Download Testing**: Test actual PDF downloading from real URLs
-- **🔄 State Transition Testing**: Validate ledger state changes throughout pipeline execution
-- **🚪 Gate and Sensor Testing**: Test two-phase execution with proper gate handling and sensor resumption
+1. Confirm gateway routing surfaces the dedicated `pdf-two-phase` topology when PDF payloads arrive, and that ledger entries persist
+   the correlation metadata required by the resume sensor.
+2. Strengthen the PDF resume sensor test to guard the pipeline version tagging and resume stage semantics.
+3. Introduce a topology regression test so the `pdf_ir_ready` gate remains correctly defined.
 
-## Impact
+## Out of Scope
 
-- **Affected specs**: `specs/orchestration/spec.md`, `specs/gateway/spec.md` (testing capabilities)
-- **Affected code**:
-  - `tests/` - New comprehensive PDF pipeline test suite
-  - `tests/integration/test_pdf_e2e.py` - Enhanced to test real pipeline
-  - `tests/orchestration/test_dagster_jobs.py` - Add PDF pipeline tests
-- **Breaking changes**: None - adds testing capabilities without changing functionality
-- **Migration path**: Existing limited tests continue while comprehensive tests are added
+- Changes to the pipeline topology YAML or runtime orchestrator implementations.
+- Updates to the MinerU adapter or download stages.
 
-## Success Criteria
+## Validation Strategy
 
-- ✅ End-to-end PDF pipeline test exercises real download, MinerU processing, and state transitions
-- ✅ Gate-based two-phase execution is properly tested
-- ✅ Sensor-based resumption works correctly in test scenarios
-- ✅ Test suite provides confidence in PDF pipeline functionality
-- ✅ Tests include both success and failure scenarios
+- New unit tests for the gateway and topology loaders.
+- Enhanced sensor regression assertions.

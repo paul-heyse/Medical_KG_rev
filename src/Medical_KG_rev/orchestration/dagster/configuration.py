@@ -27,6 +27,7 @@ from Medical_KG_rev.observability.metrics import (
     record_resilience_rate_limit_wait,
     record_resilience_retry,
 )
+from Medical_KG_rev.orchestration.ledger import LEDGER_BOOLEAN_FIELDS
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -514,19 +515,24 @@ class ResiliencePolicy(BaseModel):
 
 
 def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:
-    in_degree: dict[str, int] = {node: 0 for node in graph}
-    for deps in graph.values():
-        for dep in deps:
-            in_degree[dep] = in_degree.get(dep, 0) + 1
+    in_degree: dict[str, int] = {}
+    adjacency: dict[str, list[str]] = {}
+    for node, dependencies in graph.items():
+        deps = tuple(dependencies)
+        in_degree[node] = len(deps)
+        adjacency.setdefault(node, [])
+        for dependency in deps:
+            adjacency.setdefault(dependency, []).append(node)
+            in_degree.setdefault(dependency, 0)
     queue = [node for node, degree in in_degree.items() if degree == 0]
     order: list[str] = []
     while queue:
         node = queue.pop(0)
         order.append(node)
-        for dep in graph.get(node, []):
-            in_degree[dep] -= 1
-            if in_degree[dep] == 0:
-                queue.append(dep)
+        for neighbour in adjacency.get(node, []):
+            in_degree[neighbour] -= 1
+            if in_degree[neighbour] == 0:
+                queue.append(neighbour)
     if len(order) != len(in_degree):
         return None
     return order
@@ -786,6 +792,7 @@ def export_pipeline_schema(path: str | Path) -> None:
 
 __all__ = [
     "BackoffStrategy",
+    "GateConditionClause",
     "GateCondition",
     "GateConditionOperator",
     "GateDefinition",

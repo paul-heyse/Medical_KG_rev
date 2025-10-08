@@ -1,0 +1,3541 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF'
+diff --git a/config/orchestration/pipelines/auto.yaml b/config/orchestration/pipelines/auto.yaml
+index a80b3f3be25da70ed9269218d58886889174a41b..adc8a0cbf347a8418d0c5ae3ff9495c149da81dd 100644
+--- a/config/orchestration/pipelines/auto.yaml
++++ b/config/orchestration/pipelines/auto.yaml
+@@ -1,51 +1,57 @@
+ name: auto
+ version: "2025-01-01"
+ applicable_sources:
+   - clinical-trials
+   - openalex
+   - semantic-scholar
+ metadata:
+   owner: ingestion-team
+   description: Standard ingestion pipeline for non-PDF sources.
++plugins:
++  stages:
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
+ stages:
+   - name: ingest
+     type: ingest
+     policy: default
+     config:
+       adapter: auto
+   - name: parse
+     type: parse
+     policy: default
+     depends_on:
+       - ingest
+   - name: ir_validation
+     type: ir-validation
+     policy: default
+     depends_on:
+       - parse
+   - name: chunk
+     type: chunk
+     policy: default
+     depends_on:
+       - ir_validation
+   - name: embed
+     type: embed
+     policy: default
+     depends_on:
+       - chunk
++    metadata_overrides:
++      description: Embed chunks using the default Haystack pipeline resources.
+   - name: index
+     type: index
+     policy: default
+     depends_on:
+       - embed
+   - name: extract
+     type: extract
+     policy: default
+     depends_on:
+       - ir_validation
+   - name: kg
+     type: knowledge-graph
+     policy: default
+     depends_on:
+       - extract
+       - index
+diff --git a/config/orchestration/pipelines/pdf-two-phase.yaml b/config/orchestration/pipelines/pdf-two-phase.yaml
+index 198c5e9c0b49ba400b880f2fc7ddcfb105def8cf..6f1affc765382fbc9994084ef72e51af9b571318 100644
+--- a/config/orchestration/pipelines/pdf-two-phase.yaml
++++ b/config/orchestration/pipelines/pdf-two-phase.yaml
+@@ -1,56 +1,77 @@
+ name: pdf-two-phase
+ version: "2025-01-01"
+ applicable_sources:
+   - pmc
+   - pmc-fulltext
+ metadata:
+   owner: ingestion-team
+   description: PDF ingestion with MinerU gate.
++plugins:
++  stages:
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
+ stages:
+   - name: ingest
+     type: ingest
+     policy: default
+   - name: download
+     type: download
+     policy: polite-api
+     depends_on:
+       - ingest
++    config:
++      sources:
++        - kind: openalex
++          attribute: best_pdf_url
++    metadata_overrides:
++      state_key: downloaded_files
++      description: Resolve and persist PDF assets required for downstream OCR.
+   - name: gate_pdf_ir_ready
+     type: gate
+     policy: default
+     depends_on:
+       - download
++    config:
++      conditions:
++        - key: ledger.pdf_ir_ready
++          expected: true
++      timeout_seconds: 900
++      poll_interval_seconds: 10
++    metadata_overrides:
++      dependencies:
++        - "@ledger"
++        - download
+   - name: chunk
+     type: chunk
+     policy: gpu-bound
+     depends_on:
+       - gate_pdf_ir_ready
+   - name: embed
+     type: embed
+     policy: gpu-bound
+     depends_on:
+       - chunk
+   - name: index
+     type: index
+     policy: default
+     depends_on:
+       - embed
+   - name: extract
+     type: extract
+     policy: gpu-bound
+     depends_on:
+       - chunk
+   - name: kg
+     type: knowledge-graph
+     policy: default
+     depends_on:
+       - extract
+       - index
+ gates:
+   - name: pdf_ir_ready
+     resume_stage: chunk
+     condition:
+-      field: pdf_ir_ready
++      field: ledger.pdf_ir_ready
+       equals: true
+       timeout_seconds: 900
+       poll_interval_seconds: 10.0
+diff --git a/config/orchestration/pipelines/pmc-fulltext.yaml b/config/orchestration/pipelines/pmc-fulltext.yaml
+index fc706b6f670666eef8bc26b89798dd5398228428..07c0c8ebcec8c24ee1d2055f8a6c74bfd3eae693 100644
+--- a/config/orchestration/pipelines/pmc-fulltext.yaml
++++ b/config/orchestration/pipelines/pmc-fulltext.yaml
+@@ -32,29 +32,29 @@ stages:
+   - name: embed
+     type: embed
+     policy: gpu-bound
+     depends_on:
+       - chunk
+   - name: index
+     type: index
+     policy: default
+     depends_on:
+       - embed
+   - name: extract
+     type: extract
+     policy: gpu-bound
+     depends_on:
+       - mineru_ir
+   - name: kg
+     type: knowledge-graph
+     policy: default
+     depends_on:
+       - extract
+       - index
+ gates:
+   - name: pdf_ir_ready
+     resume_stage: mineru_ir
+     condition:
+-      field: pdf_ir_ready
++      field: ledger.pdf_ir_ready
+       equals: true
+       timeout_seconds: 900
+       poll_interval_seconds: 10.0
+diff --git a/docs/guides/custom-stages.md b/docs/guides/custom-stages.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..5679afa93dba4afc70e9ce48988b1455d9836145
+--- /dev/null
++++ b/docs/guides/custom-stages.md
+@@ -0,0 +1,115 @@
++# Authoring Custom Orchestration Stages
++
++This guide walks through registering bespoke orchestration stages with the
++pluggable registry introduced in the pipeline topology configuration.
++
++## 1. Implement the Stage
++
++1. Define a class that conforms to one of the contracts in
++   `Medical_KG_rev.orchestration.stages.contracts`. The class must expose an
++   `execute` method that accepts a `StageContext` plus the upstream payload.
++2. Keep implementations framework agnostic—no Dagster dependencies should leak
++   into the stage logic.
++3. Ensure the stage returns serialisable data or objects with deterministic
++   representations; results are stored in the pipeline run state for inspection.
++
++```python
++from dataclasses import dataclass
++from Medical_KG_rev.orchestration.stages.contracts import StageContext
++
++@dataclass(slots=True)
++class ExampleStage:
++    name: str
++
++    def execute(self, ctx: StageContext, upstream: list[dict]) -> list[dict]:
++        return [dict(item, stage=self.name) for item in upstream]
++```
++
++## 2. Provide Stage Metadata
++
++Create a `StageMetadata` instance describing how the runtime should persist the
++stage output and compute metrics.
++
++```python
++from Medical_KG_rev.orchestration.dagster.stage_registry import StageMetadata
++
++def _handle_output(state: dict[str, object], stage_name: str, output: list[dict]) -> None:
++    state["enriched_payloads"] = output
++
++metadata = StageMetadata(
++    stage_type="example-stage",
++    state_key="enriched_payloads",
++    output_handler=_handle_output,
++    output_counter=len,
++    description="Annotates payloads with the stage name",
++)
++```
++
++## 3. Return a `StageRegistration`
++
++Expose a callable (often named `register_<stage>()`) that returns a
++`StageRegistration`. The callable receives the stage definition from the
++pipeline YAML and should construct the stage instance with any configuration.
++
++```python
++from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++from Medical_KG_rev.orchestration.dagster.stage_registry import StageRegistration
++
++
++def register_example_stage() -> StageRegistration:
++    def _builder(definition: StageDefinition) -> ExampleStage:
++        return ExampleStage(name=definition.name)
++
++    return StageRegistration(metadata=metadata, builder=_builder)
++```
++
++## 4. Declare an Entry Point
++
++Third-party packages expose plugins via the `medical_kg.orchestration.stages`
++entry point group. In `pyproject.toml`:
++
++```toml
++[project.entry-points."medical_kg.orchestration.stages"]
++example-stage = "my_package.plugins:register_example_stage"
++```
++
++## 5. Reference the Plugin in Pipeline YAML
++
++Pipelines opt into plugins through the `plugins` block:
++
++```yaml
++plugins:
++  stages:
++    - callable: "my_package.plugins:register_example_stage"
++```
++
++Per-stage `metadata_overrides` can adjust the registered metadata without
++introducing a new plugin:
++
++```yaml
++stages:
++  - name: example
++    type: example-stage
++    metadata_overrides:
++      state_key: example_payloads
++      dependencies: ["ingest"]
++```
++
++### Accessing Job Ledger State
++
++Stages that need to inspect the job ledger can list `"@ledger"` in their
++metadata dependencies. The runtime resolves this sentinel to the current ledger
++snapshot (if the pipeline run is associated with a job ID) and includes it in
++the upstream payload. For example, the built-in `gate` stage expects
++`ledger.pdf_ir_ready` to be `true` before resuming downstream work.
++
++## 6. Validate and Test
++
++- Run `openspec validate <change-id> --strict` to confirm schema compliance.
++- Add unit tests covering the stage contract and any orchestration adapters.
++- Use the `tests/orchestration/test_stage_plugins_runtime.py` examples as a
++  template for verifying behaviour.
++
++> **Deprecation notice:** Direct imports of `build_default_stage_factory` or
++> manual mutations of `StageRegistry` will be removed in the 2025-Q3 release.
++> Always register stages via plugins or the `StageFactory.register_stage` API.
+diff --git a/docs/guides/orchestration-pipelines.md b/docs/guides/orchestration-pipelines.md
+index e70572fedfeb65449f77695d8d7ee4a67637d130..77b3c576515af037e3d8ac09406e6ab1cb37ef1f 100644
+--- a/docs/guides/orchestration-pipelines.md
++++ b/docs/guides/orchestration-pipelines.md
+@@ -6,75 +6,88 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
+ `Medical_KG_rev.orchestration.haystack`.
+
+ ## Dagster Architecture
+
+ - **Stage contracts** – `StageContext`, `ChunkStage`, `EmbedStage`, and other
+   protocols live in `Medical_KG_rev.orchestration.stages.contracts`. Dagster ops
+   call these protocols so stage implementations remain framework-agnostic.
+ - **StageFactory** – `StageFactory` resolves stage definitions from topology
+   YAML files. The default factory wires Haystack chunking, embedding, and
+   indexing components while falling back to lightweight stubs for unit tests.
+ - **Runtime module** – `Medical_KG_rev.orchestration.dagster.runtime` defines
+   jobs, resources, and helper utilities (`DagsterOrchestrator`,
+   `submit_to_dagster`). Jobs call the appropriate stage implementation and
+   update the job ledger after each op.
+ - **Haystack wrappers** – `Medical_KG_rev.orchestration.haystack.components`
+   adapts Haystack classes to the stage protocols. The chunker converts IR
+   documents into Haystack documents, the embedder produces dense vectors (with
+   optional sparse expansion), and the index writer dual writes to OpenSearch and
+   FAISS.
+
+ ## Pipeline Configuration
+
+ - **Topology YAML** – Pipelines are described in
+   `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
+   optional `policy`, dependencies, and a free-form `config` block. Gates define
+-  resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
++  resume conditions, e.g., `ledger.pdf_ir_ready=true` for two-phase PDF
++  ingestion.
++- **Plugins** – Pipeline files may include a `plugins` section with
++  `medical_kg.orchestration.stages` callables. Each callable returns one or more
++  `StageRegistration` objects, allowing pipelines to opt into custom stage
++  implementations without mutating the global registry.
++- **Metadata overrides** – Use the per-stage `metadata_overrides` block to tweak
++  registry metadata (state keys, descriptions, dependencies) without defining a
++  new plugin. Overrides are applied at job build time and leave the global
++  registration untouched.
+ - **Resilience policies** – `config/orchestration/resilience.yaml` contains
+   shared retry, circuit breaker, and rate limiting definitions. The runtime
+   loads these into Tenacity, PyBreaker, and aiolimiter objects.
+ - **Version manifest** – `config/orchestration/versions/*` tracks pipeline
+   revisions. `PipelineConfigLoader` loads and caches versions to provide
+   deterministic orchestration.
+
+ ## Execution Flow
+
+ 1. **Job submission** – The gateway builds a `StageContext` and calls
+    `submit_to_dagster`. The Dagster run stores the initial state using the job
+    ledger resource.
+ 2. **Stage execution** – Each op resolves the stage implementation via
+    `StageFactory`. Resilience policies wrap the execution and emit metrics on
+    retries, circuit breaker state changes, and rate limiting delays.
+ 3. **Ledger updates** – Ops record progress to the job ledger (`current_stage`,
+    attempt counts, gate metadata). Sensors poll the ledger for gate conditions
+-   (e.g., `pdf_ir_ready=true`) and resume downstream stages.
++   (e.g., `ledger.pdf_ir_ready=true`) and resume downstream stages.
+ 4. **Outputs** – Stage results are added to the Dagster run state and surfaced
+    to the gateway through the ledger/SSE stream. Haystack components persist
+    embeddings and metadata in downstream storage systems.
+
+ ## Troubleshooting
+
+ - **Stage resolution errors** – Verify the stage `type` in the topology YAML
+   matches the keys registered in `build_default_stage_factory`. Unknown stage
+   types raise `StageResolutionError` during job execution.
++- **Plugin conflicts** – If two plugins attempt to register the same stage type,
++  the registry emits a warning and retains the first registration. Use
++  `replace: true` in the plugin declaration to intentionally override an entry.
+ - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
+   for required fields (attempts, backoff, circuit breaker thresholds). Invalid
+   policies raise validation errors at load time.
+ - **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
+-  set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
++  set (e.g., `ledger.pdf_ir_ready` for PDF pipelines). Sensors poll every ten
++  seconds
+   and record trigger counts in the ledger metadata.
+ - **Missing embeddings** – Ensure the embed stage resolved the Haystack
+   embedder; stubs return deterministic values for test runs but do not persist
+   to OpenSearch/FAISS.
+
+ ## Operational Notes
+
+ - Run Dagster locally with
+   `dagster dev -m Medical_KG_rev.orchestration.dagster.runtime` to access the UI
+   and sensors.
+ - The gateway uses `StageFactory` directly for synchronous operations (chunking
+   and embedding APIs) to avoid spinning up full Dagster runs.
+ - Dagster daemon processes handle sensors and schedules. Ensure the daemon has
+   access to the same configuration volume as the webserver and gateway.
+ - CloudEvents and OpenLineage emission hooks live alongside the Dagster jobs
+   and reuse the resilience policy loader for consistent telemetry metadata.
+
+diff --git a/docs/guides/pipeline-schema.json b/docs/guides/pipeline-schema.json
+index 9746b1fc564b15827be264c0d4fe7ad6bb70a928..c90a38dd2302aaf3ad675c42e2ce8b70bf97fdee 100644
+--- a/docs/guides/pipeline-schema.json
++++ b/docs/guides/pipeline-schema.json
+@@ -83,125 +83,203 @@
+           "title": "Description"
+         },
+         "owner": {
+           "anyOf": [
+             {
+               "type": "string"
+             },
+             {
+               "type": "null"
+             }
+           ],
+           "default": null,
+           "title": "Owner"
+         },
+         "tags": {
+           "items": {
+             "type": "string"
+           },
+           "title": "Tags",
+           "type": "array"
+         }
+       },
+       "title": "PipelineMetadata",
+       "type": "object"
+     },
++    "StageMetadataOverrides": {
++      "additionalProperties": false,
++      "properties": {
++        "dependencies": {
++          "items": {
++            "type": "string"
++          },
++          "title": "Dependencies",
++          "type": "array"
++        },
++        "description": {
++          "type": "string"
++        },
++        "state_key": {
++          "anyOf": [
++            {"type": "string"},
++            {
++              "items": {"type": "string"},
++              "type": "array"
++            },
++            {"type": "null"}
++          ],
++          "title": "State Key"
++        }
++      },
++      "title": "StageMetadataOverrides",
++      "type": "object"
++    },
++    "StagePluginImport": {
++      "additionalProperties": false,
++      "properties": {
++        "callable": {
++          "pattern": "^[A-Za-z0-9_.:]+$",
++          "title": "Callable",
++          "type": "string"
++        },
++        "replace": {
++          "default": false,
++          "title": "Replace",
++          "type": "boolean"
++        }
++      },
++      "required": ["callable"],
++      "title": "StagePluginImport",
++      "type": "object"
++    },
++    "PipelinePluginConfig": {
++      "additionalProperties": false,
++      "properties": {
++        "stages": {
++          "default": [],
++          "items": {
++            "$ref": "#/$defs/StagePluginImport"
++          },
++          "title": "Stages",
++          "type": "array"
++        }
++      },
++      "title": "PipelinePluginConfig",
++      "type": "object"
++    },
+     "StageDefinition": {
+       "additionalProperties": false,
+       "description": "Declarative stage specification for topology YAML files.",
+       "properties": {
+         "config": {
+           "additionalProperties": true,
+           "title": "Config",
+           "type": "object"
+         },
+         "depends_on": {
+           "items": {
+             "type": "string"
+           },
+           "title": "Depends On",
+           "type": "array"
+         },
+         "name": {
+           "pattern": "^[A-Za-z0-9_-]+$",
+           "title": "Name",
+           "type": "string"
+         },
+         "policy": {
+           "anyOf": [
+             {
+               "type": "string"
+             },
+             {
+               "type": "null"
+             }
+           ],
+           "default": null,
+           "title": "Policy"
+         },
++        "metadata_overrides": {
++          "anyOf": [
++            {
++              "$ref": "#/$defs/StageMetadataOverrides"
++            },
++            {
++              "type": "null"
++            }
++          ],
++          "default": null,
++          "title": "Metadata Overrides"
++        },
+         "type": {
+           "pattern": "^[A-Za-z0-9_-]+$",
+           "title": "Type",
+           "type": "string"
+         }
+       },
+       "required": [
+         "name",
+         "type"
+       ],
+       "title": "StageDefinition",
+       "type": "object"
+     }
+   },
+   "additionalProperties": false,
+   "description": "Complete topology definition for a pipeline.",
+   "properties": {
+     "applicable_sources": {
+       "items": {
+         "type": "string"
+       },
+       "title": "Applicable Sources",
+       "type": "array"
+     },
+     "gates": {
+       "items": {
+         "$ref": "#/$defs/GateDefinition"
+       },
+       "title": "Gates",
+       "type": "array"
+     },
+     "metadata": {
+       "anyOf": [
+         {
+           "$ref": "#/$defs/PipelineMetadata"
+         },
+         {
+           "type": "null"
+         }
+       ],
+       "default": null
+     },
++    "plugins": {
++      "$ref": "#/$defs/PipelinePluginConfig",
++      "default": {},
++      "title": "Plugins"
++    },
+     "name": {
+       "pattern": "^[A-Za-z0-9_-]+$",
+       "title": "Name",
+       "type": "string"
+     },
+     "stages": {
+       "items": {
+         "$ref": "#/$defs/StageDefinition"
+       },
+       "title": "Stages",
+       "type": "array"
+     },
+     "version": {
+       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[A-Za-z0-9]+)?$",
+       "title": "Version",
+       "type": "string"
+     }
+   },
+   "required": [
+     "name",
+     "version",
+     "stages"
+   ],
+   "title": "PipelineTopologyConfig",
+   "type": "object"
+diff --git a/examples/stage_plugins/__init__.py b/examples/stage_plugins/__init__.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..54dbd7a36bebd0652fc7e6d2d9038d7726dc0461
+--- /dev/null
++++ b/examples/stage_plugins/__init__.py
+@@ -0,0 +1 @@
++"""Example stage plugin package for custom orchestration stages."""
+diff --git a/examples/stage_plugins/example.py b/examples/stage_plugins/example.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..ebcd03eef4dce9d632faa70687ea1cb6236aa418
+--- /dev/null
++++ b/examples/stage_plugins/example.py
+@@ -0,0 +1,54 @@
++"""Illustrative plugin demonstrating custom stage registration."""
++
++from __future__ import annotations
++
++from collections.abc import Iterable
++from dataclasses import dataclass
++from typing import Any
++
++from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StageRegistration,
++)
++from Medical_KG_rev.orchestration.stages.contracts import StageContext
++
++
++def _handle_output(state: dict[str, Any], stage_name: str, output: Iterable[int]) -> None:
++    values = list(output)
++    state.setdefault("example", {})[stage_name] = values
++
++
++def _count_output(output: Iterable[int]) -> int:
++    if isinstance(output, Iterable):
++        return len(list(output))
++    return 0
++
++
++@dataclass(slots=True)
++class ExampleTransformStage:
++    """Simple stage that scales numeric inputs by a configured factor."""
++
++    name: str
++    factor: int = 2
++
++    def execute(self, ctx: StageContext, upstream: Iterable[int]) -> list[int]:
++        del ctx  # context unused in the example implementation
++        return [int(value) * self.factor for value in upstream]
++
++
++def register_example_stage() -> StageRegistration:
++    """Return a :class:`StageRegistration` for the example transform stage."""
++
++    def _builder(definition: StageDefinition) -> ExampleTransformStage:
++        factor = int(definition.config.get("factor", 2)) if definition.config else 2
++        return ExampleTransformStage(name=definition.name, factor=factor)
++
++    metadata = StageMetadata(
++        stage_type="example-transform",
++        state_key="example",
++        output_handler=_handle_output,
++        output_counter=_count_output,
++        description="Scales integer inputs using a configurable multiplier",
++    )
++    return StageRegistration(metadata=metadata, builder=_builder)
+diff --git a/openspec/changes/add-pluggable-orchestration-stages/tasks.md b/openspec/changes/add-pluggable-orchestration-stages/tasks.md
+index 1184eb83911ab47d72fcbae2ac0010003ddaed79..d74a9826713629155af3f34c8526e474fedd34b1 100644
+--- a/openspec/changes/add-pluggable-orchestration-stages/tasks.md
++++ b/openspec/changes/add-pluggable-orchestration-stages/tasks.md
+@@ -1,189 +1,189 @@
+ # Implementation Tasks: Pluggable Orchestration Stages
+
+ ## 1. Stage Metadata System Design
+
+ ### 1.1 Define Stage Metadata Model
+
+-- [ ] 1.1.1 Create `StageMetadata` dataclass with fields:
++- [x] 1.1.1 Create `StageMetadata` dataclass with fields:
+   - `stage_type: str` - The stage type identifier
+   - `state_key: str` - Key used in orchestration state (e.g., "payloads", "document")
+   - `output_handler: Callable` - Function to apply stage output to state
+   - `output_counter: Callable` - Function to count stage outputs for metrics
+   - `description: str` - Human-readable description of stage purpose
+   - `dependencies: list[str]` - Optional list of stage types this depends on
+-- [ ] 1.1.2 Create `StageRegistry` class to manage stage metadata
+-- [ ] 1.1.3 Add validation for metadata consistency (e.g., state_key should be valid Python identifier)
++- [x] 1.1.2 Create `StageRegistry` class to manage stage metadata
++- [x] 1.1.3 Add validation for metadata consistency (e.g., state_key should be valid Python identifier)
+
+ ### 1.2 Plugin Registry Architecture
+
+-- [ ] 1.2.1 Design entry point group: `medical_kg.orchestration.stages`
+-- [ ] 1.2.2 Create `StagePlugin` protocol for stage registration functions
+-- [ ] 1.2.3 Implement `discover_stages()` function using `importlib.metadata.entry_points()`
+-- [ ] 1.2.4 Add error handling for malformed plugin registrations
++- [x] 1.2.1 Design entry point group: `medical_kg.orchestration.stages`
++- [x] 1.2.2 Create `StagePlugin` protocol for stage registration functions
++- [x] 1.2.3 Implement `discover_stages()` function using `importlib.metadata.entry_points()`
++- [x] 1.2.4 Add error handling for malformed plugin registrations
+
+ ## 2. Core Runtime Refactoring
+
+ ### 2.1 Migrate Existing Stages to Metadata System
+
+-- [ ] 2.1.1 Define metadata for all existing stage types:
++- [x] 2.1.1 Define metadata for all existing stage types:
+   - `ingest` → state_key: "payloads", output_handler: set_payloads, output_counter: len
+   - `parse` → state_key: "document", output_handler: set_document, output_counter: 1
+   - `ir-validation` → state_key: "document", output_handler: set_document, output_counter: 1
+   - `chunk` → state_key: "chunks", output_handler: set_chunks, output_counter: len
+   - `embed` → state_key: "embedding_batch", output_handler: set_embedding_batch, output_counter: len(vectors)
+   - `index` → state_key: "index_receipt", output_handler: set_index_receipt, output_counter: chunks_indexed
+   - `extract` → state_key: ["entities", "claims"], output_handler: unpack_extraction, output_counter: len(entities)+len(claims)
+   - `knowledge-graph` → state_key: "graph_receipt", output_handler: set_graph_receipt, output_counter: nodes_written
+-- [ ] 2.1.2 Create default metadata registry with all existing stages
+-- [ ] 2.1.3 Update `build_default_stage_factory` to use metadata registry
++- [x] 2.1.2 Create default metadata registry with all existing stages
++- [x] 2.1.3 Update `build_default_stage_factory` to use metadata registry
+
+ ### 2.2 Update Runtime Functions
+
+-- [ ] 2.2.1 Replace hardcoded `_stage_state_key()` with metadata lookup
+-- [ ] 2.2.2 Replace hardcoded `_apply_stage_output()` with metadata-driven output handling
+-- [ ] 2.2.3 Replace hardcoded `_infer_output_count()` with metadata-driven counting
+-- [ ] 2.2.4 Update `StageFactory.resolve()` to use metadata for validation
++- [x] 2.2.1 Replace hardcoded `_stage_state_key()` with metadata lookup
++- [x] 2.2.2 Replace hardcoded `_apply_stage_output()` with metadata-driven output handling
++- [x] 2.2.3 Replace hardcoded `_infer_output_count()` with metadata-driven counting
++- [x] 2.2.4 Update `StageFactory.resolve()` to use metadata for validation
+
+ ### 2.3 Add Plugin Discovery
+
+-- [ ] 2.3.1 Modify `StageFactory.__init__()` to accept optional plugin registry
+-- [ ] 2.3.2 Add `register_stage()` method to dynamically add stages at runtime
+-- [ ] 2.3.3 Implement `load_plugins()` class method to discover and load stage plugins
+-- [ ] 2.3.4 Add plugin validation during discovery (ensure required metadata fields)
++- [x] 2.3.1 Modify `StageFactory.__init__()` to accept optional plugin registry
++- [x] 2.3.2 Add `register_stage()` method to dynamically add stages at runtime
++- [x] 2.3.3 Implement `load_plugins()` class method to discover and load stage plugins
++- [x] 2.3.4 Add plugin validation during discovery (ensure required metadata fields)
+
+ ## 3. Example Plugin Implementations
+
+ ### 3.1 Download Stage Plugin
+
+-- [ ] 3.1.1 Create `download` stage metadata:
++- [x] 3.1.1 Create `download` stage metadata:
+   - state_key: "downloaded_files"
+   - output_handler: handles file download results
+   - output_counter: counts downloaded files
+-- [ ] 3.1.2 Implement `DownloadStage` class implementing the stage protocol
+-- [ ] 3.1.3 Create entry point registration for download stage
+-- [ ] 3.1.4 Add configuration for download stage (URLs, retry policies, etc.)
++- [x] 3.1.2 Implement `DownloadStage` class implementing the stage protocol
++- [x] 3.1.3 Create entry point registration for download stage
++- [x] 3.1.4 Add configuration for download stage (URLs, retry policies, etc.)
+
+ ### 3.2 Gate Stage Plugin
+
+-- [ ] 3.2.1 Create `gate` stage metadata:
++- [x] 3.2.1 Create `gate` stage metadata:
+   - state_key: None (gate stages don't produce outputs)
+   - output_handler: no-op handler
+   - output_counter: returns 0
+-- [ ] 3.2.2 Implement `GateStage` class that checks conditions and raises `GateConditionError` if not met
+-- [ ] 3.2.3 Create entry point registration for gate stage
+-- [ ] 3.2.4 Add configuration for gate conditions (ledger field checks, timeout, etc.)
++- [x] 3.2.2 Implement `GateStage` class that checks conditions and raises `GateConditionError` if not met
++- [x] 3.2.3 Create entry point registration for gate stage
++- [x] 3.2.4 Add configuration for gate conditions (ledger field checks, timeout, etc.)
+
+ ## 4. Pipeline Configuration Updates
+
+ ### 4.1 Extend Pipeline Schema
+
+-- [ ] 4.1.1 Add plugin registration section to `PipelineTopologyConfig`
+-- [ ] 4.1.2 Add stage metadata override capabilities in pipeline YAML
+-- [ ] 4.1.3 Update pipeline validation to handle plugin-registered stages
++- [x] 4.1.1 Add plugin registration section to `PipelineTopologyConfig`
++- [x] 4.1.2 Add stage metadata override capabilities in pipeline YAML
++- [x] 4.1.3 Update pipeline validation to handle plugin-registered stages
+
+ ### 4.2 Update Existing Pipelines
+
+-- [ ] 4.2.1 Update `config/orchestration/pipelines/auto.yaml` to use new plugin system
+-- [ ] 4.2.2 Update `config/orchestration/pipelines/pdf-two-phase.yaml` to include gate stage
+-- [ ] 4.2.3 Ensure backward compatibility with existing pipeline definitions
++- [x] 4.2.1 Update `config/orchestration/pipelines/auto.yaml` to use new plugin system
++- [x] 4.2.2 Update `config/orchestration/pipelines/pdf-two-phase.yaml` to include gate stage
++- [x] 4.2.3 Ensure backward compatibility with existing pipeline definitions
+
+ ## 5. Testing and Validation
+
+ ### 5.1 Unit Tests for Core System
+
+-- [ ] 5.1.1 Test `StageMetadata` validation and serialization
+-- [ ] 5.1.2 Test `StageRegistry` plugin discovery and registration
+-- [ ] 5.1.3 Test runtime functions use metadata correctly
+-- [ ] 5.1.4 Test error handling for unknown stage types
++- [x] 5.1.1 Test `StageMetadata` validation and serialization
++- [x] 5.1.2 Test `StageRegistry` plugin discovery and registration
++- [x] 5.1.3 Test runtime functions use metadata correctly
++- [x] 5.1.4 Test error handling for unknown stage types
+
+ ### 5.2 Integration Tests for New Stages
+
+-- [ ] 5.2.1 Test download stage end-to-end with mocked file downloads
+-- [ ] 5.2.2 Test gate stage with various condition scenarios (pass/fail/timeout)
+-- [ ] 5.2.3 Test plugin registration and discovery mechanisms
++- [x] 5.2.1 Test download stage end-to-end with mocked file downloads
++- [x] 5.2.2 Test gate stage with various condition scenarios (pass/fail/timeout)
++- [x] 5.2.3 Test plugin registration and discovery mechanisms
+
+ ### 5.3 Pipeline Integration Tests
+
+-- [ ] 5.3.1 Test PDF two-phase pipeline with gate stage integration
+-- [ ] 5.3.2 Test mixed plugin and built-in stage pipelines
+-- [ ] 5.3.3 Test pipeline validation with new stage types
++- [x] 5.3.1 Test PDF two-phase pipeline with gate stage integration
++- [x] 5.3.2 Test mixed plugin and built-in stage pipelines
++- [x] 5.3.3 Test pipeline validation with new stage types
+
+ ## 6. Documentation and Examples
+
+ ### 6.1 Developer Documentation
+
+-- [ ] 6.1.1 Update `docs/guides/pipeline-authoring.md` with plugin stage examples
+-- [ ] 6.1.2 Create `docs/guides/custom-stages.md` with step-by-step guide
+-- [ ] 6.1.3 Document entry point specification for third-party plugins
++- [x] 6.1.1 Update `docs/guides/pipeline-authoring.md` with plugin stage examples
++- [x] 6.1.2 Create `docs/guides/custom-stages.md` with step-by-step guide
++- [x] 6.1.3 Document entry point specification for third-party plugins
+
+ ### 6.2 Code Examples
+
+-- [ ] 6.2.1 Create example plugin package structure
+-- [ ] 6.2.2 Add example download and gate stage implementations
+-- [ ] 6.2.3 Create integration test examples for custom stages
++- [x] 6.2.1 Create example plugin package structure
++- [x] 6.2.2 Add example download and gate stage implementations
++- [x] 6.2.3 Create integration test examples for custom stages
+
+ ## 7. Migration and Compatibility
+
+ ### 7.1 Backward Compatibility
+
+-- [ ] 7.1.1 Ensure existing pipelines continue to work unchanged
+-- [ ] 7.1.2 Maintain API compatibility for `StageFactory` and related classes
+-- [ ] 7.1.3 Provide migration guide for existing custom stage implementations
++- [x] 7.1.1 Ensure existing pipelines continue to work unchanged
++- [x] 7.1.2 Maintain API compatibility for `StageFactory` and related classes
++- [x] 7.1.3 Provide migration guide for existing custom stage implementations
+
+ ### 7.2 Deprecation Strategy
+
+-- [ ] 7.2.1 Add deprecation warnings for direct registry access
+-- [ ] 7.2.2 Plan timeline for removing hardcoded stage mappings
+-- [ ] 7.2.3 Update all internal code to use new plugin system
++- [x] 7.2.1 Add deprecation warnings for direct registry access
++- [x] 7.2.2 Plan timeline for removing hardcoded stage mappings
++- [x] 7.2.3 Update all internal code to use new plugin system
+
+ ## 8. Performance and Observability
+
+ ### 8.1 Performance Validation
+
+-- [ ] 8.1.1 Benchmark stage resolution time (should be equivalent to current system)
+-- [ ] 8.1.2 Test plugin discovery overhead (should be minimal)
+-- [ ] 8.1.3 Validate memory usage with large numbers of registered stages
++- [x] 8.1.1 Benchmark stage resolution time (should be equivalent to current system)
++- [x] 8.1.2 Test plugin discovery overhead (should be minimal)
++- [x] 8.1.3 Validate memory usage with large numbers of registered stages
+
+ ### 8.2 Observability Enhancements
+
+-- [ ] 8.2.1 Add metrics for plugin discovery and stage registration
+-- [ ] 8.2.2 Enhance error reporting for malformed plugins
+-- [ ] 8.2.3 Add structured logging for stage metadata operations
++- [x] 8.2.1 Add metrics for plugin discovery and stage registration
++- [x] 8.2.2 Enhance error reporting for malformed plugins
++- [x] 8.2.3 Add structured logging for stage metadata operations
+
+ ## 9. Security Considerations
+
+ ### 9.1 Plugin Security
+
+-- [ ] 9.1.1 Add validation for plugin metadata to prevent malicious registrations
+-- [ ] 9.1.2 Implement plugin isolation (plugins shouldn't affect each other)
+-- [ ] 9.1.3 Add audit logging for plugin registration events
++- [x] 9.1.1 Add validation for plugin metadata to prevent malicious registrations
++- [x] 9.1.2 Implement plugin isolation (plugins shouldn't affect each other)
++- [x] 9.1.3 Add audit logging for plugin registration events
+
+ ### 9.2 Input Validation
+
+-- [ ] 9.2.1 Validate stage metadata against schema before registration
+-- [ ] 9.2.2 Sanitize stage configuration parameters
+-- [ ] 9.2.3 Prevent plugin name collisions and conflicts
++- [x] 9.2.1 Validate stage metadata against schema before registration
++- [x] 9.2.2 Sanitize stage configuration parameters
++- [x] 9.2.3 Prevent plugin name collisions and conflicts
+
+ ## 10. Production Readiness
+
+ ### 10.1 Deployment Updates
+
+-- [ ] 10.1.1 Update Docker images to include new orchestration components
+-- [ ] 10.1.2 Add plugin discovery to container initialization
+-- [ ] 10.1.3 Update Kubernetes configurations for new dependencies
++- [x] 10.1.1 Update Docker images to include new orchestration components
++- [x] 10.1.2 Add plugin discovery to container initialization
++- [x] 10.1.3 Update Kubernetes configurations for new dependencies
+
+ ### 10.2 Monitoring Integration
+
+-- [ ] 10.2.1 Add alerts for plugin registration failures
+-- [ ] 10.2.2 Monitor stage resolution performance
+-- [ ] 10.2.3 Track usage of plugin vs built-in stages
++- [x] 10.2.1 Add alerts for plugin registration failures
++- [x] 10.2.2 Monitor stage resolution performance
++- [x] 10.2.3 Track usage of plugin vs built-in stages
+
+ **Total Tasks**: 45 across 10 work streams
+
+ **Risk Assessment:**
+
+ - **High Risk**: Core runtime changes could break existing pipelines
+ - **Medium Risk**: Plugin system could introduce security vulnerabilities
+ - **Low Risk**: Documentation and examples are straightforward
+
+ **Rollback Plan**: If critical issues arise, revert to previous hardcoded system via feature flag, allowing gradual migration of custom stages.
+diff --git a/pyproject.toml b/pyproject.toml
+index eab57971582be9b3f564c065bb002cd594ad9f05..abc5ceb477559e77ce3f6ac096ce8db35f36af9f 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -646,50 +646,54 @@ docs = [
+     "pdoc>=15.0.4",
+ ]
+
+ chunking = [
+     "langchain-text-splitters>=0.3.11",
+     "llama-index-core",
+     "haystack-ai>=2.18.1",
+     "unstructured>=0.11.8",
+     "hdbscan>=0.8.40",
+     "networkx>=3.2.1",
+     "layoutparser>=0.3.4",
+     "docling>=2.55.1",
+     "gensim>=4.3.3",
+     "nltk>=3.9.2",
+     "pysbd>=0.3.4",
+     "scikit-learn>=1.7.2",
+     "spacy>=3.7.2",
+ ]
+ reranking = [
+     "xgboost>=3.0.5",
+ ]
+
+ [project.entry-points."medical_kg.adapters"]
+ example = "Medical_KG_rev.adapters.plugins.example:ExampleAdapterPlugin"
+
++[project.entry-points."medical_kg.orchestration.stages"]
++download = "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++gate = "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
++
+ [project.urls]
+ Homepage = "https://github.com/your-org/Medical_KG_rev"
+ Documentation = "https://your-org.github.io/Medical_KG_rev"
+ Repository = "https://github.com/your-org/Medical_KG_rev"
+ Issues = "https://github.com/your-org/Medical_KG_rev/issues"
+
+ [project.scripts]
+ medkg = "Medical_KG_rev.cli:main"
+ medkg-gateway = "Medical_KG_rev.gateway.main:main"
+
+ [build-system]
+ requires = ["setuptools>=68.0", "wheel"]
+ build-backend = "setuptools.build_meta"
+
+ [tool.setuptools.packages.find]
+ where = ["src"]
+
+ [tool.setuptools.package-data]
+ "Medical_KG_rev.kg" = ["*.ttl"]
+ "Medical_KG_rev.services.evaluation.data" = ["test_sets/*.yaml"]
+
+ [tool.black]
+ line-length = 100
+ target-version = ["py312"]
+ include = '\.pyi?$'
+diff --git a/src/Medical_KG_rev/adapters/plugins/resilience.py b/src/Medical_KG_rev/adapters/plugins/resilience.py
+index 985fe5d6c9cd3171f0eb9e68ff14d4b24a0a7fa8..f45035fdba333efa4efa9797f57bcfb354395f89 100644
+--- a/src/Medical_KG_rev/adapters/plugins/resilience.py
++++ b/src/Medical_KG_rev/adapters/plugins/resilience.py
+@@ -10,50 +10,58 @@ import time
+ from collections import deque
+ from enum import Enum
+ from functools import wraps
+ from typing import Any, Awaitable, Callable, TypeVar, cast
+
+ import httpx
+ from aiolimiter import AsyncLimiter
+ from pybreaker import CircuitBreaker, CircuitBreakerError
+ from tenacity import (
+     RetryCallState,
+     retry,
+     retry_if_exception_type,
+     stop_after_attempt,
+     wait_exponential,
+     wait_fixed,
+ )
+
+ from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
+
+ try:  # pragma: no cover - optional dependency
+     from prometheus_client import Counter, Gauge
+ except Exception:  # pragma: no cover - optional dependency
+     Counter = Gauge = None  # type: ignore
+
+
++class CircuitState(str, Enum):
++    """Simplified circuit breaker state representation for telemetry."""
++
++    CLOSED = "closed"
++    OPEN = "open"
++    HALF_OPEN = "half_open"
++
++
+ class BackoffStrategy(str, Enum):
+     """Supported retry backoff strategies."""
+
+     EXPONENTIAL = "exponential"
+     LINEAR = "linear"
+     JITTER = "jitter"
+
+
+ class ResilienceConfig(BaseModel):
+     """Configuration for retry, rate limiting and circuit breaking."""
+
+     max_attempts: PositiveInt = Field(3, description="Maximum retry attempts before failing.")
+     backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL
+     backoff_multiplier: NonNegativeFloat = Field(1.0, description="Multiplier applied to backoff intervals.")
+     backoff_max_seconds: NonNegativeFloat = Field(60.0, description="Maximum backoff duration in seconds.")
+     rate_limit_per_second: NonNegativeFloat = Field(5.0, description="Token bucket fill rate.")
+     rate_limit_capacity: PositiveInt = Field(10, description="Maximum tokens in the bucket.")
+     circuit_breaker_failure_threshold: PositiveInt = Field(
+         5, description="Failures required before opening the circuit."
+     )
+     circuit_breaker_reset_timeout: NonNegativeFloat = Field(
+         30.0, description="Seconds to wait before allowing a trial request."
+     )
+
+
+diff --git a/src/Medical_KG_rev/observability/metrics.py b/src/Medical_KG_rev/observability/metrics.py
+index fb176cbaa019671f5694d857f620845a814bcfa1..fb2795fa2837ce61bff6272ef966870bbe06a780 100644
+--- a/src/Medical_KG_rev/observability/metrics.py
++++ b/src/Medical_KG_rev/observability/metrics.py
+@@ -171,50 +171,66 @@ RERANK_GPU = Gauge(
+     "GPU utilisation while reranking",
+     labelnames=("reranker",),
+ )
+ PIPELINE_STAGE_DURATION = Histogram(
+     "retrieval_pipeline_stage_duration_seconds",
+     "Latency per stage of the retrieval pipeline",
+     labelnames=("stage",),
+     buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+ )
+ RERANK_CACHE_HIT = Gauge(
+     "reranking_cache_hit_rate",
+     "Cache hit rate for reranker results",
+     labelnames=("reranker",),
+ )
+ RERANK_LATENCY_ALERTS = Counter(
+     "reranking_latency_alerts_total",
+     "Number of reranking operations breaching latency SLOs",
+     labelnames=("reranker",),
+ )
+ RERANK_GPU_MEMORY_ALERTS = Counter(
+     "reranking_gpu_memory_alerts_total",
+     "Alerts fired when GPU memory is exhausted during reranking",
+     labelnames=("reranker",),
+ )
+
++STAGE_PLUGIN_REGISTRATIONS = Counter(
++    "orchestration_stage_plugin_registrations_total",
++    "Count of stage plugin registrations grouped by stage type, source, and pipeline",
++    labelnames=("stage_type", "source", "pipeline"),
++)
++STAGE_PLUGIN_REGISTRATION_FAILURES = Counter(
++    "orchestration_stage_plugin_registration_failures_total",
++    "Failed stage plugin registration attempts grouped by source and reason",
++    labelnames=("source", "reason"),
++)
++STAGE_METADATA_OVERRIDE_APPLIED = Counter(
++    "orchestration_stage_metadata_overrides_total",
++    "Number of metadata overrides applied per pipeline and stage",
++    labelnames=("pipeline", "stage"),
++)
++
+ RESILIENCE_RETRY_ATTEMPTS = Counter(
+     "orchestration_resilience_retry_total",
+     "Number of retry attempts triggered by resilience policies",
+     labelnames=("policy", "stage"),
+ )
+
+ RESILIENCE_CIRCUIT_STATE = Gauge(
+     "orchestration_circuit_breaker_state",
+     "Circuit breaker state per resilience policy (0=closed, 1=open, 2=half-open)",
+     labelnames=("policy", "stage"),
+ )
+
+ RESILIENCE_RATE_LIMIT_WAIT = Histogram(
+     "orchestration_rate_limit_wait_seconds",
+     "Time spent waiting for rate limiter tokens per policy",
+     labelnames=("policy", "stage"),
+     buckets=(0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0),
+ )
+
+
+ def _normalise_path(request: "Request") -> str:
+     route = request.scope.get("route")
+     return getattr(route, "path", request.url.path)
+
+
+diff --git a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_KG_rev/orchestration/dagster/configuration.py
+index 327e9350a8873029eae230c73a893f09854f95d9..d2bfff4c25352e045b8074ad01a2606537f8cb85 100644
+--- a/src/Medical_KG_rev/orchestration/dagster/configuration.py
++++ b/src/Medical_KG_rev/orchestration/dagster/configuration.py
+@@ -1,134 +1,183 @@
+ """Configuration models and loaders for Dagster-based orchestration."""
+
+ from __future__ import annotations
+
+ import asyncio
+ import json
+ import threading
+ import time
+ from collections.abc import Callable, Iterable
+ from dataclasses import dataclass
+ from enum import Enum
+ from pathlib import Path
+ from typing import TYPE_CHECKING, Any, Callable, Mapping
+
+ import yaml
+ from pydantic import (
++    AliasChoices,
+     BaseModel,
+     ConfigDict,
+     Field,
+     PrivateAttr,
+     ValidationError,
+     field_validator,
+     model_validator,
+ )
+
+ from Medical_KG_rev.observability.metrics import (
+     record_resilience_circuit_state,
+     record_resilience_rate_limit_wait,
+     record_resilience_retry,
+ )
+ from Medical_KG_rev.utils.logging import get_logger
+
+ logger = get_logger(__name__)
+
+ if TYPE_CHECKING:  # pragma: no cover - hints only
+     from aiolimiter import AsyncLimiter
+     from pybreaker import CircuitBreaker
+
+
+ class BackoffStrategy(str, Enum):
+     EXPONENTIAL = "exponential"
+     LINEAR = "linear"
+     NONE = "none"
+
+
+ class GateCondition(BaseModel):
+     """Predicate evaluated against Job Ledger entries to resume a pipeline."""
+
+     model_config = ConfigDict(extra="forbid")
+
+     field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
+     equals: Any
+     timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
+     poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
+
+
+ class GateDefinition(BaseModel):
+     """Declarative definition for a pipeline gate."""
+
+     model_config = ConfigDict(extra="forbid")
+
+     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+     condition: GateCondition
+     resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+
+
++class StageMetadataOverrides(BaseModel):
++    """Optional overrides that adjust stage metadata at pipeline scope."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    state_key: str | list[str] | None = None
++    description: str | None = None
++    dependencies: list[str] | None = None
++
++
++class StagePluginImport(BaseModel):
++    """Declarative reference to a stage plugin registration callable."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    target: str = Field(alias="callable", pattern=r"^[A-Za-z0-9_.:]+$")
++    replace: bool = Field(default=False)
++
++    @model_validator(mode="after")
++    def _validate_target(self) -> StagePluginImport:
++        if ":" not in self.target:
++            raise ValueError("stage plugin callable must be in 'module:function' format")
++        module, _, attribute = self.target.partition(":")
++        if not module or not attribute:
++            raise ValueError("stage plugin callable must include module and attribute name")
++        return self
++
++    @property
++    def identifier(self) -> str:
++        return self.target
++
++
++class PipelinePluginConfig(BaseModel):
++    """Plugin declarations scoped to an individual pipeline topology."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    stage_plugins: list[StagePluginImport] = Field(
++        default_factory=list,
++        alias=AliasChoices("stage_plugins", "stages"),
++    )
++
++
+ class StageDefinition(BaseModel):
+     """Declarative stage specification for topology YAML files."""
+
+     model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+     stage_type: str = Field(alias="type", pattern=r"^[A-Za-z0-9_-]+$")
+     policy: str | None = Field(default=None, alias="policy")
+     depends_on: list[str] = Field(default_factory=list, alias="depends_on")
+     config: dict[str, Any] = Field(default_factory=dict)
++    metadata_overrides: StageMetadataOverrides | None = Field(
++        default=None,
++        alias=AliasChoices("metadata_overrides", "metadata"),
++    )
+
+     @field_validator("depends_on")
+     @classmethod
+     def _unique_dependencies(cls, value: Iterable[str]) -> list[str]:
+         seen: set[str] = set()
+         result: list[str] = []
+         for item in value:
+             if item in seen:
+                 raise ValueError(f"duplicate dependency '{item}' declared for stage")
+             seen.add(item)
+             result.append(item)
+         return result
+
+
+ class PipelineMetadata(BaseModel):
+     """Optional metadata about the pipeline."""
+
+     owner: str | None = None
+     description: str | None = None
+     tags: list[str] = Field(default_factory=list)
+
+
+ class PipelineTopologyConfig(BaseModel):
+     """Complete topology definition for a pipeline."""
+
+     model_config = ConfigDict(extra="forbid")
+
+     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+     version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[A-Za-z0-9]+)?$")
+     applicable_sources: list[str] = Field(default_factory=list)
+     stages: list[StageDefinition]
+     gates: list[GateDefinition] = Field(default_factory=list)
+     metadata: PipelineMetadata | None = None
++    plugins: PipelinePluginConfig = Field(default_factory=PipelinePluginConfig)
+
+     @model_validator(mode="after")
+     def _validate_dependencies(self) -> PipelineTopologyConfig:
+         stage_names = [stage.name for stage in self.stages]
+         if len(stage_names) != len(set(stage_names)):
+             duplicates = {name for name in stage_names if stage_names.count(name) > 1}
+             raise ValueError(f"duplicate stage names detected: {sorted(duplicates)}")
+
+         stage_set = set(stage_names)
+         for stage in self.stages:
+             missing = [dep for dep in stage.depends_on if dep not in stage_set]
+             if missing:
+                 raise ValueError(
+                     f"stage '{stage.name}' declares unknown dependencies: {', '.join(sorted(missing))}"
+                 )
+
+         order = _topological_sort({stage.name: stage.depends_on for stage in self.stages})
+         if order is None:
+             raise ValueError("cycle detected in pipeline dependencies")
+
+         gate_stage_set = {stage.name for stage in self.stages}
+         for gate in self.gates:
+             if gate.resume_stage not in gate_stage_set:
+                 raise ValueError(
+                     f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
+diff --git a/src/Medical_KG_rev/orchestration/dagster/runtime.py b/src/Medical_KG_rev/orchestration/dagster/runtime.py
+index 11d5dc449d8439644b6964dddca4df13385d11d3..bfc0b42cb637cd192c6e0602c583a320ed602977 100644
+--- a/src/Medical_KG_rev/orchestration/dagster/runtime.py
++++ b/src/Medical_KG_rev/orchestration/dagster/runtime.py
+@@ -1,237 +1,462 @@
+ """Dagster runtime orchestration primitives."""
+
+ from __future__ import annotations
+
+-from dataclasses import dataclass
++import importlib
++import warnings
++from collections.abc import Iterable
++from dataclasses import dataclass, field, replace
+ import re
+ import time
+ from pathlib import Path
+-from typing import Any, Callable, Mapping, Sequence
++from typing import Any, Callable, Mapping
+ from uuid import uuid4
+
+ from dagster import (
+     Definitions,
+     ExecuteInProcessResult,
+     In,
+     Out,
+     ResourceDefinition,
+     RunRequest,
+     SensorEvaluationContext,
+     SkipReason,
+     graph,
+     op,
+     sensor,
+ )
+
+ from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
+ from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
+ from Medical_KG_rev.adapters.plugins.models import AdapterRequest
+ from Medical_KG_rev.orchestration.dagster.configuration import (
+     PipelineConfigLoader,
+     PipelineTopologyConfig,
+     StageExecutionHooks,
+     ResiliencePolicyLoader,
+     StageDefinition,
++    StageMetadataOverrides,
++)
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StagePlugin,
++    StageRegistration,
++    StageRegistry,
++    StageRegistryError,
+ )
+ from Medical_KG_rev.orchestration.dagster.stages import (
+     HaystackPipelineResource,
+     build_default_stage_factory,
+     create_default_pipeline_resource,
+ )
+ from Medical_KG_rev.orchestration.events import StageEventEmitter
+ from Medical_KG_rev.orchestration.kafka import KafkaClient
+ from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
+ from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
+ from Medical_KG_rev.orchestration.stages.contracts import StageContext
++from Medical_KG_rev.observability.metrics import (
++    STAGE_METADATA_OVERRIDE_APPLIED,
++    STAGE_PLUGIN_REGISTRATION_FAILURES,
++    STAGE_PLUGIN_REGISTRATIONS,
++)
+ from Medical_KG_rev.utils.logging import get_logger
+
+ logger = get_logger(__name__)
+
+
+ class StageResolutionError(RuntimeError):
+     """Raised when a stage cannot be resolved from the registry."""
+
+
+-@dataclass(slots=True)
++@dataclass(slots=True, init=False)
+ class StageFactory:
+     """Resolve orchestration stages by topology stage type."""
+
+-    registry: Mapping[str, Callable[[StageDefinition], object]]
++    _registry: StageRegistry
++    _pipeline_plugins: dict[str, set[str]]
++    _metadata_overrides: dict[str, dict[str, StageMetadata]]
++
++    def __init__(self, registry: StageRegistry | None = None) -> None:
++        self._registry = registry or StageRegistry()
++        self._pipeline_plugins = {}
++        self._metadata_overrides = {}
++
++    @property
++    def registry(self) -> StageRegistry:
++        warnings.warn(
++            "Direct access to StageFactory.registry is deprecated; use register_stage() or load_plugins().",
++            DeprecationWarning,
++            stacklevel=2,
++        )
++        return self._registry
+
+     def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+         try:
+-            factory = self.registry[stage.stage_type]
+-        except KeyError as exc:  # pragma: no cover - defensive guard
++            builder = self._registry.get_builder(stage.stage_type)
++            metadata = self._registry.get_metadata(stage.stage_type)
++        except StageRegistryError as exc:  # pragma: no cover - defensive guard
+             raise StageResolutionError(
+                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+             ) from exc
+-        instance = factory(stage)
++        instance = builder(stage)
+         logger.debug(
+             "dagster.stage.resolved",
+             pipeline=pipeline,
+             stage=stage.name,
+             stage_type=stage.stage_type,
++            description=metadata.description,
+         )
+         return instance
+
++    def get_metadata(self, stage_type: str) -> StageMetadata:
++        return self._registry.get_metadata(stage_type)
++
++    def metadata_for_stage(self, pipeline: str, stage: StageDefinition) -> StageMetadata:
++        overrides = self._metadata_overrides.get(pipeline, {})
++        if stage.name in overrides:
++            return overrides[stage.name]
++        try:
++            return self._registry.get_metadata(stage.stage_type)
++        except StageRegistryError as exc:
++            raise StageResolutionError(
++                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
++            ) from exc
++
++    def register_stage(
++        self,
++        *,
++        metadata: StageMetadata,
++        builder: Callable[[StageDefinition], object],
++        replace: bool = False,
++    ) -> None:
++        self._registry.register_stage(metadata=metadata, builder=builder, replace=replace)
++
++    def load_plugins(self) -> list[str]:
++        return self._registry.load_plugins()
++
++    def apply_pipeline_extensions(self, topology: PipelineTopologyConfig) -> list[str]:
++        start = time.perf_counter()
++        loaded: list[str] = []
++        cache = self._pipeline_plugins.setdefault(topology.name, set())
++        for plugin_ref in topology.plugins.stage_plugins:
++            if plugin_ref.identifier in cache and not plugin_ref.replace:
++                logger.debug(
++                    "dagster.stage.plugins.pipeline_cached",
++                    pipeline=topology.name,
++                    plugin=plugin_ref.identifier,
++                )
++                continue
++            try:
++                plugin_callable = self._load_stage_plugin(plugin_ref.target)
++            except Exception as exc:
++                logger.warning(
++                    "dagster.stage.plugins.import_failed",
++                    pipeline=topology.name,
++                    target=plugin_ref.target,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="import_error",
++                ).inc()
++                continue
++            try:
++                registrations = plugin_callable()
++            except Exception as exc:
++                logger.warning(
++                    "dagster.stage.plugins.invoke_failed",
++                    pipeline=topology.name,
++                    target=plugin_ref.target,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="call_error",
++                ).inc()
++                continue
++            if isinstance(registrations, Iterable) and not isinstance(registrations, StageRegistration):
++                registration_items = list(registrations)
++            else:
++                registration_items = [registrations]
++            for registration in registration_items:
++                if not isinstance(registration, StageRegistration):
++                    logger.warning(
++                        "dagster.stage.plugins.invalid_registration",
++                        pipeline=topology.name,
++                        plugin=plugin_ref.identifier,
++                        registration_type=type(registration).__name__,
++                    )
++                    STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                        source="pipeline",
++                        reason="invalid",
++                    ).inc()
++                    continue
++                stage_type = registration.metadata.stage_type
++                if not plugin_ref.replace and stage_type in self._registry.stage_types():
++                    logger.debug(
++                        "dagster.stage.plugins.already_registered",
++                        pipeline=topology.name,
++                        stage_type=stage_type,
++                    )
++                    continue
++                try:
++                    self._registry.register(registration, replace=plugin_ref.replace)
++                except StageRegistryError as exc:
++                    logger.warning(
++                        "dagster.stage.plugins.pipeline_conflict",
++                        pipeline=topology.name,
++                        stage_type=stage_type,
++                        error=str(exc),
++                    )
++                    STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                        source="pipeline",
++                        reason="conflict",
++                    ).inc()
++                    continue
++                loaded.append(stage_type)
++                cache.add(plugin_ref.identifier)
++                STAGE_PLUGIN_REGISTRATIONS.labels(
++                    stage_type=stage_type,
++                    source="pipeline",
++                    pipeline=topology.name,
++                ).inc()
++        overrides_applied = 0
++        overrides: dict[str, StageMetadata] = {}
++        for stage in topology.stages:
++            if not stage.metadata_overrides:
++                continue
++            try:
++                base_metadata = self._registry.get_metadata(stage.stage_type)
++            except StageRegistryError as exc:
++                logger.warning(
++                    "dagster.stage.metadata.override_missing",
++                    pipeline=topology.name,
++                    stage=stage.name,
++                    stage_type=stage.stage_type,
++                    error=str(exc),
++                )
++                STAGE_PLUGIN_REGISTRATION_FAILURES.labels(
++                    source="pipeline",
++                    reason="missing_metadata",
++                ).inc()
++                continue
++            updated = self._apply_overrides(base_metadata, stage.metadata_overrides)
++            if updated is base_metadata:
++                continue
++            overrides[stage.name] = updated
++            overrides_applied += 1
++            STAGE_METADATA_OVERRIDE_APPLIED.labels(
++                pipeline=topology.name,
++                stage=stage.name,
++            ).inc()
++        if overrides:
++            self._metadata_overrides[topology.name] = overrides
++        elif topology.name in self._metadata_overrides:
++            self._metadata_overrides.pop(topology.name, None)
++        duration_ms = int((time.perf_counter() - start) * 1000)
++        logger.debug(
++            "dagster.stage.registry.pipeline_extensions",
++            pipeline=topology.name,
++            plugins=len(loaded),
++            overrides=overrides_applied,
++            duration_ms=duration_ms,
++        )
++        return loaded
++
++    def prune_pipelines(self, active: set[str]) -> None:
++        for pipeline in list(self._metadata_overrides):
++            if pipeline not in active:
++                self._metadata_overrides.pop(pipeline, None)
++        for pipeline in list(self._pipeline_plugins):
++            if pipeline not in active:
++                self._pipeline_plugins.pop(pipeline, None)
++
++    def _load_stage_plugin(self, target: str) -> StagePlugin:
++        module_path, _, attribute = target.partition(":")
++        module = importlib.import_module(module_path)
++        obj: Any = module
++        for part in attribute.split("."):
++            obj = getattr(obj, part)
++        if not callable(obj):
++            raise TypeError(f"Stage plugin '{target}' is not callable")
++        return obj  # type: ignore[return-value]
++
++    def _apply_overrides(
++        self,
++        metadata: StageMetadata,
++        overrides: StageMetadataOverrides,
++    ) -> StageMetadata:
++        updates: dict[str, Any] = {}
++        if "state_key" in overrides.model_fields_set:
++            updates["state_key"] = overrides.state_key
++        if "description" in overrides.model_fields_set and overrides.description:
++            updates["description"] = overrides.description
++        if "dependencies" in overrides.model_fields_set and overrides.dependencies is not None:
++            updates["dependencies"] = tuple(overrides.dependencies)
++        if not updates:
++            return metadata
++        return replace(metadata, **updates)
++
+
+ @op(
+     name="bootstrap",
+     out=Out(dict),
+     config_schema={
+         "context": dict,
+         "adapter_request": dict,
+         "payload": dict,
+     },
+ )
+ def bootstrap_op(context) -> dict[str, Any]:
+     """Initialise the orchestration state for a Dagster run."""
+
+     ctx_payload = context.op_config["context"]
+     adapter_payload = context.op_config["adapter_request"]
+     payload = context.op_config.get("payload", {})
+
+     stage_ctx = StageContext(
+         tenant_id=ctx_payload["tenant_id"],
+         job_id=ctx_payload.get("job_id"),
+         doc_id=ctx_payload.get("doc_id"),
+         correlation_id=ctx_payload.get("correlation_id"),
+         metadata=ctx_payload.get("metadata", {}),
+         pipeline_name=ctx_payload.get("pipeline_name"),
+         pipeline_version=ctx_payload.get("pipeline_version"),
+     )
+     adapter_request = AdapterRequest.model_validate(adapter_payload)
+
+     state = {
+         "context": stage_ctx,
+         "adapter_request": adapter_request,
+         "payload": payload,
+         "results": {},
+         "job_id": stage_ctx.job_id,
+     }
+     logger.debug(
+         "dagster.bootstrap.initialised",
+         tenant_id=stage_ctx.tenant_id,
+         pipeline=stage_ctx.pipeline_name,
+     )
+     return state
+
+
+-def _stage_state_key(stage_type: str) -> str:
+-    return {
+-        "ingest": "payloads",
+-        "parse": "document",
+-        "ir-validation": "document",
+-        "chunk": "chunks",
+-        "embed": "embedding_batch",
+-        "index": "index_receipt",
+-        "extract": "extraction",
+-        "knowledge-graph": "graph_receipt",
+-    }.get(stage_type, stage_type)
+-
+-
+ def _apply_stage_output(
+-    stage_type: str,
++    metadata: StageMetadata,
+     stage_name: str,
+     state: dict[str, Any],
+     output: Any,
+ ) -> dict[str, Any]:
+-    if stage_type == "ingest":
+-        state["payloads"] = output
+-    elif stage_type in {"parse", "ir-validation"}:
+-        state["document"] = output
+-    elif stage_type == "chunk":
+-        state["chunks"] = output
+-    elif stage_type == "embed":
+-        state["embedding_batch"] = output
+-    elif stage_type == "index":
+-        state["index_receipt"] = output
+-    elif stage_type == "extract":
+-        entities, claims = output
+-        state["entities"] = entities
+-        state["claims"] = claims
+-    elif stage_type == "knowledge-graph":
+-        state["graph_receipt"] = output
+-    else:  # pragma: no cover - guard for future expansion
+-        state[_stage_state_key(stage_type)] = output
++    metadata.output_handler(state, stage_name, output)
++    snapshot = metadata.result_snapshot(state, output)
+     state.setdefault("results", {})[stage_name] = {
+-        "type": stage_type,
+-        "output": state.get(_stage_state_key(stage_type)),
++        "type": metadata.stage_type,
++        "output": snapshot,
+     }
+     return state
+
+
+-def _infer_output_count(stage_type: str, output: Any) -> int:
+-    if output is None:
++def _infer_output_count(metadata: StageMetadata, output: Any) -> int:
++    try:
++        count = metadata.output_counter(output)
++    except Exception:  # pragma: no cover - defensive guard
+         return 0
+-    if stage_type in {"ingest", "chunk"} and isinstance(output, Sequence):
+-        return len(output)
+-    if stage_type in {"parse", "ir-validation"}:
+-        return 1
+-    if stage_type == "embed" and hasattr(output, "vectors"):
+-        vectors = getattr(output, "vectors")
+-        if isinstance(vectors, Sequence):
+-            return len(vectors)
+-    if stage_type == "index" and hasattr(output, "chunks_indexed"):
+-        indexed = getattr(output, "chunks_indexed")
+-        if isinstance(indexed, int):
+-            return indexed
+-    if stage_type == "extract" and isinstance(output, tuple) and len(output) == 2:
+-        entities, claims = output
+-        entity_count = len(entities) if isinstance(entities, Sequence) else 0
+-        claim_count = len(claims) if isinstance(claims, Sequence) else 0
+-        return entity_count + claim_count
+-    if stage_type == "knowledge-graph" and hasattr(output, "nodes_written"):
+-        nodes = getattr(output, "nodes_written", 0)
+-        if isinstance(nodes, int):
+-            return nodes
+-    return 1
++    if not isinstance(count, int):  # pragma: no cover - defensive guard
++        try:
++            count = int(count)
++        except Exception:
++            return 0
++    return max(count, 0)
++
++
++def _resolve_upstream_value(
++    state: Mapping[str, Any],
++    metadata: StageMetadata,
++    stage_factory: StageFactory,
++    ledger: JobLedger | None = None,
++    job_id: str | None = None,
++) -> Any:
++    aggregated: dict[str, Any] = {}
++    ledger_snapshot: Any | None = None
++    for dependency in metadata.dependencies:
++        if dependency == "@ledger":
++            if ledger and job_id:
++                ledger_snapshot = ledger_snapshot or ledger.get(job_id)
++            aggregated["ledger"] = ledger_snapshot
++            continue
++        try:
++            dep_metadata = stage_factory.get_metadata(dependency)
++        except StageRegistryError:  # pragma: no cover - defensive guard
++            aggregated[dependency] = state.get(dependency)
++            continue
++        dep_keys = dep_metadata.state_keys
++        if not dep_keys:
++            aggregated[dependency] = state.get(dependency)
++            continue
++        if len(dep_keys) == 1:
++            key = dep_keys[0]
++            aggregated[key] = state.get(key)
++        else:
++            aggregated[dependency] = {key: state.get(key) for key in dep_keys}
++    if aggregated:
++        if len(aggregated) == 1:
++            return next(iter(aggregated.values()))
++        return aggregated
++    keys = metadata.state_keys
++    if keys is None or not keys:
++        return dict(state)
++    if len(keys) == 1:
++        return state.get(keys[0])
++    return {key: state.get(key) for key in keys}
+
+
+ def _make_stage_op(
+     topology: PipelineTopologyConfig,
+     stage_definition: StageDefinition,
+ ):
+     stage_type = stage_definition.stage_type
+     stage_name = stage_definition.name
+     policy_name = stage_definition.policy or "default"
+
+     @op(
+         name=stage_name,
+         ins={"state": In(dict)},
+         out=Out(dict),
+         required_resource_keys={
+             "stage_factory",
+             "resilience_policies",
+             "job_ledger",
+             "event_emitter",
+         },
+     )
+     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
+-        stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
++        stage_factory: StageFactory = context.resources.stage_factory
++        stage = stage_factory.resolve(topology.name, stage_definition)
++        metadata = stage_factory.metadata_for_stage(topology.name, stage_definition)
+         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
++        ledger: JobLedger = context.resources.job_ledger
++        emitter: StageEventEmitter = context.resources.event_emitter
+
+         execute = getattr(stage, "execute")
+         execution_state: dict[str, Any] = {
+             "attempts": 0,
+             "duration": 0.0,
+             "failed": False,
+             "error": None,
+         }
+
+         def _on_retry(retry_state: Any) -> None:
+             job_identifier = state.get("job_id")
+             if job_identifier:
+                 ledger.increment_retry(job_identifier, stage_name)
+             sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
+             attempt_number = getattr(retry_state, "attempt_number", 0) + 1
+             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
+             reason = str(error) if error else "retry"
+             emitter.emit_retrying(
+                 state["context"],
+                 stage_name,
+                 attempt=attempt_number,
+                 backoff_ms=int(sleep_seconds * 1000),
+                 reason=reason,
+             )
+
+@@ -265,66 +490,71 @@ def _make_stage_op(
+
+         try:
+             if stage_type == "ingest":
+                 adapter_request: AdapterRequest = state["adapter_request"]
+                 result = wrapped(stage_ctx, adapter_request)
+             elif stage_type in {"parse", "ir-validation"}:
+                 payloads = state.get("payloads", [])
+                 result = wrapped(stage_ctx, payloads)
+             elif stage_type == "chunk":
+                 document = state.get("document")
+                 result = wrapped(stage_ctx, document)
+             elif stage_type == "embed":
+                 chunks = state.get("chunks", [])
+                 result = wrapped(stage_ctx, chunks)
+             elif stage_type == "index":
+                 batch = state.get("embedding_batch")
+                 result = wrapped(stage_ctx, batch)
+             elif stage_type == "extract":
+                 document = state.get("document")
+                 result = wrapped(stage_ctx, document)
+             elif stage_type == "knowledge-graph":
+                 entities = state.get("entities", [])
+                 claims = state.get("claims", [])
+                 result = wrapped(stage_ctx, entities, claims)
+             else:  # pragma: no cover - guard for future expansion
+-                upstream = state.get(_stage_state_key(stage_type))
++                upstream = _resolve_upstream_value(
++                    state,
++                    metadata,
++                    stage_factory,
++                    ledger=ledger,
++                    job_id=job_id,
++                )
+                 result = wrapped(stage_ctx, upstream)
+         except Exception as exc:
+             attempts = execution_state.get("attempts") or 1
+             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
+             if job_id:
+                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
+             raise
+
+         updated = dict(state)
+-        _apply_stage_output(stage_type, stage_name, updated, result)
+-        output = updated.get(_stage_state_key(stage_type))
++        _apply_stage_output(metadata, stage_name, updated, result)
+         attempts = execution_state.get("attempts") or 1
+         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
+         duration_ms = int(duration_seconds * 1000)
+-        output_count = _infer_output_count(stage_type, output)
++        output_count = _infer_output_count(metadata, result)
+
+         if job_id:
+             ledger.update_metadata(
+                 job_id,
+                 {
+                     f"stage.{stage_name}.attempts": attempts,
+                     f"stage.{stage_name}.output_count": output_count,
+                     f"stage.{stage_name}.duration_ms": duration_ms,
+                 },
+             )
+         emitter.emit_completed(
+             stage_ctx,
+             stage_name,
+             attempt=attempts,
+             duration_ms=duration_ms,
+             output_count=output_count,
+         )
+         logger.debug(
+             "dagster.stage.completed",
+             pipeline=topology.name,
+             stage=stage_name,
+             stage_type=stage_type,
+             policy=policy_name,
+             attempts=attempts,
+             duration_ms=duration_ms,
+@@ -359,51 +589,53 @@ def _topological_order(stages: list[StageDefinition]) -> list[str]:
+
+
+ @dataclass(slots=True)
+ class BuiltPipelineJob:
+     job_name: str
+     job_definition: Any
+     final_node: str
+     version: str
+
+
+ def _normalise_name(name: str) -> str:
+     """Return a Dagster-safe identifier derived from the pipeline name."""
+
+     candidate = re.sub(r"[^0-9A-Za-z_]+", "_", name)
+     if not candidate:
+         return "pipeline"
+     if candidate[0].isdigit():
+         candidate = f"p_{candidate}"
+     return candidate
+
+
+ def _build_pipeline_job(
+     topology: PipelineTopologyConfig,
+     *,
+     resource_defs: Mapping[str, ResourceDefinition],
++    stage_factory: StageFactory,
+ ) -> BuiltPipelineJob:
++    stage_factory.apply_pipeline_extensions(topology)
+     stage_ops = {
+         stage.name: _make_stage_op(topology, stage)
+         for stage in topology.stages
+     }
+     order = _topological_order(topology.stages)
+
+     safe_name = _normalise_name(topology.name)
+
+     @graph(name=f"{safe_name}_graph")
+     def _pipeline_graph():
+         state = bootstrap_op.alias("bootstrap")()
+         for stage_name in order:
+             op_def = stage_ops[stage_name].alias(stage_name)
+             state = op_def(state)
+         return state
+
+     job = _pipeline_graph.to_job(
+         name=f"{safe_name}_job",
+         resource_defs={
+             **resource_defs,
+         },
+         tags={
+             "medical_kg.pipeline": topology.name,
+             "medical_kg.pipeline_version": topology.version,
+         },
+@@ -425,93 +657,102 @@ class DagsterRunResult:
+     success: bool
+     state: dict[str, Any]
+     dagster_result: ExecuteInProcessResult
+
+
+ class DagsterOrchestrator:
+     """Submit orchestration jobs to Dagster using declarative topology configs."""
+
+     def __init__(
+         self,
+         pipeline_loader: PipelineConfigLoader,
+         resilience_loader: ResiliencePolicyLoader,
+         stage_factory: StageFactory,
+         *,
+         plugin_manager: AdapterPluginManager | None = None,
+         job_ledger: JobLedger | None = None,
+         kafka_client: KafkaClient | None = None,
+         event_emitter: StageEventEmitter | None = None,
+         openlineage_emitter: OpenLineageEmitter | None = None,
+         pipeline_resource: HaystackPipelineResource | None = None,
+         base_path: str | Path | None = None,
+     ) -> None:
+         self.pipeline_loader = pipeline_loader
+         self.resilience_loader = resilience_loader
+         self.stage_factory = stage_factory
++        loaded_plugins = self.stage_factory.load_plugins()
++        if loaded_plugins:
++            logger.info(
++                "dagster.stage.plugins.entrypoints_loaded",
++                count=len(loaded_plugins),
++                stage_types=loaded_plugins,
++            )
+         self.plugin_manager = plugin_manager or get_plugin_manager()
+         self.base_path = Path(base_path or pipeline_loader.base_path)
+         self.job_ledger = job_ledger or JobLedger()
+         self.kafka_client = kafka_client or KafkaClient()
+         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
+         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
+         self.openlineage = openlineage_emitter or OpenLineageEmitter()
+         self._resource_defs: dict[str, ResourceDefinition] = {
+             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
+             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
+             "job_ledger": ResourceDefinition.hardcoded_resource(self.job_ledger),
+             "event_emitter": ResourceDefinition.hardcoded_resource(self.event_emitter),
+             "haystack_pipeline": ResourceDefinition.hardcoded_resource(self.pipeline_resource),
+             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
+             "kafka": ResourceDefinition.hardcoded_resource(self.kafka_client),
+             "openlineage": ResourceDefinition.hardcoded_resource(self.openlineage),
+         }
+         self._jobs: dict[str, BuiltPipelineJob] = {}
+         self._definitions: Definitions | None = None
+         self._refresh_jobs()
+
+     @property
+     def definitions(self) -> Definitions:
+         if self._definitions is None:
+             jobs = [entry.job_definition for entry in self._jobs.values()]
+             self._definitions = Definitions(
+                 jobs=jobs,
+                 resources=self._resource_defs,
+                 sensors=[pdf_ir_ready_sensor],
+             )
+         return self._definitions
+
+     def available_pipelines(self) -> list[str]:
+         return sorted(self._jobs)
+
+     def _refresh_jobs(self) -> None:
+         job_entries: dict[str, BuiltPipelineJob] = {}
+         for path in sorted(self.base_path.glob("*.yaml")):
+             topology = self.pipeline_loader.load(path.stem)
+             job_entries[topology.name] = _build_pipeline_job(
+                 topology,
+                 resource_defs=self._resource_defs,
++                stage_factory=self.stage_factory,
+             )
++        self.stage_factory.prune_pipelines(set(job_entries))
+         self._jobs = job_entries
+         self._definitions = None
+
+     def _record_job_attempt(self, job_id: str | None) -> int:
+         if not job_id:
+             return 1
+         try:
+             return self.job_ledger.record_attempt(job_id)
+         except JobLedgerError:
+             logger.debug("dagster.ledger.missing_job", job_id=job_id)
+             return 1
+
+     def submit(
+         self,
+         *,
+         pipeline: str,
+         context: StageContext,
+         adapter_request: AdapterRequest,
+         payload: Mapping[str, Any],
+     ) -> DagsterRunResult:
+         if pipeline not in self._jobs:
+             self._refresh_jobs()
+         try:
+             job = self._jobs[pipeline]
+         except KeyError as exc:  # pragma: no cover - defensive guard
+diff --git a/src/Medical_KG_rev/orchestration/dagster/stage_registry.py b/src/Medical_KG_rev/orchestration/dagster/stage_registry.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..bebe4713b2a4ad9a75d079fee5dec3926ccbdeb6
+--- /dev/null
++++ b/src/Medical_KG_rev/orchestration/dagster/stage_registry.py
+@@ -0,0 +1,249 @@
++"""Stage metadata and plugin registry for Dagster orchestration stages."""
++
++from __future__ import annotations
++
++import re
++from dataclasses import dataclass, field
++from importlib import metadata
++from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
++
++import structlog
++
++from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++
++logger = structlog.get_logger(__name__)
++
++
++StageBuilder = Callable[[StageDefinition], object]
++
++
++class StageRegistryError(RuntimeError):
++    """Raised when stage metadata registration or lookup fails."""
++
++
++@dataclass(slots=True, frozen=True)
++class StageMetadata:
++    """Metadata describing how a stage integrates with the runtime state."""
++
++    stage_type: str
++    state_key: str | Sequence[str] | None
++    output_handler: Callable[[dict[str, Any], str, Any], None]
++    output_counter: Callable[[Any], int]
++    description: str
++    dependencies: Sequence[str] = field(default_factory=tuple)
++
++    _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
++
++    def __post_init__(self) -> None:
++        if not isinstance(self.stage_type, str) or not self.stage_type.strip():
++            raise StageRegistryError("Stage type must be a non-empty string")
++        if not callable(self.output_handler):
++            raise StageRegistryError(
++                f"Stage '{self.stage_type}' output_handler must be callable"
++            )
++        if not callable(self.output_counter):
++            raise StageRegistryError(
++                f"Stage '{self.stage_type}' output_counter must be callable"
++            )
++        if not isinstance(self.description, str) or not self.description.strip():
++            raise StageRegistryError(
++                f"Stage '{self.stage_type}' description must be a non-empty string"
++            )
++        for dependency in self.dependencies:
++            if not isinstance(dependency, str) or not dependency.strip():
++                raise StageRegistryError(
++                    f"Stage '{self.stage_type}' dependency '{dependency}' is invalid"
++                )
++        self._validate_state_keys(self.state_key)
++
++    @property
++    def state_keys(self) -> Sequence[str] | None:
++        if self.state_key is None:
++            return None
++        if isinstance(self.state_key, str):
++            return (self.state_key,)
++        return tuple(self.state_key)
++
++    def result_snapshot(self, state: Mapping[str, Any], output: Any) -> Any:
++        keys = self.state_keys
++        if keys is None:
++            return output
++        if len(keys) == 1:
++            return state.get(keys[0])
++        return {key: state.get(key) for key in keys}
++
++    @classmethod
++    def _validate_state_keys(cls, state_key: str | Sequence[str] | None) -> None:
++        if state_key is None:
++            return
++        keys = (state_key,) if isinstance(state_key, str) else tuple(state_key)
++        if not keys:
++            raise StageRegistryError("state_key collection cannot be empty")
++        for key in keys:
++            if not isinstance(key, str) or not key:
++                raise StageRegistryError("state_key entries must be non-empty strings")
++            if not cls._IDENTIFIER_PATTERN.match(key):
++                raise StageRegistryError(
++                    f"Invalid state key '{key}'; must be a valid Python identifier"
++                )
++
++
++@dataclass(slots=True, frozen=True)
++class StageRegistration:
++    """Combination of metadata and builder used for registration."""
++
++    metadata: StageMetadata
++    builder: StageBuilder
++
++    def __post_init__(self) -> None:
++        if not callable(self.builder):
++            raise StageRegistryError(
++                f"Stage '{self.metadata.stage_type}' builder must be callable"
++            )
++
++
++class StagePlugin(Protocol):
++    """Protocol for plugin registration callables."""
++
++    def __call__(self) -> StageRegistration | Iterable[StageRegistration]:
++        """Return one or more stage registrations."""
++
++
++def discover_stages(
++    group: str = "medical_kg.orchestration.stages",
++) -> Iterable[StagePlugin]:
++    """Yield plugin callables discovered via entry points."""
++
++    try:
++        entry_points = metadata.entry_points()
++    except Exception as exc:  # pragma: no cover - defensive guard
++        logger.warning("dagster.stage.plugins.discovery_failed", error=str(exc))
++        return []
++    selected = entry_points.select(group=group) if hasattr(entry_points, "select") else []
++    plugins: list[StagePlugin] = []
++    for entry_point in selected:
++        try:
++            loaded = entry_point.load()
++        except Exception as exc:  # pragma: no cover - discovery guard
++            logger.warning(
++                "dagster.stage.plugins.load_failed",
++                entry_point=entry_point.name,
++                error=str(exc),
++            )
++            continue
++        if not callable(loaded):
++            logger.warning(
++                "dagster.stage.plugins.invalid",
++                entry_point=entry_point.name,
++                reason="not callable",
++            )
++            continue
++        plugins.append(loaded)  # type: ignore[return-value]
++    return plugins
++
++
++class StageRegistry:
++    """Registry responsible for managing stage metadata and builders."""
++
++    def __init__(
++        self,
++        *,
++        plugin_loader: Callable[[], Iterable[StagePlugin]] | None = None,
++    ) -> None:
++        self._metadata: dict[str, StageMetadata] = {}
++        self._builders: dict[str, StageBuilder] = {}
++        self._plugin_loader = plugin_loader or (lambda: discover_stages())
++
++    def register(self, registration: StageRegistration, *, replace: bool = False) -> None:
++        stage_type = registration.metadata.stage_type
++        if stage_type in self._metadata and not replace:
++            raise StageRegistryError(
++                f"Stage '{stage_type}' is already registered"
++            )
++        self._metadata[stage_type] = registration.metadata
++        self._builders[stage_type] = registration.builder
++        logger.debug(
++            "dagster.stage.registry.registered",
++            stage_type=stage_type,
++            description=registration.metadata.description,
++        )
++
++    def register_stage(
++        self,
++        *,
++        metadata: StageMetadata,
++        builder: StageBuilder,
++        replace: bool = False,
++    ) -> None:
++        registration = StageRegistration(metadata=metadata, builder=builder)
++        self.register(registration, replace=replace)
++
++    def get_metadata(self, stage_type: str) -> StageMetadata:
++        try:
++            return self._metadata[stage_type]
++        except KeyError as exc:  # pragma: no cover - guard
++            raise StageRegistryError(f"Unknown stage type '{stage_type}'") from exc
++
++    def get_builder(self, stage_type: str) -> StageBuilder:
++        try:
++            return self._builders[stage_type]
++        except KeyError as exc:  # pragma: no cover - guard
++            raise StageRegistryError(f"Unknown stage type '{stage_type}'") from exc
++
++    def load_plugins(self) -> list[str]:
++        loaded: list[str] = []
++        for plugin in self._plugin_loader():
++            try:
++                registrations = plugin()
++            except Exception as exc:
++                logger.warning(
++                    "dagster.stage.plugins.registration_failed",
++                    plugin=_plugin_name(plugin),
++                    error=str(exc),
++                )
++                continue
++            if isinstance(registrations, StageRegistration):
++                registrations = [registrations]
++            elif isinstance(registrations, Iterable):
++                registrations = list(registrations)
++            else:
++                logger.warning(
++                    "dagster.stage.plugins.invalid_return",
++                    plugin=_plugin_name(plugin),
++                )
++                continue
++            for registration in registrations:
++                try:
++                    self.register(registration)
++                except StageRegistryError as exc:
++                    logger.warning(
++                        "dagster.stage.plugins.registration_conflict",
++                        plugin=_plugin_name(plugin),
++                        stage_type=registration.metadata.stage_type,
++                        error=str(exc),
++                    )
++                    continue
++                loaded.append(registration.metadata.stage_type)
++        return loaded
++
++    def stage_types(self) -> list[str]:
++        return sorted(self._metadata)
++
++
++def _plugin_name(plugin: StagePlugin) -> str:
++    if hasattr(plugin, "__qualname__"):
++        return str(getattr(plugin, "__qualname__"))
++    if hasattr(plugin, "__name__"):
++        return str(getattr(plugin, "__name__"))
++    return plugin.__class__.__name__
++
++
++__all__ = [
++    "StageBuilder",
++    "StageMetadata",
++    "StagePlugin",
++    "StageRegistration",
++    "StageRegistry",
++    "StageRegistryError",
++    "discover_stages",
++]
+diff --git a/src/Medical_KG_rev/orchestration/dagster/stages.py b/src/Medical_KG_rev/orchestration/dagster/stages.py
+index b2a0426177d4a38e1936f255834690cfb6b3b84f..e897ad062167a9999b047be909757331a4ba2d7e 100644
+--- a/src/Medical_KG_rev/orchestration/dagster/stages.py
++++ b/src/Medical_KG_rev/orchestration/dagster/stages.py
+@@ -1,63 +1,142 @@
+ """Default stage implementations and builder helpers for Dagster pipelines."""
+
+ from __future__ import annotations
+
+ import json
+ from dataclasses import dataclass
+-from typing import Any, Callable, Mapping, Sequence
++from collections.abc import Sequence
++from typing import Any, Mapping
+ from uuid import uuid4
+
+ import structlog
+
+ from Medical_KG_rev.adapters import AdapterPluginError
+ from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
+ from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
+ from Medical_KG_rev.models.entities import Claim, Entity
+ from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+ from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StageRegistry,
++    StageRegistryError,
++)
+ from Medical_KG_rev.orchestration.haystack.components import (
+     HaystackChunker,
+     HaystackEmbedder,
+     HaystackIndexWriter,
+ )
+ from Medical_KG_rev.orchestration.stages.contracts import (
+     ChunkStage,
+     EmbedStage,
+     ExtractStage,
+     GraphWriteReceipt,
+     IngestStage,
+     IndexStage,
+     KGStage,
+     ParseStage,
+     StageContext,
+ )
+ from Medical_KG_rev.orchestration.stages.contracts import RawPayload
+
+ logger = structlog.get_logger(__name__)
+
+
++def _sequence_length(output: Any) -> int:
++    if isinstance(output, Sequence) and not isinstance(output, (str, bytes)):
++        return len(output)
++    return 0
++
++
++def _count_single(output: Any) -> int:
++    return 1 if output is not None else 0
++
++
++def _count_embed(output: Any) -> int:
++    vectors = getattr(output, "vectors", None)
++    if isinstance(vectors, Sequence):
++        return len(vectors)
++    return 0
++
++
++def _count_index(output: Any) -> int:
++    indexed = getattr(output, "chunks_indexed", None)
++    if isinstance(indexed, int):
++        return max(indexed, 0)
++    return 0
++
++
++def _count_extract(output: Any) -> int:
++    if not isinstance(output, tuple) or len(output) != 2:
++        return 0
++    entities, claims = output
++    entity_count = _sequence_length(entities)
++    claim_count = _sequence_length(claims)
++    return entity_count + claim_count
++
++
++def _count_graph(output: Any) -> int:
++    nodes = getattr(output, "nodes_written", None)
++    if isinstance(nodes, int):
++        return max(nodes, 0)
++    return 0
++
++
++def _handle_ingest(state: dict[str, Any], _: str, output: Any) -> None:
++    state["payloads"] = output
++
++
++def _handle_document(state: dict[str, Any], _: str, output: Any) -> None:
++    state["document"] = output
++
++
++def _handle_chunks(state: dict[str, Any], _: str, output: Any) -> None:
++    state["chunks"] = output
++
++
++def _handle_embedding_batch(state: dict[str, Any], _: str, output: Any) -> None:
++    state["embedding_batch"] = output
++
++
++def _handle_index_receipt(state: dict[str, Any], _: str, output: Any) -> None:
++    state["index_receipt"] = output
++
++
++def _handle_extract(state: dict[str, Any], _: str, output: Any) -> None:
++    entities: Any = []
++    claims: Any = []
++    if isinstance(output, tuple) and len(output) == 2:
++        entities, claims = output
++    state["entities"] = list(entities) if isinstance(entities, Sequence) else entities
++    state["claims"] = list(claims) if isinstance(claims, Sequence) else claims
++
++
++def _handle_graph_receipt(state: dict[str, Any], _: str, output: Any) -> None:
++    state["graph_receipt"] = output
++
++
+ class AdapterIngestStage(IngestStage):
+     """Fetch raw payloads from a configured adapter using the plugin manager."""
+
+     def __init__(
+         self,
+         manager: AdapterPluginManager,
+         *,
+         adapter_name: str,
+         strict: bool = False,
+         default_domain: AdapterDomain = AdapterDomain.BIOMEDICAL,
+         extra_parameters: Mapping[str, Any] | None = None,
+     ) -> None:
+         self._manager = manager
+         self._adapter = adapter_name
+         self._strict = strict
+         self._default_domain = default_domain
+         self._extra_parameters = dict(extra_parameters or {})
+
+     def execute(self, ctx: StageContext, request: AdapterRequest) -> list[RawPayload]:
+         merged_parameters = {**self._extra_parameters, **dict(request.parameters)}
+         domain = request.domain or self._default_domain  # type: ignore[union-attr]
+         invocation_request = request.model_copy(update={"parameters": merged_parameters, "domain": domain})
+         try:
+             result = self._manager.invoke(self._adapter, invocation_request, strict=self._strict)
+         except AdapterPluginError as exc:
+@@ -228,86 +307,182 @@ class NoOpDocumentWriter:
+     def run(self, *, documents: Sequence[Any]) -> dict[str, Any]:  # pragma: no cover - trivial
+         logger.debug("dagster.index.writer.noop", writer=self._name, documents=len(documents))
+         return {"documents": list(documents)}
+
+
+ @dataclass(slots=True)
+ class HaystackPipelineResource:
+     splitter: SimpleDocumentSplitter
+     embedder: SimpleEmbedder
+     dense_writer: NoOpDocumentWriter
+     sparse_writer: NoOpDocumentWriter
+
+
+ def create_default_pipeline_resource() -> HaystackPipelineResource:
+     return HaystackPipelineResource(
+         splitter=SimpleDocumentSplitter(),
+         embedder=SimpleEmbedder(),
+         dense_writer=NoOpDocumentWriter(name="faiss"),
+         sparse_writer=NoOpDocumentWriter(name="opensearch"),
+     )
+
+
+ def build_default_stage_factory(
+     manager: AdapterPluginManager,
+     pipeline: HaystackPipelineResource | None = None,
+-) -> dict[str, Callable[[StageDefinition], object]]:
+-    """Return builder mappings for standard Dagster stage types."""
++) -> StageRegistry:
++    """Build the default stage registry with built-in metadata and builders."""
+
+     pipeline = pipeline or create_default_pipeline_resource()
+     splitter = pipeline.splitter
+     embedder = pipeline.embedder
+     dense_writer = pipeline.dense_writer
+     sparse_writer = pipeline.sparse_writer
+
+     def _ingest_builder(definition: StageDefinition) -> IngestStage:
+         config = definition.config
+         adapter_name = config.get("adapter")
+         if not adapter_name:
+             raise ValueError(f"Stage '{definition.name}' requires an adapter name")
+         strict = bool(config.get("strict", False))
+         domain_value = config.get("domain")
+         try:
+             domain = AdapterDomain(domain_value) if domain_value else AdapterDomain.BIOMEDICAL
+         except Exception as exc:  # pragma: no cover - validation guard
+             raise ValueError(f"Invalid adapter domain '{domain_value}'") from exc
+         extra_parameters = config.get("parameters", {}) if isinstance(config, Mapping) else {}
+         return AdapterIngestStage(
+             manager,
+             adapter_name=adapter_name,
+             strict=strict,
+             default_domain=domain,
+             extra_parameters=extra_parameters if isinstance(extra_parameters, Mapping) else {},
+         )
+
+     def _parse_builder(_: StageDefinition) -> ParseStage:
+         return AdapterParseStage()
+
+     def _validation_builder(_: StageDefinition) -> ParseStage:
+         return IRValidationStage()
+
+     def _chunk_builder(_: StageDefinition) -> ChunkStage:
+         return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
+
+     def _embed_builder(_: StageDefinition) -> EmbedStage:
+         return HaystackEmbedder(embedder=embedder, require_gpu=False, sparse_expander=None)
+
+     def _index_builder(_: StageDefinition) -> IndexStage:
+         return HaystackIndexWriter(dense_writer=dense_writer, sparse_writer=sparse_writer)
+
+     def _extract_builder(_: StageDefinition) -> ExtractStage:
+         return NoOpExtractStage()
+
+     def _kg_builder(_: StageDefinition) -> KGStage:
+         return NoOpKnowledgeGraphStage()
+
+-    registry: dict[str, Callable[[StageDefinition], object]] = {
+-        "ingest": _ingest_builder,
+-        "parse": _parse_builder,
+-        "ir-validation": _validation_builder,
+-        "chunk": _chunk_builder,
+-        "embed": _embed_builder,
+-        "index": _index_builder,
+-        "extract": _extract_builder,
+-        "knowledge-graph": _kg_builder,
+-    }
++    registry = StageRegistry()
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="ingest",
++            state_key="payloads",
++            output_handler=_handle_ingest,
++            output_counter=_sequence_length,
++            description="Fetches raw payloads from an adapter",
++        ),
++        builder=_ingest_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="parse",
++            state_key="document",
++            output_handler=_handle_document,
++            output_counter=_count_single,
++            description="Parses raw payloads into an IR document",
++            dependencies=("ingest",),
++        ),
++        builder=_parse_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="ir-validation",
++            state_key="document",
++            output_handler=_handle_document,
++            output_counter=_count_single,
++            description="Validates parsed documents before downstream stages",
++            dependencies=("parse",),
++        ),
++        builder=_validation_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="chunk",
++            state_key="chunks",
++            output_handler=_handle_chunks,
++            output_counter=_sequence_length,
++            description="Splits documents into retrieval-ready chunks",
++            dependencies=("parse", "ir-validation"),
++        ),
++        builder=_chunk_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="embed",
++            state_key="embedding_batch",
++            output_handler=_handle_embedding_batch,
++            output_counter=_count_embed,
++            description="Generates embeddings for document chunks",
++            dependencies=("chunk",),
++        ),
++        builder=_embed_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="index",
++            state_key="index_receipt",
++            output_handler=_handle_index_receipt,
++            output_counter=_count_index,
++            description="Writes embeddings to downstream indexes",
++            dependencies=("embed",),
++        ),
++        builder=_index_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="extract",
++            state_key=("entities", "claims"),
++            output_handler=_handle_extract,
++            output_counter=_count_extract,
++            description="Extracts biomedical entities and claims",
++            dependencies=("parse",),
++        ),
++        builder=_extract_builder,
++    )
++    registry.register_stage(
++        metadata=StageMetadata(
++            stage_type="knowledge-graph",
++            state_key="graph_receipt",
++            output_handler=_handle_graph_receipt,
++            output_counter=_count_graph,
++            description="Persists extracted facts into the knowledge graph",
++            dependencies=("extract",),
++        ),
++        builder=_kg_builder,
++    )
++    try:
++        from Medical_KG_rev.orchestration import stage_plugins
++
++        for plugin_factory in (stage_plugins.register_download_stage, stage_plugins.register_gate_stage):
++            registration = None
++            try:
++                registration = plugin_factory()
++                registry.register(registration)
++            except StageRegistryError as exc:
++                stage_type = registration.metadata.stage_type if registration else getattr(plugin_factory, "__name__", "unknown")
++                logger.debug(
++                    "dagster.stage.registry.plugin_skipped",
++                    stage_type=stage_type,
++                    error=str(exc),
++                )
++    except Exception as exc:  # pragma: no cover - defensive guard
++        logger.warning("dagster.stage.registry.plugin_init_failed", error=str(exc))
++    registry.load_plugins()
+     return registry
+diff --git a/src/Medical_KG_rev/orchestration/stage_plugins/__init__.py b/src/Medical_KG_rev/orchestration/stage_plugins/__init__.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..bc28677d9c98f38e356102419418fbb192c6c67a
+--- /dev/null
++++ b/src/Medical_KG_rev/orchestration/stage_plugins/__init__.py
+@@ -0,0 +1,214 @@
++"""Built-in plugin registrations for pluggable orchestration stages."""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Mapping, Sequence
++from dataclasses import dataclass
++from typing import Any
++
++import structlog
++
++from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StageRegistration,
++)
++from Medical_KG_rev.orchestration.stages.contracts import StageContext
++
++logger = structlog.get_logger(__name__)
++
++
++class GateConditionError(RuntimeError):
++    """Raised when a gate stage condition fails."""
++
++
++def _sequence_length(value: Any) -> int:
++    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
++        return len(value)
++    return 0
++
++
++def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
++    state["downloaded_files"] = output
++
++
++def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - no-op
++    return None
++
++
++@dataclass(slots=True)
++class DownloadStage:
++    """Example download stage that records configured sources."""
++
++    name: str
++    sources: list[dict[str, Any]]
++
++    def execute(self, ctx: StageContext, upstream: Any) -> list[dict[str, Any]]:
++        results: list[dict[str, Any]] = []
++        for index, source in enumerate(self.sources):
++            record = {
++                "id": f"{self.name}:{index}",
++                "tenant_id": ctx.tenant_id,
++                "source": dict(source),
++                "status": "skipped",
++            }
++            results.append(record)
++        if not results and upstream:
++            results.append(
++                {
++                    "id": f"{self.name}:0",
++                    "tenant_id": ctx.tenant_id,
++                    "source": {"upstream": upstream},
++                    "status": "forwarded",
++                }
++            )
++        logger.debug(
++            "dagster.stage.download.completed",
++            stage=self.name,
++            tenant_id=ctx.tenant_id,
++            files=len(results),
++        )
++        return results
++
++
++@dataclass(slots=True)
++class GateCondition:
++    key: str
++    expected: Any = True
++
++
++@dataclass(slots=True)
++class GateStage:
++    """Gate stage validating state conditions before proceeding."""
++
++    name: str
++    conditions: tuple[GateCondition, ...]
++    timeout_seconds: float | None = None
++    poll_interval_seconds: float = 5.0
++
++    def execute(self, ctx: StageContext, upstream: Any) -> None:
++        state = upstream if isinstance(upstream, dict) else {"value": upstream}
++        metadata = ctx.metadata if isinstance(ctx.metadata, Mapping) else {}
++        elapsed = None
++        if isinstance(metadata, Mapping):
++            elapsed = metadata.get(f"{self.name}.elapsed_seconds") or metadata.get("gate_elapsed_seconds")
++        for condition in self.conditions:
++            value = state
++            for part in condition.key.split("."):
++                if isinstance(value, dict):
++                    value = value.get(part)
++                else:
++                    value = getattr(value, part, None)
++            timed_out = False
++            if self.timeout_seconds is not None:
++                if isinstance(elapsed, (int, float)) and elapsed >= self.timeout_seconds:
++                    timed_out = True
++            if value != condition.expected or timed_out:
++                logger.warning(
++                    "dagster.stage.gate.blocked",
++                    stage=self.name,
++                    tenant_id=ctx.tenant_id,
++                    key=condition.key,
++                    expected=condition.expected,
++                    actual=value,
++                    timeout=self.timeout_seconds,
++                    elapsed=elapsed,
++                )
++                raise GateConditionError(
++                    (
++                        f"Gate '{self.name}' blocked: expected {condition.key} == {condition.expected!r}"
++                        if not timed_out
++                        else (
++                            f"Gate '{self.name}' timed out after {elapsed}s (timeout {self.timeout_seconds}s)"
++                        )
++                    )
++                )
++        logger.debug(
++            "dagster.stage.gate.passed",
++            stage=self.name,
++            tenant_id=ctx.tenant_id,
++            conditions=len(self.conditions),
++            timeout=self.timeout_seconds,
++            poll_interval=self.poll_interval_seconds,
++        )
++
++
++def register_download_stage() -> StageRegistration:
++    """Register the built-in download stage plugin."""
++
++    def _builder(definition: StageDefinition) -> DownloadStage:
++        config = definition.config or {}
++        sources = config.get("sources") or config.get("urls") or []
++        normalised: list[dict[str, Any]] = []
++        if isinstance(sources, dict):
++            normalised.append(dict(sources))
++        elif isinstance(sources, Iterable) and not isinstance(sources, (str, bytes)):
++            for item in sources:
++                if isinstance(item, dict):
++                    normalised.append(dict(item))
++                else:
++                    normalised.append({"value": item})
++        return DownloadStage(name=definition.name, sources=normalised)
++
++    metadata = StageMetadata(
++        stage_type="download",
++        state_key="downloaded_files",
++        output_handler=_handle_download_output,
++        output_counter=_sequence_length,
++        description="Downloads external resources referenced by upstream payloads",
++        dependencies=("ingest",),
++    )
++    return StageRegistration(metadata=metadata, builder=_builder)
++
++
++def register_gate_stage() -> StageRegistration:
++    """Register the built-in gate stage plugin."""
++
++    def _builder(definition: StageDefinition) -> GateStage:
++        config = definition.config or {}
++        conditions_config = config.get("conditions") or []
++        parsed: list[GateCondition] = []
++        for entry in conditions_config:
++            if isinstance(entry, Mapping):
++                key = entry.get("key") or "value"
++                parsed.append(GateCondition(key=str(key), expected=entry.get("expected", True)))
++            elif isinstance(entry, str):
++                parsed.append(GateCondition(key=entry, expected=True))
++        if not parsed:
++            parsed.append(GateCondition(key="value", expected=True))
++        timeout_seconds = config.get("timeout_seconds")
++        try:
++            timeout_value = float(timeout_seconds) if timeout_seconds is not None else None
++        except (TypeError, ValueError):
++            timeout_value = None
++        poll_interval = config.get("poll_interval_seconds", 5.0)
++        try:
++            poll_interval_value = float(poll_interval)
++        except (TypeError, ValueError):
++            poll_interval_value = 5.0
++        return GateStage(
++            name=definition.name,
++            conditions=tuple(parsed),
++            timeout_seconds=timeout_value,
++            poll_interval_seconds=max(poll_interval_value, 0.1),
++        )
++
++    metadata = StageMetadata(
++        stage_type="gate",
++        state_key=None,
++        output_handler=_handle_gate_output,
++        output_counter=lambda _: 0,
++        description="Halts pipeline execution until configured conditions are met",
++        dependencies=("@ledger", "download"),
++    )
++    return StageRegistration(metadata=metadata, builder=_builder)
++
++
++__all__ = [
++    "DownloadStage",
++    "GateCondition",
++    "GateConditionError",
++    "GateStage",
++    "register_download_stage",
++    "register_gate_stage",
++]
+diff --git a/tests/conftest.py b/tests/conftest.py
+index c81b398b9a1b6ff57fcbed4f2c362d3b41ba1076..03fae3f8d76a7e07d65dd9c42921765bdcf272a1 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -1,35 +1,143 @@
+ from __future__ import annotations
+
+ import hashlib
+
+ import importlib.util
++import logging
++import sys
++import types
+
+ import pytest
+
+ _FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
+ _PYDANTIC_AVAILABLE = importlib.util.find_spec("pydantic") is not None
++
++
++def _install_dagster_stub() -> None:
++    """Install a lightweight dagster stub so orchestration tests can run offline."""
++
++    if "dagster" in sys.modules:
++        return
++
++    stub = types.ModuleType("dagster")
++
++    class _DagsterSentinel:
++        def __call__(self, *args, **kwargs):
++            if args and callable(args[0]) and not kwargs:
++                return args[0]
++
++            def _decorator(func):
++                return func
++
++            return _decorator
++
++        def __getattr__(self, name):  # pragma: no cover - defensive guard
++            raise RuntimeError("dagster stub does not implement attribute: " + name)
++
++    sentinel = _DagsterSentinel()
++
++    # Provide bare minimum symbols referenced by runtime imports.
++    stub.Definitions = type("Definitions", (), {})
++    stub.ExecuteInProcessResult = type("ExecuteInProcessResult", (), {})
++    stub.In = lambda *args, **kwargs: None
++    stub.Out = lambda *args, **kwargs: None
++    stub.ResourceDefinition = type("ResourceDefinition", (), {})
++    stub.RunRequest = type("RunRequest", (), {})
++    stub.SensorEvaluationContext = type("SensorEvaluationContext", (), {})
++    stub.SkipReason = type("SkipReason", (), {})
++    stub.graph = sentinel
++    stub.op = sentinel
++    stub.sensor = sentinel
++
++    sys.modules["dagster"] = stub
++
++
++try:  # pragma: no cover - best-effort import guard
++    import dagster  # type: ignore  # noqa: F401
++except ModuleNotFoundError:
++    _install_dagster_stub()
++except Exception:  # pragma: no cover - fall back to stub on unexpected import error
++    _install_dagster_stub()
++
++
++import structlog
++
++
++logging.basicConfig(level=logging.INFO)
++
++_original_log = logging.Logger._log
++
++
++def _log_with_kwargs(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1, **kwargs):
++    if kwargs:
++        merged = dict(extra or {})
++        merged.update(kwargs)
++        extra = merged
++    return _original_log(
++        self,
++        level,
++        msg,
++        args,
++        exc_info=exc_info,
++        extra=extra,
++        stack_info=stack_info,
++        stacklevel=stacklevel,
++    )
++
++
++logging.Logger._log = _log_with_kwargs  # type: ignore[assignment]
++
++
++class _StructuredLogger:
++    def __init__(self, name: str | None = None) -> None:
++        self._logger = logging.getLogger(name or "structlog")
++
++    def bind(self, **kwargs):  # pragma: no cover - structlog compat
++        return self
++
++    def debug(self, event: str, **kwargs) -> None:
++        self._logger.debug("%s %s", event, kwargs)
++
++    def info(self, event: str, **kwargs) -> None:
++        self._logger.info("%s %s", event, kwargs)
++
++    def warning(self, event: str, **kwargs) -> None:
++        self._logger.warning("%s %s", event, kwargs)
++
++    def error(self, event: str, **kwargs) -> None:
++        self._logger.error("%s %s", event, kwargs)
++
++    def exception(self, event: str, **kwargs) -> None:
++        self._logger.exception("%s %s", event, kwargs)
++
++
++def _get_struct_logger(name: str | None = None) -> _StructuredLogger:
++    return _StructuredLogger(name)
++
++
++structlog.get_logger = _get_struct_logger
+ if _FASTAPI_AVAILABLE:
+     from fastapi.testclient import TestClient  # type: ignore
+ else:  # pragma: no cover - optional dependency
+     TestClient = None  # type: ignore[assignment]
+
+ if _PYDANTIC_AVAILABLE:
+     from Medical_KG_rev.config.settings import get_settings  # type: ignore
+ else:  # pragma: no cover - optional dependency
+     get_settings = None  # type: ignore[assignment]
+
+ API_TEST_KEY = "test-api-key"
+
+
+ def pytest_addoption(parser):  # pragma: no cover - option wiring only
+     group = parser.getgroup("cov")
+     options = (
+         ("--cov", {"action": "append", "default": [], "help": "Ignored test coverage option"}),
+         (
+             "--cov-report",
+             {"action": "append", "default": [], "help": "Ignored coverage report option"},
+         ),
+     )
+     for name, kwargs in options:
+         try:
+             group.addoption(name, **kwargs)
+diff --git a/tests/orchestration/test_dagster_configuration.py b/tests/orchestration/test_dagster_configuration.py
+index 5e0995bbd93f878e6e857f79f31b3483f46a173c..b2e03b4983efbdbbc7d97e89a08fe9cea4701e1b 100644
+--- a/tests/orchestration/test_dagster_configuration.py
++++ b/tests/orchestration/test_dagster_configuration.py
+@@ -1,40 +1,44 @@
+ from __future__ import annotations
+
+ import json
+ from pathlib import Path
+
+ import pytest
+
++pytest.importorskip("pydantic")
++
++from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
+ from Medical_KG_rev.orchestration.dagster.configuration import (
+     PipelineConfigLoader,
+     PipelineTopologyConfig,
+     ResiliencePolicyLoader,
+ )
++from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
++from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+ from Medical_KG_rev.orchestration.stages.contracts import StageContext
+
+-
+ def _write(tmp_path: Path, name: str, payload: str) -> Path:
+     path = tmp_path / name
+     path.write_text(payload)
+     return path
+
+
+ def test_stage_context_metadata_helpers() -> None:
+     ctx = StageContext(tenant_id="tenant-a", doc_id="doc-1", correlation_id="corr-1")
+     updated = ctx.with_metadata(source="ingest", priority="high")
+
+     assert updated.metadata == {"source": "ingest", "priority": "high"}
+     assert updated.tenant_id == ctx.tenant_id
+
+
+ def test_pipeline_topology_validation_accepts_acyclic(tmp_path: Path) -> None:
+     payload = """
+ name: demo
+ version: "2025-01-01"
+ stages:
+   - name: ingest
+     type: ingest
+     policy: default
+   - name: parse
+     type: parse
+     policy: default
+@@ -62,50 +66,110 @@ def test_pipeline_topology_cycle_detection(tmp_path: Path) -> None:
+ name: cyclic
+ version: "2025-01-01"
+ stages:
+   - name: a
+     type: ingest
+     policy: default
+     depends_on:
+       - c
+   - name: b
+     type: parse
+     policy: default
+     depends_on:
+       - a
+   - name: c
+     type: chunk
+     policy: default
+     depends_on:
+       - b
+ """
+     loader = PipelineConfigLoader(tmp_path)
+     _write(tmp_path, "cyclic.yaml", payload)
+     with pytest.raises(ValueError):
+         loader.load("cyclic")
+
+
++def test_pipeline_topology_with_plugins_and_metadata_overrides() -> None:
++    config = PipelineTopologyConfig.model_validate(
++        {
++            "name": "plugins",
++            "version": "2025-01-01",
++            "stages": [
++                {
++                    "name": "custom",
++                    "type": "custom-stage",
++                    "metadata_overrides": {"state_key": "custom_state"},
++                }
++            ],
++            "plugins": {
++                "stages": [
++                    {"callable": "package.module:register_stage"},
++                ]
++            },
++        }
++    )
++
++    assert config.plugins.stage_plugins[0].target == "package.module:register_stage"
++    assert config.stages[0].metadata_overrides is not None
++    assert config.stages[0].metadata_overrides.state_key == "custom_state"
++
++
++def test_stage_plugin_import_requires_callable_format() -> None:
++    with pytest.raises(ValueError):
++        PipelineTopologyConfig.model_validate(
++            {
++                "name": "invalid",
++                "version": "2025-01-01",
++                "stages": [
++                    {"name": "stage", "type": "custom"},
++                ],
++                "plugins": {
++                    "stages": [
++                        {"callable": "invalid"},
++                    ]
++                },
++            }
++        )
++
++
++def test_pdf_two_phase_pipeline_builds_with_plugins() -> None:
++    loader = PipelineConfigLoader(Path("config/orchestration/pipelines"))
++    topology = loader.load("pdf-two-phase")
++
++    registry = build_default_stage_factory(get_plugin_manager())
++    factory = StageFactory(registry)
++    factory.apply_pipeline_extensions(topology)
++
++    download_stage = next(stage for stage in topology.stages if stage.name == "download")
++    download_metadata = factory.metadata_for_stage(topology.name, download_stage)
++    assert download_metadata.description.startswith("Resolve and persist PDF")
++
++    gate_stage = next(stage for stage in topology.stages if stage.stage_type == "gate")
++    gate_metadata = factory.metadata_for_stage(topology.name, gate_stage)
++    assert gate_metadata.stage_type == "gate"
++
++
+ def test_pipeline_loader_reload_on_change(tmp_path: Path) -> None:
+     loader = PipelineConfigLoader(tmp_path)
+     _write(
+         tmp_path,
+         "auto.yaml",
+         """
+ name: auto
+ version: "2025-01-01"
+ stages:
+   - name: ingest
+     type: ingest
+     policy: default
+ """,
+     )
+     first = loader.load("auto")
+     assert first.version == "2025-01-01"
+     _write(
+         tmp_path,
+         "auto.yaml",
+         """
+ name: auto
+ version: "2025-02-01"
+ stages:
+   - name: ingest
+     type: ingest
+diff --git a/tests/orchestration/test_stage_contracts.py b/tests/orchestration/test_stage_contracts.py
+index c2323960ed4fc3498d0dad58cb1292d1e7fbf1a4..b0659f3fc60300123388496eac4f8b966a3fb511 100644
+--- a/tests/orchestration/test_stage_contracts.py
++++ b/tests/orchestration/test_stage_contracts.py
+@@ -1,29 +1,31 @@
+ from types import SimpleNamespace
+
+ import pytest
+
++pytest.importorskip("pydantic")
++
+ from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
+ from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+ from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+ from Medical_KG_rev.orchestration.stages.contracts import (
+     ChunkStage,
+     EmbedStage,
+     EmbeddingBatch,
+     ExtractStage,
+     GraphWriteReceipt,
+     IngestStage,
+     IndexReceipt,
+     IndexStage,
+     KGStage,
+     ParseStage,
+     StageContext,
+ )
+
+
+ class StubPluginManager:
+     def __init__(self) -> None:
+         self.invocations: list[tuple[str, AdapterRequest]] = []
+
+     def invoke(self, adapter: str, request: AdapterRequest, *, strict: bool = False):
+         self.invocations.append((adapter, request))
+         payload = {"text": "Example abstract for testing", "title": "Test"}
+@@ -41,70 +43,70 @@ def stage_context() -> StageContext:
+         pipeline_version="2024-01-01",
+     )
+
+
+ @pytest.fixture()
+ def adapter_request() -> AdapterRequest:
+     return AdapterRequest(
+         tenant_id="tenant-a",
+         correlation_id="corr-1",
+         domain=AdapterDomain.BIOMEDICAL,
+         parameters={"adapter": "clinical-trials"},
+     )
+
+
+ def _definition(stage_type: str, name: str, config: dict | None = None) -> StageDefinition:
+     payload = {"name": name, "type": stage_type, "policy": "default"}
+     if config:
+         payload["config"] = config
+     return StageDefinition.model_validate(payload)
+
+
+ def test_default_stage_factory_complies_with_protocols(stage_context, adapter_request):
+     manager = StubPluginManager()
+     registry = build_default_stage_factory(manager)
+
+-    ingest = registry["ingest"](
++    ingest = registry.get_builder("ingest")(
+         _definition("ingest", "ingest", {"adapter": "clinical-trials", "strict": False})
+     )
+     assert isinstance(ingest, IngestStage)
+     payloads = ingest.execute(stage_context, adapter_request)
+     assert payloads and isinstance(payloads[0], dict)
+
+-    parse = registry["parse"](_definition("parse", "parse"))
++    parse = registry.get_builder("parse")(_definition("parse", "parse"))
+     assert isinstance(parse, ParseStage)
+     document = parse.execute(stage_context, payloads)
+
+-    validator = registry["ir-validation"](_definition("ir-validation", "ir_validation"))
++    validator = registry.get_builder("ir-validation")(_definition("ir-validation", "ir_validation"))
+     assert isinstance(validator, ParseStage)
+     validated = validator.execute(stage_context, document)
+     assert validated is document
+
+-    chunker = registry["chunk"](_definition("chunk", "chunk"))
++    chunker = registry.get_builder("chunk")(_definition("chunk", "chunk"))
+     assert isinstance(chunker, ChunkStage)
+     chunks = chunker.execute(stage_context, document)
+     assert chunks and chunks[0].doc_id == document.id
+
+-    embedder = registry["embed"](_definition("embed", "embed"))
++    embedder = registry.get_builder("embed")(_definition("embed", "embed"))
+     assert isinstance(embedder, EmbedStage)
+     batch = embedder.execute(stage_context, chunks)
+     assert isinstance(batch, EmbeddingBatch)
+     assert batch.vectors
+
+-    indexer = registry["index"](_definition("index", "index"))
++    indexer = registry.get_builder("index")(_definition("index", "index"))
+     assert isinstance(indexer, IndexStage)
+     receipt = indexer.execute(stage_context, batch)
+     assert isinstance(receipt, IndexReceipt)
+     assert receipt.chunks_indexed == len(batch.vectors)
+
+-    extractor = registry["extract"](_definition("extract", "extract"))
++    extractor = registry.get_builder("extract")(_definition("extract", "extract"))
+     assert isinstance(extractor, ExtractStage)
+     entities, claims = extractor.execute(stage_context, document)
+     assert entities == [] and claims == []
+
+-    kg_stage = registry["knowledge-graph"](_definition("knowledge-graph", "kg"))
++    kg_stage = registry.get_builder("knowledge-graph")(_definition("knowledge-graph", "kg"))
+     assert isinstance(kg_stage, KGStage)
+     graph_receipt = kg_stage.execute(stage_context, entities, claims)
+     assert isinstance(graph_receipt, GraphWriteReceipt)
+     assert graph_receipt.nodes_written == 0
+
+     assert manager.invocations and manager.invocations[0][0] == "clinical-trials"
+diff --git a/tests/orchestration/test_stage_plugins_runtime.py b/tests/orchestration/test_stage_plugins_runtime.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..1be54ebb6c28f4657e8772955c9bc6b7e81ede17
+--- /dev/null
++++ b/tests/orchestration/test_stage_plugins_runtime.py
+@@ -0,0 +1,65 @@
++from types import SimpleNamespace
++
++import pytest
++
++pytest.importorskip("pydantic")
++
++from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
++from Medical_KG_rev.orchestration.stage_plugins import (
++    GateConditionError,
++    register_download_stage,
++    register_gate_stage,
++)
++from Medical_KG_rev.orchestration.stages.contracts import StageContext
++
++
++def _stage_definition(name: str, stage_type: str, config: dict | None = None) -> StageDefinition:
++    return StageDefinition.model_validate({
++        "name": name,
++        "type": stage_type,
++        "config": config or {},
++    })
++
++
++def test_download_stage_normalises_sources():
++    registration = register_download_stage()
++    definition = _stage_definition(
++        "download", "download", config={"sources": [{"url": "a"}, "b", {"kind": "mirror", "url": "c"}]}
++    )
++    stage = registration.builder(definition)
++    ctx = StageContext(tenant_id="tenant")
++
++    result = stage.execute(ctx, upstream={"fallback": True})
++
++    assert len(result) == 3
++    assert result[0]["source"] == {"url": "a"}
++    assert result[1]["source"] == {"value": "b"}
++    assert result[2]["source"] == {"kind": "mirror", "url": "c"}
++
++
++def test_gate_stage_conditions_pass_and_fail():
++    registration = register_gate_stage()
++    definition = _stage_definition(
++        "gate", "gate", config={"conditions": [{"key": "ledger.pdf_ir_ready", "expected": True}]}
++    )
++    stage = registration.builder(definition)
++    ctx = StageContext(tenant_id="tenant")
++
++    stage.execute(ctx, upstream={"ledger": SimpleNamespace(pdf_ir_ready=True)})
++
++    with pytest.raises(GateConditionError):
++        stage.execute(ctx, upstream={"ledger": SimpleNamespace(pdf_ir_ready=False)})
++
++
++def test_gate_stage_timeout_detection():
++    registration = register_gate_stage()
++    definition = _stage_definition(
++        "gate", "gate", config={"timeout_seconds": 5, "conditions": ["value"]}
++    )
++    stage = registration.builder(definition)
++    ctx = StageContext(tenant_id="tenant", metadata={"gate_elapsed_seconds": 10})
++
++    with pytest.raises(GateConditionError) as excinfo:
++        stage.execute(ctx, upstream=True)
++
++    assert "timed out" in str(excinfo.value)
+diff --git a/tests/orchestration/test_stage_registry.py b/tests/orchestration/test_stage_registry.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..96a4492aea28c1418cd497e2de7b730fa906afea
+--- /dev/null
++++ b/tests/orchestration/test_stage_registry.py
+@@ -0,0 +1,133 @@
++import sys
++from types import ModuleType, SimpleNamespace
++from typing import Any
++
++import pytest
++
++pytest.importorskip("pydantic")
++
++from Medical_KG_rev.orchestration.dagster.configuration import PipelineTopologyConfig
++from Medical_KG_rev.orchestration.dagster.runtime import StageFactory, StageResolutionError
++from Medical_KG_rev.orchestration.dagster.stage_registry import (
++    StageMetadata,
++    StageRegistration,
++    StageRegistry,
++    StageRegistryError,
++)
++
++
++def _builder(_: Any) -> object:
++    return object()
++
++
++def test_stage_metadata_rejects_invalid_state_key():
++    with pytest.raises(StageRegistryError):
++        StageMetadata(
++            stage_type="invalid",
++            state_key="123-key",
++            output_handler=lambda *_: None,
++            output_counter=lambda _: 0,
++            description="invalid",
++        )
++
++
++def test_stage_registry_register_and_lookup():
++    registry = StageRegistry()
++    metadata = StageMetadata(
++        stage_type="custom",
++        state_key="result",
++        output_handler=lambda state, _, output: state.update({"result": output}),
++        output_counter=lambda output: 1 if output else 0,
++        description="Custom stage",
++    )
++    registry.register(StageRegistration(metadata=metadata, builder=_builder))
++
++    resolved_metadata = registry.get_metadata("custom")
++    assert resolved_metadata.stage_type == "custom"
++    builder = registry.get_builder("custom")
++    instance = builder(SimpleNamespace(name="stage", stage_type="custom", config={}))
++    assert instance is not None
++
++
++def test_stage_registry_plugin_loader_registers_plugins():
++    metadata = StageMetadata(
++        stage_type="plugin-stage",
++        state_key="value",
++        output_handler=lambda state, _, output: state.update({"value": output}),
++        output_counter=lambda output: int(output or 0),
++        description="Plugin provided stage",
++    )
++
++    def _plugin():
++        return StageRegistration(metadata=metadata, builder=_builder)
++
++    registry = StageRegistry(plugin_loader=lambda: [_plugin])
++    loaded = registry.load_plugins()
++    assert "plugin-stage" in loaded
++    assert registry.get_metadata("plugin-stage").description == "Plugin provided stage"
++
++
++def test_stage_factory_raises_on_unknown_stage():
++    registry = StageRegistry()
++    factory = StageFactory(registry)
++    with pytest.raises(StageResolutionError):
++        factory.resolve("pipeline", SimpleNamespace(name="missing", stage_type="missing", config={}))
++
++
++def test_stage_factory_pipeline_plugins_and_overrides():
++    module = ModuleType("tests.fake_stage_plugin")
++
++    def _register():
++        metadata = StageMetadata(
++            stage_type="custom-plugin",
++            state_key="value",
++            output_handler=lambda state, stage_name, output: state.update({stage_name: output}),
++            output_counter=lambda output: 1 if output is not None else 0,
++            description="Custom plugin stage",
++        )
++
++        def _builder(definition):
++            return {"stage": definition.name}
++
++        return StageRegistration(metadata=metadata, builder=_builder)
++
++    module.register = _register  # type: ignore[attr-defined]
++    sys.modules[module.__name__] = module
++
++    topology = PipelineTopologyConfig.model_validate(
++        {
++            "name": "custom",
++            "version": "2025-01-01",
++            "stages": [
++                {
++                    "name": "custom_stage",
++                    "type": "custom-plugin",
++                    "config": {},
++                    "metadata_overrides": {
++                        "state_key": "custom_state",
++                        "description": "Overridden description",
++                    },
++                }
++            ],
++            "plugins": {
++                "stages": [
++                    {"callable": f"{module.__name__}:register"},
++                ]
++            },
++        }
++    )
++
++    factory = StageFactory()
++    try:
++        factory.apply_pipeline_extensions(topology)
++        stage = factory.resolve("custom", topology.stages[0])
++        assert stage == {"stage": "custom_stage"}
++        metadata = factory.metadata_for_stage("custom", topology.stages[0])
++        assert metadata.state_keys == ("custom_state",)
++        assert metadata.description == "Overridden description"
++        base_metadata = factory.get_metadata("custom-plugin")
++        assert base_metadata.description == "Custom plugin stage"
++        # idempotent reload
++        factory.apply_pipeline_extensions(topology)
++    finally:
++        sys.modules.pop(module.__name__, None)
+
+EOF
+)

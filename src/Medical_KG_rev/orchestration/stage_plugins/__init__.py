@@ -1,10 +1,11 @@
-"""Built-in plugin registrations for pluggable orchestration stages."""
-
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
-from typing import Any
+import hashlib
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Sequence
 
 import structlog
 
@@ -29,7 +30,9 @@ from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
     StageRegistration,
 )
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
+from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 if TYPE_CHECKING:  # pragma: no cover - hints only
     from Medical_KG_rev.orchestration.ledger import JobLedger
@@ -43,38 +46,143 @@ def _sequence_length(value: Any) -> int:
     return 0
 
 
+def _count_single(value: Any) -> int:
+    return 1 if value is not None else 0
+
+
 def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
-    state["downloaded_files"] = output
+    state["download"] = output
 
 
-def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - no-op
-    return None
+def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - gate returns metadata only
+    state.setdefault("gates", {})
+    if isinstance(output, Mapping):
+        state["gates"][output.get("gate", "unknown")] = dict(output)
+
+
+@dataclass(slots=True, frozen=True)
+class _UrlExtractor:
+    source: str
+    path: str
+
+
+@dataclass(slots=True, frozen=True)
+class _StorageConfig:
+    base_path: Path
+    filename_template: str
+
+
+def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
+    state["mineru_result"] = output
+    ir_document = None
+    if isinstance(output, MineruProcessingResult):
+        ir_document = getattr(getattr(output.response, "document", None), "ir_document", None)
+    if isinstance(ir_document, Document):
+        state["document"] = ir_document
+
+
+_STORAGE_CACHE: dict[str, PdfStorageClient] = {}
+
+
+def _storage_cache_key(config: Mapping[str, Any]) -> str:
+    storage = config.get("storage") or {}
+    backend = str(storage.get("backend", "memory")).lower()
+    alias = storage.get("alias") or "default"
+    if backend == "local":
+        path = storage.get("path") or "/tmp/medicalkg/pdf"
+        return f"local:{alias}:{path}"
+    if backend == "s3":
+        bucket = storage.get("bucket")
+        return f"s3:{alias}:{bucket}"
+    return f"memory:{alias}"
+
+
+def _get_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
+    key = _storage_cache_key(config)
+    if key in _STORAGE_CACHE:
+        return _STORAGE_CACHE[key]
+    storage_cfg = config.get("storage") or {}
+    backend_name = str(storage_cfg.get("backend", "memory")).lower()
+    if backend_name == "local":
+        base_path = storage_cfg.get("path") or "/tmp/medicalkg/pdf"
+        backend = LocalFileObjectStore(base_path)
+    elif backend_name == "s3":
+        bucket = storage_cfg.get("bucket")
+        if not bucket:
+            raise ValueError("S3 storage backend requires a 'bucket' value")
+        backend = S3ObjectStore(bucket=str(bucket))
+    else:
+        backend = InMemoryObjectStore()
+    client = PdfStorageClient(
+        backend=backend,
+        config=PdfStorageConfig(
+            base_prefix=str(storage_cfg.get("base_prefix", "pdf")),
+            enable_access_logging=bool(storage_cfg.get("access_logging", True)),
+        ),
+    )
+    _STORAGE_CACHE[key] = client
+    return client
 
 
 @dataclass(slots=True)
 class DownloadStage:
-    """Example download stage that records configured sources."""
+    """Download PDF assets referenced by upstream adapter payloads."""
 
     name: str
-    sources: list[dict[str, Any]]
+    extractors: tuple[_UrlExtractor, ...]
+    storage: _StorageConfig
+    timeout_seconds: float
+    max_attempts: int
+    user_agent: str
+    http_client: HttpClient = field(repr=False)
+    _ledger: JobLedger | None = field(default=None, init=False, repr=False)
 
-    def execute(self, ctx: StageContext, upstream: Any) -> list[dict[str, Any]]:
-        results: list[dict[str, Any]] = []
-        for index, source in enumerate(self.sources):
-            record = {
-                "id": f"{self.name}:{index}",
-                "tenant_id": ctx.tenant_id,
-                "source": dict(source),
-                "status": "skipped",
-            }
-            results.append(record)
-        if not results and upstream:
-            results.append(
-                {
-                    "id": f"{self.name}:0",
-                    "tenant_id": ctx.tenant_id,
-                    "source": {"upstream": upstream},
-                    "status": "forwarded",
+    def bind_runtime(self, *, job_ledger: JobLedger | None = None) -> None:
+        self._ledger = job_ledger
+
+    def execute(self, ctx: StageContext, upstream: Any) -> Mapping[str, Any]:
+        payloads: Sequence[Mapping[str, Any]] = []
+        if isinstance(upstream, Mapping):
+            payloads = [upstream]
+        elif isinstance(upstream, Sequence):
+            payloads = [item for item in upstream if isinstance(item, Mapping)]
+
+        candidate_urls = self._collect_urls(ctx, payloads)
+        pipeline = ctx.pipeline_name or "unknown"
+        start_time = time.perf_counter()
+        attempt = 0
+        failures: list[dict[str, Any]] = []
+        for url in candidate_urls:
+            attempt += 1
+            try:
+                logger.info(
+                    "dagster.stage.download.fetch",
+                    stage=self.name,
+                    url=url,
+                    tenant_id=ctx.tenant_id,
+                    pipeline=ctx.pipeline_name,
+                    correlation_id=ctx.correlation_id,
+                )
+                response = self.http_client.request(
+                    "GET",
+                    url,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=self.timeout_seconds,
+                )
+                response.raise_for_status()
+                content = response.content
+                checksum = hashlib.sha256(content).hexdigest()
+                target_path = self._write_file(ctx, url, content)
+                elapsed = time.perf_counter() - start_time
+                result = {
+                    "status": "downloaded",
+                    "url": url,
+                    "path": str(target_path),
+                    "size_bytes": len(content),
+                    "sha256": checksum,
+                    "content_type": response.headers.get("content-type"),
+                    "downloaded_at": datetime.now(UTC).isoformat(),
+                    "attempt": attempt,
                 }
             )
         logger.debug(
@@ -207,28 +315,49 @@ def _describe_gate_failure(details: Mapping[str, Any]) -> str:
 
 
 def register_download_stage() -> StageRegistration:
-    """Register the built-in download stage plugin."""
+    """Register the PDF download stage."""
 
-    def _builder(definition: StageDefinition) -> DownloadStage:
+    def _builder(definition: StageDefinition) -> PdfDownloadStage:
         config = definition.config or {}
-        sources = config.get("sources") or config.get("urls") or []
-        normalised: list[dict[str, Any]] = []
-        if isinstance(sources, dict):
-            normalised.append(dict(sources))
-        elif isinstance(sources, Iterable) and not isinstance(sources, (str, bytes)):
-            for item in sources:
-                if isinstance(item, dict):
-                    normalised.append(dict(item))
-                else:
-                    normalised.append({"value": item})
-        return DownloadStage(name=definition.name, sources=normalised)
+        extractor_configs = config.get("url_extractors", [])
+        extractors = tuple(
+            _UrlExtractor(source=str(item.get("source")), path=str(item.get("path")))
+            for item in extractor_configs
+            if isinstance(item, Mapping)
+        )
+        storage_config = config.get("storage", {}) if isinstance(config.get("storage"), Mapping) else {}
+        storage = _StorageConfig(
+            base_path=Path(str(storage_config.get("base_path"))),
+            filename_template=str(storage_config.get("filename_template", "{job_id}.pdf")),
+        )
+        http_config = config.get("http", {}) if isinstance(config.get("http"), Mapping) else {}
+        timeout = float(http_config.get("timeout_seconds", 45))
+        attempts = int(http_config.get("max_attempts", 3))
+        user_agent = str(http_config.get("user_agent", "Medical-KG-Pipeline/1.0"))
+        retry = RetryConfig(
+            attempts=attempts,
+            timeout=timeout,
+            backoff_strategy=BackoffStrategy.EXPONENTIAL,
+            backoff_initial=1.0,
+            backoff_max=min(60.0, timeout * 2),
+        )
+        client = HttpClient(retry=retry)
+        return DownloadStage(
+            name=definition.name,
+            extractors=extractors,
+            storage=storage,
+            timeout_seconds=timeout,
+            max_attempts=attempts,
+            user_agent=user_agent,
+            http_client=client,
+        )
 
     metadata = StageMetadata(
         stage_type="download",
-        state_key="downloaded_files",
+        state_key="download",
         output_handler=_handle_download_output,
         output_counter=_sequence_length,
-        description="Downloads external resources referenced by upstream payloads",
+        description="Downloads external PDF resources and stores them for MinerU processing",
         dependencies=("ingest",),
     )
     return StageRegistration(metadata=metadata, builder=_builder)
@@ -258,8 +387,29 @@ def register_gate_stage() -> StageRegistration:
         state_key=None,
         output_handler=_handle_gate_output,
         output_counter=lambda _: 0,
-        description="Halts pipeline execution until configured conditions are met",
-        dependencies=(),
+        description="Halts pipeline execution until ledger conditions are satisfied",
+        dependencies=("download",),
+    )
+    return StageRegistration(metadata=metadata, builder=_builder)
+
+
+def register_mineru_stage() -> StageRegistration:
+    """Register the MinerU PDF processing stage."""
+
+    def _builder(definition: StageDefinition) -> MineruStage:
+        config = definition.config or {}
+        storage = _resolve_storage_client(config)
+        mineru_config = config.get("mineru") if isinstance(config, Mapping) else {}
+        service = MineruProcessingService(config=mineru_config or {})
+        return MineruStage(name=definition.name, service=service, storage=storage)
+
+    metadata = StageMetadata(
+        stage_type="mineru",
+        state_key="document",
+        output_handler=_handle_mineru_output,
+        output_counter=_count_single,
+        description="Processes downloaded PDFs through MinerU to produce IR documents",
+        dependencies=("download",),
     )
     return StageRegistration(metadata=metadata, builder=_builder)
 
@@ -271,4 +421,5 @@ __all__ = [
     "GateTimeoutError",
     "register_download_stage",
     "register_gate_stage",
+    "register_mineru_stage",
 ]

@@ -1,0 +1,94 @@
+diff a/docs/guides/orchestration-pipelines.md b/docs/guides/orchestration-pipelines.md	(rejected hunks)
+@@ -6,75 +6,90 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
+ `Medical_KG_rev.orchestration.haystack`.
+
+ ## Dagster Architecture
+
+ - **Stage contracts** – `StageContext`, `ChunkStage`, `EmbedStage`, and other
+   protocols live in `Medical_KG_rev.orchestration.stages.contracts`. Dagster ops
+   call these protocols so stage implementations remain framework-agnostic.
+ - **StageFactory** – `StageFactory` resolves stage definitions from topology
+   YAML files. The default factory wires Haystack chunking, embedding, and
+   indexing components while falling back to lightweight stubs for unit tests.
+ - **Runtime module** – `Medical_KG_rev.orchestration.dagster.runtime` defines
+   jobs, resources, and helper utilities (`DagsterOrchestrator`,
+   `submit_to_dagster`). Jobs call the appropriate stage implementation and
+   update the job ledger after each op.
+ - **Haystack wrappers** – `Medical_KG_rev.orchestration.haystack.components`
+   adapts Haystack classes to the stage protocols. The chunker converts IR
+   documents into Haystack documents, the embedder produces dense vectors (with
+   optional sparse expansion), and the index writer dual writes to OpenSearch and
+   FAISS.
+
+ ## Pipeline Configuration
+
+ - **Topology YAML** – Pipelines are described in
+   `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
+   optional `policy`, dependencies, and a free-form `config` block. Gates define
+-  resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
++  resume conditions, e.g., `ledger.pdf_ir_ready=true` for two-phase PDF ingestion.
++- **Plugins** – Pipeline files may include a `plugins` section with
++  `medical_kg.orchestration.stages` callables. Each callable returns one or more
++  `StageRegistration` objects, allowing pipelines to opt into custom stage
++  implementations without mutating the global registry.
++- **Metadata overrides** – Use the per-stage `metadata_overrides` block to tweak
++  registry metadata (state keys, descriptions, dependencies) without defining a
++  new plugin. Overrides are applied at job build time and leave the global
++  registration untouched.
++- **Gates** – Gate stages evaluate runtime state alongside Job Ledger flags such
++  as `ledger.pdf_ir_ready`. Configure gate conditions using dotted paths (for
++  example `ledger.pdf_downloaded`) so the stage can inspect ledger snapshots
++  injected by the runtime.
+ - **Resilience policies** – `config/orchestration/resilience.yaml` contains
+   shared retry, circuit breaker, and rate limiting definitions. The runtime
+   loads these into Tenacity, PyBreaker, and aiolimiter objects.
+ - **Version manifest** – `config/orchestration/versions/*` tracks pipeline
+   revisions. `PipelineConfigLoader` loads and caches versions to provide
+   deterministic orchestration.
+
+ ## Execution Flow
+
+ 1. **Job submission** – The gateway builds a `StageContext` and calls
+    `submit_to_dagster`. The Dagster run stores the initial state using the job
+    ledger resource.
+ 2. **Stage execution** – Each op resolves the stage implementation via
+    `StageFactory`. Resilience policies wrap the execution and emit metrics on
+    retries, circuit breaker state changes, and rate limiting delays.
+ 3. **Ledger updates** – Ops record progress to the job ledger (`current_stage`,
+    attempt counts, gate metadata). Sensors poll the ledger for gate conditions
+-   (e.g., `pdf_ir_ready=true`) and resume downstream stages.
++   (e.g., `ledger.pdf_ir_ready=true`) and resume downstream stages.
+ 4. **Outputs** – Stage results are added to the Dagster run state and surfaced
+    to the gateway through the ledger/SSE stream. Haystack components persist
+    embeddings and metadata in downstream storage systems.
+
+ ## Troubleshooting
+
+ - **Stage resolution errors** – Verify the stage `type` in the topology YAML
+   matches the keys registered in `build_default_stage_factory`. Unknown stage
+   types raise `StageResolutionError` during job execution.
++- **Plugin conflicts** – If two plugins attempt to register the same stage type,
++  the registry emits a warning and retains the first registration. Use
++  `replace: true` in the plugin declaration to intentionally override an entry.
+ - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
+   for required fields (attempts, backoff, circuit breaker thresholds). Invalid
+   policies raise validation errors at load time.
+ - **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
+   set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
+   and record trigger counts in the ledger metadata.
+ - **Missing embeddings** – Ensure the embed stage resolved the Haystack
+   embedder; stubs return deterministic values for test runs but do not persist
+   to OpenSearch/FAISS.
+
+ ## Operational Notes
+
+ - Run Dagster locally with
+   `dagster dev -m Medical_KG_rev.orchestration.dagster.runtime` to access the UI
+   and sensors.
+ - The gateway uses `StageFactory` directly for synchronous operations (chunking
+   and embedding APIs) to avoid spinning up full Dagster runs.
+ - Dagster daemon processes handle sensors and schedules. Ensure the daemon has
+   access to the same configuration volume as the webserver and gateway.
+ - CloudEvents and OpenLineage emission hooks live alongside the Dagster jobs
+   and reuse the resilience policy loader for consistent telemetry metadata.
+

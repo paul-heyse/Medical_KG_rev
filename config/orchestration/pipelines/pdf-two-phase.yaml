@@ -23,6 +23,7 @@ stages:
     phase: pre-gate
   - name: gate_pdf_ir_ready
     type: gate
+    gate: pdf_ir_ready
     policy: default
     depends_on:
       - download

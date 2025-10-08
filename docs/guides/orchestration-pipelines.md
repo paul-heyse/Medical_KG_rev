@@ -38,6 +38,9 @@ gate stages, two-phase execution, and rich observability for resume flows.
 - **Version manifest** – `config/orchestration/versions/*` tracks pipeline
   revisions. `PipelineConfigLoader` loads and caches versions to provide
   deterministic orchestration.
+- **Custom stages** – The stage registry supports additional stage types via
+  plugins. See [`custom-pipeline-stages.md`](./custom-pipeline-stages.md) for
+  details on registering new builders.
 
 Example (excerpt from `pdf-two-phase.yaml`):
 
@@ -103,6 +106,66 @@ stages declare gate metadata.
 5. **Outputs** – Stage results are added to the Dagster run state and surfaced to
    the gateway through the ledger/SSE stream. Haystack components persist
    embeddings and metadata in downstream storage systems.
+5. **Phase transitions** – When a gate passes, the runtime records a phase
+   transition, updates the ledger (`gate.<name>.*` metadata), and resumes the
+   downstream graph from the configured `resume_stage`.
+
+## Gate-Aware Execution
+
+- **Condition syntax** – Each `GateDefinition` contains one or more clauses
+  under `condition.clauses`. Supported operators are `equals`, `exists`, and
+  `changed`. Clauses are combined with `condition.mode` (`all`/`any`). Field
+  paths support root attributes such as `pdf_ir_ready`, `status`, or nested
+  `metadata.*` entries stored in the job ledger.
+- **Timeout & retry** – Gates poll the ledger until the condition is satisfied
+  or the configured timeout elapses. Optional retry configuration allows for
+  exponential back-off between evaluation attempts. Timeouts raise
+  `GateConditionError`, update the ledger with gate status, and emit metrics for
+  observability. The Dagster run completes without executing post-gate stages so
+  sensors can resume later.
+- **Phase tracking** – Stage definitions are assigned numeric phases during
+  topology validation. Gate stages unlock the next phase by setting
+  `phase_index` and `phase_ready` in the run state and ledger. Resume runs
+  should set `context.phase` to the unlocked phase (for example, `phase-2`) so
+  pre-gate stages are skipped automatically.
+- **Metrics and logging** – Gate evaluation outcomes increment
+  `orchestration_gate_evaluations_total` with the gate name and status. Phase
+  transitions emit `orchestration_phase_transitions_total`. Structured log lines
+  prefixed with `dagster.stage.gate_*` describe skip reasons, failures, and
+  successful unlocks.
+
+### Example Gate Definition
+
+```yaml
+gates:
+  - name: pdf_ir_ready
+    resume_stage: chunk
+    timeout_seconds: 1800
+    retry:
+      max_attempts: 3
+      backoff_seconds: 30.0
+    condition:
+      mode: all
+      clauses:
+        - field: pdf_ir_ready
+          operator: equals
+          value: true
+        - field: metadata.gate.pdf_ir_ready.status
+          operator: equals
+          value: passed
+```
+
+## Sensors and Resumption
+
+- The `pdf_ir_ready_sensor` watches ledger entries for `pdf_ir_ready=true` and
+  `status=processing`. When triggered it creates a Dagster run with
+  `context.phase=phase-2`, forwards the original adapter payload, and tags the
+  resume stage/phase for observability.
+- Resume runs inherit ledger metadata (correlation ID, payload, gate results)
+  so monitoring dashboards can tie both phases together. The orchestrator only
+  marks a job `completed` when the final phase finishes with `phase_ready=true`.
+- Gate metadata lives under `metadata["gate.<name>.*"]` in the ledger. Use this
+  to debug stalled jobs, confirm resume stages, and correlate gate attempts.
 
 ## Resume Sensors and Metadata
 
@@ -151,6 +214,21 @@ mutated gate state with `--dump-gate-state` to emulate multiple evaluations.
   downstream phase.
 - **Missing embeddings** – Ensure the embed stage resolved the Haystack embedder
   and that the resume run progressed to the post-gate phase.
+
+## PDF Two-Phase Pipeline
+
+The `pdf-two-phase` topology combines metadata ingestion, PDF download, a
+ledger-backed MinerU gate, and downstream enrichment. Highlights:
+
+- Download stage extracts URLs from OpenAlex payloads, writes PDFs to
+  `/var/lib/medical-kg/pdfs`, and updates ledger fields `pdf_url`, `pdf_path`,
+  and `pdf_sha256`.
+- Gate stage waits for MinerU to set `pdf_ir_ready=true`, recording wait
+  duration metrics and ledger metadata (`gate.pdf_ir_ready.*`).
+- Metrics `pdf_download_duration_seconds`, `pdf_download_size_bytes`, and
+  `pdf_download_events_total` provide visibility into acquisition behaviour.
+
+See the dedicated guide for configuration snippets and troubleshooting advice.
 
 ## Operational Notes
 

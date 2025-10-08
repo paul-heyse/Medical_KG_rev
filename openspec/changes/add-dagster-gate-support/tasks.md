@@ -89,10 +89,10 @@
 
 ### 5.3 Pipeline Validation Tests
 
-- [ ] 5.3.1 Test pipeline loading with gate definitions
-- [ ] 5.3.2 Test invalid gate configurations are rejected
-- [ ] 5.3.3 Test dependency validation for gated pipelines
-- [ ] 5.3.4 Test pipeline serialization and deserialization
+- [x] 5.3.1 Test pipeline loading with gate definitions
+- [x] 5.3.2 Test invalid gate configurations are rejected
+- [x] 5.3.3 Test dependency validation for gated pipelines
+- [x] 5.3.4 Test pipeline serialization and deserialization
 
 ## 6. Documentation and Monitoring
 

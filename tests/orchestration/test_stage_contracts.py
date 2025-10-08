@@ -2,11 +2,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from types import SimpleNamespace
+
 pytest.importorskip("pydantic")
 
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+from Medical_KG_rev.orchestration.stage_plugins import DownloadStage, GateStage
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
     EmbedStage,
@@ -61,7 +64,7 @@ def _definition(stage_type: str, name: str, config: dict | None = None) -> Stage
     return StageDefinition.model_validate(payload)
 
 
-def test_default_stage_factory_complies_with_protocols(stage_context, adapter_request):
+def test_default_stage_factory_complies_with_protocols(stage_context, adapter_request, tmp_path):
     manager = StubPluginManager()
     registry = build_default_stage_factory(manager)
 
@@ -108,5 +111,32 @@ def test_default_stage_factory_complies_with_protocols(stage_context, adapter_re
     graph_receipt = kg_stage.execute(stage_context, entities, claims)
     assert isinstance(graph_receipt, GraphWriteReceipt)
     assert graph_receipt.nodes_written == 0
+
+    download_stage = registry.get_builder("download")(
+        _definition(
+            "download",
+            "download",
+            {
+                "url_extractors": [{"source": "payload", "path": "best_oa_location.url"}],
+                "storage": {"base_path": str(tmp_path)},
+            },
+        )
+    )
+    assert isinstance(download_stage, DownloadStage)
+
+    gate_stage = registry.get_builder("gate")(
+        _definition(
+            "gate",
+            "gate_pdf_ir_ready",
+            {
+                "gate": "pdf_ir_ready",
+                "field": "pdf_ir_ready",
+                "equals": True,
+                "timeout_seconds": 1,
+                "poll_interval_seconds": 0.1,
+            },
+        )
+    )
+    assert isinstance(gate_stage, GateStage)
 
     assert manager.invocations and manager.invocations[0][0] == "clinical-trials"

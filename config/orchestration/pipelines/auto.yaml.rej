@@ -1,0 +1,59 @@
+diff a/config/orchestration/pipelines/auto.yaml b/config/orchestration/pipelines/auto.yaml	(rejected hunks)
+@@ -1,51 +1,57 @@
+ name: auto
+ version: "2025-01-01"
+ applicable_sources:
+   - clinical-trials
+   - openalex
+   - semantic-scholar
+ metadata:
+   owner: ingestion-team
+   description: Standard ingestion pipeline for non-PDF sources.
++plugins:
++  stages:
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
+ stages:
+   - name: ingest
+     type: ingest
+     policy: default
+     config:
+       adapter: auto
+   - name: parse
+     type: parse
+     policy: default
+     depends_on:
+       - ingest
+   - name: ir_validation
+     type: ir-validation
+     policy: default
+     depends_on:
+       - parse
+   - name: chunk
+     type: chunk
+     policy: default
+     depends_on:
+       - ir_validation
+   - name: embed
+     type: embed
+     policy: default
+     depends_on:
+       - chunk
++    metadata_overrides:
++      description: Embed chunks using the default Haystack pipeline resources.
+   - name: index
+     type: index
+     policy: default
+     depends_on:
+       - embed
+   - name: extract
+     type: extract
+     policy: default
+     depends_on:
+       - ir_validation
+   - name: kg
+     type: knowledge-graph
+     policy: default
+     depends_on:
+       - extract
+       - index

@@ -1,0 +1,68 @@
+diff a/src/Medical_KG_rev/observability/metrics.py b/src/Medical_KG_rev/observability/metrics.py	(rejected hunks)
+@@ -171,50 +171,66 @@ RERANK_GPU = Gauge(
+     "GPU utilisation while reranking",
+     labelnames=("reranker",),
+ )
+ PIPELINE_STAGE_DURATION = Histogram(
+     "retrieval_pipeline_stage_duration_seconds",
+     "Latency per stage of the retrieval pipeline",
+     labelnames=("stage",),
+     buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
+ )
+ RERANK_CACHE_HIT = Gauge(
+     "reranking_cache_hit_rate",
+     "Cache hit rate for reranker results",
+     labelnames=("reranker",),
+ )
+ RERANK_LATENCY_ALERTS = Counter(
+     "reranking_latency_alerts_total",
+     "Number of reranking operations breaching latency SLOs",
+     labelnames=("reranker",),
+ )
+ RERANK_GPU_MEMORY_ALERTS = Counter(
+     "reranking_gpu_memory_alerts_total",
+     "Alerts fired when GPU memory is exhausted during reranking",
+     labelnames=("reranker",),
+ )
+
++STAGE_PLUGIN_REGISTRATIONS = Counter(
++    "orchestration_stage_plugin_registrations_total",
++    "Count of stage plugin registrations grouped by stage type, source, and pipeline",
++    labelnames=("stage_type", "source", "pipeline"),
++)
++STAGE_PLUGIN_REGISTRATION_FAILURES = Counter(
++    "orchestration_stage_plugin_registration_failures_total",
++    "Failed stage plugin registration attempts grouped by source and reason",
++    labelnames=("source", "reason"),
++)
++STAGE_METADATA_OVERRIDE_APPLIED = Counter(
++    "orchestration_stage_metadata_overrides_total",
++    "Number of metadata overrides applied per pipeline and stage",
++    labelnames=("pipeline", "stage"),
++)
++
+ RESILIENCE_RETRY_ATTEMPTS = Counter(
+     "orchestration_resilience_retry_total",
+     "Number of retry attempts triggered by resilience policies",
+     labelnames=("policy", "stage"),
+ )
+
+ RESILIENCE_CIRCUIT_STATE = Gauge(
+     "orchestration_circuit_breaker_state",
+     "Circuit breaker state per resilience policy (0=closed, 1=open, 2=half-open)",
+     labelnames=("policy", "stage"),
+ )
+
+ RESILIENCE_RATE_LIMIT_WAIT = Histogram(
+     "orchestration_rate_limit_wait_seconds",
+     "Time spent waiting for rate limiter tokens per policy",
+     labelnames=("policy", "stage"),
+     buckets=(0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0),
+ )
+
+
+ def _normalise_path(request: "Request") -> str:
+     route = request.scope.get("route")
+     return getattr(route, "path", request.url.path)
+
+

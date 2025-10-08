@@ -707,8 +707,8 @@ pre-commit run --all-files
 # Check for breaking changes in gRPC
 bash scripts/run_buf_checks.sh
 
-# Health check
-python -m Medical_KG_rev.scripts.healthcheck
+# MinerU smoke test
+bash scripts/test_vllm_api.sh
 ```
 
 ### Resources & References

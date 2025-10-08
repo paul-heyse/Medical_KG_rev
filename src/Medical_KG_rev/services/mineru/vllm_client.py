@@ -6,7 +6,13 @@ import base64
 from typing import Any
 
 import httpx
-from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    AsyncRetrying,
+    RetryCallState,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 try:  # pragma: no cover - observability logging may require optional deps
     from Medical_KG_rev.utils.logging import get_logger
@@ -108,6 +114,8 @@ class VLLMClient:
         max_connections: int = 10,
         max_keepalive_connections: int = 5,
         circuit_breaker: CircuitBreaker | None = None,
+        retry_attempts: int = 3,
+        retry_backoff_multiplier: float = 1.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.client = httpx.AsyncClient(
@@ -119,12 +127,16 @@ class VLLMClient:
             ),
         )
         self.circuit_breaker = circuit_breaker or CircuitBreaker()
+        self._retry_attempts = max(1, int(retry_attempts))
+        self._retry_backoff_multiplier = max(0.1, float(retry_backoff_multiplier))
         logger.info(
             "mineru.vllm.client.initialised",
             base_url=self.base_url,
             timeout=timeout,
             max_connections=max_connections,
             max_keepalive=max_keepalive_connections,
+            retry_attempts=self._retry_attempts,
+            retry_backoff_multiplier=self._retry_backoff_multiplier,
         )
 
     async def __aenter__(self) -> "VLLMClient":
@@ -142,13 +154,6 @@ class VLLMClient:
 
         return base64.b64encode(image_bytes).decode("utf-8")
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=60),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
-        before_sleep=_record_retry,
-        reraise=True,
-    )
     async def _post_chat_completions(self, payload: dict[str, Any]) -> httpx.Response:
         return await self.client.post("/v1/chat/completions", json=payload)
 
@@ -174,8 +179,20 @@ class VLLMClient:
         }
 
         try:
-            with MINERU_VLLM_REQUEST_DURATION.time():
-                response = await self._post_chat_completions(payload)
+            async for attempt in AsyncRetrying(
+                stop=stop_after_attempt(self._retry_attempts),
+                wait=wait_exponential(
+                    multiplier=self._retry_backoff_multiplier, min=4, max=60
+                ),
+                retry=retry_if_exception_type(
+                    (httpx.TimeoutException, httpx.NetworkError)
+                ),
+                before_sleep=_record_retry,
+                reraise=True,
+            ):
+                with attempt:
+                    with MINERU_VLLM_REQUEST_DURATION.time():
+                        response = await self._post_chat_completions(payload)
 
             response.raise_for_status()
             data = response.json()

@@ -10,6 +10,7 @@ resources:
   - deployment-ingest-worker.yaml
   - deployment-vllm-embedding.yaml
   - deployment-vllm-server.yaml
+  - deployment-mineru-workers.yaml
   - service-gateway.yaml
   - service-vllm-embedding.yaml
   - service-vllm-server.yaml

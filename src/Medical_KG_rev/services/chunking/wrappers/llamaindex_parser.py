@@ -45,7 +45,7 @@ class LlamaIndexChunker(BaseProfileChunker):
         return self._llamaindex_chunk(document)
 
     def _llamaindex_chunk(self, document: Document) -> List[Chunk]:
-        groups = self._prepare_groups(document)
+        filtered_document, groups = self._prepare_groups(document)
         documents: list[tuple[int, Any]] = []
         for index, group in enumerate(groups):
             combined = "\n\n".join(ctx.text for ctx in group if ctx.text)
@@ -68,14 +68,14 @@ class LlamaIndexChunker(BaseProfileChunker):
             chunk_texts.append(text)
             chunk_to_group.append(int(origin))
         return self._assemble(
-            document=document,
+            document=filtered_document,
             groups=groups,
             chunk_texts=chunk_texts,
             chunk_to_group_index=chunk_to_group,
         )
 
     def _fallback_chunk(self, document: Document) -> List[Chunk]:
-        groups = self._prepare_groups(document)
+        filtered_document, groups = self._prepare_groups(document)
         chunk_texts: List[str] = []
         chunk_to_group: List[int] = []
         for index, group in enumerate(groups):
@@ -96,7 +96,7 @@ class LlamaIndexChunker(BaseProfileChunker):
                 chunk_texts.append(" ".join(window_sentences))
                 chunk_to_group.append(index)
         return self._assemble(
-            document=document,
+            document=filtered_document,
             groups=groups,
             chunk_texts=chunk_texts,
             chunk_to_group_index=chunk_to_group,

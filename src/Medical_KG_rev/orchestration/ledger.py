@@ -57,6 +57,8 @@ class JobLedgerEntry:
     pdf_downloaded_at: datetime | None = None
     pdf_processed_at: datetime | None = None
     pdf_error: str | None = None
+    phase: str = "phase-1"
+    gate_state: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
@@ -93,6 +95,8 @@ class JobLedgerEntry:
             pdf_downloaded_at=self.pdf_downloaded_at,
             pdf_processed_at=self.pdf_processed_at,
             pdf_error=self.pdf_error,
+            phase=self.phase,
+            gate_state={name: dict(state) for name, state in self.gate_state.items()},
         )
 
 
@@ -173,6 +177,8 @@ class JobLedger:
         pipeline_name: str | None = None,
         pdf_downloaded: bool | None = None,
         pdf_ir_ready: bool | None = None,
+        phase: str | None = None,
+        gate_state: dict[str, dict[str, object]] | None = None,
         pdf_url: str | None = None,
         pdf_storage_key: str | None = None,
         pdf_checksum: str | None = None,
@@ -229,6 +235,13 @@ class JobLedger:
             entry.pdf_downloaded_at = pdf_downloaded_at
         if pdf_ir_ready is not None:
             entry.pdf_ir_ready = pdf_ir_ready
+        if phase:
+            entry.phase = phase
+        if gate_state:
+            for gate, values in gate_state.items():
+                existing = entry.gate_state.get(gate, {})
+                existing.update(values)
+                entry.gate_state[gate] = existing
         if pdf_processed_at is not None:
             entry.pdf_processed_at = pdf_processed_at
         if pdf_error is not None:
@@ -327,6 +340,38 @@ class JobLedger:
     def set_pdf_ir_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
         timestamp = datetime.utcnow() if value else None
         return self._update(job_id, pdf_ir_ready=value, pdf_processed_at=timestamp)
+
+    def set_phase(self, job_id: str, phase: str) -> JobLedgerEntry:
+        return self._update(job_id, phase=phase)
+
+    def record_gate_state(
+        self,
+        job_id: str,
+        gate_name: str,
+        *,
+        status: str,
+        reason: str | None = None,
+        attempts: int | None = None,
+        elapsed_seconds: float | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> JobLedgerEntry:
+        state: dict[str, object] = {"status": status, "updated_at": datetime.utcnow().isoformat()}
+        if reason:
+            state["reason"] = reason
+        if attempts is not None:
+            state["attempts"] = attempts
+        if elapsed_seconds is not None:
+            state["elapsed_seconds"] = elapsed_seconds
+        if extra:
+            state.update(extra)
+        return self._update(job_id, gate_state={gate_name: state})
+
+    def get_gate_state(self, job_id: str, gate_name: str) -> dict[str, object] | None:
+        entry = self._entries.get(job_id)
+        if not entry:
+            return None
+        state = entry.gate_state.get(gate_name)
+        return dict(state) if state else None
 
     def record_pdf_download(
         self,
@@ -432,4 +477,3 @@ class JobLedger:
 
 __all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
 from Medical_KG_rev.observability.metrics import update_job_status_metrics
-

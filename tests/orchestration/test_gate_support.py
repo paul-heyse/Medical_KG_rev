@@ -20,7 +20,12 @@ from Medical_KG_rev.orchestration.dagster.runtime import (
     _build_pipeline_job,
     pdf_ir_ready_sensor,
 )
+from Medical_KG_rev.orchestration.dagster.stage_registry import (
+    StageMetadata,
+    StageRegistry,
+)
 from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.state_manager import LedgerStateManager
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 
 
@@ -181,19 +186,46 @@ def _build_two_phase_job(ledger: JobLedger):
         gates=[gate],
     )
 
-    registry = {
-        "pre": lambda _top, _def: PreStage(),
-        "post": lambda _top, _def: PostStage(),
-        "gate": lambda top, definition: GateStage(
+    registry = StageRegistry()
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="pre",
+            state_key="pre",
+            output_handler=lambda state, _, output: state.update({"pre": output}),
+            output_counter=lambda _: 1,
+            description="Pre-processing stage for tests",
+        ),
+        builder=lambda _top, _def: PreStage(),
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="post",
+            state_key="post",
+            output_handler=lambda state, _, output: state.update({"post": output}),
+            output_counter=lambda _: 1,
+            description="Post-processing stage for tests",
+        ),
+        builder=lambda _top, _def: PostStage(),
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="gate",
+            state_key=None,
+            output_handler=lambda *_: None,
+            output_counter=lambda _: 0,
+            description="Gate evaluation stage",
+        ),
+        builder=lambda top, definition: GateStage(
             definition,
             next(item for item in top.gates if item.name == definition.gate),
         ),
-    }
+    )
     stage_factory = StageFactory(registry)
     resources = {
         "stage_factory": stage_factory,
         "resilience_policies": DummyResilience(),
         "job_ledger": ledger,
+        "job_state_manager": LedgerStateManager(ledger),
         "event_emitter": DummyEmitter(),
     }
     resource_defs = {

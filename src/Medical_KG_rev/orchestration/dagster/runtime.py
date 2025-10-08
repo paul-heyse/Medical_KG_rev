@@ -33,6 +33,7 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     ResiliencePolicyLoader,
     StageDefinition,
 )
+from Medical_KG_rev.orchestration.dagster.gates import GateConditionError
 from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
     StageRegistry,
@@ -44,6 +45,10 @@ from Medical_KG_rev.orchestration.dagster.stages import (
     create_default_pipeline_resource,
 )
 from Medical_KG_rev.orchestration.events import StageEventEmitter
+from Medical_KG_rev.observability.metrics import (
+    record_gate_evaluation,
+    record_phase_transition,
+)
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.state_manager import LedgerStateManager
@@ -64,18 +69,22 @@ class StageFactory:
 
     registry: StageRegistry = field(default_factory=StageRegistry)
 
-    def resolve(self, topology: PipelineTopologyConfig, stage: StageDefinition) -> object:
+    def resolve(
+        self,
+        topology: PipelineTopologyConfig | str | None,
+        stage: StageDefinition,
+    ) -> object:
         try:
             builder = self.registry.get_builder(stage.stage_type)
             metadata = self.registry.get_metadata(stage.stage_type)
         except StageRegistryError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
-                f"Pipeline '{topology.name}' declared unknown stage type '{stage.stage_type}'"
+                f"Pipeline '{getattr(topology, 'name', topology)}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
-        instance = builder(topology, stage)
+        instance = builder(topology if isinstance(topology, PipelineTopologyConfig) else None, stage)
         logger.debug(
             "dagster.stage.resolved",
-            pipeline=topology.name,
+            pipeline=getattr(topology, "name", topology),
             stage=stage.name,
             stage_type=stage.stage_type,
             description=metadata.description,
@@ -89,7 +98,7 @@ class StageFactory:
         self,
         *,
         metadata: StageMetadata,
-        builder: Callable[[PipelineTopologyConfig, StageDefinition], object],
+        builder: Callable[[PipelineTopologyConfig | None, StageDefinition], object],
         replace: bool = False,
     ) -> None:
         self.registry.register_stage(metadata=metadata, builder=builder, replace=replace)
@@ -220,12 +229,26 @@ def _make_stage_op(
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
-        ledger: JobLedger = context.resources.job_ledger
-        emitter: StageEventEmitter = context.resources.event_emitter
-        stage = stage_factory.resolve(topology.name, stage_definition)
-        metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
         state_manager: LedgerStateManager = context.resources.job_state_manager
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
+
+        current_phase_index = int(state.get("phase_index", 1))
+        phase_ready = bool(state.get("phase_ready", True))
+        target_phase_index = stage_definition.phase_index
+        if stage_type != "gate" and target_phase_index > current_phase_index and not phase_ready:
+            logger.debug(
+                "dagster.stage.skipped_phase",
+                pipeline=topology.name,
+                stage=stage_name,
+                target_phase=f"phase-{target_phase_index}",
+                current_phase=f"phase-{current_phase_index}",
+            )
+            return state
+
+        stage = stage_factory.resolve(topology, stage_definition)
+        metadata = stage_factory.get_metadata(stage_type)
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -281,6 +304,8 @@ def _make_stage_op(
             if stage_type == "ingest":
                 adapter_request: AdapterRequest = state["adapter_request"]
                 result = wrapped(stage_ctx, adapter_request)
+            elif stage_type == "gate":
+                result = wrapped(stage_ctx, state, ledger=ledger)
             elif stage_type in {"parse", "ir-validation"}:
                 payloads = state.get("payloads", [])
                 result = wrapped(stage_ctx, payloads)
@@ -303,6 +328,51 @@ def _make_stage_op(
             else:  # pragma: no cover - guard for future expansion
                 upstream = _resolve_upstream_value(state, metadata, stage_factory)
                 result = wrapped(stage_ctx, upstream)
+        except GateConditionError as exc:
+            attempts = execution_state.get("attempts") or attempt.attempt
+            gate_name = getattr(stage_definition, "gate", stage_name)
+            logger.info(
+                "dagster.stage.gate_blocked",
+                pipeline=topology.name,
+                stage=stage_name,
+                gate=gate_name,
+                status=exc.status,
+                attempts=attempts,
+                reason=str(exc),
+            )
+            if job_id:
+                ledger.record_gate_state(
+                    job_id,
+                    gate_name,
+                    status=exc.status,
+                    reason=str(exc),
+                    attempts=attempts,
+                )
+                metadata_update: dict[str, Any] = {
+                    "phase_index": stage_definition.phase_index,
+                    "phase_ready": False,
+                    f"gate.{gate_name}.status": exc.status,
+                    f"gate.{gate_name}.reason": str(exc),
+                }
+                resume_target = getattr(getattr(stage, "gate", None), "resume_stage", None)
+                if resume_target:
+                    metadata_update["resume_stage"] = resume_target
+                    metadata_update[f"gate.{gate_name}.resume_stage"] = resume_target
+                ledger.update_metadata(job_id, metadata_update)
+            record_gate_evaluation(gate_name, exc.status)
+            gate_state = {
+                "status": exc.status,
+                "reason": str(exc),
+                "attempts": attempts,
+            }
+            state.setdefault("gates", {})[stage_name] = gate_state
+            state["phase_index"] = stage_definition.phase_index
+            state["phase_ready"] = False
+            state.setdefault("results", {})[stage_name] = {
+                "type": stage_type,
+                "output": gate_state,
+            }
+            return state
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
@@ -316,11 +386,51 @@ def _make_stage_op(
             raise
 
         updated = dict(state)
-        _apply_stage_output(metadata, stage_name, updated, result)
-        attempts = execution_state.get("attempts") or 1
+        if stage_type == "gate":
+            gate_output = {
+                "status": result.status,
+                "attempts": result.attempts,
+                "elapsed_seconds": result.elapsed_seconds,
+                "metadata": result.metadata,
+            }
+            gate_name = getattr(stage_definition, "gate", stage_name)
+            updated.setdefault("gates", {})[stage_name] = gate_output
+            updated.setdefault("results", {})[stage_name] = {
+                "type": stage_type,
+                "output": gate_output,
+            }
+            if result.should_resume:
+                updated["phase_index"] = stage_definition.phase_index + 1
+                updated["phase_ready"] = True
+            else:
+                updated["phase_index"] = stage_definition.phase_index
+                updated["phase_ready"] = False
+            if job_id:
+                metadata_update = {
+                    "phase_index": updated["phase_index"],
+                    "phase_ready": updated["phase_ready"],
+                    f"gate.{gate_name}.status": result.status,
+                }
+                resume_target = getattr(getattr(stage, "gate", None), "resume_stage", None)
+                if resume_target:
+                    metadata_update["resume_stage"] = resume_target
+                    metadata_update[f"gate.{gate_name}.resume_stage"] = resume_target
+                ledger.update_metadata(job_id, metadata_update)
+            record_gate_evaluation(gate_name, result.status)
+            if result.should_resume and updated["phase_index"] != current_phase_index:
+                record_phase_transition(
+                    topology.name,
+                    f"phase-{current_phase_index}",
+                    f"phase-{updated['phase_index']}",
+                )
+            output_reference = gate_output
+        else:
+            _apply_stage_output(metadata, stage_name, updated, result)
+            output_reference = result
+        attempts = execution_state.get("attempts") or attempt.attempt
         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
         duration_ms = int(duration_seconds * 1000)
-        output_count = _infer_output_count(metadata, result)
+        output_count = _infer_output_count(metadata, output_reference)
 
         if job_id and stage_type == "download":
             downloads = updated.get("downloaded_files") or []
@@ -696,8 +806,8 @@ def submit_to_dagster(
 
 
 @sensor(name="pdf_ir_ready_sensor", minimum_interval_seconds=30, required_resource_keys={"job_ledger"})
-def pdf_ir_ready_sensor(context: SensorEvaluationContext):
-    ledger: JobLedger = context.resources.job_ledger
+def pdf_ir_ready_sensor(context: SensorEvaluationContext, job_ledger: JobLedger):
+    ledger = job_ledger
     ready_requests: list[RunRequest] = []
     for entry in ledger.all():
         if entry.pipeline_name != "pdf-two-phase":

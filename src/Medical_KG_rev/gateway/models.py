@@ -166,10 +166,25 @@ class PipelineIngestionRequest(IngestionRequest):
 class ChunkRequest(BaseModel):
     tenant_id: str
     document_id: str
+    text: str | None = None
     strategy: Literal["semantic", "section", "paragraph", "table", "sliding-window"] = "section"
     chunk_size: int = Field(ge=64, le=4096, default=512)
     overlap: float = Field(default=0.1, ge=0.0, lt=1.0)
     options: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _ensure_text(cls, values: "ChunkRequest") -> "ChunkRequest":
+        text = values.text
+        if text is None:
+            option_text = values.options.get("text") if isinstance(values.options, dict) else None
+            if isinstance(option_text, str):
+                text = option_text
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("Chunk requests must include a non-empty 'text' field")
+        values.text = text
+        if "text" in values.options:
+            values.options = {k: v for k, v in values.options.items() if k != "text"}
+        return values
 
 
 class EmbeddingOptions(BaseModel):
@@ -224,6 +239,45 @@ class NamespaceValidationResponse(BaseModel):
 class NamespaceValidationRequest(BaseModel):
     tenant_id: str
     texts: Sequence[str] = Field(default_factory=list)
+
+
+class NamespacePolicySettingsView(BaseModel):
+    cache_ttl_seconds: float = Field(default=60.0, ge=0.0)
+    max_cache_entries: int = Field(default=512, ge=1)
+    dry_run: bool = False
+
+
+class NamespacePolicyStatus(BaseModel):
+    settings: NamespacePolicySettingsView
+    stats: dict[str, Any] = Field(default_factory=dict)
+    operational: dict[str, Any] = Field(default_factory=dict)
+
+
+class NamespacePolicyUpdateRequest(BaseModel):
+    cache_ttl_seconds: float | None = Field(default=None, ge=0.0)
+    max_cache_entries: int | None = Field(default=None, ge=1)
+    dry_run: bool | None = None
+
+
+class NamespacePolicyDiagnosticsView(BaseModel):
+    settings: NamespacePolicySettingsView
+    cache_keys: list[str] = Field(default_factory=list)
+    stats: dict[str, Any] = Field(default_factory=dict)
+
+
+class NamespacePolicyHealthView(BaseModel):
+    policy: str
+    evaluations: int
+    denials: int
+    cache_entries: int
+
+
+class NamespacePolicyMetricsView(BaseModel):
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class NamespacePolicyInvalidateRequest(BaseModel):
+    namespace: str | None = None
 
 
 class RetrieveRequest(BaseModel):

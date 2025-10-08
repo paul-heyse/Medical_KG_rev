@@ -1,0 +1,284 @@
+"""Plugin infrastructure for orchestration stages.
+
+This module introduces a ``pluggy`` based discovery and loading system that
+allows orchestration stages to be contributed by external packages while the
+core runtime remains agnostic of concrete implementations.  The implementation
+leans on ``attrs`` for the hot-path data structures, ``pydantic`` for metadata
+validation, ``tenacity`` for resilient loading, ``orjson`` for fast
+serialisation of diagnostics, and ``prometheus_client`` for observability.
+"""
+
+from __future__ import annotations
+
+import time
+from collections import defaultdict
+from typing import Any, Callable, Iterable, Sequence
+
+import orjson
+import pluggy
+import structlog
+from attrs import define, field
+from prometheus_client import Counter, Histogram
+from pydantic import BaseModel, ConfigDict, Field
+from structlog.stdlib import BoundLogger
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
+
+from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
+from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+
+__all__ = [
+    "STAGE_PLUGIN_NAMESPACE",
+    "hookspec",
+    "hookimpl",
+    "StagePluginMetadata",
+    "StagePluginRegistration",
+    "StagePluginResources",
+    "StagePluginManager",
+    "StagePluginError",
+    "StagePluginLookupError",
+    "StagePluginBuildError",
+]
+
+
+STAGE_PLUGIN_NAMESPACE = "medical_kg_rev.orchestration.stage"
+
+hookspec = pluggy.HookspecMarker(STAGE_PLUGIN_NAMESPACE)
+hookimpl = pluggy.HookimplMarker(STAGE_PLUGIN_NAMESPACE)
+
+
+class StagePluginMetadata(BaseModel):
+    """Typed metadata describing a stage plugin contribution."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
+    version: str = Field(default="0.0.0")
+    stage_type: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    capabilities: tuple[str, ...] = Field(default_factory=tuple)
+    dependencies: tuple[str, ...] = Field(default_factory=tuple)
+
+    def serialise(self) -> bytes:
+        """Return an ``orjson`` encoded payload for diagnostics."""
+
+        return orjson.dumps(self.model_dump())
+
+
+@define(slots=True)
+class StagePluginRegistration:
+    """Registration record returned by plugin implementations."""
+
+    metadata: StagePluginMetadata
+    builder: Callable[[StageDefinition, "StagePluginResources"], object]
+
+
+@define(slots=True)
+class StagePluginResources:
+    """Shared resources handed to plugin builders during registration."""
+
+    adapter_manager: AdapterPluginManager
+    pipeline_resource: Any
+    job_ledger: Any | None = None
+    extras: dict[str, Any] = field(factory=dict)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.extras.get(key, default)
+
+    def with_extra(self, **values: Any) -> "StagePluginResources":
+        payload = dict(self.extras)
+        payload.update(values)
+        return StagePluginResources(
+            adapter_manager=self.adapter_manager,
+            pipeline_resource=self.pipeline_resource,
+            job_ledger=self.job_ledger,
+            extras=payload,
+        )
+
+
+class StagePluginError(RuntimeError):
+    """Base error for stage plugin manager failures."""
+
+
+class StagePluginLookupError(StagePluginError):
+    """Raised when no plugin can satisfy the requested stage type."""
+
+
+class StagePluginBuildError(StagePluginError):
+    """Raised when all plugins for a stage type fail to build an instance."""
+
+
+class StagePluginSpec:
+    """Pluggy hook specification for stage plugins."""
+
+    @hookspec
+    def stage_builders(
+        self, resources: StagePluginResources
+    ) -> Sequence[StagePluginRegistration | dict[str, Any]]:
+        """Return registrations for the stages implemented by the plugin."""
+
+
+_BUILD_COUNTER = Counter(
+    "medical_kg_stage_plugin_build_total",
+    "Number of stage builds performed by plugin",  # pragma: no cover - metrics wiring
+    ("plugin", "stage_type", "status"),
+)
+
+_BUILD_LATENCY = Histogram(
+    "medical_kg_stage_plugin_build_seconds",
+    "Latency for stage plugin instantiation",  # pragma: no cover - metrics wiring
+    ("plugin", "stage_type"),
+)
+
+
+@define(slots=True)
+class StagePluginManager:
+    """Manage discovery, validation, and instantiation of stage plugins."""
+
+    resources: StagePluginResources
+    namespace: str = STAGE_PLUGIN_NAMESPACE
+    _plugin_manager: pluggy.PluginManager = field(init=False)
+    _registry: dict[str, list[StagePluginRegistration]] = field(init=False, factory=dict)
+    _logger: BoundLogger = field(init=False)
+
+    def __attrs_post_init__(self) -> None:
+        self._plugin_manager = pluggy.PluginManager(self.namespace)
+        self._plugin_manager.add_hookspecs(StagePluginSpec)
+        self._logger = structlog.get_logger(__name__).bind(component="StagePluginManager")
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, max=5.0))
+    def load_entrypoints(self, group: str | None = None) -> None:
+        """Load plugins advertised through Python entry points."""
+
+        entrypoint_group = group or self.namespace
+        loaded = self._plugin_manager.load_setuptools_entrypoints(entrypoint_group) or []
+        count = len(loaded) if isinstance(loaded, Iterable) else 0
+        self._logger.info(
+            "stage.plugin.entrypoints_loaded",
+            group=entrypoint_group,
+            count=count,
+        )
+        self._refresh_registry()
+
+    def register(self, plugin: object) -> None:
+        """Register an explicit plugin object with the manager."""
+
+        self._plugin_manager.register(plugin)
+        self._logger.debug(
+            "stage.plugin.registered",
+            plugin=getattr(plugin, "__class__", type(plugin)).__name__,
+        )
+        self._refresh_registry()
+
+    def available_stage_types(self) -> tuple[str, ...]:
+        return tuple(sorted(self._registry))
+
+    def plugin_inventory(self) -> tuple[StagePluginMetadata, ...]:
+        entries: list[StagePluginMetadata] = []
+        for registrations in self._registry.values():
+            entries.extend(entry.metadata for entry in registrations)
+        return tuple(entries)
+
+    def build_stage(self, definition: StageDefinition) -> object:
+        """Instantiate a stage for the supplied definition."""
+
+        stage_type = definition.stage_type
+        registrations = self._registry.get(stage_type, [])
+        if not registrations:
+            raise StagePluginLookupError(f"No stage plugin registered for type '{stage_type}'")
+
+        last_error: Exception | None = None
+        for registration in registrations:
+            metadata = registration.metadata
+            start_time = time.perf_counter()
+            try:
+                instance = self._execute_with_retry(registration.builder, definition)
+            except RetryError as exc:
+                error = exc.last_attempt.exception() if exc.last_attempt else exc
+                last_error = error
+                _BUILD_COUNTER.labels(
+                    plugin=metadata.name,
+                    stage_type=stage_type,
+                    status="error",
+                ).inc()
+                self._logger.error(
+                    "stage.plugin.retry_exhausted",
+                    plugin=metadata.name,
+                    stage_type=stage_type,
+                    error=str(error),
+                )
+                continue
+            except Exception as exc:  # pragma: no cover - defensive guard
+                last_error = exc
+                _BUILD_COUNTER.labels(
+                    plugin=metadata.name,
+                    stage_type=stage_type,
+                    status="error",
+                ).inc()
+                self._logger.error(
+                    "stage.plugin.build_failed",
+                    plugin=metadata.name,
+                    stage_type=stage_type,
+                    error=str(exc),
+                )
+                continue
+
+            duration = time.perf_counter() - start_time
+            _BUILD_COUNTER.labels(
+                plugin=metadata.name,
+                stage_type=stage_type,
+                status="success",
+            ).inc()
+            _BUILD_LATENCY.labels(plugin=metadata.name, stage_type=stage_type).observe(duration)
+            self._logger.debug(
+                "stage.plugin.build_succeeded",
+                plugin=metadata.name,
+                stage_type=stage_type,
+                duration_ms=int(duration * 1000),
+                metadata=metadata.serialise(),
+            )
+            return instance
+
+        raise StagePluginBuildError(
+            f"All stage plugins failed for type '{stage_type}'"
+        ) from last_error
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.1, max=2.0))
+    def _execute_with_retry(
+        self,
+        builder: Callable[[StageDefinition, StagePluginResources], object],
+        definition: StageDefinition,
+    ) -> object:
+        return builder(definition, self.resources)
+
+    def _refresh_registry(self) -> None:
+        aggregated: dict[str, list[StagePluginRegistration]] = defaultdict(list)
+        results = self._plugin_manager.hook.stage_builders(resources=self.resources)
+        for item in results:
+            if not item:
+                continue
+            for registration in item:
+                entry = self._coerce(registration)
+                aggregated[entry.metadata.stage_type].append(entry)
+        self._registry = aggregated
+        self._logger.debug(
+            "stage.plugin.registry_refreshed",
+            stage_types=sorted(self._registry),
+        )
+
+    def _coerce(self, entry: StagePluginRegistration | dict[str, Any]) -> StagePluginRegistration:
+        if isinstance(entry, StagePluginRegistration):
+            return entry
+        if not isinstance(entry, dict):
+            raise TypeError(f"Unsupported stage registration payload: {entry!r}")
+        metadata_payload = entry.get("metadata")
+        if metadata_payload is None:
+            raise ValueError("Stage registration missing metadata")
+        builder = entry.get("builder")
+        if not callable(builder):
+            raise TypeError("Stage registration builder must be callable")
+        metadata = (
+            metadata_payload
+            if isinstance(metadata_payload, StagePluginMetadata)
+            else StagePluginMetadata.model_validate(metadata_payload)
+        )
+        return StagePluginRegistration(metadata=metadata, builder=builder)
+

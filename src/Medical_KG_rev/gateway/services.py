@@ -30,9 +30,11 @@ from ..orchestration.dagster import (
     PipelineConfigLoader,
     ResiliencePolicyLoader,
     StageFactory,
+    build_stage_factory,
     create_stage_plugin_manager,
     submit_to_dagster,
 )
+from ..orchestration.dagster.stages import create_default_pipeline_resource
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
@@ -43,6 +45,7 @@ from ..services.embedding.policy import (
 )
 from ..services.embedding.persister import (
     EmbeddingPersister,
+    PersistenceContext,
     PersisterRuntimeSettings,
     build_persister,
 )
@@ -118,6 +121,12 @@ class GatewayError(RuntimeError):
 
 def _build_stage_factory(
     manager: AdapterPluginManager | None = None,
+    ledger: JobLedger | None = None,
+) -> StageFactory:
+    adapter_manager = manager or get_plugin_manager()
+    job_ledger = ledger or JobLedger()
+    pipeline_resource = create_default_pipeline_resource()
+    return build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
     *,
     job_ledger: JobLedger | None = None,
 ) -> StageFactory:
@@ -159,10 +168,8 @@ class GatewayService:
     def __post_init__(self) -> None:
         self.job_lifecycle = JobLifecycleManager(self.ledger, self.events)
         if self.stage_factory is None:
-            self.stage_factory = _build_stage_factory(
-                self.adapter_manager,
-                job_ledger=self.ledger,
-            )
+            self.stage_factory = _build_stage_factory(self.adapter_manager, self.ledger)
+            
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.namespace_registry is None:
@@ -531,6 +538,87 @@ class GatewayService:
     def embed(self, request: EmbedRequest) -> EmbeddingResponse:
         if self.embedding_coordinator is None:
             raise RuntimeError("Embedding coordinator not initialised")
+        if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
+            raise RuntimeError("Embedding components not initialised")
+
+        started = perf_counter()
+        options = request.options or EmbeddingOptions()
+        namespace = request.namespace
+
+        try:
+            decision = self.namespace_policy.evaluate(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                required_scope=Scopes.EMBED_WRITE,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            detail = ProblemDetail(
+                title="Namespace policy failure",
+                status=500,
+                type="https://httpstatuses.com/500",
+                detail=str(exc),
+            )
+            raise GatewayError(detail) from exc
+
+        if not decision.allowed:
+            detail = ProblemDetail(
+                title="Namespace access denied",
+                status=403,
+                type="https://httpstatuses.com/403",
+                detail=decision.reason or "Access to namespace not permitted",
+            )
+            raise GatewayError(detail)
+
+        config = decision.config or self.namespace_registry.get(namespace)
+
+        job_id = self._new_job(request.tenant_id, "embed")
+        correlation_id = uuid.uuid4().hex
+        model_name = options.model or config.model_id
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_started(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+            )
+
+        texts: list[str] = []
+        ids: list[str] = []
+        metadata_payload: list[dict[str, Any]] = []
+        for index, text in enumerate(request.texts):
+            if not isinstance(text, str) or not text.strip():
+                detail = ProblemDetail(
+                    title="Invalid embedding input",
+                    status=400,
+                    type="https://httpstatuses.com/400",
+                    detail="Embedding texts must be non-empty strings",
+                )
+                self._fail_job(job_id, detail.detail or detail.title)
+                raise GatewayError(detail)
+            body = text.strip()
+            chunk_id = f"{job_id}:chunk:{index}"
+            texts.append(body)
+            ids.append(chunk_id)
+            metadata_payload.append(
+                {
+                    "input_index": index,
+                    "job_id": job_id,
+                    "namespace": namespace,
+                    "tenant_id": request.tenant_id,
+                }
+            )
+
+        if not texts:
+            payload = {"embeddings": 0, "model": model_name, "namespace": namespace}
+            self.ledger.update_metadata(job_id, payload)
+            self._complete_job(job_id, payload=payload)
+            metadata = EmbeddingMetadata(
+                provider=config.provider,
+                dimension=config.dim,
+                duration_ms=0.0,
+                model=model_name,
+            )
+            return EmbeddingResponse(namespace=namespace, embeddings=(), metadata=metadata)
 
         coordinator_request = CoordinatorEmbeddingRequest(
             tenant_id=request.tenant_id,
@@ -551,6 +639,136 @@ class GatewayService:
         if result.response is None:
             raise RuntimeError("Embedding coordinator returned no response")
         return result.response
+            records = embedder.embed_documents(adapter_request)
+        except Exception as exc:  # pragma: no cover - network/library error
+            detail = ProblemDetail(
+                title="Embedding failed",
+                status=502,
+                type="https://httpstatuses.com/502",
+                detail=str(exc),
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            if self.embedding_telemetry:
+                self.embedding_telemetry.record_embedding_failure(
+                    namespace=namespace,
+                    tenant_id=request.tenant_id,
+                    error=exc,
+                )
+            raise GatewayError(detail) from exc
+
+        embeddings: list[EmbeddingVector] = []
+        prepared_records: list[EmbeddingRecord] = []
+        duration_ms = (perf_counter() - started) * 1000
+
+        for record in records:
+            meta = {**record.metadata}
+            meta.setdefault("tenant_id", request.tenant_id)
+            meta.setdefault("namespace", namespace)
+            meta.setdefault("provider", config.provider)
+            meta.setdefault("model", config.model_id)
+            meta.setdefault("model_version", config.model_version)
+            meta.setdefault("normalized", options.normalize or meta.get("normalized", False))
+            meta.setdefault("pipeline", f"{self._PIPELINE_NAME}:{self._PIPELINE_VERSION}")
+            meta.setdefault("correlation_id", correlation_id)
+            storage_meta = self._storage_metadata(record.kind, request.tenant_id, namespace)
+            if storage_meta:
+                meta.setdefault("storage", storage_meta)
+            if record.kind == "multi_vector" and record.vectors:
+                meta.setdefault("vectors", [list(vector) for vector in record.vectors])
+            updated_record = replace(record, metadata=meta)
+            prepared_records.append(updated_record)
+
+            values: list[float] = []
+            if updated_record.vectors:
+                values = list(updated_record.vectors[0])
+            if options.normalize and values and updated_record.kind != "sparse":
+                magnitude = math.sqrt(sum(value * value for value in values))
+                if magnitude > 0:
+                    values = [value / magnitude for value in values]
+            terms = dict(updated_record.terms or {}) if updated_record.kind == "sparse" else None
+            dimension = updated_record.dim or (len(values) if values else 0)
+            embeddings.append(
+                EmbeddingVector(
+                    id=updated_record.id,
+                    model=model_name,
+                    namespace=namespace,
+                    kind=updated_record.kind,
+                    dimension=dimension,
+                    vector=values if updated_record.kind != "sparse" else None,
+                    terms=terms,
+                    metadata=meta,
+                )
+            )
+
+        persistence_context = PersistenceContext(
+            tenant_id=request.tenant_id,
+            namespace=namespace,
+            model=model_name,
+            provider=config.provider,
+            job_id=job_id,
+            correlation_id=correlation_id,
+            normalize=bool(options.normalize),
+        )
+        persistence_report = self.embedding_persister.persist_batch(prepared_records, persistence_context)
+
+        payload = {
+            "embeddings": len(embeddings),
+            "model": model_name,
+            "namespace": namespace,
+            "provider": config.provider,
+            "tenant_id": request.tenant_id,
+            "persisted": persistence_report.persisted,
+        }
+        self.ledger.update_metadata(job_id, payload)
+        self._complete_job(job_id, payload=payload)
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_completed(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+                provider=config.provider,
+                duration_ms=duration_ms,
+                embeddings=len(embeddings),
+            )
+
+        metadata = EmbeddingMetadata(
+            provider=config.provider,
+            dimension=config.dim,
+            duration_ms=duration_ms,
+            model=model_name,
+        )
+        return EmbeddingResponse(
+            namespace=namespace,
+            embeddings=embeddings,
+            metadata=metadata,
+        )
+
+    def _storage_metadata(self, kind: str, tenant_id: str, namespace: str) -> dict[str, Any]:
+        sanitized_namespace = namespace.replace(".", "-")
+        if kind in {"single_vector", "multi_vector"}:
+            faiss_index = f"/data/faiss/{tenant_id}/{sanitized_namespace}.index"
+            neo4j_label = f"Embedding::{sanitized_namespace}::{tenant_id}"
+            return {
+                "faiss_index": faiss_index,
+                "neo4j_label": neo4j_label,
+                "filter": {"tenant_id": tenant_id},
+            }
+        if kind == "sparse":
+            index_name = f"embeddings-sparse-{sanitized_namespace}".replace("--", "-")
+            return {
+                "opensearch_index": f"{index_name}-{tenant_id}",
+                "rank_features_field": "splade_terms",
+                "filter": {"term": {"tenant_id": tenant_id}},
+            }
+        if kind == "neural_sparse":
+            index_name = f"embeddings-neural-{sanitized_namespace}".replace("--", "-")
+            return {
+                "opensearch_index": f"{index_name}-{tenant_id}",
+                "neural_field": "neural_embedding",
+                "filter": {"term": {"tenant_id": tenant_id}},
+            }
+        return {}
 
     def list_namespaces(
         self,
@@ -1090,6 +1308,8 @@ def get_gateway_service() -> GatewayService:
         adapter_manager = get_plugin_manager()
         _pipeline_loader = PipelineConfigLoader()
         _resilience_loader = ResiliencePolicyLoader()
+        pipeline_resource = create_default_pipeline_resource()
+        _stage_factory = build_stage_factory(adapter_manager, pipeline_resource, _ledger)
         stage_plugin_manager = create_stage_plugin_manager(
             adapter_manager,
             job_ledger=_ledger,
@@ -1099,6 +1319,45 @@ def get_gateway_service() -> GatewayService:
             _pipeline_loader,
             _resilience_loader,
             _stage_factory,
+            plugin_manager=adapter_manager,
+            job_ledger=_ledger,
+            pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

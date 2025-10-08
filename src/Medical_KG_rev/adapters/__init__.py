@@ -8,7 +8,6 @@ from .biomedical import (
     CrossrefAdapter,
     ICD11Adapter,
     MeSHAdapter,
-    OpenAlexAdapter,
     OpenFDADeviceAdapter,
     OpenFDADrugEventAdapter,
     OpenFDADrugLabelAdapter,
@@ -17,8 +16,25 @@ from .biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
-from .yaml_parser import AdapterConfig, create_adapter_from_config, load_adapter_config
+from .clinicaltrials import ClinicalTrialsAdapter as ClinicalTrialsAdapterV2
+from .core import COREAdapter as COREAdapterV2
+from .crossref import CrossrefAdapter as CrossrefAdapterV2
+from .openalex import OpenAlexAdapter
+from .openfda import (
+    OpenFDADeviceAdapter as OpenFDADeviceAdapterV2,
+)
+from .openfda import (
+    OpenFDADrugEventAdapter as OpenFDADrugEventAdapterV2,
+)
+from .openfda import (
+    OpenFDADrugLabelAdapter as OpenFDADrugLabelAdapterV2,
+)
 from .plugins.base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
+from .plugins.bootstrap import (
+    get_plugin_manager,
+    list_adapters_by_domain,
+    plugin_framework_enabled,
+)
 from .plugins.config import (
     AdapterSettings,
     ConfigValidationResult,
@@ -27,11 +43,6 @@ from .plugins.config import (
     apply_env_overrides,
     migrate_yaml_to_env,
     validate_on_startup,
-)
-from .plugins.bootstrap import (
-    get_plugin_manager,
-    list_adapters_by_domain,
-    plugin_framework_enabled,
 )
 from .plugins.domains.biomedical import (
     BIOMEDICAL_PLUGINS,
@@ -54,16 +65,6 @@ from .plugins.models import (
     Pagination,
     ValidationOutcome,
 )
-from .plugins.resilience import (
-    BackoffStrategy,
-    CircuitBreaker,
-    CircuitState,
-    ResilienceConfig,
-    ResilientHTTPClient,
-    circuit_breaker,
-    rate_limit,
-    retry_on_failure,
-)
 from .plugins.pipeline import (
     AdapterExecutionContext,
     AdapterExecutionMetrics,
@@ -73,7 +74,32 @@ from .plugins.pipeline import (
     AdapterStage,
     StageResult,
 )
+from .plugins.resilience import (
+    BackoffStrategy,
+    CircuitBreaker,
+    ResilienceConfig,
+    ResilientHTTPClient,
+    circuit_breaker,
+    rate_limit,
+    retry_on_failure,
+)
 from .plugins.runtime import AdapterExecutionPlan, AdapterInvocationResult
+from .pmc import PMCAdapter as PMCAdapterV2
+from .semanticscholar import SemanticScholarAdapter as SemanticScholarAdapterV2
+from .terminology import (
+    ChEMBLAdapter as ChEMBLAdapterV2,
+)
+from .terminology import (
+    ICD11Adapter as ICD11AdapterV2,
+)
+from .terminology import (
+    MeSHAdapter as MeSHAdapterV2,
+)
+from .terminology import (
+    RxNormAdapter as RxNormAdapterV2,
+)
+from .unpaywall import UnpaywallAdapter as UnpaywallAdapterV2
+from .yaml_parser import AdapterConfig, create_adapter_from_config, load_adapter_config
 
 __all__ = [
     "AdapterConfig",
@@ -107,7 +133,6 @@ __all__ = [
     "BaseAdapterPlugin",
     "ICD11Adapter",
     "CircuitBreaker",
-    "CircuitState",
     "MeSHAdapter",
     "OpenAlexAdapter",
     "OpenFDADeviceAdapter",

@@ -10,11 +10,9 @@ from uuid import uuid4
 import structlog
 
 from Medical_KG_rev.adapters import AdapterPluginError
-from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.haystack.components import (
     HaystackChunker,
     HaystackEmbedder,
@@ -37,6 +35,10 @@ from Medical_KG_rev.orchestration.stages.contracts import (
 )
 from Medical_KG_rev.orchestration.stages.contracts import RawPayload
 from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePlugin,
+    StagePluginManager,
+    StagePluginRegistration,
+    StagePluginResources,
     StagePluginManager,
     StagePluginMetadata,
     StagePluginRegistration,
@@ -352,12 +354,17 @@ class PdfGateStage(GateStage):
         return bool(getattr(entry, self._field, False))
 
 
+class CoreStagePlugin(StagePlugin):
 class CoreStagePlugin:
     """Register the built-in orchestration stage implementations."""
 
     NAME = "core-stage"
     VERSION = "1.0.0"
 
+    def __init__(self) -> None:
+        super().__init__(plugin_name=self.NAME, version=self.VERSION)
+
+    def registrations(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
     @hookimpl
     def stage_builders(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         adapter_manager = resources.adapter_manager
@@ -425,6 +432,58 @@ class CoreStagePlugin:
             field_name = config.get("field", "pdf_ir_ready") if isinstance(config, Mapping) else "pdf_ir_ready"
             return PdfGateStage(job_ledger=job_ledger, field=str(field_name))
 
+        return (
+            self.create_registration(
+                stage_type="ingest",
+                builder=build_ingest,
+                capabilities=("adapter",),
+            ),
+            self.create_registration(
+                stage_type="parse",
+                builder=build_parse,
+                capabilities=("document",),
+            ),
+            self.create_registration(
+                stage_type="ir-validation",
+                builder=build_validation,
+                capabilities=("document",),
+            ),
+            self.create_registration(
+                stage_type="chunk",
+                builder=build_chunk,
+                capabilities=("haystack",),
+            ),
+            self.create_registration(
+                stage_type="embed",
+                builder=build_embed,
+                capabilities=("haystack",),
+            ),
+            self.create_registration(
+                stage_type="index",
+                builder=build_index,
+                capabilities=("haystack",),
+            ),
+            self.create_registration(
+                stage_type="extract",
+                builder=build_extract,
+                capabilities=("noop",),
+            ),
+            self.create_registration(
+                stage_type="knowledge-graph",
+                builder=build_kg,
+                capabilities=("noop",),
+            ),
+            self.create_registration(
+                stage_type="download",
+                builder=build_download,
+                capabilities=("pdf",),
+            ),
+            self.create_registration(
+                stage_type="gate",
+                builder=build_gate,
+                capabilities=("ledger",),
+            ),
+        )
         return [
             StagePluginRegistration(
                 metadata=StagePluginMetadata(

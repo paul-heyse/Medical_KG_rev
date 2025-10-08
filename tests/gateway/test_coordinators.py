@@ -22,6 +22,8 @@ from Medical_KG_rev.gateway.coordinators import (
 from Medical_KG_rev.gateway.models import DocumentChunk, ProblemDetail
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.gateway.chunking_errors import ChunkingErrorTranslator
+from Medical_KG_rev.services.retrieval.chunking import ChunkCommand
 from Medical_KG_rev.services.embedding.namespace.registry import EmbeddingNamespaceRegistry
 from Medical_KG_rev.services.embedding.namespace.schema import EmbeddingKind, NamespaceConfig
 from Medical_KG_rev.services.embedding.policy import NamespaceAccessDecision
@@ -39,6 +41,10 @@ class _StubChunker:
     def __init__(self, *, raise_error: Exception | None = None) -> None:
         self._raise = raise_error
 
+    def chunk(self, command: ChunkCommand) -> list[_StubChunk]:  # noqa: D401
+        if self._raise:
+            raise self._raise
+        return [_StubChunk(command.text)]
     def chunk(self, tenant_id: str, document_id: str, text: str, options) -> list[_StubChunk]:  # noqa: D401
         if self._raise:
             raise self._raise
@@ -184,11 +190,19 @@ def test_job_lifecycle_failure_records_event(lifecycle: JobLifecycleManager) -> 
 
 def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
     chunker = _StubChunker()
+    translator = ChunkingErrorTranslator(strategies=["section"])
+    coordinator = ChunkingCoordinator(
+        lifecycle=lifecycle,
+        chunker=chunker,
+        config=chunk_config,
+        errors=translator,
+    )
     coordinator = ChunkingCoordinator(lifecycle=lifecycle, chunker=chunker, config=chunk_config)
 
     request = ChunkingRequest(
         tenant_id="tenant-a",
         document_id="doc-1",
+        text="hello world",
         strategy="section",
         chunk_size=256,
         overlap=0.1,
@@ -198,16 +212,25 @@ def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_conf
 
     assert len(result.chunks) == 1
     assert isinstance(result.chunks[0], DocumentChunk)
+    assert result.metadata == {"chunks": 1, "strategy": "section"}
     assert result.metadata == {"chunks": 1}
 
 
 def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
     chunker = _StubChunker(raise_error=ChunkingFailedError("failed"))
+    translator = ChunkingErrorTranslator(strategies=["section"])
+    coordinator = ChunkingCoordinator(
+        lifecycle=lifecycle,
+        chunker=chunker,
+        config=chunk_config,
+        errors=translator,
+    )
     coordinator = ChunkingCoordinator(lifecycle=lifecycle, chunker=chunker, config=chunk_config)
 
     request = ChunkingRequest(
         tenant_id="tenant-a",
         document_id="doc-1",
+        text="boom",
         strategy="section",
         chunk_size=256,
         overlap=0.1,

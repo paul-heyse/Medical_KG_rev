@@ -1,0 +1,13 @@
+name: splade-v3
+kind: sparse
+model_id: naver/splade-v3
+model_version: v3
+dim: 400
+provider: pyserini
+parameters:
+  top_k: 400
+  mode: document
+  max_terms: 400
+normalize: false
+batch_size: 32
+requires_gpu: false

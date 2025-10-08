@@ -71,15 +71,17 @@ The current embedding architecture evolved organically over 18 months, resulting
 **Implementation**:
 
 ```python
-# vLLM server startup (Docker)
-vllm serve Qwen/Qwen2.5-Coder-1.5B \
-  --host 0.0.0.0 \
-  --port 8001 \
-  --gpu-memory-utilization 0.9 \
-  --max-model-len 8192 \
-  --trust-remote-code
+# vLLM server startup (Docker first-class)
+docker run --rm \
+  --gpus all \
+  -p 8001:8001 \
+  -e MODEL_PATH=/models/qwen3-embedding-8b \
+  -e GPU_MEMORY_UTILIZATION=0.9 \
+  -e MAX_MODEL_LEN=8192 \
+  -v $(pwd)/models/qwen3-embedding-8b:/models/qwen3-embedding-8b:ro \
+  ghcr.io/example/vllm-embedding:latest
 
-# Client code (5 lines)
+# Client code (5 lines) – talks to containerised vLLM endpoint
 response = await httpx.post(
     "http://vllm-service:8001/v1/embeddings",
     json={"input": ["text1", "text2"], "model": "Qwen/Qwen2.5-Coder-1.5B"}
@@ -90,10 +92,20 @@ embeddings = [item["embedding"] for item in response.json()["data"]]
 **GPU Enforcement**:
 
 ```python
-# vLLM refuses to start without GPU
-$ vllm serve ... (on CPU-only machine)
+# Container startup fails-fast without GPU
+$ docker run --rm ghcr.io/example/vllm-embedding:latest
 # Output: RuntimeError: No GPU available. vLLM requires CUDA.
 ```
+
+**Container Standard**:
+
+- All GPU-serving models (Qwen3 single-vector, ColBERT multi-vector) are
+  packaged as Docker images built from `ops/Dockerfile.vllm`.
+- Kubernetes and Docker Compose deployments reference the images directly;
+  the application never imports `vllm` as a Python module.
+- Environment-specific tuning (e.g., `GPU_MEMORY_UTILIZATION`) is supplied via
+  container environment variables, keeping runtime parity between staging and
+  production.
 
 **Trade-offs**:
 

@@ -728,8 +728,10 @@ python scripts/embedding/update_opensearch_mapping.py
 **Solution**:
 
 ```bash
-# 1. Reduce vLLM GPU memory utilization
-vllm serve ... --gpu-memory-utilization=0.8  # Reduce from 0.9 to 0.8
+# 1. Reduce vLLM GPU memory utilization via container env override
+docker compose run --rm \
+  -e GPU_MEMORY_UTILIZATION=0.8 \
+  vllm-embedding --help  # Compose will respect override on next up
 
 # 2. Reduce batch size
 # In namespace config: batch_size: 32  # Reduce from 64 to 32
@@ -745,16 +747,20 @@ watch -n 1 nvidia-smi
 ### New Libraries
 
 ```txt
-vllm>=0.3.0  # OpenAI-compatible serving for Qwen3 embeddings
-pyserini>=0.22.0  # SPLADE-v3 wrapper with document-side expansion
-faiss-gpu>=1.7.4  # GPU-accelerated dense vector search
+pyserini>=0.22.0       # SPLADE-v3 wrapper with document-side expansion
+faiss-gpu>=1.7.4       # GPU-accelerated dense vector search
+redis[hiredis]>=5.0.0  # Embedding cache backend
 ```
+
+vLLM itself ships exclusively as the Docker image
+`ghcr.io/example/vllm-embedding:latest`; no Python package is imported by the
+application code.
 
 ### Updated Libraries
 
 ```txt
 transformers>=4.38.0  # Qwen3 tokenizer support
-torch>=2.1.0  # CUDA 12.1+ for vLLM and FAISS GPU
+torch>=2.1.0  # CUDA 12.1+ for FAISS GPU helpers and health checks
 ```
 
 ---

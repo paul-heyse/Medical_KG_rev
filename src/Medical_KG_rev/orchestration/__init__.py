@@ -21,7 +21,7 @@ from .haystack import (
     HaystackRetriever,
     HaystackSparseExpander,
 )
-from .stages import StageFailure, StageRegistry
+from .stages import StageFailure
 from .stages.contracts import (
     ChunkStage,
     EmbedStage,
@@ -36,27 +36,13 @@ from .stages.contracts import (
     ParseStage,
     StageContext,
 )
-from .retrieval_pipeline import (
-    ConfigurableStage,
-    FinalSelectorOrchestrator,
-    FusionOrchestrator,
-    QueryPipelineExecutor,
-    RerankCache,
-    RerankOrchestrator,
-    RetrievalOrchestrator,
-    StrategySpec,
-)
-
 __all__ = [
     "ChunkStage",
-    "ConfigurableStage",
     "DagsterOrchestrator",
     "DagsterRunResult",
     "EmbedStage",
     "EmbeddingBatch",
     "EmbeddingVector",
-    "FinalSelectorOrchestrator",
-    "FusionOrchestrator",
     "GraphWriteReceipt",
     "HaystackChunker",
     "HaystackEmbedder",
@@ -75,18 +61,12 @@ __all__ = [
     "ParseStage",
     "PipelineConfigLoader",
     "PipelineTopologyConfig",
-    "QueryPipelineExecutor",
     "ResiliencePolicy",
     "ResiliencePolicyConfig",
     "ResiliencePolicyLoader",
-    "RerankCache",
-    "RerankOrchestrator",
-    "RetrievalOrchestrator",
     "StageContext",
     "StageFactory",
     "StageFailure",
-    "StageRegistry",
     "StageResolutionError",
-    "StrategySpec",
     "submit_to_dagster",
 ]

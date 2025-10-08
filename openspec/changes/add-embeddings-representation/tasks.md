@@ -118,7 +118,7 @@
 
 **Goal**: Prove Pyserini SPLADE wrapper replaces all `SPLADEEmbedder` functionality
 
-- [ ] **1.2.2a** Map `SPLADEEmbedder` methods to Pyserini:
+- [x] **1.2.2a** Map `SPLADEEmbedder` methods to Pyserini:
   - `expand_document(text: str) -> dict[str, float]` → `pyserini.encode.SpladeQueryEncoder().encode(text)`
   - `expand_query(text: str) -> dict[str, float]` → Same method, different usage
   - Top-K pruning → Pyserini handles via `k` parameter
@@ -139,7 +139,7 @@
 
 **Goal**: Prove model-aligned tokenizers replace `token_counter.py`
 
-- [ ] **1.2.3a** Map token counting logic:
+- [x] **1.2.3a** Map token counting logic:
   - Approximate counting (`len(text) / 4`) → DELETED (inaccurate)
   - `transformers.AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B")` → NEW standard
 
@@ -160,7 +160,7 @@
   - vLLM queues requests exceeding batch size
   - vLLM returns results in same order as inputs
 
-- [ ] **1.2.4b** Remove custom batching logic:
+- [x] **1.2.4b** Remove custom batching logic:
   - `manual_batching.py` → DELETED (95 lines)
   - All batching handled by vLLM server
 

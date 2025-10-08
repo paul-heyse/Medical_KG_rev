@@ -21,9 +21,9 @@ class StorageRouter:
 
     def __init__(self) -> None:
         self._targets: dict[EmbeddingKind, StorageTarget] = {
-            "single_vector": StorageTarget(name="qdrant", description="Dense vector store"),
+            "single_vector": StorageTarget(name="faiss", description="Dense vector store (HNSW)"),
             "multi_vector": StorageTarget(name="faiss", description="Late interaction index"),
-            "sparse": StorageTarget(name="opensearch", description="Learned sparse rank_features"),
+            "sparse": StorageTarget(name="opensearch_rank_features", description="Learned sparse rank_features"),
             "neural_sparse": StorageTarget(name="opensearch_neural", description="OpenSearch neural fields"),
         }
         self._buffers: dict[str, list[EmbeddingRecord]] = defaultdict(list)

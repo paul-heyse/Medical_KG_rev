@@ -1,0 +1,31 @@
+# Hybrid retrieval component configuration
+#
+# Controls which components are executed by the HybridSearchCoordinator and
+# establishes deterministic timeouts, caching behaviour, and optional query
+# expansion synonyms shared across tenants.
+
+defaults:
+  enable_splade: true
+  enable_dense: true
+  enable_query_expansion: false
+  timeout_ms: 300
+  cache_ttl_seconds: 300
+  components:
+    - bm25
+    - splade
+    - dense
+
+components:
+  bm25:
+    timeout_ms: 300
+  splade:
+    timeout_ms: 300
+  dense:
+    timeout_ms: 300
+
+synonyms:
+  diabetes:
+    - dm
+    - hyperglycemia
+  hypertension:
+    - high blood pressure

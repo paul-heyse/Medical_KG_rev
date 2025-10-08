@@ -1,0 +1,67 @@
+{
+  "title": "Embeddings & Representation",
+  "uid": "embeddings-observability",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Embedding Duration (P95)",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(medicalkg_embedding_duration_seconds_bucket[5m])) by (le, namespace, provider))",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Embedding Throughput",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "expr": "sum(increase(medicalkg_embeddings_generated_total[$__interval])) by (namespace, provider)",
+          "legendFormat": "{{namespace}}/{{provider}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Cache Hit Ratio",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum(increase(medicalkg_embedding_cache_hits_total[$__interval])) by (namespace) / (sum(increase(medicalkg_embedding_cache_hits_total[$__interval])) by (namespace) + sum(increase(medicalkg_embedding_cache_misses_total[$__interval])) by (namespace))",
+          "legendFormat": "{{namespace}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Embedding Failures",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "expr": "sum(increase(medicalkg_embedding_failures_total[$__interval])) by (namespace, provider, error_type)",
+          "legendFormat": "{{namespace}}/{{provider}}/{{error_type}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "GPU Utilisation",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "targets": [
+        {
+          "expr": "gpu_utilization_percent",
+          "legendFormat": "GPU {{gpu}}"
+        }
+      ]
+    }
+  ]
+}

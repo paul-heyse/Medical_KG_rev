@@ -13,19 +13,19 @@
 
 ### Critical Library Integration Requirements
 
-- [ ] 1.11 **Integrate `pluggy>=1.6.0`**: Design plugin hook system for stage discovery and registration
-- [ ] 1.12 **Integrate `dagster>=1.11.13`**: Ensure plugin system works with Dagster's execution model
-- [ ] 1.13 **Integrate `pydantic>=2.11.10`**: Design typed plugin interfaces and configuration validation
-- [ ] 1.14 **Integrate `tenacity>=9.1.2`**: Add retry logic for plugin loading and execution failures
-- [ ] 1.15 **Integrate `structlog`**: Add structured logging for plugin lifecycle events
+- [x] 1.11 **Integrate `pluggy>=1.6.0`**: Design plugin hook system for stage discovery and registration
+- [x] 1.12 **Integrate `dagster>=1.11.13`**: Ensure plugin system works with Dagster's execution model
+- [x] 1.13 **Integrate `pydantic>=2.11.10`**: Design typed plugin interfaces and configuration validation
+- [x] 1.14 **Integrate `tenacity>=9.1.2`**: Add retry logic for plugin loading and execution failures
+- [x] 1.15 **Integrate `structlog`**: Add structured logging for plugin lifecycle events
 
 ## 2. Plugin Infrastructure
 
-- [ ] 2.1 Create StagePluginManager class with entry point discovery
-- [ ] 2.2 Implement plugin loading and validation logic
-- [ ] 2.3 Add plugin metadata collection and capability reporting
+- [x] 2.1 Create StagePluginManager class with entry point discovery
+- [x] 2.2 Implement plugin loading and validation logic
+- [x] 2.3 Add plugin metadata collection and capability reporting
 - [ ] 2.4 Create plugin lifecycle management (load, validate, unload)
-- [ ] 2.5 Add plugin configuration schema validation
+- [x] 2.5 Add plugin configuration schema validation
 - [ ] 2.6 Implement plugin dependency resolution and loading order
 - [ ] 2.7 Add plugin isolation mechanisms and resource limits
 - [ ] 2.8 Create plugin version compatibility checking and conflict resolution
@@ -47,30 +47,30 @@
 
 ## 4. Runtime Integration
 
-- [ ] 4.1 Update StageFactory to use StagePluginManager
-- [ ] 4.2 Modify resolve() method to check plugins first, then fallbacks
-- [ ] 4.3 Update error handling for missing stage types
-- [ ] 4.4 Add plugin discovery logging and metrics
-- [ ] 4.5 Maintain backward compatibility with existing stage loading
+- [x] 4.1 Update StageFactory to use StagePluginManager
+- [x] 4.2 Modify resolve() method to check plugins first, then fallbacks
+- [x] 4.3 Update error handling for missing stage types
+- [x] 4.4 Add plugin discovery logging and metrics
+- [x] 4.5 Maintain backward compatibility with existing stage loading
 - [ ] 4.6 Implement plugin hot-reloading for development environments
-- [ ] 4.7 Add plugin performance monitoring and optimization
-- [ ] 4.8 Create plugin failure recovery and circuit breaker patterns
+- [x] 4.7 Add plugin performance monitoring and optimization
+- [x] 4.8 Create plugin failure recovery and circuit breaker patterns
 - [ ] 4.9 Implement plugin resource cleanup and garbage collection
 - [ ] 4.10 Add plugin access control and security boundary enforcement
 
 ## 5. Migrate Built-in Stages
 
-- [ ] 5.1 Create plugin wrappers for existing stage implementations
-- [ ] 5.2 Move AdapterIngestStage to plugin architecture
-- [ ] 5.3 Move AdapterParseStage to plugin architecture
-- [ ] 5.4 Move IRValidationStage to plugin architecture
-- [ ] 5.5 Move chunking, embedding, and indexing stages to plugins
-- [ ] 5.6 Create DownloadStage plugin for PDF asset retrieval and persistence
-- [ ] 5.7 Create GateStage plugin for conditional pipeline progression based on ledger state
-- [ ] 5.8 Update stage factory to include download and gate stage implementations
-- [ ] 5.9 Add PDF download logic to update JobLedger.set_pdf_downloaded
-- [ ] 5.10 Add PDF gate logic to check JobLedger.pdf_ir_ready and control pipeline flow
-- [ ] 5.11 Update stage dependency chains for plugin-based execution
+- [x] 5.1 Create plugin wrappers for existing stage implementations
+- [x] 5.2 Move AdapterIngestStage to plugin architecture
+- [x] 5.3 Move AdapterParseStage to plugin architecture
+- [x] 5.4 Move IRValidationStage to plugin architecture
+- [x] 5.5 Move chunking, embedding, and indexing stages to plugins
+- [x] 5.6 Create DownloadStage plugin for PDF asset retrieval and persistence
+- [x] 5.7 Create GateStage plugin for conditional pipeline progression based on ledger state
+- [x] 5.8 Update stage factory to include download and gate stage implementations
+- [x] 5.9 Add PDF download logic to update JobLedger.set_pdf_downloaded
+- [x] 5.10 Add PDF gate logic to check JobLedger.pdf_ir_ready and control pipeline flow
+- [x] 5.11 Update stage dependency chains for plugin-based execution
 - [ ] 5.12 Migrate stage configuration to plugin-based metadata
 - [ ] 5.13 Update stage error handling for plugin isolation
 - [ ] 5.14 Implement stage plugin performance optimizations
@@ -80,18 +80,18 @@
 
 ### Phase 1: Remove Static Stage Factory (Week 1)
 
-- [ ] 6.1 **DECOMMISSION**: Remove `build_default_stage_factory()` static implementation
-- [ ] 6.2 **DECOMMISSION**: Delete hardcoded stage registry mapping in `stages.py:255-317`
-- [ ] 6.3 **DECOMMISSION**: Remove `_apply_stage_output` and `_infer_output_count` dict manipulation
+- [x] 6.1 **DECOMMISSION**: Remove `build_default_stage_factory()` static implementation
+- [x] 6.2 **DECOMMISSION**: Delete hardcoded stage registry mapping in `stages.py:255-317`
+- [x] 6.3 **DECOMMISSION**: Remove `_apply_stage_output` and `_infer_output_count` dict manipulation
 - [ ] 6.4 **DECOMMISSION**: Delete legacy stage configuration files in `config/orchestration/stages/`
-- [ ] 6.5 **DECOMMISSION**: Remove unused stage import statements and dependencies
+- [x] 6.5 **DECOMMISSION**: Remove unused stage import statements and dependencies
 
 ### Phase 2: Clean Up Runtime Dependencies (Week 2)
 
-- [ ] 6.6 **DECOMMISSION**: Remove legacy stage execution paths in `runtime.py`
+- [x] 6.6 **DECOMMISSION**: Remove legacy stage execution paths in `runtime.py`
 - [ ] 6.7 **DECOMMISSION**: Delete unused stage utility functions and helpers
 - [ ] 6.8 **DECOMMISSION**: Remove legacy stage error handling and fallback mechanisms
-- [ ] 6.9 **DECOMMISSION**: Clean up unused imports and dependencies from stage modules
+- [x] 6.9 **DECOMMISSION**: Clean up unused imports and dependencies from stage modules
 - [ ] 6.10 **DECOMMISSION**: Remove legacy stage configuration validation code
 
 ### Phase 3: Documentation and Cleanup (Week 3)
@@ -106,7 +106,7 @@
 
 - [ ] 7.1 Create unit tests for StagePluginManager
 - [ ] 7.2 Test plugin discovery and loading mechanisms
-- [ ] 7.3 Test stage resolution with mixed plugin/built-in stages
+- [x] 7.3 Test stage resolution with mixed plugin/built-in stages
 - [ ] 7.4 Integration tests for complete pipeline execution
 - [ ] 7.5 Performance tests for plugin overhead
 - [ ] 7.6 Test plugin dependency resolution and loading order

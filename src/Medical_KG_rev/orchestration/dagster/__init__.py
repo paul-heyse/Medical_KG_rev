@@ -17,7 +17,7 @@ from .runtime import (
     pdf_ir_ready_sensor,
     submit_to_dagster,
 )
-from .stages import build_default_stage_factory
+from .stages import create_stage_plugin_manager
 
 __all__ = [
     "GateCondition",
@@ -33,5 +33,5 @@ __all__ = [
     "StageResolutionError",
     "pdf_ir_ready_sensor",
     "submit_to_dagster",
-    "build_default_stage_factory",
+    "create_stage_plugin_manager",
 ]

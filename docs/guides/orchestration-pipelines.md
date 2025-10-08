@@ -10,6 +10,9 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
 - **Stage contracts** – `StageContext`, `ChunkStage`, `EmbedStage`, and other
   protocols live in `Medical_KG_rev.orchestration.stages.contracts`. Dagster ops
   call these protocols so stage implementations remain framework-agnostic.
+- **Typed pipeline state** – `PipelineState` is exposed to Dagster as a
+  first-class type. It enforces stage output validation, records lifecycle
+  metrics, and surfaces profiling data for observability dashboards.
 - **StageFactory** – `StageFactory` resolves stage definitions from topology
   YAML files. The default factory wires Haystack chunking, embedding, and
   indexing components while falling back to lightweight stubs for unit tests.
@@ -36,6 +39,11 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   revisions. `PipelineConfigLoader` loads and caches versions to provide
   deterministic orchestration.
 
+Typed dependencies are derived from the stage contracts. For example, an
+`embed` stage automatically depends on the most recent `chunk` stage and the
+`index` stage requires `embed`. Pipelines that omit these prerequisites fail
+validation during configuration loading instead of during runtime execution.
+
 ## Execution Flow
 
 1. **Job submission** – The gateway builds a `StageContext` and calls
@@ -51,10 +59,22 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
    to the gateway through the ledger/SSE stream. Haystack components persist
    embeddings and metadata in downstream storage systems.
 
+## Typed Pipeline State & Lifecycle Hooks
+
+- **Dagster type integration** – The orchestration runtime publishes the
+  `PipelineState` Dagster type so ops receive runtime validation and better UI
+  introspection inside Dagster.
+- **Lifecycle hooks** – Call `state.register_lifecycle_hook(...)` to observe
+  stage start, completion, and failure events. Hooks power metrics, tracing, or
+  custom auditing without modifying the runtime.
+- **Profiling** – Every state instance tracks lightweight profiling samples via
+  `state.profiling_summary()` and `state.profiling_samples()`. These aggregates
+  capture duration, attempt counts, and output totals per stage.
+
 ## Troubleshooting
 
 - **Stage resolution errors** – Verify the stage `type` in the topology YAML
-  matches the keys registered in `build_default_stage_factory`. Unknown stage
+  matches the stage types advertised by `create_stage_plugin_manager`. Unknown stage
   types raise `StageResolutionError` during job execution.
 - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
   for required fields (attempts, backoff, circuit breaker thresholds). Invalid

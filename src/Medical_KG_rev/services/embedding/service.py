@@ -15,7 +15,7 @@ from Medical_KG_rev.orchestration.dagster.runtime import (
     StageFactory,
     StageResolutionError,
 )
-from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
     EmbedStage,
@@ -31,8 +31,8 @@ logger = structlog.get_logger(__name__)
 def _default_stage_factory() -> StageFactory:
     """Instantiate the default stage factory using registered adapters."""
 
-    registry = build_default_stage_factory(get_plugin_manager())
-    return StageFactory(registry)
+    plugin_manager = create_stage_plugin_manager(get_plugin_manager())
+    return StageFactory(plugin_manager)
 
 
 @dataclass(slots=True)

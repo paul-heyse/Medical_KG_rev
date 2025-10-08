@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
 from uuid import uuid4
 
 from dagster import (
@@ -32,17 +32,24 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
+    derive_stage_execution_order,
 )
 from Medical_KG_rev.orchestration.dagster.stages import (
     HaystackPipelineResource,
-    build_default_stage_factory,
     create_default_pipeline_resource,
+    create_stage_plugin_manager,
 )
 from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
+from Medical_KG_rev.orchestration.dagster.types import PIPELINE_STATE_DAGSTER_TYPE
+from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePluginBuildError,
+    StagePluginLookupError,
+    StagePluginManager,
+)
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -54,18 +61,21 @@ class StageResolutionError(RuntimeError):
 
 @dataclass(slots=True)
 class StageFactory:
-    """Resolve orchestration stages by topology stage type."""
+    """Resolve orchestration stages through the plugin manager."""
 
-    registry: Mapping[str, Callable[[StageDefinition], object]]
+    plugin_manager: StagePluginManager
 
     def resolve(self, pipeline: str, stage: StageDefinition) -> object:
         try:
-            factory = self.registry[stage.stage_type]
-        except KeyError as exc:  # pragma: no cover - defensive guard
+            instance = self.plugin_manager.build_stage(stage)
+        except StagePluginLookupError as exc:
             raise StageResolutionError(
                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
-        instance = factory(stage)
+        except StagePluginBuildError as exc:
+            raise StageResolutionError(
+                f"Stage '{stage.name}' of type '{stage.stage_type}' failed to initialise"
+            ) from exc
         logger.debug(
             "dagster.stage.resolved",
             pipeline=pipeline,
@@ -77,7 +87,7 @@ class StageFactory:
 
 @op(
     name="bootstrap",
-    out=Out(PipelineState),
+    out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
     config_schema={
         "context": dict,
         "adapter_request": dict,
@@ -125,8 +135,8 @@ def _make_stage_op(
 
     @op(
         name=stage_name,
-        ins={"state": In(PipelineState)},
-        out=Out(PipelineState),
+        ins={"state": In(dagster_type=PIPELINE_STATE_DAGSTER_TYPE)},
+        out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
         required_resource_keys={
             "stage_factory",
             "resilience_policies",
@@ -200,6 +210,7 @@ def _make_stage_op(
         try:
             state.validate_transition(stage_type)
             state.create_checkpoint(checkpoint_label)
+            state.notify_stage_started(stage_name, stage_type)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
@@ -210,6 +221,7 @@ def _make_stage_op(
                 stage_type=stage_type,
             )
             state.clear_checkpoint(checkpoint_label)
+            state.notify_stage_failed(stage_name, stage_type, exc)
             snapshot_b64 = state.serialise_base64()
             emitter.emit_failed(
                 stage_ctx,
@@ -239,6 +251,13 @@ def _make_stage_op(
             stage_type=stage_type,
             attempts=attempts,
             duration_ms=duration_ms,
+            output_count=output_count,
+        )
+        state.notify_stage_completed(
+            stage_name,
+            stage_type,
+            duration_ms=duration_ms,
+            attempts=attempts,
             output_count=output_count,
         )
         snapshot_b64 = state.serialise_base64()
@@ -278,26 +297,7 @@ def _make_stage_op(
 
 
 def _topological_order(stages: list[StageDefinition]) -> list[str]:
-    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
-    resolved: list[str] = []
-    temporary: set[str] = set()
-    permanent: set[str] = set()
-
-    def visit(node: str) -> None:
-        if node in permanent:
-            return
-        if node in temporary:
-            raise ValueError(f"Cycle detected involving stage '{node}'")
-        temporary.add(node)
-        for dep in graph.get(node, set()):
-            visit(dep)
-        temporary.remove(node)
-        permanent.add(node)
-        resolved.append(node)
-
-    for stage in graph:
-        visit(stage)
-    return resolved
+    return derive_stage_execution_order(stages)
 
 
 @dataclass(slots=True)
@@ -629,11 +629,15 @@ def build_default_orchestrator() -> DagsterOrchestrator:
 
     pipeline_loader = PipelineConfigLoader()
     resilience_loader = ResiliencePolicyLoader()
-    plugin_manager = get_plugin_manager()
+    adapter_manager = get_plugin_manager()
     pipeline_resource = create_default_pipeline_resource()
-    stage_builders = build_default_stage_factory(plugin_manager, pipeline_resource)
-    stage_factory = StageFactory(stage_builders)
     job_ledger = JobLedger()
+    stage_plugin_manager = create_stage_plugin_manager(
+        adapter_manager,
+        pipeline_resource,
+        job_ledger=job_ledger,
+    )
+    stage_factory = StageFactory(stage_plugin_manager)
     kafka_client = KafkaClient()
     event_emitter = StageEventEmitter(kafka_client)
     openlineage_emitter = OpenLineageEmitter()
@@ -641,7 +645,7 @@ def build_default_orchestrator() -> DagsterOrchestrator:
         pipeline_loader,
         resilience_loader,
         stage_factory,
-        plugin_manager=plugin_manager,
+        plugin_manager=adapter_manager,
         job_ledger=job_ledger,
         kafka_client=kafka_client,
         event_emitter=event_emitter,

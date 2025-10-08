@@ -50,6 +50,10 @@ _RUNTIME_MODULE = _load_module("dagster_runtime", _ORCH_PATH / "dagster" / "runt
 from Medical_KG_rev.models.entities import Claim, Entity, ExtractionActivity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section, Span
 from Medical_KG_rev.models.provenance import DataSource
+from Medical_KG_rev.orchestration.events import StageEventEmitter
+from Medical_KG_rev.orchestration.kafka import KafkaClient
+from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 
 PipelineConfigLoader = _CONFIG_MODULE.PipelineConfigLoader
 ResiliencePolicyLoader = _CONFIG_MODULE.ResiliencePolicyLoader
@@ -171,9 +175,14 @@ class StubParseStage(_BaseStage):
 class StubChunkStage(_BaseStage):
     def __init__(self, log: list[str]) -> None:
         super().__init__("chunk", log)
+        self.fail_once = False
+        self._failures = 0
 
     def execute(self, ctx: StageContext, document: Document) -> list[StubChunk]:
         self.record(document=document.id)
+        if self.fail_once and self._failures == 0:
+            self._failures += 1
+            raise RuntimeError("chunk transient failure")
         chunk = StubChunk(
             chunk_id=f"{document.id}:chunk:0",
             doc_id=document.id,
@@ -290,8 +299,8 @@ def orchestrator() -> DagsterOrchestrator:
     resilience_calls: list[str] = []
     original_apply = policies.apply
 
-    def _tracking_apply(self, name: str, stage: str, func):  # type: ignore[override]
-        wrapped = original_apply(name, stage, func)
+    def _tracking_apply(self, name: str, stage: str, func, *, hooks=None):  # type: ignore[override]
+        wrapped = original_apply(name, stage, func, hooks=hooks)
 
         def _instrumented(*args, **kwargs):
             resilience_calls.append(stage)
@@ -300,7 +309,20 @@ def orchestrator() -> DagsterOrchestrator:
         return _instrumented
 
     policies.apply = _tracking_apply.__get__(policies, ResiliencePolicyLoader)  # type: ignore[attr-defined]
-    orchestrator = DagsterOrchestrator(loader, policies, stage_factory)
+    ledger = JobLedger()
+    kafka = KafkaClient()
+    emitter = StageEventEmitter(kafka)
+    lineage = OpenLineageEmitter(enabled=True)
+
+    orchestrator = DagsterOrchestrator(
+        loader,
+        policies,
+        stage_factory,
+        openlineage_emitter=lineage,
+        job_ledger=ledger,
+        kafka_client=kafka,
+        event_emitter=emitter,
+    )
 
     # Attach stubs for introspection in the test
     orchestrator._stub_stages = {
@@ -315,6 +337,8 @@ def orchestrator() -> DagsterOrchestrator:
     }
     orchestrator._execution_log = execution_log
     orchestrator._resilience_calls = resilience_calls
+    orchestrator._kafka = kafka
+    orchestrator._openlineage = lineage
     yield orchestrator
     policies.close()
 
@@ -322,6 +346,7 @@ def orchestrator() -> DagsterOrchestrator:
 def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) -> None:
     context = StageContext(
         tenant_id="tenant-a",
+        job_id="job-auto-1",
         doc_id="doc-001",
         correlation_id="corr-123",
         metadata={"source": "clinical-trials"},
@@ -331,6 +356,14 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
         correlation_id="corr-123",
         domain="biomedical",
         parameters={"adapter": "auto"},
+    )
+
+    orchestrator.job_ledger.create(
+        job_id="job-auto-1",
+        doc_key="doc-001",
+        tenant_id="tenant-a",
+        pipeline="auto",
+        metadata={},
     )
 
     result = orchestrator.submit(
@@ -363,3 +396,111 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
         "extract",
         "kg",
     }
+
+    entry = orchestrator.job_ledger.get("job-auto-1")
+    assert entry is not None
+    assert entry.retry_count_per_stage.get("chunk", 0) == 0
+    assert entry.metadata["stage.ingest.output_count"] == 1
+    assert entry.metadata["stage.kg.output_count"] == 1
+
+    messages = list(orchestrator.kafka_client.consume("orchestration.events.v1"))
+    event_types = [message.value["attributes"]["type"] for message in messages]
+    assert event_types.count("stage.started") == len(call_order)
+    assert event_types.count("stage.completed") == len(call_order)
+    assert "stage.retrying" not in event_types
+
+
+def test_stage_retry_emits_events(orchestrator: DagsterOrchestrator) -> None:
+    chunk_stage = orchestrator._stub_stages["chunk"]
+    chunk_stage.fail_once = True
+    chunk_stage._failures = 0
+
+    orchestrator.job_ledger.create(
+        job_id="job-retry-1",
+        doc_key="doc-retry",
+        tenant_id="tenant-a",
+        pipeline="auto",
+        metadata={},
+    )
+
+    context = StageContext(
+        tenant_id="tenant-a",
+        job_id="job-retry-1",
+        doc_id="doc-retry",
+        correlation_id="corr-retry",
+        metadata={"source": "clinical-trials"},
+    )
+    request = StubAdapterRequest(
+        tenant_id="tenant-a",
+        correlation_id="corr-retry",
+        domain="biomedical",
+        parameters={"adapter": "auto"},
+    )
+
+    result = orchestrator.submit(
+        pipeline="auto",
+        context=context,
+        adapter_request=request,
+        payload={"seed": "retry"},
+    )
+
+    assert result.success
+    entry = orchestrator.job_ledger.get("job-retry-1")
+    assert entry is not None
+    assert entry.retry_count_per_stage.get("chunk") == 1
+
+    messages = list(orchestrator.kafka_client.consume("orchestration.events.v1"))
+    types = [message.value["attributes"]["type"] for message in messages]
+    assert "stage.retrying" in types
+    stage_count = len(orchestrator._stub_stages)
+    assert types.count("stage.started") == stage_count
+    assert types.count("stage.completed") == stage_count
+
+    chunk_stage.fail_once = False
+    chunk_stage._failures = 0
+
+
+def test_openlineage_events_capture(orchestrator: DagsterOrchestrator) -> None:
+    orchestrator.openlineage.clear()
+    orchestrator.job_ledger.create(
+        job_id="job-lineage-1",
+        doc_key="doc-lineage",
+        tenant_id="tenant-b",
+        pipeline="auto",
+        metadata={},
+    )
+
+    context = StageContext(
+        tenant_id="tenant-b",
+        job_id="job-lineage-1",
+        doc_id="doc-lineage",
+        correlation_id="corr-lineage",
+        metadata={
+            "source": "clinical-trials",
+            "metrics": {"gpu_memory_mb": 2048, "gpu_utilization_percent": 72.5},
+            "models": {"embed": {"name": "qwen", "version": "1.5"}},
+        },
+    )
+    request = StubAdapterRequest(
+        tenant_id="tenant-b",
+        correlation_id="corr-lineage",
+        domain="biomedical",
+        parameters={"adapter": "auto"},
+    )
+
+    orchestrator.submit(
+        pipeline="auto",
+        context=context,
+        adapter_request=request,
+        payload={"seed": "lineage"},
+    )
+
+    events = orchestrator.openlineage.events
+    assert events, "expected OpenLineage events to be emitted"
+    assert events[0]["eventType"] == "START"
+    assert events[-1]["eventType"] == "COMPLETE"
+    run_facets = events[-1]["run"]["facets"]
+    assert "retryAttempts" in run_facets
+    job_facets = events[-1]["jobFacets"]
+    assert "gpuUtilization" in job_facets
+    assert "modelVersion" in job_facets

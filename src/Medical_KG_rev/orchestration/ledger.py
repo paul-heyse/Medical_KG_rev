@@ -34,7 +34,9 @@ class JobLedgerEntry:
     tenant_id: str
     status: str = "queued"
     stage: str = "pending"
+    current_stage: str = "pending"
     pipeline: str | None = None
+    pipeline_name: str | None = None
     metadata: dict[str, object] = field(default_factory=dict)
     attempts: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
@@ -44,6 +46,9 @@ class JobLedgerEntry:
     duration_seconds: float | None = None
     error_reason: str | None = None
     retry_count: int = 0
+    retry_count_per_stage: dict[str, int] = field(default_factory=dict)
+    pdf_downloaded: bool = False
+    pdf_ir_ready: bool = False
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
@@ -57,7 +62,9 @@ class JobLedgerEntry:
             tenant_id=self.tenant_id,
             status=self.status,
             stage=self.stage,
+            current_stage=self.current_stage,
             pipeline=self.pipeline,
+            pipeline_name=self.pipeline_name,
             metadata=dict(self.metadata),
             attempts=self.attempts,
             created_at=self.created_at,
@@ -67,6 +74,9 @@ class JobLedgerEntry:
             duration_seconds=self.duration_seconds,
             error_reason=self.error_reason,
             retry_count=self.retry_count,
+            retry_count_per_stage=dict(self.retry_count_per_stage),
+            pdf_downloaded=self.pdf_downloaded,
+            pdf_ir_ready=self.pdf_ir_ready,
         )
 
 
@@ -102,6 +112,7 @@ class JobLedger:
             doc_key=doc_key,
             tenant_id=tenant_id,
             pipeline=pipeline,
+            pipeline_name=pipeline,
             metadata=metadata or {},
         )
         self._entries[job_id] = entry
@@ -142,6 +153,10 @@ class JobLedger:
         stage: str | None = None,
         metadata: dict[str, object] | None = None,
         reason: str | None = None,
+        current_stage: str | None = None,
+        pipeline_name: str | None = None,
+        pdf_downloaded: bool | None = None,
+        pdf_ir_ready: bool | None = None,
     ) -> JobLedgerEntry:
         if job_id not in self._entries:
             raise JobLedgerError(f"Job {job_id} not found")
@@ -165,8 +180,19 @@ class JobLedger:
             entry.status = next_status
         if stage:
             entry.stage = stage
+        if current_stage:
+            entry.current_stage = current_stage
+        elif stage:
+            entry.current_stage = stage
+        if pipeline_name:
+            entry.pipeline = pipeline_name
+            entry.pipeline_name = pipeline_name
         if metadata:
             entry.metadata.update(metadata)
+        if pdf_downloaded is not None:
+            entry.pdf_downloaded = pdf_downloaded
+        if pdf_ir_ready is not None:
+            entry.pdf_ir_ready = pdf_ir_ready
         entry.updated_at = datetime.utcnow()
         self._refresh_metrics()
         return entry
@@ -175,12 +201,30 @@ class JobLedger:
         return self._update(job_id, metadata=metadata)
 
     def mark_processing(self, job_id: str, stage: str) -> JobLedgerEntry:
-        return self._update(job_id, status="processing", stage=stage)
+        entry = self._update(
+            job_id,
+            status="processing",
+            stage=stage,
+            current_stage=stage,
+        )
+        entry.retry_count_per_stage.setdefault(stage, entry.retry_count_per_stage.get(stage, 0))
+        return entry
+
+    def mark_stage_started(self, job_id: str, stage: str) -> JobLedgerEntry:
+        entry = self.mark_processing(job_id, stage)
+        entry.retry_count_per_stage.setdefault(stage, 0)
+        return entry
 
     def mark_completed(
         self, job_id: str, *, metadata: dict[str, object] | None = None
     ) -> JobLedgerEntry:
-        entry = self._update(job_id, status="completed", stage="completed", metadata=metadata)
+        entry = self._update(
+            job_id,
+            status="completed",
+            stage="completed",
+            current_stage="completed",
+            metadata=metadata,
+        )
         entry.completed_at = datetime.utcnow()
         entry.duration_seconds = (entry.completed_at - entry.created_at).total_seconds()
         return entry
@@ -197,6 +241,7 @@ class JobLedger:
             job_id,
             status="failed",
             stage=stage,
+            current_stage=stage,
             metadata=metadata,
             reason=reason,
         )
@@ -206,7 +251,32 @@ class JobLedger:
         return entry
 
     def mark_cancelled(self, job_id: str, *, reason: str | None = None) -> JobLedgerEntry:
-        return self._update(job_id, status="cancelled", stage="cancelled", reason=reason)
+        return self._update(
+            job_id,
+            status="cancelled",
+            stage="cancelled",
+            current_stage="cancelled",
+            reason=reason,
+        )
+
+    def increment_retry(self, job_id: str, stage: str) -> JobLedgerEntry:
+        if job_id not in self._entries:
+            raise JobLedgerError(f"Job {job_id} not found")
+        entry = self._entries[job_id]
+        entry.retry_count += 1
+        entry.retry_count_per_stage[stage] = entry.retry_count_per_stage.get(stage, 0) + 1
+        entry.attempts = max(entry.attempts, entry.retry_count_per_stage[stage] + 1)
+        entry.current_stage = stage
+        entry.stage = stage
+        entry.updated_at = datetime.utcnow()
+        self._refresh_metrics()
+        return entry
+
+    def set_pdf_downloaded(self, job_id: str, value: bool = True) -> JobLedgerEntry:
+        return self._update(job_id, pdf_downloaded=value)
+
+    def set_pdf_ir_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
+        return self._update(job_id, pdf_ir_ready=value)
 
     def record_attempt(self, job_id: str) -> int:
         if job_id not in self._entries:

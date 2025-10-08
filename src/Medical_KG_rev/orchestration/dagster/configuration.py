@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Mapping
 
 import yaml
 from pydantic import (
@@ -177,6 +177,15 @@ class ResiliencePolicyConfig(BaseModel):
     rate_limit: RateLimitConfig | None = None
 
 
+@dataclass(slots=True)
+class StageExecutionHooks:
+    """Lifecycle callbacks for stage execution resilience wrappers."""
+
+    on_retry: Callable[[Any], None] | None = None
+    on_success: Callable[[int, float], None] | None = None
+    on_failure: Callable[[BaseException, int], None] | None = None
+
+
 class ResiliencePolicy(BaseModel):
     """Runtime wrapper around :class:`ResiliencePolicyConfig`."""
 
@@ -188,7 +197,7 @@ class ResiliencePolicy(BaseModel):
     _rate_limiter: "AsyncLimiter | None" = PrivateAttr(default=None)
     _circuit_breakers: dict[str, "CircuitBreaker"] = PrivateAttr(default_factory=dict)
 
-    def create_retry(self, stage: str):
+    def create_retry(self, stage: str, hooks: StageExecutionHooks | None = None):
         from tenacity import retry, stop_after_attempt
         from tenacity import wait_none
         from tenacity.wait import wait_exponential, wait_fixed, wait_incrementing
@@ -213,6 +222,8 @@ class ResiliencePolicy(BaseModel):
 
         def _before_sleep(retry_state):
             record_resilience_retry(self.name, stage)
+            if hooks and hooks.on_retry:
+                hooks.on_retry(retry_state)
 
         return retry(
             stop=stop_after_attempt(self.config.max_attempts),
@@ -444,12 +455,18 @@ class ResiliencePolicyLoader:
             except KeyError as exc:
                 raise KeyError(f"Unknown resilience policy '{name}'") from exc
 
-    def apply(self, name: str, stage: str, func: Callable[..., Any]) -> Callable[..., Any]:
+    def apply(
+        self,
+        name: str,
+        stage: str,
+        func: Callable[..., Any],
+        hooks: StageExecutionHooks | None = None,
+    ) -> Callable[..., Any]:
         policy = self.get(name)
         if asyncio.iscoroutinefunction(func):
             raise TypeError("ResiliencePolicyLoader.apply only supports synchronous callables")
 
-        retry_decorator = policy.create_retry(stage)
+        hooks = hooks or StageExecutionHooks()
         circuit_breaker = policy.create_circuit_breaker(stage)
         limiter = policy.get_rate_limiter()
         sync_limiter = None
@@ -461,12 +478,33 @@ class ResiliencePolicyLoader:
                 sync_limiter = _SyncLimiter(limiter)
                 self._sync_limiters[name] = sync_limiter
 
+        def _invoke(*args: Any, **kwargs: Any) -> Any:
+            call_state = {"attempts": 0}
+
+            def _call(*inner_args: Any, **inner_kwargs: Any) -> Any:
+                call_state["attempts"] += 1
+                return func(*inner_args, **inner_kwargs)
+
+            retry_decorator = policy.create_retry(stage, hooks)
+            wrapped = retry_decorator(_call)
+            start = time.perf_counter()
+            try:
+                result = wrapped(*args, **kwargs)
+            except Exception as exc:
+                if hooks.on_failure:
+                    hooks.on_failure(exc, call_state["attempts"])
+                raise
+            duration = time.perf_counter() - start
+            if hooks.on_success:
+                hooks.on_success(call_state["attempts"], duration)
+            return result
+
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
             if sync_limiter is not None:
                 waited = sync_limiter.acquire()
                 if waited:
                     record_resilience_rate_limit_wait(name, stage, waited)
-            call = func
+            call = _invoke
             if circuit_breaker is not None:
                 def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
                     return circuit_breaker.call(call, *inner_args, **inner_kwargs)
@@ -474,7 +512,7 @@ class ResiliencePolicyLoader:
                 call = _call_with_breaker
             return call(*args, **kwargs)
 
-        return retry_decorator(_wrapped)
+        return _wrapped
 
     def watch(self, callback: Callable[[str, ResiliencePolicy], None], *, interval: float = 2.0) -> None:
         self._watchers.append(callback)

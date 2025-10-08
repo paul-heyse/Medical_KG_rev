@@ -1,0 +1,11 @@
+# Dagster configuration for local development of the orchestration pipeline.
+dagster:
+  telemetry:
+    enabled: false
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: DefaultRunCoordinator
+python_logs:
+  dagster_handler_config:
+    module: dagster
+    class: JsonEventLogger

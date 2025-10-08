@@ -204,3 +204,62 @@ def test_tenant_scope_enforcement() -> None:
     state.ensure_tenant_scope("tenant")
     with pytest.raises(PipelineStateValidationError):
         state.ensure_tenant_scope("other")
+
+
+def test_checkpoint_and_rollback_restore_prior_state() -> None:
+    state = _sample_state()
+    state.apply_stage_output("ingest", "ingest", [{"id": "one"}])
+    state.create_checkpoint("before-parse")
+    state.apply_stage_output("parse", "parse", _build_document())
+    state.set_payloads([{"id": "two"}])
+
+    state.rollback_to("before-parse")
+
+    payloads = state.require_payloads()
+    assert payloads[0]["id"] == "one"
+    assert state.document is None
+
+    state.clear_checkpoint("before-parse")
+    assert state.get_checkpoint("before-parse") is None
+
+
+def test_legacy_round_trip_preserves_core_fields() -> None:
+    state = _sample_state({"foo": "bar"})
+    state.apply_stage_output("ingest", "ingest", [{"id": "legacy"}])
+    document = _build_document()
+    state.apply_stage_output("parse", "parse", document)
+    chunk = Chunk(
+        chunk_id="chunk-1",
+        doc_id=document.id,
+        tenant_id="tenant",
+        body="hello",
+        title_path=("Section",),
+        section="s1",
+        start_char=0,
+        end_char=5,
+        granularity="paragraph",
+        chunker="stub",
+        chunker_version="1",
+    )
+    state.apply_stage_output("chunk", "chunk", [chunk])
+    batch = EmbeddingBatch(
+        vectors=(EmbeddingVector(id="chunk-1", values=(0.1, 0.2), metadata={}),),
+        model="stub",
+        tenant_id="tenant",
+    )
+    state.apply_stage_output("embed", "embed", batch)
+
+    legacy = state.to_legacy_dict()
+    restored = PipelineState.from_legacy(
+        legacy,
+        context=StageContext.from_dict(state.context.to_dict()),
+        adapter_request=state.adapter_request.model_copy(deep=True),
+    )
+
+    assert restored.require_payloads() == state.require_payloads()
+    assert restored.document is not None
+    assert restored.document.id == document.id
+    assert restored.embedding_batch is not None
+    assert restored.embedding_batch.model == batch.model
+    assert restored.metadata == state.metadata
+    assert restored.stage_results.keys() == state.stage_results.keys()

@@ -13,7 +13,7 @@ import base64
 import copy
 import json
 import zlib
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
@@ -187,6 +187,7 @@ class PipelineState:
     _dirty: bool = field(default=True, init=False, repr=False)
     _serialised_cache: dict[str, Any] | None = field(default=None, init=False, repr=False)
     _tenant_id: str = field(init=False, repr=False)
+    _checkpoints: dict[str, PipelineStateSnapshot] = field(default_factory=dict, init=False, repr=False)
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
 
@@ -222,11 +223,91 @@ class PipelineState:
 
         return self._dirty
 
+    def clone(self) -> "PipelineState":
+        """Return a deep copy of the current pipeline state."""
+
+        context_copy = StageContext.from_dict(self.context.to_dict())
+        adapter_copy = self.adapter_request.model_copy(deep=True)
+        clone = PipelineState.initialise(
+            context=context_copy,
+            adapter_request=adapter_copy,
+            payload=copy.deepcopy(self.payload),
+        )
+        clone.payloads = tuple(copy.deepcopy(self.payloads))
+        clone.document = copy.deepcopy(self.document)
+        clone.chunks = tuple(copy.deepcopy(self.chunks))
+        clone.embedding_batch = copy.deepcopy(self.embedding_batch)
+        clone.entities = tuple(copy.deepcopy(self.entities))
+        clone.claims = tuple(copy.deepcopy(self.claims))
+        clone.index_receipt = copy.deepcopy(self.index_receipt)
+        clone.graph_receipt = copy.deepcopy(self.graph_receipt)
+        clone.metadata = copy.deepcopy(self.metadata)
+        clone.stage_results = {
+            name: copy.deepcopy(result) for name, result in self.stage_results.items()
+        }
+        clone.schema_version = self.schema_version
+        clone.job_id = self.job_id
+        clone._dirty = self._dirty
+        clone._serialised_cache = (
+            copy.deepcopy(self._serialised_cache) if self._serialised_cache is not None else None
+        )
+        clone._checkpoints = {
+            label: copy.deepcopy(snapshot) for label, snapshot in self._checkpoints.items()
+        }
+        return clone
+
     @property
     def tenant_id(self) -> str:
         """Return the tenant that owns the current state."""
 
         return self._tenant_id
+
+    @staticmethod
+    def _checkpoint_label(label: str | None) -> str:
+        return label or "__default__"
+
+    def create_checkpoint(
+        self,
+        label: str | None = None,
+        *,
+        include_stage_results: bool = True,
+    ) -> PipelineStateSnapshot:
+        """Capture and store a checkpoint snapshot for later rollback."""
+
+        snapshot = self.snapshot(include_stage_results=include_stage_results)
+        self._checkpoints[self._checkpoint_label(label)] = snapshot
+        return snapshot
+
+    def get_checkpoint(self, label: str | None = None) -> PipelineStateSnapshot | None:
+        """Return a previously captured checkpoint snapshot if it exists."""
+
+        return self._checkpoints.get(self._checkpoint_label(label))
+
+    def has_checkpoint(self, label: str | None = None) -> bool:
+        return self._checkpoint_label(label) in self._checkpoints
+
+    def rollback_to(
+        self,
+        label: str | None = None,
+        *,
+        restore_stage_results: bool = True,
+    ) -> PipelineStateSnapshot | None:
+        """Restore the pipeline to a stored checkpoint if available."""
+
+        snapshot = self.get_checkpoint(label)
+        if snapshot is not None:
+            self.restore(snapshot, restore_stage_results=restore_stage_results)
+        return snapshot
+
+    def clear_checkpoint(self, label: str | None = None) -> None:
+        """Drop a previously stored checkpoint."""
+
+        self._checkpoints.pop(self._checkpoint_label(label), None)
+
+    def clear_checkpoints(self) -> None:
+        """Remove all stored checkpoints."""
+
+        self._checkpoints.clear()
 
     def ensure_tenant_scope(self, tenant_id: str) -> None:
         """Validate that the state is being accessed by the owning tenant."""
@@ -575,6 +656,48 @@ class PipelineState:
             self._dirty = False
         return copy.deepcopy(snapshot)
 
+    def to_legacy_dict(self) -> dict[str, Any]:
+        """Return a dictionary compatible with legacy dict-based state consumers."""
+
+        payload: dict[str, Any] = {
+            "version": self.schema_version,
+            "job_id": self.job_id,
+            "context": self.context.to_dict(),
+            "adapter_request": self.adapter_request.model_dump(mode="json"),
+            "payload": copy.deepcopy(self.payload),
+            "payloads": [copy.deepcopy(item) for item in self.payloads],
+            "metadata": copy.deepcopy(self.metadata),
+            "stage_results": {
+                name: result.as_dict() for name, result in self.stage_results.items()
+            },
+        }
+        if self.document is not None:
+            payload["document"] = self.document.model_dump(mode="json")
+        if self.chunks:
+            payload["chunks"] = [chunk.model_dump(mode="json") for chunk in self.chunks]
+        if self.embedding_batch is not None:
+            payload["embedding_batch"] = {
+                "vectors": [
+                    {
+                        "id": vector.id,
+                        "values": list(vector.values),
+                        "metadata": dict(vector.metadata),
+                    }
+                    for vector in self.embedding_batch.vectors
+                ],
+                "model": self.embedding_batch.model,
+                "tenant_id": self.embedding_batch.tenant_id,
+            }
+        if self.entities:
+            payload["entities"] = [entity.model_dump(mode="json") for entity in self.entities]
+        if self.claims:
+            payload["claims"] = [claim.model_dump(mode="json") for claim in self.claims]
+        if self.index_receipt is not None:
+            payload["index_receipt"] = asdict(self.index_receipt)
+        if self.graph_receipt is not None:
+            payload["graph_receipt"] = asdict(self.graph_receipt)
+        return payload
+
     def serialise_json(self) -> str:
         """Return a JSON encoded snapshot of the state."""
 
@@ -665,6 +788,111 @@ class PipelineState:
                     )
         state._dirty = False
         state._serialised_cache = copy.deepcopy(dict(recovered))
+        return state
+
+    def hydrate_legacy(self, payload: Mapping[str, Any]) -> None:
+        """Populate the state using a legacy dictionary payload."""
+
+        self.payload = dict(payload.get("payload", {}))
+        raw_payloads = payload.get("payloads")
+        if isinstance(raw_payloads, Sequence):
+            self.payloads = tuple(copy.deepcopy(list(raw_payloads)))
+        document_payload = payload.get("document")
+        if document_payload:
+            self.document = Document.model_validate(document_payload)
+        else:
+            self.document = None
+        chunk_payload = payload.get("chunks")
+        if isinstance(chunk_payload, Sequence):
+            self.chunks = tuple(Chunk.model_validate(item) for item in chunk_payload)
+        else:
+            self.chunks = ()
+        embedding_payload = payload.get("embedding_batch")
+        if isinstance(embedding_payload, Mapping):
+            vectors = []
+            for vector in embedding_payload.get("vectors", []):
+                if isinstance(vector, Mapping):
+                    values = tuple(float(v) for v in vector.get("values", ()))
+                    vectors.append(
+                        EmbeddingVector(
+                            id=str(vector.get("id")),
+                            values=values,
+                            metadata=dict(vector.get("metadata", {})),
+                        )
+                    )
+            self.embedding_batch = EmbeddingBatch(
+                vectors=tuple(vectors),
+                model=str(embedding_payload.get("model", "")),
+                tenant_id=str(embedding_payload.get("tenant_id", self.context.tenant_id)),
+            )
+        else:
+            self.embedding_batch = None
+        entities_payload = payload.get("entities")
+        if isinstance(entities_payload, Sequence):
+            self.entities = tuple(Entity.model_validate(item) for item in entities_payload)
+        else:
+            self.entities = ()
+        claims_payload = payload.get("claims")
+        if isinstance(claims_payload, Sequence):
+            self.claims = tuple(Claim.model_validate(item) for item in claims_payload)
+        else:
+            self.claims = ()
+        index_payload = payload.get("index_receipt")
+        if isinstance(index_payload, Mapping):
+            self.index_receipt = IndexReceipt(
+                chunks_indexed=int(index_payload.get("chunks_indexed", 0)),
+                opensearch_ok=bool(index_payload.get("opensearch_ok", False)),
+                faiss_ok=bool(index_payload.get("faiss_ok", False)),
+                metadata=dict(index_payload.get("metadata", {})),
+            )
+        else:
+            self.index_receipt = None
+        graph_payload = payload.get("graph_receipt")
+        if isinstance(graph_payload, Mapping):
+            self.graph_receipt = GraphWriteReceipt(
+                nodes_written=int(graph_payload.get("nodes_written", 0)),
+                edges_written=int(graph_payload.get("edges_written", 0)),
+                correlation_id=str(graph_payload.get("correlation_id", "")),
+                metadata=dict(graph_payload.get("metadata", {})),
+            )
+        else:
+            self.graph_receipt = None
+        self.metadata = copy.deepcopy(payload.get("metadata", {}))
+        stage_payload = payload.get("stage_results")
+        if isinstance(stage_payload, Mapping):
+            self.stage_results = {}
+            for name, payload_data in stage_payload.items():
+                if isinstance(payload_data, Mapping):
+                    self.stage_results[str(name)] = StageResultSnapshot(
+                        stage=str(payload_data.get("stage", name)),
+                        stage_type=str(payload_data.get("stage_type", "unknown")),
+                        attempts=payload_data.get("attempts"),
+                        duration_ms=payload_data.get("duration_ms"),
+                        output_count=payload_data.get("output_count"),
+                        error=payload_data.get("error"),
+                    )
+        self.job_id = payload.get("job_id") or self.context.job_id
+        self.schema_version = str(payload.get("version", self.schema_version))
+        self._dirty = True
+        self._serialised_cache = None
+        self.clear_checkpoints()
+
+    @classmethod
+    def from_legacy(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        context: StageContext,
+        adapter_request: AdapterRequest,
+    ) -> PipelineState:
+        """Rehydrate a typed state from a legacy dictionary payload."""
+
+        state = cls.initialise(
+            context=context,
+            adapter_request=adapter_request,
+            payload=payload.get("payload"),
+        )
+        state.hydrate_legacy(payload)
         return state
 
     # ------------------------------------------------------------------

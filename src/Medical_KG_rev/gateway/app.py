@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-from time import perf_counter
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -25,15 +23,11 @@ from Medical_KG_rev.chunking.exceptions import (
 from ..config.settings import get_settings
 from ..observability import setup_observability
 from ..services.health import CheckResult, HealthService, success
-from ..utils.logging import (
-    bind_correlation_id,
-    get_correlation_id,
-    get_logger,
-    reset_correlation_id,
-)
+from ..utils.logging import get_correlation_id, get_logger
 from .graphql.schema import graphql_router
 from .middleware import CachePolicy, CachingMiddleware, TenantValidationMiddleware
 from .models import ProblemDetail
+from .presentation.lifecycle import RequestLifecycleMiddleware
 from .rest.router import JSONAPI_CONTENT_TYPE, health_router
 from .rest.router import router as rest_router
 from .services import GatewayError, get_gateway_service
@@ -50,65 +44,6 @@ class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
 
 
 logger = get_logger(__name__)
-
-
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, *, correlation_header: str) -> None:  # type: ignore[override]
-        super().__init__(app)
-        self._correlation_header = correlation_header
-
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
-        provided = (
-            request.headers.get(self._correlation_header) if self._correlation_header else None
-        )
-        existing = getattr(request.state, "correlation_id", None) or get_correlation_id()
-        correlation_id = provided or existing or str(uuid.uuid4())
-        request.state.correlation_id = correlation_id
-        token = bind_correlation_id(correlation_id)
-        started = perf_counter()
-
-        logger.info(
-            "gateway.request",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "correlation_id": correlation_id,
-            },
-        )
-
-        try:
-            response = await call_next(request)
-        except Exception:
-            duration_ms = (perf_counter() - started) * 1000
-            logger.exception(
-                "gateway.request.error",
-                extra={
-                    "method": request.method,
-                    "path": request.url.path,
-                    "duration_ms": round(duration_ms, 2),
-                    "correlation_id": correlation_id,
-                },
-            )
-            reset_correlation_id(token)
-            raise
-
-        duration_ms = (perf_counter() - started) * 1000
-        logger.info(
-            "gateway.response",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "duration_ms": round(duration_ms, 2),
-                "correlation_id": correlation_id,
-            },
-        )
-
-        if self._correlation_header:
-            response.headers.setdefault(self._correlation_header, correlation_id)
-
-        reset_correlation_id(token)
-        return response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -174,7 +109,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(JSONAPIResponseMiddleware)
     app.add_middleware(
-        RequestLoggingMiddleware,
+        RequestLifecycleMiddleware,
         correlation_header=settings.observability.logging.correlation_id_header,
     )
     app.add_middleware(TenantValidationMiddleware)

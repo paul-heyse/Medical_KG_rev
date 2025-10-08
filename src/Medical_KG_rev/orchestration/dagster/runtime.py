@@ -154,6 +154,7 @@ def _make_stage_op(
             attempt_number = getattr(retry_state, "attempt_number", 0) + 1
             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
             reason = str(error) if error else "retry"
+            state.rollback_to(stage_name, restore_stage_results=False)
             emitter.emit_retrying(
                 state.context,
                 stage_name,
@@ -194,16 +195,21 @@ def _make_stage_op(
 
         state.ensure_tenant_scope(stage_ctx.tenant_id)
 
+        checkpoint_label = stage_name
+
         try:
             state.validate_transition(stage_type)
+            state.create_checkpoint(checkpoint_label)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
+            state.rollback_to(checkpoint_label, restore_stage_results=False)
             state.mark_stage_failed(
                 stage_name,
                 error=str(exc),
                 stage_type=stage_type,
             )
+            state.clear_checkpoint(checkpoint_label)
             snapshot_b64 = state.serialise_base64()
             emitter.emit_failed(
                 stage_ctx,
@@ -236,6 +242,7 @@ def _make_stage_op(
             output_count=output_count,
         )
         snapshot_b64 = state.serialise_base64()
+        state.clear_checkpoint(checkpoint_label)
 
         if job_id:
             ledger.update_metadata(

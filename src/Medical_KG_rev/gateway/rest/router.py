@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Annotated, Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from ...auth import Scopes, SecurityContext, secure_endpoint
@@ -35,9 +35,10 @@ from ..models import (
     RetrievalResult,
     RetrieveRequest,
 )
-from ..presentation.dependencies import get_response_presenter
+from ..presentation.dependencies import get_request_lifecycle, get_response_presenter
 from ..presentation.errors import ErrorDetail
 from ..presentation.interface import ResponsePresenter
+from ..presentation.lifecycle import RequestLifecycle
 from ..presentation.odata import ODataParams
 from ..presentation.requests import apply_tenant_context
 from ..services import GatewayService, get_gateway_service
@@ -55,7 +56,8 @@ async def list_adapters(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters")
     ),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     try:
         adapters = service.list_adapters(domain)
     except ValueError as exc:
@@ -67,7 +69,7 @@ async def list_adapters(
                 detail=str(exc),
             )
         )
-    return presenter.success(adapters, meta={"total": len(adapters)})
+    return presenter.success(adapters, meta=lifecycle.meta({"total": len(adapters)}))
 
 
 @router.get("/adapters/{name}/metadata", response_model=None)
@@ -78,7 +80,8 @@ async def get_adapter_metadata(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/metadata")
     ),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     metadata = service.get_adapter_metadata(name)
     if metadata is None:
         return presenter.error(
@@ -90,7 +93,7 @@ async def get_adapter_metadata(
             ),
             status_code=404,
         )
-    return presenter.success(metadata)
+    return presenter.success(metadata, meta=lifecycle.meta())
 
 
 @router.get("/adapters/{name}/health", response_model=None)
@@ -101,7 +104,8 @@ async def get_adapter_health(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/health")
     ),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     health = service.get_adapter_health(name)
     if health is None:
         return presenter.error(
@@ -113,7 +117,7 @@ async def get_adapter_health(
             ),
             status_code=404,
         )
-    return presenter.success(health)
+    return presenter.success(health, meta=lifecycle.meta())
 
 
 @router.get("/adapters/{name}/config-schema", response_model=None)
@@ -126,7 +130,8 @@ async def get_adapter_config_schema(
         )
     ),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     schema = service.get_adapter_config_schema(name)
     if schema is None:
         return presenter.error(
@@ -138,7 +143,7 @@ async def get_adapter_config_schema(
             ),
             status_code=404,
         )
-    return presenter.success(schema)
+    return presenter.success(schema, meta=lifecycle.meta())
 
 
 @health_router.get("/health", include_in_schema=True)
@@ -155,6 +160,7 @@ async def readiness_check(request: Request) -> JSONResponse:
 
 TModel = TypeVar("TModel", bound=BaseModel)
 PresenterDep = Annotated[ResponsePresenter, Depends(get_response_presenter)]
+LifecycleDep = Annotated[RequestLifecycle, Depends(get_request_lifecycle)]
 
 
 def _apply_tenant(
@@ -178,10 +184,11 @@ async def ingest_dataset(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: BatchOperationResult = service.ingest(dataset, request)
-    meta = {"total": result.total, "dataset": dataset}
+    meta = lifecycle.meta({"total": result.total, "dataset": dataset})
     get_audit_trail().record(
         context=security,
         action="ingest",
@@ -200,17 +207,20 @@ async def ingest_pipeline(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     ingest_request = IngestionRequest.model_validate(
         request.model_dump(exclude={"dataset"})
     )
     result: BatchOperationResult = service.ingest(request.dataset, ingest_request)
-    meta = {
-        "total": result.total,
-        "dataset": request.dataset,
-        "profile": request.profile,
-    }
+    meta = lifecycle.meta(
+        {
+            "total": result.total,
+            "dataset": request.dataset,
+            "profile": request.profile,
+        }
+    )
     get_audit_trail().record(
         context=security,
         action="ingest_pipeline",
@@ -231,11 +241,12 @@ async def get_job(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     job = service.get_job(job_id, tenant_id=security.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return presenter.success(job)
+    return presenter.success(job, meta=lifecycle.meta())
 
 
 @router.get("/jobs/{job_id}/events", status_code=200)
@@ -252,7 +263,8 @@ async def list_job_events(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     job = service.get_job(job_id, tenant_id=security.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -269,7 +281,7 @@ async def list_job_events(
     meta = {"job_id": job_id, "count": len(data)}
     if since is not None:
         meta["since"] = since.isoformat()
-    return presenter.success(data, meta=meta)
+    return presenter.success(data, meta=lifecycle.meta(meta))
 
 
 @router.get("/jobs", status_code=200, response_model=list[JobStatus])
@@ -280,9 +292,10 @@ async def list_jobs(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     jobs = service.list_jobs(status=status, tenant_id=security.tenant_id)
-    meta = {"total": len(jobs), "status": status}
+    meta = lifecycle.meta({"total": len(jobs), "status": status})
     return presenter.success(jobs, meta=meta)
 
 
@@ -294,7 +307,8 @@ async def cancel_job(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     job = service.cancel_job(job_id, tenant_id=security.tenant_id, reason="client-request")
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -304,7 +318,7 @@ async def cancel_job(
         resource=f"job:{job_id}",
         metadata={"reason": "client-request"},
     )
-    return presenter.success(job, status_code=202)
+    return presenter.success(job, status_code=202, meta=lifecycle.meta())
 
 
 @router.post("/ingest/clinicaltrials", status_code=207, include_in_schema=False)
@@ -316,7 +330,8 @@ async def ingest_clinicaltrials(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     return await ingest_dataset(
         "clinicaltrials",
         request,
@@ -324,6 +339,7 @@ async def ingest_clinicaltrials(
         security,
         service,
         presenter,
+        lifecycle,
     )
 
 
@@ -336,8 +352,17 @@ async def ingest_dailymed(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
-    return await ingest_dataset("dailymed", request, http_request, security, service, presenter)
+    lifecycle: LifecycleDep,
+) -> Response:
+    return await ingest_dataset(
+        "dailymed",
+        request,
+        http_request,
+        security,
+        service,
+        presenter,
+        lifecycle,
+    )
 
 
 @router.post("/ingest/pmc", status_code=207, include_in_schema=False)
@@ -349,8 +374,17 @@ async def ingest_pmc(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
-    return await ingest_dataset("pmc", request, http_request, security, service, presenter)
+    lifecycle: LifecycleDep,
+) -> Response:
+    return await ingest_dataset(
+        "pmc",
+        request,
+        http_request,
+        security,
+        service,
+        presenter,
+        lifecycle,
+    )
 
 
 @router.post("/chunk", status_code=200)
@@ -362,10 +396,11 @@ async def chunk_document(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     chunks = service.chunk_document(request)
-    meta = {"total": len(chunks), "document_id": request.document_id}
+    meta = lifecycle.meta({"total": len(chunks), "document_id": request.document_id})
     get_audit_trail().record(
         context=security,
         action="chunk",
@@ -384,15 +419,18 @@ async def embed_text(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     response = service.embed(request)
-    meta = {
-        "total": len(response.embeddings),
-        "namespace": response.namespace,
-        "provider": response.metadata.provider,
-        "model": response.metadata.model,
-    }
+    meta = lifecycle.meta(
+        {
+            "total": len(response.embeddings),
+            "namespace": response.namespace,
+            "provider": response.metadata.provider,
+            "model": response.metadata.model,
+        }
+    )
     get_audit_trail().record(
         context=security,
         action="embed",
@@ -415,21 +453,24 @@ async def retrieve(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     odata = ODataParams.from_request(http_request)
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
-    meta = {
-        "total": result.total,
-        "select": odata.select,
-        "expand": odata.expand,
-        "rerank": result.rerank_metrics,
-        "pipeline_version": result.pipeline_version,
-        "partial": result.partial,
-        "degraded": result.degraded,
-        "stage_timings": result.stage_timings,
-        "errors": [error.model_dump(mode="json") for error in result.errors],
-    }
+    meta = lifecycle.meta(
+        {
+            "total": result.total,
+            "select": odata.select,
+            "expand": odata.expand,
+            "rerank": result.rerank_metrics,
+            "pipeline_version": result.pipeline_version,
+            "partial": result.partial,
+            "degraded": result.degraded,
+            "stage_timings": result.stage_timings,
+            "errors": [error.model_dump(mode="json") for error in result.errors],
+        }
+    )
     return presenter.success(result, meta=meta)
 
 
@@ -441,10 +482,11 @@ async def list_namespaces(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     http_request.state.requested_tenant_id = security.tenant_id
     namespaces = service.list_namespaces(tenant_id=security.tenant_id, scope=Scopes.EMBED_READ)
-    return presenter.success(namespaces, meta={"total": len(namespaces)})
+    return presenter.success(namespaces, meta=lifecycle.meta({"total": len(namespaces)}))
 
 
 @router.post("/namespaces/{namespace}/validate", status_code=200)
@@ -457,14 +499,15 @@ async def validate_namespace(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.validate_namespace_texts(
         tenant_id=request.tenant_id,
         namespace=namespace,
         texts=request.texts,
     )
-    return presenter.success(result)
+    return presenter.success(result, meta=lifecycle.meta())
 
 
 @router.post("/evaluate", status_code=200)
@@ -476,14 +519,15 @@ async def evaluate(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     try:
         result = service.evaluate_retrieval(request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     response = EvaluationResponse.from_result(result)
-    meta = {"cache": response.cache, "test_set_version": response.test_set_version}
+    meta = lifecycle.meta({"cache": response.cache, "test_set_version": response.test_set_version})
     return presenter.success(response, meta=meta)
 
 
@@ -496,22 +540,25 @@ async def query_pipeline(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     odata = ODataParams.from_request(http_request)
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
-    meta = {
-        "total": result.total,
-        "select": odata.select,
-        "expand": odata.expand,
-        "rerank": result.rerank_metrics,
-        "pipeline_version": result.pipeline_version,
-        "partial": result.partial,
-        "degraded": result.degraded,
-        "stage_timings": result.stage_timings,
-        "errors": [error.model_dump(mode="json") for error in result.errors],
-        "profile": request.profile,
-    }
+    meta = lifecycle.meta(
+        {
+            "total": result.total,
+            "select": odata.select,
+            "expand": odata.expand,
+            "rerank": result.rerank_metrics,
+            "pipeline_version": result.pipeline_version,
+            "partial": result.partial,
+            "degraded": result.degraded,
+            "stage_timings": result.stage_timings,
+            "errors": [error.model_dump(mode="json") for error in result.errors],
+            "profile": request.profile,
+        }
+    )
     return presenter.success(result, meta=meta)
 
 
@@ -529,7 +576,8 @@ async def search(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request_model = RetrieveRequest(
         tenant_id=security.tenant_id,
         query=query,
@@ -542,18 +590,20 @@ async def search(
     )
     result: RetrievalResult = service.retrieve(request_model)
     odata = ODataParams.from_request(http_request)
-    meta = {
-        "total": result.total,
-        "select": odata.select,
-        "expand": odata.expand,
-        "rerank": result.rerank_metrics,
-        "pipeline_version": result.pipeline_version,
-        "partial": result.partial,
-        "degraded": result.degraded,
-        "stage_timings": result.stage_timings,
-        "intent": result.intent,
-        "errors": [error.model_dump(mode="json") for error in result.errors],
-    }
+    meta = lifecycle.meta(
+        {
+            "total": result.total,
+            "select": odata.select,
+            "expand": odata.expand,
+            "rerank": result.rerank_metrics,
+            "pipeline_version": result.pipeline_version,
+            "partial": result.partial,
+            "degraded": result.degraded,
+            "stage_timings": result.stage_timings,
+            "intent": result.intent,
+            "errors": [error.model_dump(mode="json") for error in result.errors],
+        }
+    )
     return presenter.success(result, meta=meta)
 
 
@@ -566,10 +616,11 @@ async def entity_link(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     results = service.entity_link(request)
-    meta = {"total": len(results)}
+    meta = lifecycle.meta({"total": len(results)})
     get_audit_trail().record(
         context=security,
         action="entity_link",
@@ -590,7 +641,8 @@ async def extract(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     extraction = service.extract(kind, request)
     get_audit_trail().record(
@@ -599,7 +651,7 @@ async def extract(
         resource=f"extract:{kind}",
         metadata={"document_id": request.document_id},
     )
-    return presenter.success(extraction)
+    return presenter.success(extraction, meta=lifecycle.meta())
 
 
 @router.post("/kg/write", status_code=200)
@@ -611,7 +663,8 @@ async def kg_write(
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.write_kg(request)
     get_audit_trail().record(
@@ -620,7 +673,7 @@ async def kg_write(
         resource="knowledge_graph",
         metadata={"nodes": len(request.nodes), "edges": len(request.edges)},
     )
-    return presenter.success(result)
+    return presenter.success(result, meta=lifecycle.meta())
 
 
 @router.get("/audit/logs", status_code=200)
@@ -630,7 +683,8 @@ async def list_audit_logs(
         secure_endpoint(scopes=[Scopes.AUDIT_READ], endpoint="GET /v1/audit/logs")
     ),
     presenter: PresenterDep,
-) -> JSONResponse:
+    lifecycle: LifecycleDep,
+) -> Response:
     logs = get_audit_trail().list(tenant_id=security.tenant_id, limit=limit)
     data = [
         {
@@ -643,4 +697,4 @@ async def list_audit_logs(
         }
         for entry in logs
     ]
-    return presenter.success(data, meta={"total": len(data)})
+    return presenter.success(data, meta=lifecycle.meta({"total": len(data)}))

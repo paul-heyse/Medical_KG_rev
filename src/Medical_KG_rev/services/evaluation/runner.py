@@ -16,6 +16,7 @@ from prometheus_client import Gauge  # type: ignore
 from .metrics import evaluate_ranking
 from .test_sets import QueryJudgment, QueryType, TestSet
 
+
 EVALUATION_RECALL = Gauge(
     "medicalkg_retrieval_recall_at_k",
     "Recall@K observed during evaluation runs",
@@ -214,17 +215,17 @@ def _mean(values: Sequence[float]) -> float:
 
 def _std(values: Sequence[float]) -> float:
     return stdev(values) if len(values) > 1 else 0.0
-
-
-def mean_metric(values: Sequence[Mapping[str, float]], metric: str) -> float:
-    collected = [payload.get(metric, 0.0) for payload in values]
-    return mean(collected) if collected else 0.0
-
-
-__all__ = [
-    "EvaluationConfig",
-    "EvaluationResult",
-    "EvaluationRunner",
-    "MetricSummary",
-    "mean_metric",
-]
++
++
++def mean_metric(values: Sequence[Mapping[str, float]], metric: str) -> float:
++    collected = [payload.get(metric, 0.0) for payload in values]
++    return mean(collected) if collected else 0.0
++
++
++__all__ = [
++    "EvaluationConfig",
++    "EvaluationResult",
++    "EvaluationRunner",
++    "MetricSummary",
++    "mean_metric",
++]

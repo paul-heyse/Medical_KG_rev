@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from time import perf_counter
 from typing import Any
 
@@ -25,6 +25,7 @@ from ..adapters.plugins.models import AdapterRequest
 from ..kg import ShaclValidator, ValidationError
 from ..auth.scopes import Scopes
 from ..observability.metrics import observe_job_duration
+from ..config.settings import get_settings
 from ..orchestration import (
     HaystackRetriever,
     JobLedger,
@@ -44,12 +45,13 @@ from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
 from ..services.embedding.policy import (
     NamespaceAccessPolicy,
     NamespacePolicySettings,
-    StandardNamespacePolicy,
+    build_policy_chain,
 )
 from ..services.embedding.persister import (
     EmbeddingPersister,
     PersistenceContext,
-    VectorStorePersister,
+    PersisterRuntimeSettings,
+    build_persister,
 )
 from ..services.embedding.registry import EmbeddingModelRegistry
 from ..services.embedding.telemetry import EmbeddingTelemetry, StandardEmbeddingTelemetry
@@ -86,6 +88,12 @@ from .models import (
     KnowledgeGraphWriteRequest,
     KnowledgeGraphWriteResult,
     NamespaceInfo,
+    NamespacePolicyDiagnosticsView,
+    NamespacePolicyHealthView,
+    NamespacePolicyMetricsView,
+    NamespacePolicySettingsView,
+    NamespacePolicyStatus,
+    NamespacePolicyUpdateRequest,
     NamespaceValidationResponse,
     NamespaceValidationResult,
     OperationStatus,
@@ -135,6 +143,7 @@ class GatewayService:
     namespace_policy: NamespaceAccessPolicy | None = None
     namespace_policy_settings: NamespacePolicySettings | None = None
     embedding_persister: EmbeddingPersister | None = None
+    embedding_persister_settings: PersisterRuntimeSettings | None = None
     embedding_telemetry: EmbeddingTelemetry | None = None
 
     def __post_init__(self) -> None:
@@ -147,25 +156,44 @@ class GatewayService:
         if self.embedding_telemetry is None:
             self.embedding_telemetry = StandardEmbeddingTelemetry()
         if self.namespace_policy is None:
-            if self.namespace_registry is None:
-                raise RuntimeError("Namespace registry not initialised")
             if self.namespace_policy_settings is None:
                 self.namespace_policy_settings = NamespacePolicySettings()
-            policy_settings = self.namespace_policy_settings
-            self.namespace_policy = StandardNamespacePolicy(
-                self.namespace_registry,
-                telemetry=self.embedding_telemetry,
-                settings=policy_settings,
-            )
+            self.namespace_policy = self._build_namespace_policy()
+        self.namespace_policy_settings = self.namespace_policy.settings
         if self.embedding_persister is None:
             router = getattr(self.embedding_registry, "storage_router", None)
             if router is None:
                 raise RuntimeError("Embedding registry missing storage router")
-            self.embedding_persister = VectorStorePersister(router, telemetry=self.embedding_telemetry)
+            settings = self.embedding_persister_settings or PersisterRuntimeSettings()
+            self.embedding_persister = build_persister(
+                router,
+                telemetry=self.embedding_telemetry,
+                settings=settings,
+            )
+            self.embedding_persister_settings = settings
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _require_namespace_policy(self) -> NamespaceAccessPolicy:
+        if self.namespace_registry is None or self.namespace_policy is None:
+            raise RuntimeError("Namespace policy not initialised")
+        return self.namespace_policy
+
+    def _build_namespace_policy(self) -> NamespaceAccessPolicy:
+        if self.namespace_registry is None:
+            if self.embedding_registry is None:
+                raise RuntimeError("Namespace registry not initialised")
+            self.namespace_registry = self.embedding_registry.namespace_registry
+        settings = self.namespace_policy_settings or NamespacePolicySettings()
+        policy = build_policy_chain(
+            self.namespace_registry,
+            telemetry=self.embedding_telemetry,
+            settings=settings,
+            dry_run=settings.dry_run,
+        )
+        return policy
+
     def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
         payload = problem.to_response()
         extensions = payload.pop("extra", {})
@@ -857,6 +885,70 @@ class GatewayService:
             for namespace, config in entries
         ]
 
+    def namespace_policy_status(self) -> NamespacePolicyStatus:
+        policy = self._require_namespace_policy()
+        settings_view = NamespacePolicySettingsView(**asdict(policy.settings))
+        return NamespacePolicyStatus(
+            settings=settings_view,
+            stats=dict(policy.stats()),
+            operational=dict(policy.operational_metrics()),
+        )
+
+    def update_namespace_policy(
+        self, updates: NamespacePolicyUpdateRequest
+    ) -> NamespacePolicyStatus:
+        policy = self._require_namespace_policy()
+        current = asdict(policy.settings)
+        changes: dict[str, object] = {}
+        if updates.cache_ttl_seconds is not None:
+            value = float(updates.cache_ttl_seconds)
+            changes["cache_ttl_seconds"] = value
+            current["cache_ttl_seconds"] = value
+        if updates.max_cache_entries is not None:
+            value = int(updates.max_cache_entries)
+            changes["max_cache_entries"] = value
+            current["max_cache_entries"] = value
+        dry_run_changed = False
+        if updates.dry_run is not None and updates.dry_run != policy.settings.dry_run:
+            current["dry_run"] = bool(updates.dry_run)
+            dry_run_changed = True
+
+        if dry_run_changed:
+            self.namespace_policy_settings = NamespacePolicySettings(**current)
+            self.namespace_policy = self._build_namespace_policy()
+            self.namespace_policy_settings = self.namespace_policy.settings
+        elif changes:
+            policy.update_settings(**changes)
+            self.namespace_policy_settings = policy.settings
+
+        return self.namespace_policy_status()
+
+    def namespace_policy_diagnostics(self) -> NamespacePolicyDiagnosticsView:
+        policy = self._require_namespace_policy()
+        snapshot = policy.debug_snapshot()
+        settings_view = NamespacePolicySettingsView(**asdict(policy.settings))
+        cache_entries = [
+            f"{namespace}:{tenant}:{scope}"
+            for namespace, tenant, scope in snapshot.get("cache_keys", [])
+        ]
+        return NamespacePolicyDiagnosticsView(
+            settings=settings_view,
+            cache_keys=cache_entries,
+            stats=dict(snapshot.get("stats", {})),
+        )
+
+    def namespace_policy_health(self) -> NamespacePolicyHealthView:
+        policy = self._require_namespace_policy()
+        return NamespacePolicyHealthView(**policy.health_status())
+
+    def namespace_policy_metrics(self) -> NamespacePolicyMetricsView:
+        policy = self._require_namespace_policy()
+        return NamespacePolicyMetricsView(metrics=dict(policy.operational_metrics()))
+
+    def invalidate_namespace_policy_cache(self, namespace: str | None = None) -> None:
+        policy = self._require_namespace_policy()
+        policy.invalidate(namespace)
+
     def validate_namespace_texts(
         self,
         *,
@@ -1315,11 +1407,25 @@ def get_gateway_service() -> GatewayService:
             _resilience_loader,
             _stage_factory,
         )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
         _service = GatewayService(
             events=events,
             orchestrator=_orchestrator,
             ledger=_ledger,
             adapter_manager=adapter_manager,
+            namespace_policy_settings=policy_settings,
+            embedding_persister_settings=persister_settings,
         )
     return _service
 from ..services.mineru import MineruGpuUnavailableError, MineruOutOfMemoryError

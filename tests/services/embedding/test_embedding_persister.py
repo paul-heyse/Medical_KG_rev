@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
 from Medical_KG_rev.embeddings.storage import StorageRouter
 from Medical_KG_rev.services.embedding.persister import (
@@ -8,7 +10,9 @@ from Medical_KG_rev.services.embedding.persister import (
     HybridPersister,
     MockPersister,
     PersistenceContext,
+    PersisterRuntimeSettings,
     VectorStorePersister,
+    build_persister,
 )
 from Medical_KG_rev.services.embedding.telemetry import StandardEmbeddingTelemetry, TelemetrySettings
 
@@ -107,3 +111,46 @@ def test_hybrid_persister_routes_by_kind() -> None:
     assert report.persisted == 2
     assert dense_persister.persisted_records == [dense]
     assert sparse_persister.persisted_records == [sparse]
+
+
+def test_configure_cache_limit_controls_eviction() -> None:
+    router = StorageRouter()
+    persister = VectorStorePersister(router)
+    first = _sample_record("rec-cache-1")
+    second = _sample_record("rec-cache-2")
+
+    persister.persist_batch([first], _context())
+    persister.configure(cache_limit=1)
+    persister.persist_batch([second], _context())
+
+    assert persister.retrieve(ids=[first.id]) == []
+    assert persister.retrieve(ids=[second.id]) == [second]
+    with pytest.raises(ValueError):
+        persister.configure(cache_limit=-1)
+
+
+def test_build_persister_from_settings_vector_store() -> None:
+    router = StorageRouter()
+    settings = PersisterRuntimeSettings(backend="vector_store", cache_limit=16)
+    persister = build_persister(router, settings=settings)
+
+    assert isinstance(persister, VectorStorePersister)
+
+
+def test_build_persister_hybrid_instantiates_children() -> None:
+    router = StorageRouter()
+    settings = PersisterRuntimeSettings(
+        backend="hybrid",
+        hybrid_backends={"single_vector": "vector_store", "sparse": "database"},
+    )
+    persister = build_persister(router, settings=settings)
+
+    assert isinstance(persister, HybridPersister)
+
+
+def test_build_persister_invalid_backend_raises() -> None:
+    router = StorageRouter()
+    settings = PersisterRuntimeSettings(backend="unknown")
+
+    with pytest.raises(ValueError):
+        build_persister(router, settings=settings)

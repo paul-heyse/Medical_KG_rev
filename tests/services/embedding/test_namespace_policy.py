@@ -11,6 +11,7 @@ from Medical_KG_rev.services.embedding.policy import (
     NamespaceAccessDecision,
     NamespacePolicySettings,
     StandardNamespacePolicy,
+    build_policy_chain,
 )
 from Medical_KG_rev.services.embedding.telemetry import StandardEmbeddingTelemetry, TelemetrySettings
 
@@ -94,3 +95,20 @@ def test_custom_policy_delegates(registry: EmbeddingNamespaceRegistry, allowed: 
     policy = CustomNamespacePolicy(registry, resolver)
     decision = policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
     assert decision.allowed is allowed
+
+
+def test_policy_update_settings_clears_cache(registry: EmbeddingNamespaceRegistry) -> None:
+    policy = StandardNamespacePolicy(registry)
+    policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
+    snapshot = policy.debug_snapshot()
+    assert snapshot["cache_keys"], "expected cached decisions"
+
+    policy.update_settings(cache_ttl_seconds=0)
+    assert not policy.debug_snapshot()["cache_keys"]
+
+
+def test_build_policy_chain_respects_dry_run(registry: EmbeddingNamespaceRegistry) -> None:
+    settings = NamespacePolicySettings(cache_ttl_seconds=5, dry_run=True)
+    policy = build_policy_chain(registry, settings=settings, dry_run=settings.dry_run)
+
+    assert isinstance(policy, DryRunNamespacePolicy)

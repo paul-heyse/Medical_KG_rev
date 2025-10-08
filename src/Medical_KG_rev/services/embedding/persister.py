@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Dict, Mapping, MutableMapping, Sequence
+from typing import Any, Dict, Mapping, MutableMapping, Sequence
 
 import structlog
 
@@ -42,6 +42,29 @@ class PersistenceReport:
 
     def record_error(self, message: str) -> None:
         self.errors.append(message)
+
+
+@dataclass(slots=True)
+class PersisterRuntimeSettings:
+    """Runtime configuration describing how persistence should behave."""
+
+    backend: str = "vector_store"
+    cache_limit: int = 256
+    hybrid_backends: Mapping[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> "PersisterRuntimeSettings":
+        if not payload:
+            return cls()
+        data = dict(payload)
+        backend = str(data.get("backend", "vector_store"))
+        cache_limit = int(data.get("cache_limit", 256))
+        hybrid = data.get("hybrid_backends", {})
+        if isinstance(hybrid, Mapping):
+            hybrid_backends = {str(key): str(value) for key, value in hybrid.items()}
+        else:
+            hybrid_backends = {}
+        return cls(backend=backend, cache_limit=cache_limit, hybrid_backends=hybrid_backends)
 
 
 class EmbeddingPersister(ABC):
@@ -117,6 +140,14 @@ class EmbeddingPersister(ABC):
         }
 
     def configure(self, **kwargs: object) -> None:
+        if "cache_limit" in kwargs:
+            limit = int(kwargs["cache_limit"])
+            if limit < 0:
+                raise ValueError("cache_limit must be non-negative")
+            self._cache_limit = limit
+            while len(self._recent) > self._cache_limit and self._recent:
+                evicted = self._recent.pop()
+                self._cache.pop(evicted, None)
         if kwargs:
             self._logger.info("persister.configure", **kwargs)
 
@@ -226,6 +257,50 @@ class HybridPersister(EmbeddingPersister):
                 self._remember(record)
 
 
+def _build_backend(
+    backend: str,
+    router: StorageRouter,
+    *,
+    telemetry: EmbeddingTelemetry | None = None,
+) -> EmbeddingPersister:
+    backend = backend.lower()
+    if backend == "vector_store":
+        return VectorStorePersister(router, telemetry=telemetry)
+    if backend == "database":
+        return DatabasePersister(telemetry=telemetry)
+    if backend == "dry_run":
+        return DryRunPersister(telemetry=telemetry)
+    raise ValueError(f"Unknown persister backend '{backend}'")
+
+
+def build_persister(
+    router: StorageRouter,
+    *,
+    telemetry: EmbeddingTelemetry | None = None,
+    settings: PersisterRuntimeSettings | Mapping[str, Any] | None = None,
+) -> EmbeddingPersister:
+    """Instantiate a persister based on runtime configuration."""
+
+    resolved = (
+        settings
+        if isinstance(settings, PersisterRuntimeSettings)
+        else PersisterRuntimeSettings.from_mapping(settings)
+    )
+
+    if resolved.backend.lower() == "hybrid":
+        if not resolved.hybrid_backends:
+            raise ValueError("Hybrid persister requires 'hybrid_backends' mapping")
+        mapping: Dict[str, EmbeddingPersister] = {}
+        for kind, backend in resolved.hybrid_backends.items():
+            mapping[kind] = _build_backend(backend, router, telemetry=telemetry)
+        persister: EmbeddingPersister = HybridPersister(mapping, telemetry=telemetry)
+    else:
+        persister = _build_backend(resolved.backend, router, telemetry=telemetry)
+
+    persister.configure(cache_limit=resolved.cache_limit)
+    return persister
+
+
 __all__ = [
     "EmbeddingPersister",
     "VectorStorePersister",
@@ -233,6 +308,8 @@ __all__ = [
     "DryRunPersister",
     "MockPersister",
     "HybridPersister",
+    "PersisterRuntimeSettings",
+    "build_persister",
     "PersistenceContext",
     "PersistenceReport",
 ]

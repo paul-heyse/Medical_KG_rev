@@ -147,7 +147,7 @@ class NamespaceAccessPolicy(ABC):
         """Return an introspection snapshot useful during debugging."""
 
         return {
-            "settings": self._settings.__dict__.copy(),
+            "settings": asdict(self._settings),
             "cache_keys": [key for key in self._cache],
             "stats": self.stats(),
         }

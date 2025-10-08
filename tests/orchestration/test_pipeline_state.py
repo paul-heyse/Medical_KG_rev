@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import base64
-import json
 import zlib
 from typing import Iterable
 
 import pytest
-
-from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
-from Medical_KG_rev.chunking.models import Chunk
-from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+from Medical_KG_rev.orchestration.stages import contracts as state_contracts
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
     EmbeddingVector,
@@ -21,11 +17,13 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     StageContext,
 )
 
+AdapterRequest = state_contracts.AdapterRequest
+Chunk = state_contracts.Chunk
+Document = state_contracts.Document
+
 
 def _build_document() -> Document:
-    block = Block(id="b1", type=BlockType.PARAGRAPH, text="Hello world")
-    section = Section(id="s1", title="Section", blocks=(block,))
-    return Document(id="doc-1", source="test", sections=(section,), metadata={})
+    return Document(id="doc-1", source="test", sections=(), metadata={})
 
 
 def _sample_state(payload: dict[str, object] | None = None) -> PipelineState:
@@ -33,7 +31,7 @@ def _sample_state(payload: dict[str, object] | None = None) -> PipelineState:
     request = AdapterRequest(
         tenant_id="tenant",
         correlation_id="corr",
-        domain=AdapterDomain.BIOMEDICAL,
+        domain="biomedical",
         parameters={},
     )
     return PipelineState.initialise(context=ctx, adapter_request=request, payload=payload or {})
@@ -122,7 +120,7 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     state.apply_stage_output("ingest", "ingest", [{"foo": 1}])
     state.record_stage_metrics("ingest", stage_type="ingest", attempts=1)
     payload = state.serialise()
-    encoded = base64.b64encode(zlib.compress(json.dumps(payload).encode("utf-8"))).decode("ascii")
+    encoded = base64.b64encode(zlib.compress(state_contracts.orjson.dumps(payload))).decode("ascii")
 
     recovered = PipelineState.recover(
         encoded,
@@ -132,6 +130,7 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     assert recovered.schema_version == payload["version"]
     assert recovered.metadata == state.metadata
     assert "ingest" in recovered.stage_results
+    assert recovered.serialise()["pdf"] == payload["pdf"]
 
 
 def test_diff_reports_changes_between_states() -> None:
@@ -197,6 +196,40 @@ def test_snapshot_and_restore_rollback_changes() -> None:
     assert isinstance(original, PipelineStateSnapshot)
     assert state.require_payloads()[0]["id"] == "a"
     assert "flag" not in state.metadata
+
+
+def test_pdf_gate_dependencies_and_serialisation() -> None:
+    state = _sample_state()
+    with pytest.raises(PipelineStateValidationError):
+        state.validate_transition("pdf-gate")
+
+    state.apply_stage_output("pdf-download", "pdf-download", ["asset-1", "asset-2"])
+    state.validate_transition("pdf-gate")
+
+    class _GateDecision:
+        allowed = True
+        reason = "manual-override"
+        ledger_reference = "ledger-123"
+
+    state.apply_stage_output("pdf-gate", "pdf-gate", _GateDecision())
+    snapshot = state.serialise()
+    assert snapshot["pdf"]["downloads"] == ["asset-1", "asset-2"]
+    assert snapshot["pdf"]["gate_open"] is True
+    assert snapshot["pdf"]["ledger_reference"] == "ledger-123"
+
+
+def test_persist_with_retry_invokes_callback_until_success() -> None:
+    state = _sample_state()
+    attempts: list[int] = []
+
+    def _persist(payload: dict[str, object]) -> None:
+        attempts.append(1)
+        if len(attempts) < 2:
+            raise RuntimeError("transient failure")
+        assert "pdf" in payload
+
+    state.persist_with_retry(_persist)
+    assert len(attempts) == 2
 
 
 def test_tenant_scope_enforcement() -> None:

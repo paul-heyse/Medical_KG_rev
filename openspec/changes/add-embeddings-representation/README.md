@@ -1,8 +1,8 @@
 # Standardized Embeddings & Representation - Change Proposal
 
-**Change ID**: `add-embeddings-representation`  
-**Status**: Ready for Review  
-**Created**: 2025-10-08  
+**Change ID**: `add-embeddings-representation`
+**Status**: Ready for Review
+**Created**: 2025-10-08
 **Validation**: ✅ PASS (`openspec validate --strict`)
 
 ---
@@ -74,6 +74,7 @@ embeddings = openai.Embedding.create(
 ```
 
 **Benefits**:
+
 - GPU-only with explicit health checks
 - OpenAI-compatible API (5 lines vs 50+ lines)
 - Consistent Qwen3 tokenization (prevents overflow)
@@ -101,6 +102,7 @@ opensearch.index(
 ```
 
 **Benefits**:
+
 - Document-side expansion as default (80% of recall gains, simpler ops)
 - Query-side expansion opt-in
 - OpenSearch `rank_features` enables BM25+SPLADE fusion
@@ -135,6 +137,7 @@ result = embed_service.embed(
 ```
 
 **Benefits**:
+
 - Experiment with new models without breaking existing code
 - A/B test embeddings (route 10% traffic, compare Recall@K)
 - Graceful migration (old namespaces remain queryable)
@@ -195,6 +198,7 @@ distances, indices = index.search(query_embedding, k)
 ```
 
 **Benefits**:
+
 - GPU-accelerated KNN (sub-50ms P95 for 10M vectors)
 - Memory-mapped index loading (fast startup)
 - Incremental indexing (no full rebuild required)
@@ -232,6 +236,7 @@ chunks:
 ```
 
 **Benefits**:
+
 - Enables BM25+SPLADE hybrid queries without separate index
 - Efficient storage (only top-K terms stored)
 - Native OpenSearch support
@@ -241,10 +246,11 @@ chunks:
 ## Breaking Changes
 
 1. **Embedding API Signature**: Requires `namespace` parameter
+
    ```python
    # Before
    embeddings = embed(texts=["..."])
-   
+
    # After
    embeddings = embed(
        texts=["..."],
@@ -253,6 +259,7 @@ chunks:
    ```
 
 2. **GPU Fail-Fast**: Jobs fail immediately if GPU unavailable (no CPU fallback)
+
    ```python
    # Job ledger state
    {
@@ -267,6 +274,7 @@ chunks:
    - Neo4j vector index is opt-in for graph-side KNN queries
 
 4. **OpenSearch rank_features**: Sparse signals require mapping update
+
    ```bash
    curl -X PUT "opensearch:9200/chunks/_mapping" -d '{
      "properties": {
@@ -318,7 +326,7 @@ namespaces:
     max_tokens: 512
     tokenizer: "Qwen/Qwen2.5-Coder-1.5B"
     enabled: true
-    
+
   sparse.splade_v3.400.v1:
     provider: pyserini
     endpoint: "http://pyserini-service:8002"
@@ -630,12 +638,14 @@ spec:
 ### Trigger Conditions
 
 **Automated**:
+
 - Embedding latency P95 >2s for >10 minutes
 - GPU failure rate >20% for >5 minutes
 - Token overflow rate >15% for >15 minutes
 - vLLM service unavailable >5 minutes
 
 **Manual**:
+
 - Embedding quality degradation
 - GPU memory leaks (OOM)
 - vLLM startup failures
@@ -687,6 +697,7 @@ async def embed_texts(
 ```
 
 **Storage-Level Isolation**:
+
 - FAISS indices partitioned by tenant_id
 - OpenSearch sparse signals include `tenant_id` field
 - Neo4j metadata tagged with tenant_id
@@ -698,7 +709,7 @@ namespaces:
   single_vector.qwen3.4096.v1:
     allowed_scopes: ["embed:read", "embed:write"]
     allowed_tenants: ["all"]  # Public
-    
+
   single_vector.custom_model.2048.v1:
     allowed_scopes: ["embed:admin"]
     allowed_tenants: ["tenant-123"]  # Private
@@ -709,12 +720,14 @@ namespaces:
 ## Testing Strategy
 
 **Test Coverage**:
+
 - 60+ unit tests (vLLM client, Pyserini wrapper, namespace registry, GPU enforcer)
 - 30 integration tests (end-to-end embedding + storage)
 - Performance tests (throughput, latency, GPU utilization)
 - Contract tests (REST/GraphQL API compatibility)
 
 **Quality Validation**:
+
 - Codebase reduction: 25% (530 → 400 lines) ✅
 - GPU enforcement: 100% (zero CPU fallbacks) ✅
 - Embedding throughput: ≥1000 emb/sec (vLLM) ✅
@@ -725,18 +738,21 @@ namespaces:
 ## Success Criteria
 
 ### Code Quality
+
 - ✅ 25% codebase reduction (530 → 400 lines)
 - ✅ Test coverage ≥90%
 - ✅ Zero legacy imports
 - ✅ Lint clean (0 ruff/mypy errors)
 
 ### Functionality
+
 - ✅ vLLM serving at 1000+ emb/sec
 - ✅ Pyserini SPLADE produces `rank_features`
 - ✅ GPU fail-fast 100% enforcement
 - ✅ Multi-namespace registry supports 3+ namespaces
 
 ### Performance
+
 - ✅ Dense throughput: ≥1000 emb/sec
 - ✅ Sparse throughput: ≥500 docs/sec
 - ✅ FAISS KNN: P95 <50ms (10M vectors)
@@ -747,6 +763,7 @@ namespaces:
 ## Timeline
 
 **6 Weeks Total**:
+
 - **Week 1-2**: Build (vLLM setup, Pyserini wrapper, namespace registry, atomic deletions)
 - **Week 3-4**: Integration testing (all namespaces, GPU fail-fast, storage migration)
 - **Week 5-6**: Production deployment (deploy, monitor, stabilize, document)
@@ -770,12 +787,12 @@ torch>=2.1.0  # CUDA 12.1+
 
 ## Benefits
 
-✅ **Codebase Reduction**: 25% (530 → 400 lines), clearer architecture  
-✅ **GPU Enforcement**: 100% fail-fast, zero silent CPU fallbacks  
-✅ **Performance**: 1000+ emb/sec (vLLM), 10x faster than legacy  
-✅ **Standardization**: Single endpoint per representation type  
-✅ **Experimentation**: Multi-namespace enables A/B testing  
-✅ **Storage Clarity**: FAISS (dense), OpenSearch rank_features (sparse)  
+✅ **Codebase Reduction**: 25% (530 → 400 lines), clearer architecture
+✅ **GPU Enforcement**: 100% fail-fast, zero silent CPU fallbacks
+✅ **Performance**: 1000+ emb/sec (vLLM), 10x faster than legacy
+✅ **Standardization**: Single endpoint per representation type
+✅ **Experimentation**: Multi-namespace enables A/B testing
+✅ **Storage Clarity**: FAISS (dense), OpenSearch rank_features (sparse)
 
 ---
 

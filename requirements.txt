@@ -1,2 +1,9 @@
 -e .[chunking,reranking]
 mineru[gpu]>=2.5.4
+langchain-text-splitters==0.2.0
+llama-index-core==0.10.0
+scispacy==0.5.4
+syntok==1.4.4
+unstructured[local-inference]==0.12.0
+tiktoken==0.6.0
+transformers==4.38.0

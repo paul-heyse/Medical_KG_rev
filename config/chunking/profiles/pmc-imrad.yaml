@@ -1,0 +1,21 @@
+name: pmc-imrad
+domain: literature
+chunker_type: langchain_recursive
+target_tokens: 450
+overlap_tokens: 50
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: huggingface
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+  - exclude_references
+  - deduplicate_page_furniture
+metadata:
+  intent_hints:
+    Abstract: narrative
+    Introduction: narrative
+    Methods: narrative
+    Results: outcome
+    Discussion: narrative

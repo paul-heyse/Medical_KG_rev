@@ -405,36 +405,60 @@ stages:
 ```python
 # src/Medical_KG_rev/services/haystack/embedder.py
 class HaystackEmbedder(EmbedStage):
-    def __init__(self, vllm_endpoint: str, model_name: str):
-        # Fail-fast GPU check
-        gpu_manager = GpuManager(min_memory_mb=8192)
-        if not gpu_manager.is_available():
-            raise GpuNotAvailableError(
-                f"GPU required for embedding service (Qwen {model_name}). "
-                f"No CUDA devices found. This service will not start."
-            )
+    """
+    Client wrapper for vLLM embedding service running in separate Docker container.
 
+    Architecture:
+    - vLLM service runs in Docker with GPU (see ops/Dockerfile.vllm)
+    - This client makes HTTP requests to vLLM's OpenAI-compatible API
+    - GPU availability is checked by vLLM service, not this client
+    - Service-side failures propagate as HTTP 503 errors
+    """
+    def __init__(self, vllm_endpoint: str, model_name: str):
+        self.vllm_endpoint = vllm_endpoint
         self.embedder = OpenAIDocumentEmbedder(
             api_base_url=vllm_endpoint,
             model=model_name,
             api_key="EMPTY"  # vLLM doesn't require auth
         )
-        logger.info(f"HaystackEmbedder initialized with GPU-backed vLLM endpoint: {vllm_endpoint}")
+        logger.info(f"HaystackEmbedder initialized with vLLM endpoint: {vllm_endpoint}")
+
+        # Verify vLLM service is reachable and GPU-ready
+        self._verify_service_health()
+
+    def _verify_service_health(self):
+        """Check vLLM service health endpoint before accepting requests."""
+        try:
+            response = requests.get(f"{self.vllm_endpoint}/health", timeout=5)
+            if response.status_code == 503:
+                raise GpuNotAvailableError(
+                    f"vLLM service at {self.vllm_endpoint} reports GPU unavailable. "
+                    f"Service must be running in Docker with GPU access."
+                )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise ServiceUnavailableError(
+                f"Cannot reach vLLM service at {self.vllm_endpoint}: {e}"
+            ) from e
 
     def execute(self, ctx: StageContext, chunks: list[Chunk]) -> EmbeddingBatch:
         # Convert to Haystack documents
         haystack_docs = [Document(content=chunk.text, meta={"chunk_id": chunk.chunk_id}) for chunk in chunks]
 
-        # Embed with GPU acceleration
+        # Call vLLM service (runs in Docker with GPU)
         try:
             result = self.embedder.run(documents=haystack_docs)
         except Exception as e:
-            # If GPU OOM, fail loudly
+            # vLLM service errors propagate as HTTP errors
+            if "503" in str(e) or "GPU" in str(e):
+                raise GpuNotAvailableError(
+                    f"vLLM service GPU unavailable during embedding: {e}"
+                ) from e
             if "CUDA out of memory" in str(e):
-                raise GpuOutOfMemoryError(f"GPU OOM during embedding: {e}") from e
+                raise GpuOutOfMemoryError(f"vLLM service GPU OOM: {e}") from e
             raise
 
-        return EmbeddingBatch(embeddings=result["embeddings"], metadata={"gpu_used": True})
+        return EmbeddingBatch(embeddings=result["embeddings"], metadata={"vllm_service": self.vllm_endpoint})
 ```
 
 ---

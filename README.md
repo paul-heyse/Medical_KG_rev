@@ -10,13 +10,16 @@
 
 ## Overview
 
-Medical_KG_rev is a production-ready, enterprise-grade platform that unifies fragmented biomedical data from 10+ diverse sources into a coherent knowledge graph with advanced retrieval capabilities. The system addresses the critical challenge faced by healthcare researchers, pharmaceutical companies, and medical informaticists: **data fragmentation across incompatible APIs, formats, and standards**.
+Medical_KG_rev is a sophisticated multi-protocol API gateway and orchestration system that unifies fragmented biomedical data from 10+ diverse sources into a coherent knowledge graph with advanced retrieval capabilities. The system addresses the critical challenge faced by healthcare researchers, pharmaceutical companies, and medical informaticists: **data fragmentation across incompatible APIs, formats, and standards**.
+
+**Recent Updates**: The system is currently implementing a coordinator pattern architecture to decompose monolithic services and resolve PDF processing pipeline barriers for end-to-end testing capabilities.
 
 ### Key Features
 
 - 🔌 **Multi-Protocol API**: Single backend accessible via REST (OpenAPI/JSON:API/OData), GraphQL, gRPC, SOAP, and AsyncAPI/SSE
+- 🏗️ **Coordinator Pattern Architecture**: Decomposed monolithic services into focused coordinators (IngestionCoordinator, EmbeddingCoordinator, etc.)
 - 📊 **Federated Data Model**: Unified Intermediate Representation with domain-specific overlays (medical/FHIR, financial/XBRL, legal/LegalDocML)
-- 🔌 **Plug-in Adapters**: YAML-based connector SDK for 11+ biomedical data sources
+- 🔌 **Plug-in Adapters**: YAML-based connector SDK for 11+ biomedical data sources with PDF processing capabilities
 - 🚀 **GPU-Accelerated AI**: PDF parsing (MinerU), embeddings (SPLADE + Qwen-3), and LLM extraction
 - 🔍 **Multi-Strategy Retrieval**: Hybrid search combining BM25, SPLADE, and dense vectors with fusion ranking
 - 🔐 **Enterprise Security**: OAuth 2.0 with JWT, multi-tenant isolation, scope-based authorization, rate limiting
@@ -256,13 +259,15 @@ eventSource.addEventListener('jobs.progress', (e) => {
 
 - **Language**: Python 3.12 with strict type hints
 - **API Frameworks**: FastAPI, Strawberry GraphQL, gRPC
-- **Data Processing**: Apache Kafka, Pydantic v2
-- **ML/AI**: PyTorch, Transformers, SPLADE, Qwen-3, MinerU
+- **Architecture Patterns**: Coordinator pattern with dependency injection, plugin-based orchestration stages
+- **Data Processing**: Apache Kafka, Pydantic v2, Typed Pipeline State
+- **ML/AI**: PyTorch, Transformers, SPLADE, Qwen-3, MinerU (PDF processing)
 - **Storage**: Neo4j 5.x (graph), OpenSearch (search), FAISS (vectors), MinIO/S3 (objects), Redis (cache)
 - **Auth**: OAuth 2.0 with JWT (python-jose)
-- **Monitoring**: Prometheus, OpenTelemetry, Grafana, Jaeger, Sentry
+- **Monitoring**: Prometheus, OpenTelemetry, Grafana, Jaeger, Sentry, structlog
 - **Deployment**: Docker Compose, Kubernetes
 - **Testing**: pytest, Schemathesis, k6, GraphQL Inspector, Buf
+- **Modern Libraries**: httpx, tenacity, pybreaker, cloudevents, aiolimiter
 
 ---
 
@@ -425,3 +430,24 @@ Built with support from the biomedical research community and powered by:
 ---
 
 **Medical_KG_rev** - Unifying biomedical knowledge, one API at a time.
+
+---
+
+## Development Status
+
+**Current Focus**: The project is actively implementing the coordinator pattern architecture and resolving PDF processing pipeline barriers to enable comprehensive end-to-end testing. Key initiatives include:
+
+- **Coordinator Pattern**: Decomposing monolithic GatewayService into focused coordinators (IngestionCoordinator, EmbeddingCoordinator, etc.)
+- **PDF Processing Pipeline**: Implementing download/gate stages and OpenAlex PDF retrieval for full MinerU integration
+- **Modern Library Integration**: Upgrading to httpx, pydantic v2, structlog, tenacity, and other modern Python libraries
+- **Legacy Code Decommissioning**: Systematically removing monolithic components and outdated patterns
+
+**Active OpenSpec Changes**:
+
+- `refactor-gateway-service-coordinators` - Coordinator pattern implementation
+- `add-pluggable-orchestration-stages` - Dynamic stage discovery for PDF processing
+- `decompose-biomedical-adapter-monolith` - Modular adapter architecture with PDF support
+- `add-typed-pipeline-state` - Strongly-typed state management
+- `encapsulate-dagster-orchestration` - Clean orchestration separation
+
+For detailed progress, see [openspec/changes/](openspec/changes/) and [COMPREHENSIVE_CODEBASE_DOCUMENTATION.md](COMPREHENSIVE_CODEBASE_DOCUMENTATION.md).

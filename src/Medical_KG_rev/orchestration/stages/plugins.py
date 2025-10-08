@@ -15,11 +15,14 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import suppress
 from typing import Any, Callable, Iterable, Literal, Sequence
+from collections import defaultdict
+from typing import Any, Callable, Iterable, Sequence
 
 import orjson
 import pluggy
 import structlog
 from attrs import define, evolve, field
+from attrs import define, field
 from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, ConfigDict, Field
 from structlog.stdlib import BoundLogger
@@ -469,6 +472,8 @@ class StagePluginManager:
         self._registry = aggregated
         self._states = states
         self._stage_index = {name: state.stage_types for name, state in states.items()}
+                aggregated[entry.metadata.stage_type].append(entry)
+        self._registry = aggregated
         self._logger.debug(
             "stage.plugin.registry_refreshed",
             stage_types=sorted(self._registry),
@@ -569,4 +574,5 @@ class _StageRegistrationState:
                 self.status = "initialized"
         self.stage_type = registration.metadata.stage_type
         self.stage_types.add(registration.metadata.stage_type)
+        return StagePluginRegistration(metadata=metadata, builder=builder)
 

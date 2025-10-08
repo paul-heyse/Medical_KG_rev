@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping
-from uuid import uuid4
 
 import structlog
 from Medical_KG_rev.adapters import get_plugin_manager
@@ -15,9 +14,13 @@ from Medical_KG_rev.chunking.exceptions import (
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+from Medical_KG_rev.orchestration.dagster.runtime import StageFactory, build_stage_factory
+from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
 from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import ChunkStage, StageContext
+from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 
 logger = structlog.get_logger(__name__)
 
@@ -51,47 +54,33 @@ class ChunkingService:
         self._stage_definition = stage_definition or StageDefinition(name="chunk", type="chunk")
         if stage_factory is None:
             manager = adapter_manager or get_plugin_manager()
+            pipeline_resource = create_default_pipeline_resource()
+            job_ledger = JobLedger()
+            stage_factory = build_stage_factory(manager, pipeline_resource, job_ledger)
             plugin_manager = create_stage_plugin_manager(manager)
             stage_factory = StageFactory(plugin_manager)
         self._stage_factory = stage_factory
 
-    def chunk(self, *args: Any, **kwargs: Any) -> list[Chunk]:
+    def chunk(self, command: ChunkCommand) -> list[Chunk]:
         """Chunk raw text into retrieval-ready spans."""
 
-        tenant_id = kwargs.pop("tenant_id", None)
-        if kwargs:
-            unexpected = ", ".join(sorted(kwargs))
-            raise TypeError(f"Unexpected keyword arguments: {unexpected}")
-        if len(args) < 3:
-            raise TypeError("chunk() missing required positional arguments")
-        if tenant_id is None:
-            tenant_id = args[0]
-            document_id = args[1]
-            text = args[2]
-            options = args[3] if len(args) > 3 else None
-        else:
-            document_id = args[0]
-            text = args[1]
-            options = args[2] if len(args) > 2 else None
-        if not isinstance(text, str) or not text.strip():
-            raise InvalidDocumentError("Text payload must be a non-empty string")
-        chunk_options = options if isinstance(options, ChunkingOptions) else ChunkingOptions()
+        chunk_options = ChunkingOptions(
+            strategy=command.strategy,
+            max_tokens=command.chunk_size,
+            overlap=command.overlap,
+            metadata=dict(command.metadata),
+        )
         stage = self._resolve_stage()
         context = StageContext(
-            tenant_id=tenant_id,
-            doc_id=document_id,
-            correlation_id=uuid4().hex,
-            metadata=self._context_metadata(chunk_options),
+            tenant_id=command.tenant_id,
+            doc_id=command.document_id,
+            correlation_id=command.correlation_id,
+            metadata=self._context_metadata(chunk_options, command),
             pipeline_name=self._DEFAULT_PIPELINE,
             pipeline_version=self._DEFAULT_VERSION,
         )
-        document = self._build_document(document_id, text, chunk_options.metadata)
-        logger.debug(
-            "gateway.chunking.execute",
-            tenant_id=tenant_id,
-            doc_id=document_id,
-            strategy=chunk_options.strategy,
-        )
+        document = self._build_document(command.document_id, command.text, command.metadata)
+        logger.bind(**command.log_context()).debug("gateway.chunking.execute")
         try:
             chunks = stage.execute(context, document)
         except ChunkerConfigurationError:
@@ -99,7 +88,11 @@ class ChunkingService:
         except InvalidDocumentError:
             raise
         except Exception as exc:  # pragma: no cover - defensive fallback
-            logger.exception("gateway.chunking.stage_error", doc_id=document_id, error=str(exc))
+            logger.exception(
+                "gateway.chunking.stage_error",
+                doc_id=command.document_id,
+                error=str(exc),
+            )
             raise ChunkingUnavailableError(retry_after=30.0) from exc
         return list(chunks)
 
@@ -144,13 +137,16 @@ class ChunkingService:
         )
         return document
 
-    def _context_metadata(self, options: ChunkingOptions) -> dict[str, Any]:
+    def _context_metadata(self, options: ChunkingOptions, command: ChunkCommand) -> dict[str, Any]:
         metadata = {
             "strategy": options.strategy,
             "max_tokens": options.max_tokens,
             "overlap": options.overlap,
+            "profile": command.profile,
+            "issued_at": command.issued_at_iso,
         }
         metadata.update(dict(options.metadata))
+        metadata.update(dict(command.context))
         return metadata
 
 

@@ -10,11 +10,9 @@ from uuid import uuid4
 import structlog
 
 from Medical_KG_rev.adapters import AdapterPluginError
-from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.haystack.components import (
     HaystackChunker,
     HaystackEmbedder,
@@ -41,6 +39,11 @@ from Medical_KG_rev.orchestration.stages.plugins import (
     StagePluginManager,
     StagePluginRegistration,
     StagePluginResources,
+    StagePluginManager,
+    StagePluginMetadata,
+    StagePluginRegistration,
+    StagePluginResources,
+    hookimpl,
 )
 
 try:  # pragma: no cover - optional import for typing only
@@ -352,6 +355,7 @@ class PdfGateStage(GateStage):
 
 
 class CoreStagePlugin(StagePlugin):
+class CoreStagePlugin:
     """Register the built-in orchestration stage implementations."""
 
     NAME = "core-stage"
@@ -361,6 +365,8 @@ class CoreStagePlugin(StagePlugin):
         super().__init__(plugin_name=self.NAME, version=self.VERSION)
 
     def registrations(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
+    @hookimpl
+    def stage_builders(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         adapter_manager = resources.adapter_manager
         pipeline_resource = resources.pipeline_resource
         job_ledger = resources.job_ledger if isinstance(resources.job_ledger, JobLedger) else None
@@ -478,6 +484,98 @@ class CoreStagePlugin(StagePlugin):
                 capabilities=("ledger",),
             ),
         )
+        return [
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.ingest",
+                    version=self.VERSION,
+                    stage_type="ingest",
+                    capabilities=("adapter",),
+                ),
+                builder=build_ingest,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.parse",
+                    version=self.VERSION,
+                    stage_type="parse",
+                    capabilities=("document",),
+                ),
+                builder=build_parse,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.ir-validation",
+                    version=self.VERSION,
+                    stage_type="ir-validation",
+                    capabilities=("document",),
+                ),
+                builder=build_validation,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.chunk",
+                    version=self.VERSION,
+                    stage_type="chunk",
+                    capabilities=("haystack",),
+                ),
+                builder=build_chunk,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.embed",
+                    version=self.VERSION,
+                    stage_type="embed",
+                    capabilities=("haystack",),
+                ),
+                builder=build_embed,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.index",
+                    version=self.VERSION,
+                    stage_type="index",
+                    capabilities=("haystack",),
+                ),
+                builder=build_index,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.extract",
+                    version=self.VERSION,
+                    stage_type="extract",
+                    capabilities=("noop",),
+                ),
+                builder=build_extract,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.knowledge-graph",
+                    version=self.VERSION,
+                    stage_type="knowledge-graph",
+                    capabilities=("noop",),
+                ),
+                builder=build_kg,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.download",
+                    version=self.VERSION,
+                    stage_type="download",
+                    capabilities=("pdf",),
+                ),
+                builder=build_download,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.gate",
+                    version=self.VERSION,
+                    stage_type="gate",
+                    capabilities=("ledger",),
+                ),
+                builder=build_gate,
+            ),
+        ]
 
 
 def create_stage_plugin_manager(

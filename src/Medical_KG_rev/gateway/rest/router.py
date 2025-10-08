@@ -27,6 +27,12 @@ from ..models import (
     IngestionRequest,
     JobStatus,
     NamespaceInfo,
+    NamespacePolicyDiagnosticsView,
+    NamespacePolicyHealthView,
+    NamespacePolicyInvalidateRequest,
+    NamespacePolicyMetricsView,
+    NamespacePolicyStatus,
+    NamespacePolicyUpdateRequest,
     NamespaceValidationRequest,
     NamespaceValidationResponse,
     KnowledgeGraphWriteRequest,
@@ -487,6 +493,96 @@ async def list_namespaces(
     http_request.state.requested_tenant_id = security.tenant_id
     namespaces = service.list_namespaces(tenant_id=security.tenant_id, scope=Scopes.EMBED_READ)
     return presenter.success(namespaces, meta=lifecycle.meta({"total": len(namespaces)}))
+
+
+@router.get("/namespaces/policy", status_code=200)
+async def get_namespace_policy(
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    status = service.namespace_policy_status()
+    return presenter.success(status, meta=lifecycle.meta())
+
+
+@router.patch("/namespaces/policy", status_code=200)
+async def update_namespace_policy(
+    request: NamespacePolicyUpdateRequest,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="PATCH /v1/namespaces/policy")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    try:
+        status = service.update_namespace_policy(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return presenter.success(status, meta=lifecycle.meta())
+
+
+@router.get("/namespaces/policy/diagnostics", status_code=200)
+async def get_namespace_policy_diagnostics(
+    security: SecurityContext = Depends(
+        secure_endpoint(
+            scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/diagnostics"
+        )
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    diagnostics = service.namespace_policy_diagnostics()
+    return presenter.success(diagnostics, meta=lifecycle.meta())
+
+
+@router.get("/namespaces/policy/health", status_code=200)
+async def get_namespace_policy_health(
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/health")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    health = service.namespace_policy_health()
+    return presenter.success(health, meta=lifecycle.meta())
+
+
+@router.get("/namespaces/policy/metrics", status_code=200)
+async def get_namespace_policy_metrics(
+    security: SecurityContext = Depends(
+        secure_endpoint(
+            scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/metrics"
+        )
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    metrics = service.namespace_policy_metrics()
+    return presenter.success(metrics, meta=lifecycle.meta())
+
+
+@router.post("/namespaces/policy/cache/invalidate", status_code=202)
+async def invalidate_namespace_policy_cache(
+    request: NamespacePolicyInvalidateRequest,
+    security: SecurityContext = Depends(
+        secure_endpoint(
+            scopes=[Scopes.EMBED_ADMIN], endpoint="POST /v1/namespaces/policy/cache/invalidate"
+        )
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> Response:
+    service.invalidate_namespace_policy_cache(request.namespace)
+    payload = {"status": "cache-invalidated", "namespace": request.namespace}
+    return presenter.success(payload, status_code=202, meta=lifecycle.meta())
 
 
 @router.post("/namespaces/{namespace}/validate", status_code=200)

@@ -420,6 +420,33 @@ class RerankingSettings(BaseModel):
     pipeline: PipelineStageSettings = Field(default_factory=PipelineStageSettings)
 
 
+class EmbeddingPolicyRuntimeSettings(BaseModel):
+    """Namespace policy runtime configuration exposed via settings."""
+
+    cache_ttl_seconds: float = Field(default=60.0, ge=0.0)
+    max_cache_entries: int = Field(default=512, ge=1)
+    dry_run: bool = False
+
+
+class EmbeddingPersisterRuntimeSettings(BaseModel):
+    """Persistence backend selection and tuning parameters."""
+
+    backend: Literal["vector_store", "database", "dry_run", "hybrid"] = "vector_store"
+    cache_limit: int = Field(default=256, ge=0)
+    hybrid_backends: dict[str, Literal["vector_store", "database", "dry_run"]] = Field(
+        default_factory=dict
+    )
+
+
+class EmbeddingRuntimeSettings(BaseModel):
+    """Aggregated embedding runtime configuration."""
+
+    policy: EmbeddingPolicyRuntimeSettings = Field(default_factory=EmbeddingPolicyRuntimeSettings)
+    persister: EmbeddingPersisterRuntimeSettings = Field(
+        default_factory=EmbeddingPersisterRuntimeSettings
+    )
+
+
 def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:
     """Convert legacy reranking configuration dictionaries into the new schema."""
 
@@ -476,6 +503,7 @@ class AppSettings(BaseSettings):
             },
         )
     )
+    embedding: EmbeddingRuntimeSettings = Field(default_factory=EmbeddingRuntimeSettings)
 
     model_config = SettingsConfigDict(env_prefix="MK_", env_nested_delimiter="__")
 

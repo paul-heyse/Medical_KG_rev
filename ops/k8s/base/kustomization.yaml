@@ -2,30 +2,22 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-    - namespace.yaml
-    - configmap-gateway.yaml
-    - configmap-vllm-server.yaml
-    - secret-sentry.yaml
-    - deployment-gateway.yaml
-    - deployment-ingest-worker.yaml
-    - deployment-vllm-embedding.yaml
-    - deployment-vllm-server.yaml
-    - service-gateway.yaml
-    - ingress.yaml
-    - hpa-gateway.yaml
-    - servicemonitor-vllm-server.yaml
-
-#to resolve by creating separate files, accidental collision it appears#
   - namespace.yaml
   - configmap-gateway.yaml
+  - configmap-retrieval.yaml
+  - configmap-vllm-server.yaml
   - secret-sentry.yaml
   - deployment-gateway.yaml
   - deployment-ingest-worker.yaml
-  - deployment-vllm-qwen3.yaml
-  - deployment-vllm-embedding.yaml
-  - deployment-vllm-server.yaml
   - deployment-mineru-workers.yaml
+  - deployment-vllm-server.yaml
+  - deployment-vllm-qwen3.yaml
   - service-gateway.yaml
+  - service-vllm-server.yaml
   - service-vllm-qwen3.yaml
   - ingress.yaml
   - hpa-gateway.yaml
+  - networkpolicy-vllm-server.yaml
+  - pvc-huggingface-cache.yaml
+  - servicemonitor-vllm-server.yaml
+  - cronjob-retrieval-evaluation.yaml

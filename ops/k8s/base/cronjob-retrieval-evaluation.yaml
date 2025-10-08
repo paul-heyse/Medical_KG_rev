@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retrieval-evaluation
+  namespace: medical-kg
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: evaluation
+              image: ghcr.io/example/medical-kg:latest
+              command:
+                - python
+                - scripts/run_retrieval_evaluation.py
+              args:
+                - --base-url
+                - http://gateway.medical-kg:8000
+                - --tenant-id
+                - eval
+                - --rerank
+                - --output
+                - /results/evaluation.json
+              envFrom:
+                - configMapRef:
+                    name: gateway-config
+                - secretRef:
+                    name: gateway-sentry
+              volumeMounts:
+                - name: retrieval-config
+                  mountPath: /app/config/retrieval
+                  readOnly: true
+                - name: evaluation-results
+                  mountPath: /results
+          volumes:
+            - name: retrieval-config
+              configMap:
+                name: retrieval-config
+            - name: evaluation-results
+              emptyDir: {}

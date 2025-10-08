@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, SecretStr, ValidationError, model_validator
+from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -67,89 +67,63 @@ class ObservabilitySettings(BaseModel):
     sentry: SentrySettings = Field(default_factory=SentrySettings)
 
 
-class MineruCpuSettings(BaseModel):
-    """CPU utilisation hints for the MinerU worker pool."""
+class MineruCircuitBreakerSettings(BaseModel):
+    """Circuit breaker thresholds for the MinerU vLLM client."""
 
     enabled: bool = True
-    omp_num_threads: int = Field(default=4, ge=1, le=128)
-    mkl_num_threads: int = Field(default=4, ge=1, le=128)
-    extra_env: Mapping[str, str] = Field(default_factory=dict)
+    failure_threshold: int = Field(default=5, ge=1)
+    recovery_timeout_seconds: float = Field(default=60.0, ge=5.0)
+    success_threshold: int = Field(default=2, ge=1)
 
-    def export_environment(self) -> dict[str, str]:
-        if not self.enabled:
-            return {}
-        env = {
-            "OMP_NUM_THREADS": str(self.omp_num_threads),
-            "MKL_NUM_THREADS": str(self.mkl_num_threads),
-        }
-        env.update({str(k): str(v) for k, v in self.extra_env.items()})
-        return env
+
+class MineruHttpClientSettings(BaseModel):
+    """HTTP client configuration for MinerU → vLLM communication."""
+
+    connection_pool_size: int = Field(default=10, ge=1)
+    keepalive_connections: int = Field(default=5, ge=1)
+    timeout_seconds: float = Field(default=300.0, ge=30.0)
+    retry_attempts: int = Field(default=3, ge=0)
+    retry_backoff_multiplier: float = Field(default=1.0, ge=0.1)
+    circuit_breaker: MineruCircuitBreakerSettings = Field(
+        default_factory=MineruCircuitBreakerSettings
+    )
+
+
+class MineruVllmServerSettings(BaseModel):
+    """Configuration for the dedicated vLLM server."""
+
+    enabled: bool = True
+    base_url: AnyHttpUrl = Field(default="http://vllm-server:8000")
+    model: str = Field(default="Qwen/Qwen2.5-VL-7B-Instruct")
+    health_check_interval_seconds: int = Field(default=30, ge=5)
+    connection_timeout_seconds: float = Field(default=300.0, ge=30.0)
 
 
 class MineruWorkerSettings(BaseModel):
-    """MinerU worker configuration for GPU-backed CLI execution."""
+    """CPU-oriented MinerU worker configuration."""
 
-    count: int = Field(default=4, ge=1, le=32)
-    vram_per_worker_gb: int = Field(default=7, ge=1, le=48)
-    timeout_seconds: int = Field(default=300, ge=30, le=1800)
-    batch_size: int = Field(default=4, ge=1, le=32)
-    device_ids: Sequence[int] | None = Field(default=None)
-    reservation_margin: float = Field(default=0.9, ge=0.5, le=1.0)
-
-    @model_validator(mode="after")
-    def validate_device_ids(self) -> "MineruWorkerSettings":
-        if self.device_ids is not None:
-            unique = {device for device in self.device_ids if device is not None}
-            if not unique:
-                raise ValueError("At least one GPU device id must be provided")
-            if any(device < 0 for device in unique):
-                raise ValueError("GPU device ids must be non-negative integers")
-            if len(unique) < self.count:
-                # Allow multiple workers per GPU but flag potential contention
-                raise ValueError(
-                    "Device id list must cover all configured MinerU workers"
-                )
-        return self
-
-    @property
-    def vram_per_worker_mb(self) -> int:
-        return self.vram_per_worker_gb * 1024
-
-    @property
-    def batch_limit(self) -> int:
-        """Maximum number of PDFs a worker may process per CLI invocation."""
-
-        return max(1, self.batch_size)
+    count: int = Field(default=8, ge=1)
+    backend: Literal["vlm-http-client"] = "vlm-http-client"
+    cpu_per_worker: int = Field(default=2, ge=1)
+    memory_per_worker_gb: int = Field(default=4, ge=1)
+    batch_size: int = Field(default=4, ge=1)
+    timeout_seconds: int = Field(default=300, ge=30)
 
 
 class MineruSettings(BaseModel):
-    """Top-level MinerU GPU service configuration."""
+    """Top-level MinerU split-container configuration."""
 
-    enabled: bool = False
+    deployment_mode: Literal["split-container"] = "split-container"
     cli_command: str = Field(default="mineru", description="Path to MinerU CLI")
     expected_version: str = Field(default=">=2.5.4")
-    cuda_version: str = Field(default="12.8")
+    vllm_server: MineruVllmServerSettings = Field(default_factory=MineruVllmServerSettings)
     workers: MineruWorkerSettings = Field(default_factory=MineruWorkerSettings)
-    cpu: MineruCpuSettings = Field(default_factory=MineruCpuSettings)
-    simulate_if_unavailable: bool = True
+    http_client: MineruHttpClientSettings = Field(default_factory=MineruHttpClientSettings)
 
-    @model_validator(mode="after")
-    def validate_configuration(self) -> "MineruSettings":
-        if self.enabled and not self.cli_command:
-            raise ValueError("MinerU CLI command must be provided when enabled")
-        if self.workers.vram_per_worker_gb * self.workers.count > 32:
-            # Conservative default assuming RTX 5090 32GB device
-            raise ValueError(
-                "Configured VRAM for MinerU workers exceeds 32GB budget"
-            )
-        return self
+    def cli_timeout_seconds(self) -> int:
+        """Expose worker timeout for CLI invocations."""
 
-    def environment(self) -> dict[str, str]:
-        """Return environment variables required by the CLI."""
-
-        env = dict(self.cpu.export_environment())
-        env["CUDA_VERSION_REQUIRED"] = self.cuda_version
-        return env
+        return self.workers.timeout_seconds
 
 
 class VaultSettings(BaseModel):

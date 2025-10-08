@@ -1,0 +1,47 @@
+groups:
+- name: vllm-server
+  interval: 30s
+  rules:
+  - alert: VLLMServerDown
+    expr: up{job="vllm-server"} == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "vLLM server is down"
+      description: "vLLM server has been down for more than 2 minutes"
+
+  - alert: VLLMHighLatency
+    expr: histogram_quantile(0.95, rate(vllm_request_duration_seconds_bucket[5m])) > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "vLLM P95 latency is high"
+      description: "P95 latency is {{ $value }}s (threshold: 10s)"
+
+  - alert: VLLMGPUMemoryHigh
+    expr: vllm_gpu_memory_usage_bytes / vllm_gpu_memory_total_bytes > 0.95
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "vLLM GPU memory usage is high"
+      description: "GPU memory usage is {{ $value | humanizePercentage }}"
+
+  - alert: VLLMHighErrorRate
+    expr: rate(vllm_request_errors_total[5m]) / rate(vllm_requests_total[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "vLLM error rate is high"
+      description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+  - alert: VLLMGPUOOM
+    expr: increase(vllm_gpu_oom_total[5m]) > 0
+    labels:
+      severity: critical
+    annotations:
+      summary: "vLLM GPU out of memory"
+      description: "GPU OOM detected {{ $value }} times in last 5 minutes"

@@ -2,30 +2,32 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Callable, List, Tuple
 
-Segment = Tuple[int, int, str]
+Segment = tuple[int, int, str]
 
 
-def get_sentence_splitter(name: str) -> Callable[[str], List[Segment]]:
+def get_sentence_splitter(name: str) -> Callable[[str], list[Segment]]:
     name = name.lower()
     if name == "scispacy":
-        return _scispacy_split
+        return _huggingface_split  # Replaced scispacy with Hugging Face
+    if name == "huggingface":
+        return _huggingface_split
     if name == "syntok":
         return _syntok_split
     return _simple_split
 
 
 @lru_cache(maxsize=1)
-def _scispacy_segmenter():  # pragma: no cover - heavy dependency path
-    from .wrappers.scispacy_segmenter import SciSpaCySentenceSegmenter
+def _huggingface_segmenter():  # pragma: no cover - heavy dependency path
+    from .wrappers.huggingface_segmenter import HuggingFaceSentenceSegmenter
 
-    return SciSpaCySentenceSegmenter()
+    return HuggingFaceSentenceSegmenter()
 
 
-def _scispacy_split(text: str) -> List[Segment]:
-    segmenter = _scispacy_segmenter()
+def _huggingface_split(text: str) -> list[Segment]:
+    segmenter = _huggingface_segmenter()
     return segmenter.segment(text)
 
 

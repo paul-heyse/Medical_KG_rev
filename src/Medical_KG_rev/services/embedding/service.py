@@ -1,12 +1,12 @@
-"""Universal embedding service coordinating multiple adapters."""
+"""Embedding service orchestrating namespace-aware embedding adapters."""
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import structlog
+
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.ports import (
@@ -16,10 +16,17 @@ from Medical_KG_rev.embeddings.ports import (
 from Medical_KG_rev.embeddings.ports import (
     EmbeddingRequest as AdapterEmbeddingRequest,
 )
+from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
+from Medical_KG_rev.embeddings.storage import StorageRouter
 from Medical_KG_rev.embeddings.utils.gpu import ensure_available
+from Medical_KG_rev.embeddings.utils.tokenization import (
+    TokenLimitExceededError,
+    TokenizerCache,
+)
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
+from .namespace.registry import EmbeddingNamespaceRegistry
 from .registry import EmbeddingModelRegistry
 
 logger = structlog.get_logger(__name__)
@@ -27,11 +34,11 @@ logger = structlog.get_logger(__name__)
 
 @dataclass(slots=True)
 class EmbeddingRequest:
+    """Service-level embedding request used by orchestration."""
+
     tenant_id: str
-    chunk_ids: Sequence[str]
     texts: Sequence[str]
-    normalize: bool = False
-    batch_size: int = 8
+    chunk_ids: Sequence[str] | None = None
     models: Sequence[str] | None = None
     namespaces: Sequence[str] | None = None
     correlation_id: str | None = None
@@ -41,12 +48,14 @@ class EmbeddingRequest:
 
 @dataclass(slots=True)
 class EmbeddingVector:
+    """High-level representation of an embedding returned to callers."""
+
     id: str
     model: str
     namespace: str
     kind: str
-    vectors: list[list[float]] | None
-    terms: dict[str, float] | None
+    vectors: list[list[float]] | None = None
+    terms: dict[str, float] | None = None
     neural_fields: dict[str, object] | None = None
     dimension: int = 0
     model_version: str | None = None
@@ -58,7 +67,7 @@ class EmbeddingVector:
         cls,
         record: EmbeddingRecord,
         *,
-        storage_router: StorageRouter | None = None,
+        storage_router: StorageRouter,
     ) -> "EmbeddingVector":
         if record.dim is not None:
             dimension = record.dim
@@ -68,13 +77,11 @@ class EmbeddingVector:
             dimension = len(record.terms)
         else:
             dimension = 0
-        metadata = dict(record.metadata)
-        if storage_router is not None:
-            try:
-                target = storage_router.route(record.kind).name
-            except KeyError:  # pragma: no cover - defensive guard
-                target = "unmapped"
-            metadata.setdefault("storage_target", target)
+        metadata = {"provider": record.metadata.get("provider", ""), **record.metadata}
+        try:
+            metadata.setdefault("storage_target", storage_router.route(record.kind).name)
+        except KeyError:  # pragma: no cover - defensive guard
+            metadata.setdefault("storage_target", "unknown")
         metadata.setdefault("model_version", record.model_version)
         return cls(
             id=record.id,
@@ -92,195 +99,75 @@ class EmbeddingVector:
 
 
 @dataclass(slots=True)
-class _VectorBuilder:
-    """Helper that converts adapter records into response vectors."""
-
-    storage_router: StorageRouter
-
-    def build(self, record: EmbeddingRecord) -> EmbeddingVector:
-        return EmbeddingVector.from_record(record, storage_router=self.storage_router)
-
-
-@dataclass(slots=True)
-class EmbeddingResponse:
-    vectors: list[EmbeddingVector] = field(default_factory=list)
-
-    @property
-    def values(self) -> list[float] | None:
-        """Compatibility accessor returning the primary dense payload."""
-
-        if self.vectors:
-            # Return a copy so downstream normalization does not mutate
-            # the stored payload which may be re-used by other adapters.
-            return list(self.vectors[0])
-        return None
-
-    @property
-    def values(self) -> list[float] | None:
-        """Compatibility accessor returning the primary dense payload."""
-
-        if self.vectors:
-            # Return a copy so downstream normalization does not mutate
-            # the stored payload which may be re-used by other adapters.
-            return list(self.vectors[0])
-        return None
-
-
-@dataclass(slots=True)
 class EmbeddingResponse:
     vectors: list[EmbeddingVector] = field(default_factory=list)
 
 
 @dataclass(slots=True)
-class _LegacyEmbeddingModel:
-    name: str
-    dimension: int
-    kind: str
-
-    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
-        tokens = text.split()
-        if self.kind == "dense":
-            base = float(len(tokens) or 1)
-            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
-            return {"id": chunk_id, "values": values}
-        weights = {
-            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
-            for index in range(min(self.dimension, max(1, len(tokens))))
-        }
-        return {"id": chunk_id, "terms": weights}
-
-
-class EmbeddingModelRegistry:
-    """Compatibility shim for legacy embedding registry usage in tests."""
-
-    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
-        self.namespace_manager = NamespaceManager()
-        self._models: dict[str, _LegacyEmbeddingModel] = {
-            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
-            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
-        }
-        self._aliases = {
-            "splade": "splade",
-            "sparse": "splade",
-            "bge": "bge",
-            "bge-small": "bge",
-            "dense": "bge",
-        }
-
-    def list_models(self) -> list[str]:
-        return list(self._models)
-
-    def get(self, name: str) -> _LegacyEmbeddingModel:
-        key = self._aliases.get(name, name)
-        try:
-            return self._models[key]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise KeyError(f"Unknown embedding model '{name}'") from exc
-
-
-@dataclass(slots=True)
-class _LegacyEmbeddingModel:
-    name: str
-    dimension: int
-    kind: str
-
-    def embed(self, chunk_id: str, text: str) -> dict[str, object]:
-        tokens = text.split()
-        if self.kind == "dense":
-            base = float(len(tokens) or 1)
-            values = [round((base + index) % 7, 4) for index in range(self.dimension)]
-            return {"id": chunk_id, "values": values}
-        weights = {
-            f"{tokens[index % max(1, len(tokens))]}_{index}": round(1.0 - (index * 0.1), 4)
-            for index in range(min(self.dimension, max(1, len(tokens))))
-        }
-        return {"id": chunk_id, "terms": weights}
-
-
-class EmbeddingModelRegistry:
-    """Compatibility shim for legacy embedding registry usage in tests."""
-
-    def __init__(self, gpu_manager: object | None = None) -> None:  # noqa: ARG002 - parity
-        self.namespace_manager = NamespaceManager()
-        self._models: dict[str, _LegacyEmbeddingModel] = {
-            "splade": _LegacyEmbeddingModel(name="splade", dimension=64, kind="sparse"),
-            "bge": _LegacyEmbeddingModel(name="bge", dimension=128, kind="dense"),
-        }
-        self._aliases = {
-            "splade": "splade",
-            "sparse": "splade",
-            "bge": "bge",
-            "bge-small": "bge",
-            "dense": "bge",
-        }
-
-    def list_models(self) -> list[str]:
-        return list(self._models)
-
-    def get(self, name: str) -> _LegacyEmbeddingModel:
-        key = self._aliases.get(name, name)
-        try:
-            return self._models[key]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise KeyError(f"Unknown embedding model '{name}'") from exc
-
-
 class EmbeddingWorker:
-    """Coordinates config-driven embedding generation and validation."""
+    """Coordinates config-driven embedding generation and storage."""
 
-    def __init__(
-        self,
-        registry_or_namespace: EmbeddingModelRegistry | NamespaceManager | None = None,
-        *,
-        namespace_manager: NamespaceManager | None = None,
-        config_path: str | None = None,
-    ) -> None:
-        self._legacy_registry: EmbeddingModelRegistry | None = None
-        if isinstance(registry_or_namespace, EmbeddingModelRegistry):
-            self._legacy_registry = registry_or_namespace
-            self.namespace_manager = registry_or_namespace.namespace_manager
-            self.registry = None
-            self.factory = None
-            self.storage_router = StorageRouter()
-            self._config = None
-            self._embedder_configs: list[EmbedderConfig] = []
-            self._configs_by_name: dict[str, EmbedderConfig] = {}
-            self._configs_by_namespace: dict[str, EmbedderConfig] = {}
-            return
+    model_registry: EmbeddingModelRegistry | None = None
+    namespace_manager: NamespaceManager | None = None
+    vector_store: VectorStoreService | None = None
+    config_path: str | None = None
+    tokenizer_cache: TokenizerCache | None = None
+    namespace_registry: EmbeddingNamespaceRegistry | None = None
+    registry: EmbedderRegistry | None = field(init=False, default=None)
+    factory: EmbedderFactory | None = field(init=False, default=None)
+    storage_router: StorageRouter | None = field(init=False, default=None)
+    tokenizers: TokenizerCache | None = field(init=False, default=None)
 
-        if isinstance(registry_or_namespace, NamespaceManager) and namespace_manager is not None:
-            raise TypeError("namespace_manager should not be provided twice")
-        effective_namespace = namespace_manager
-        if effective_namespace is None and isinstance(registry_or_namespace, NamespaceManager):
-            effective_namespace = registry_or_namespace
-        self.namespace_manager = effective_namespace or NamespaceManager()
-        self.registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
-        register_builtin_embedders(self.registry)
-        self.factory = EmbedderFactory(self.registry)
-        self.storage_router = StorageRouter()
-        self._config = load_embeddings_config(Path(config_path) if config_path else None)
-        self._embedder_configs = self._config.to_embedder_configs()
-        self._configs_by_name = {config.name: config for config in self._embedder_configs}
-        self._configs_by_namespace = {config.namespace: config for config in self._embedder_configs}
+    def __post_init__(self) -> None:
+        if self.model_registry is None:
+            self.model_registry = EmbeddingModelRegistry(
+                namespace_manager=self.namespace_manager,
+                config_path=self.config_path,
+            )
+        self.namespace_manager = self.model_registry.namespace_manager
+        self.namespace_registry = self.model_registry.namespace_registry
+        self.registry = self.model_registry.registry
+        self.factory = self.model_registry.factory
+        self.storage_router = self.model_registry.storage_router
+        self.tokenizers = self.tokenizer_cache or TokenizerCache()
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
     def _resolve_configs(self, request: EmbeddingRequest) -> list[EmbedderConfig]:
         return self.model_registry.resolve(
             models=request.models,
             namespaces=request.namespaces,
         )
 
-    def _adapter_request(self, request: EmbeddingRequest, config: EmbedderConfig) -> AdapterEmbeddingRequest:
+    def _adapter_request(
+        self,
+        request: EmbeddingRequest,
+        config: EmbedderConfig,
+        *,
+        texts: Sequence[str],
+    ) -> AdapterEmbeddingRequest:
+        ids = list(request.chunk_ids or [])
+        if len(ids) < len(texts):
+            ids.extend(
+                f"{request.tenant_id}:{index}" for index in range(len(ids), len(texts))
+            )
+        else:
+            ids = ids[: len(texts)]
+        metadata = [dict(item) for item in list(request.metadatas or [])[: len(texts)]]
+        while len(metadata) < len(texts):
+            metadata.append({})
         return AdapterEmbeddingRequest(
             tenant_id=request.tenant_id,
             namespace=config.namespace,
             texts=list(texts),
-            ids=list(ids),
+            ids=ids,
             correlation_id=request.correlation_id,
-            metadata=[dict(item) for item in metadata],
+            metadata=metadata,
         )
 
     def _dimension_from_record(self, record: EmbeddingRecord) -> int:
-        if record.dim:
+        if record.dim is not None:
             return record.dim
         if record.vectors:
             return len(record.vectors[0])
@@ -288,50 +175,79 @@ class EmbeddingWorker:
             return len(record.terms)
         return 0
 
-    def _batch_iterator(
-        self, request: EmbeddingRequest, batch_size: int
-    ) -> Iterator[tuple[list[str], list[str], list[dict[str, object]]]]:
-        texts = list(request.texts)
-        ids = list(request.chunk_ids or [])
-        if len(ids) < len(texts):
-            ids.extend(f"{request.tenant_id}:{index}" for index in range(len(ids), len(texts)))
-        else:
-            ids = ids[: len(texts)]
-        metadata_list = [
-            dict(item) for item in list(request.metadatas or [])[: len(texts)]
-        ]
-        while len(metadata_list) < len(texts):
-            metadata_list.append({})
-        for start in range(0, len(texts), batch_size):
-            yield (
-                texts[start : start + batch_size],
-                ids[start : start + batch_size],
-                metadata_list[start : start + batch_size],
+    def _persist_dense(
+        self,
+        *,
+        request: EmbeddingRequest,
+        config: EmbedderConfig,
+        vectors: list[EmbeddingRecord],
+    ) -> None:
+        if not self.vector_store:
+            return
+        records: list[VectorRecord] = []
+        for record in vectors:
+            if not record.vectors:
+                continue
+            named_vectors: dict[str, list[float]] | None = None
+            if len(record.vectors) > 1:
+                named_vectors = {
+                    f"segment_{index}": list(vector)
+                    for index, vector in enumerate(record.vectors[1:], start=1)
+                }
+            records.append(
+                VectorRecord(
+                    vector_id=record.id,
+                    values=list(record.vectors[0]),
+                    metadata=dict(record.metadata),
+                    named_vectors=named_vectors,
+                )
             )
+        if not records:
+            return
+        context = SecurityContext(
+            subject="embedding-worker",
+            tenant_id=request.tenant_id,
+            scopes={"index:write"},
+        )
+        self.vector_store.upsert(
+            context=context,
+            namespace=config.namespace,
+            records=records,
+        )
 
+    def _token_budget(self, config: EmbedderConfig) -> int | None:
+        return config.parameters.get("max_tokens") if config.parameters else None
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
-        if self._legacy_registry is not None:
-            return self._run_legacy(request)
         configs = self._resolve_configs(request)
         response = EmbeddingResponse()
-        logger.info(
-            "embedding.pipeline.start",
-            tenant_id=request.tenant_id,
-            actor=request.actor,
-            chunks=len(request.texts),
-            models=[config.name for config in configs],
-        )
+        texts = list(request.texts)
         for config in configs:
-            ensure_available(config.requires_gpu, operation=f"embed:{config.name}")
+            ensure_available(config.requires_gpu, operation=f"embed:{config.namespace}")
             try:
-                embedder = self.model_registry.get(config)
-            except KeyError:
-                embedder = self.factory.get(config)
-            adapter_request = self._adapter_request(request, config)
+                self.tokenizers.ensure_within_limit(
+                    model_id=config.model_id,
+                    texts=texts,
+                    max_tokens=self._token_budget(config),
+                    correlation_id=request.correlation_id,
+                )
+            except TokenLimitExceededError:
+                logger.error(
+                    "embedding.token_limit_exceeded",
+                    namespace=config.namespace,
+                    model=config.model_id,
+                    correlation_id=request.correlation_id,
+                )
+                raise
+            embedder = self.model_registry.get(config)
+            adapter_request = self._adapter_request(request, config, texts=texts)
             records = embedder.embed_documents(adapter_request)
             if not records:
                 logger.warning(
-                    "embedding.pipeline.no_output",
+                    "embedding.no_records",
                     namespace=config.namespace,
                     model=config.name,
                 )
@@ -340,139 +256,48 @@ class EmbeddingWorker:
             dimension = self._dimension_from_record(first)
             if dimension:
                 self.namespace_manager.introspect_dimension(config.namespace, dimension)
-            vector_records: list[VectorRecord] = []
             for record in records:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
-                metadata = {
-                    **record.metadata,
-                    "storage_target": self.storage_router.route(record.kind).name,
-                }
-                response.vectors.append(
-                    EmbeddingVector(
-                        id=record.id,
-                        model=record.model_id,
-                        namespace=record.namespace,
-                        kind=record.kind,
-                        vectors=record.vectors,
-                        terms=record.terms,
-                        dimension=dim,
-                        metadata=metadata,
-                    )
-                )
-                if self.vector_store and record.vectors:
-                    named_vectors: dict[str, list[float]] | None = None
-                    if len(record.vectors) > 1:
-                        named_vectors = {
-                            f"segment_{idx}": list(vector)
-                            for idx, vector in enumerate(record.vectors[1:], start=1)
-                        }
-                    vector_records.append(
-                        VectorRecord(
-                            vector_id=record.id,
-                            values=list(record.vectors[0]),
-                            metadata=metadata,
-                            named_vectors=named_vectors,
-                        )
-                    )
-            if self.vector_store and vector_records:
-                context = SecurityContext(
-                    subject="embedding-worker",
-                    tenant_id=request.tenant_id,
-                    scopes={"index:write"},
-                )
-                self.vector_store.upsert(
-                    context=context,
-                    namespace=config.namespace,
-                    records=vector_records,
-                )
+                vector = EmbeddingVector.from_record(record, storage_router=self.storage_router)
+                response.vectors.append(vector)
+            self._persist_dense(request=request, config=config, vectors=records)
             logger.info(
-                "embedding.pipeline.completed",
+                "embedding.namespace.completed",
                 namespace=config.namespace,
                 model=config.name,
-                actor=request.actor,
-                total=len(records),
-                duration_ms=(time.perf_counter() - start) * 1000,
+                records=len(records),
             )
-        logger.info(
-            "embedding.pipeline.finish",
-            total=len(response.vectors),
-            actor=request.actor,
-            tenant_id=request.tenant_id,
-        )
         return response
 
     def encode_queries(self, request: EmbeddingRequest) -> EmbeddingResponse:
         configs = self._resolve_configs(request)
         response = EmbeddingResponse()
         for config in configs:
-            ensure_available(config.requires_gpu, operation=f"embed-query:{config.name}")
-            embedder = self.factory.get(config)
-            adapter_request = self._adapter_request(
-                request,
-                config,
-                texts=request.texts,
-                ids=request.chunk_ids
-                or [f"query:{index}" for index in range(len(request.texts))],
-                metadata=request.metadatas or [{} for _ in request.texts],
-            )
+            ensure_available(config.requires_gpu, operation=f"embed-query:{config.namespace}")
+            embedder = self.model_registry.get(config)
+            adapter_request = self._adapter_request(request, config, texts=request.texts)
             records = embedder.embed_queries(adapter_request)
             for record in records:
                 dim = self._dimension_from_record(record)
                 self.namespace_manager.validate_record(config.namespace, dim)
-                response.vectors.append(self._vector_builder.build(record))
-        return response
-
-    def _run_legacy(self, request: EmbeddingRequest) -> EmbeddingResponse:
-        models = request.models or self._legacy_registry.list_models()
-        response = EmbeddingResponse()
-        for model_name in models:
-            model = self._legacy_registry.get(model_name)
-            for chunk_id, text in zip(request.chunk_ids, request.texts, strict=False):
-                result = model.embed(chunk_id, text)
-                metadata = {"source": "legacy"}
-                if model.kind == "dense":
-                    response.vectors.append(
-                        EmbeddingVector(
-                            id=result["id"],
-                            model=model.name,
-                            namespace=model.name,
-                            kind="dense",
-                            vectors=[result["values"]],
-                            terms=None,
-                            dimension=model.dimension,
-                            metadata=metadata,
-                        )
-                    )
-                else:
-                    response.vectors.append(
-                        EmbeddingVector(
-                            id=result["id"],
-                            model=model.name,
-                            namespace=model.name,
-                            kind="sparse",
-                            vectors=None,
-                            terms=result["terms"],
-                            dimension=model.dimension,
-                            metadata=metadata,
-                        )
-                    )
+                response.vectors.append(
+                    EmbeddingVector.from_record(record, storage_router=self.storage_router)
+                )
         return response
 
 
+@dataclass(slots=True)
 class EmbeddingGrpcService:
     """Async gRPC servicer bridging requests into the embedding worker."""
 
-    def __init__(self, worker: EmbeddingWorker) -> None:
-        self.worker = worker
+    worker: EmbeddingWorker
 
     async def EmbedChunks(self, request, context):  # type: ignore[override]
         embed_request = EmbeddingRequest(
             tenant_id=request.tenant_id,
-            chunk_ids=list(request.chunk_ids),
             texts=list(request.texts),
-            normalize=request.normalize,
-            batch_size=request.batch_size or 8,
+            chunk_ids=list(request.chunk_ids),
             models=list(request.models) or None,
             namespaces=list(request.namespaces) or None,
             correlation_id=getattr(request, "correlation_id", None),
@@ -489,10 +314,19 @@ class EmbeddingGrpcService:
             message.namespace = vector.namespace
             message.dimension = vector.dimension
             if vector.vectors:
-                for item in vector.vectors:
-                    payload = message.vectors.add()
-                    payload.values.extend(item)
+                for payload in vector.vectors:
+                    message_payload = message.vectors.add()
+                    message_payload.values.extend(payload)
             if vector.terms:
                 message.terms.update(vector.terms)
             message.metadata.update({key: str(value) for key, value in vector.metadata.items()})
         return reply
+
+
+__all__ = [
+    "EmbeddingGrpcService",
+    "EmbeddingRequest",
+    "EmbeddingResponse",
+    "EmbeddingVector",
+    "EmbeddingWorker",
+]

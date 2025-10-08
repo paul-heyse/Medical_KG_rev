@@ -24,7 +24,7 @@
 - [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
   - [ ] `pdf_parser.py` (bespoke PDF logic, 180 lines) - MinerU is the only PDF path
   - [ ] `xml_parser.py` (custom XML parsing, 95 lines) - Replace with unstructured
-  - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with scispaCy/syntok
+  - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with HuggingFace/syntok
 - [ ] 1.1.3 Identify adapter methods to delete:
   - [ ] Search for `def split_document\|\.chunk\(` in adapters/ (15 occurrences)
   - [ ] All adapter-specific chunking logic → delegate to ChunkerPort
@@ -59,9 +59,9 @@
   - [ ] Decision: Map to `RecursiveCharacterTextSplitter` (default) or `SentenceWindowNodeParser` (coherence-sensitive)
   - [ ] Delete: All 8 custom chunker implementations
   - [ ] Verify: Chunk quality (offsets, section labels) preserved
-- [ ] 1.3.2 **Sentence Segmentation**: Verify delegation to scispaCy/syntok
+- [ ] 1.3.2 **Sentence Segmentation**: Verify delegation to HuggingFace/syntok
   - [ ] Audit: Where are custom sentence splitters used?
-  - [ ] Decision: scispaCy for biomedical-aware splitting, syntok for speed
+  - [ ] Decision: HuggingFace biomedical models for domain-aware splitting, syntok for speed
   - [ ] Delete: All 3 custom sentence splitter implementations
   - [ ] Verify: Sentence boundaries match expected behavior
 - [ ] 1.3.3 **Tokenization**: Verify delegation to transformers/tiktoken
@@ -84,7 +84,7 @@
 - [ ] 1.4.1 Create commit plan with atomic deletions:
   - [ ] Commit 1: Add ChunkerPort interface + delete `custom_splitters.py`
   - [ ] Commit 2: Add langchain/LlamaIndex wrappers + delete `semantic_splitter.py`, `sliding_window.py`
-  - [ ] Commit 3: Add scispaCy/syntok wrappers + delete `sentence_splitters.py`
+  - [ ] Commit 3: Add HuggingFace/syntok wrappers + delete `sentence_splitters.py`
   - [ ] Commit 4: Add unstructured wrapper + delete `xml_parser.py`
   - [ ] Commit 5: Harden MinerU gate + delete `pdf_parser.py`
   - [ ] Commit 6: Add profile system + delete adapter `.split_document()` methods
@@ -113,7 +113,7 @@
 - [ ] 1.6.2 Create new ChunkerPort tests:
   - [ ] `tests/chunking/test_chunker_port.py` (interface compliance)
   - [ ] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
-  - [ ] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, scispaCy)
+  - [ ] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, HuggingFace)
 - [ ] 1.6.3 Verify test coverage ≥90% for new chunking code
 - [ ] 1.6.4 Delete all references to custom chunkers in test fixtures
 
@@ -126,7 +126,7 @@
 - [ ] 1.7.2 Update `docs/guides/chunking.md`:
   - [ ] Remove: Legacy examples with custom chunkers
   - [ ] Add: Profile-based chunking examples
-  - [ ] Add: Library delegation guide (langchain, LlamaIndex, scispaCy)
+  - [ ] Add: Library delegation guide (langchain, LlamaIndex, HuggingFace)
 - [ ] 1.7.3 Create `DELETED_CODE.md` for chunking/parsing
 
 ### 1.8 Codebase Size Validation
@@ -148,13 +148,13 @@
 
 - [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
 - [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
+- [x] 2.3 Add **sentence-transformers>=2.2.0** for biomedical sentence segmentation
 - [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
 - [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
 - [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
 - [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
 - [ ] 2.8 Test dependency installation in clean venv
-- [ ] 2.9 Download scispaCy model: `python -m spacy download en_core_sci_sm`
+- [ ] 2.9 Download biomedical sentence model if needed (HuggingFace will auto-download)
 - [ ] 2.10 Verify all libraries import without errors
 
 ---
@@ -198,7 +198,7 @@
       target_tokens: int = 512
       overlap_tokens: int = 50
       respect_boundaries: list[str]  # ["heading", "table", "section"]
-      sentence_splitter: str = "syntok"  # or "scispacy"
+      sentence_splitter: str = "syntok"  # or "huggingface"
       preserve_tables_as_html: bool = True
       filters: list[str] = ["drop_boilerplate", "exclude_references"]
   ```
@@ -219,7 +219,7 @@
     - heading  # Never split across IMRaD sections
     - figure_caption
     - table
-  sentence_splitter: scispacy  # Biomedical-aware
+  sentence_splitter: huggingface  # Biomedical-aware
   preserve_tables_as_html: true
   filters:
     - drop_boilerplate
@@ -270,7 +270,7 @@
   respect_boundaries:
     - loinc_section  # LOINC-coded sections
     - table
-  sentence_splitter: scispacy
+  sentence_splitter: huggingface
   preserve_tables_as_html: true
   filters:
     - drop_boilerplate
@@ -349,14 +349,14 @@
           )
   ```
 
-- [x] 5.2.3 Add sentence boundary detection via scispaCy/syntok
+- [x] 5.2.3 Add sentence boundary detection via HuggingFace/syntok
 - [x] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
 - [x] 5.2.5 Write unit tests for coherence preservation
 
-### 5.3 scispaCy Sentence Segmentation Wrapper
+### 5.3 HuggingFace Sentence Segmentation Wrapper
 
-- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
-- [x] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
+- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py`
+- [x] 5.3.2 Implement `HuggingFaceSentenceSegmenter`:
 
   ```python
   import spacy
@@ -385,7 +385,7 @@
 
 - [x] 5.4.3 Handle messy punctuation
 - [x] 5.4.4 Preserve char offsets
-- [ ] 5.4.5 Benchmark throughput vs scispaCy (should be 5-10x faster)
+- [ ] 5.4.5 Benchmark throughput vs HuggingFace (should be 5-10x faster)
 
 ### 5.5 Tokenizer Wrappers (HF / tiktoken)
 
@@ -591,7 +591,7 @@
 
 - [ ] 10.1.1 ChunkerPort protocol compliance (5 tests)
 - [ ] 10.1.2 Each profile (IMRaD, Registry, SPL, Guideline) (12 tests)
-- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, scispaCy, syntok, unstructured) (15 tests)
+- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, HuggingFace, syntok, unstructured) (15 tests)
 - [ ] 10.1.4 Filter chain system (8 tests)
 - [ ] 10.1.5 MinerU gate logic (6 tests)
 - [ ] 10.1.6 Chunk schema validation (4 tests)
@@ -781,9 +781,9 @@
 ## 13. Performance Optimization
 
 - [ ] 11.1 Batch sentence segmentation (process 10 documents at once)
-- [ ] 11.2 Cache scispaCy model loading (singleton pattern)
+- [ ] 11.2 Cache HuggingFace model loading (singleton pattern)
 - [ ] 11.3 Parallelize chunking for independent documents (asyncio)
-- [ ] 11.4 Benchmark: scispaCy vs syntok throughput (choose per profile)
+- [ ] 11.4 Benchmark: HuggingFace vs syntok throughput (choose per profile)
 - [ ] 11.5 Validate: Chunking throughput ≥100 docs/sec for non-PDF sources
 
 ---

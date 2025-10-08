@@ -8,13 +8,13 @@ The current codebase contains **fragmented, source-specific parsing and chunking
 2. **Quality Issues**: Chunks split mid-sentence, tables fractured, clinical sections misaligned
 3. **Provenance Gaps**: Inconsistent offset tracking, missing section labels, lost table context
 4. **GPU Policy Violations**: PDF processing lacks clear MinerU gate, silent CPU fallbacks exist
-5. **Library Duplication**: Bespoke implementations of functionality available in LangChain, LlamaIndex, scispaCy
+5. **Library Duplication**: Bespoke implementations of functionality available in LangChain, LlamaIndex, HuggingFace
 
 This proposal **replaces fragmented parsing/chunking with a unified, library-based architecture** that:
 
 - Respects clinical document structure (IMRaD, LOINC sections, registry outcomes, guideline recommendations)
 - Preserves the **manual PDF two-phase gate** (MinerU → `pdf_ir_ready` → explicit `postpdf-start`)
-- Delegates to proven libraries (langchain-text-splitters, LlamaIndex, scispaCy, unstructured)
+- Delegates to proven libraries (langchain-text-splitters, LlamaIndex, HuggingFace, unstructured)
 - Enforces **GPU-only policy** for MinerU (no CPU fallbacks)
 - Produces **span-grounded chunks** with precise offsets, section labels, and table fidelity
 
@@ -45,7 +45,7 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 
 - **langchain-text-splitters**: Default for structure-aware segmentation (recursive character/token)
 - **LlamaIndex node parsers**: Sentence/semantic-window chunking for coherence
-- **scispaCy + syntok**: Biomedical-aware sentence segmentation
+- **HuggingFace models + syntok**: Biomedical-aware sentence segmentation using transformer models
 - **tokenizers (HF) / tiktoken**: Budget enforcement aligned with Qwen3 embedding model
 - **unstructured**: Safety net for non-PDF HTML and oddball documents
 
@@ -71,12 +71,12 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 - `src/Medical_KG_rev/services/parsing/pdf_parser.py` (bespoke PDF logic, replaced by MinerU)
 - `src/Medical_KG_rev/services/parsing/xml_parser.py` (replaced by unstructured)
 - All `*.split_document()` methods scattered across adapters (15 occurrences)
-- Custom sentence splitters (3 implementations, replaced by scispaCy/syntok)
+- Custom sentence splitters (3 implementations, replaced by HuggingFace models/syntok)
 
 **REPLACE**:
 
 - Custom recursive splitters → `langchain_text_splitters.RecursiveCharacterTextSplitter`
-- Custom sentence splitters → `scispacy.sentence` or `syntok.segment`
+- Custom sentence splitters → HuggingFace biomedical models or `syntok.segment`
 - Custom tokenizers → `transformers.AutoTokenizer` (aligned with Qwen3)
 - Bespoke XML parsing → `unstructured.partition_xml`
 
@@ -118,12 +118,11 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4  # Biomedical sentence segmentation
-en-core-sci-sm @ https://s3-us-west-2.amazonaws.com/ai2-s3-scispacy/releases/en_core_sci_sm-0.5.4/en_core_sci_sm-0.5.4.tar.gz
 syntok>=1.4.4  # Fast sentence splitter
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0  # OpenAI tokenizer
-transformers>=4.38.0  # HF tokenizers for Qwen3 alignment
+transformers>=4.38.0  # HF tokenizers for Qwen3 alignment and biomedical sentence segmentation
+sentence-transformers>=2.2.0  # For biomedical sentence boundary detection
 ```
 
 ### Migration Path
@@ -132,7 +131,7 @@ transformers>=4.38.0  # HF tokenizers for Qwen3 alignment
 
 1. **Week 1-2**: Implement new architecture
    - Build ChunkerPort interface + profiles
-   - Integrate langchain-text-splitters, LlamaIndex, scispaCy
+   - Integrate langchain-text-splitters, LlamaIndex, HuggingFace models
    - Delete custom chunkers in same commits
 
 2. **Week 3-4**: Integration testing
@@ -152,18 +151,18 @@ transformers>=4.38.0  # HF tokenizers for Qwen3 alignment
 - **Provenance**: Every chunk carries doc_id, char offsets, page/bbox, section labels, intent hints
 - **GPU Policy**: Explicit MinerU gate, no CPU fallbacks, fail-fast semantics
 - **Span-Grounded**: Precise offsets enable downstream extraction, SHACL validation, graph writes
-- **Library Standards**: Delegation to LangChain, LlamaIndex, scispaCy reduces bespoke code by 43%
+- **Library Standards**: Delegation to LangChain, LlamaIndex, HuggingFace reduces bespoke code by 43%
 
 ### Risks
 
 - **Profile Tuning**: Initial profiles may need iteration based on downstream extraction quality
-- **scispaCy Overhead**: Heavier than syntok; profile selection affects batch throughput
+- **HuggingFace Model Overhead**: Transformer-based sentence segmentation heavier than syntok; profile selection affects batch throughput
 - **MinerU Gate**: Requires team training on explicit `postpdf-start` workflow (no auto-resume)
 
 ### Mitigation
 
 - Start with conservative profile defaults, tune based on retrieval/extraction metrics
-- Use syntok for high-volume batches, scispaCy only when biomedical sentence boundaries critical
+- Use syntok for high-volume batches, HuggingFace models only when biomedical sentence boundaries critical
 - Document `postpdf-start` workflow in runbook, add Dagster UI shortcuts for common cases
 
 ---
@@ -282,7 +281,7 @@ Content-Type: application/vnd.api+json
       "chunking_profile": "ctgov-registry",
       "options": {
         "preserve_tables_html": true,
-        "sentence_splitter": "scispacy"
+        "sentence_splitter": "huggingface"
       }
     }
   }

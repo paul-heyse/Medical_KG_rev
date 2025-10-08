@@ -32,6 +32,7 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
+    derive_stage_execution_order,
 )
 from Medical_KG_rev.orchestration.dagster.stages import (
     HaystackPipelineResource,
@@ -43,6 +44,19 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
+from Medical_KG_rev.orchestration.dagster.types import PIPELINE_STATE_DAGSTER_TYPE
+from Medical_KG_rev.orchestration.stages.plugin_manager import (
+    StagePluginContext,
+    StagePluginExecutionError,
+    StagePluginManager,
+    StagePluginNotAvailable,
+)
+from Medical_KG_rev.orchestration.stages.plugins.builtin import (
+    CoreStagePlugin,
+    PdfTwoPhasePlugin,
+)
+from Medical_KG_rev.orchestration.state.cache import PipelineStateCache
+from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
 from Medical_KG_rev.orchestration.stages.plugins import (
     StagePluginBuildError,
     StagePluginLookupError,
@@ -70,6 +84,31 @@ class StageFactory:
             raise StageResolutionError(
                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
+    """Resolve orchestration stages using the plugin manager."""
+
+    plugins: StagePluginManager
+
+    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+        try:
+            instance = self.plugins.create_stage(stage)
+        except StagePluginNotAvailable as exc:  # pragma: no cover - defensive guard
+            raise StageResolutionError(
+                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+            ) from exc
+        except StagePluginExecutionError as exc:  # pragma: no cover - defensive guard
+            raise StageResolutionError(
+                f"Stage plugin failed for '{stage.name}' ({stage.stage_type})"
+    """Resolve orchestration stages through the plugin manager."""
+
+    plugin_manager: StagePluginManager
+
+    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+        try:
+            instance = self.plugin_manager.build_stage(stage)
+        except StagePluginLookupError as exc:
+            raise StageResolutionError(
+                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+            ) from exc
         except StagePluginBuildError as exc:
             raise StageResolutionError(
                 f"Stage '{stage.name}' of type '{stage.stage_type}' failed to initialise"
@@ -83,9 +122,30 @@ class StageFactory:
         return instance
 
 
+def build_stage_factory(
+    adapter_manager: AdapterPluginManager,
+    pipeline_resource: HaystackPipelineResource,
+    job_ledger: JobLedger,
+) -> StageFactory:
+    """Initialise the stage plugin manager and return a bound factory."""
+
+    context = StagePluginContext(
+        resources={
+            "adapter_manager": adapter_manager,
+            "haystack_pipeline": pipeline_resource,
+            "job_ledger": job_ledger,
+        }
+    )
+    manager = StagePluginManager(context)
+    manager.register(CoreStagePlugin())
+    manager.register(PdfTwoPhasePlugin())
+    manager.load_entrypoints()
+    return StageFactory(manager)
+
+
 @op(
     name="bootstrap",
-    out=Out(PipelineState),
+    out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
     config_schema={
         "context": dict,
         "adapter_request": dict,
@@ -133,8 +193,8 @@ def _make_stage_op(
 
     @op(
         name=stage_name,
-        ins={"state": In(PipelineState)},
-        out=Out(PipelineState),
+        ins={"state": In(dagster_type=PIPELINE_STATE_DAGSTER_TYPE)},
+        out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
         required_resource_keys={
             "stage_factory",
             "resilience_policies",
@@ -145,6 +205,10 @@ def _make_stage_op(
     def _stage_op(context, state: PipelineState) -> PipelineState:
         stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
+        persister = PipelineStatePersister(metadata_store=ledger)
+        dependencies = stage_definition.depends_on
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -206,8 +270,11 @@ def _make_stage_op(
         checkpoint_label = stage_name
 
         try:
+            if dependencies:
+                state.ensure_dependencies(stage_name, dependencies)
             state.validate_transition(stage_type)
             state.create_checkpoint(checkpoint_label)
+            state.notify_stage_started(stage_name, stage_type)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
@@ -218,7 +285,18 @@ def _make_stage_op(
                 stage_type=stage_type,
             )
             state.clear_checkpoint(checkpoint_label)
+            state.notify_stage_failed(stage_name, stage_type, exc)
             snapshot_b64 = state.serialise_base64()
+            if job_id:
+                try:
+                    snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+                except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                    logger.warning(
+                        "dagster.stage.snapshot_persist_failed",
+                        job_id=job_id,
+                        stage=stage_name,
+                        error=str(persist_exc),
+                    )
             emitter.emit_failed(
                 stage_ctx,
                 stage_name,
@@ -249,7 +327,26 @@ def _make_stage_op(
             duration_ms=duration_ms,
             output_count=output_count,
         )
+        state.notify_stage_completed(
+            stage_name,
+            stage_type,
+            duration_ms=duration_ms,
+            attempts=attempts,
+            output_count=output_count,
+        )
+        cache_key = job_id or stage_ctx.correlation_id or stage_name
+        context.resources.state_cache.store(cache_key, state.snapshot())
         snapshot_b64 = state.serialise_base64()
+        if job_id:
+            try:
+                snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+            except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "dagster.stage.snapshot_persist_failed",
+                    job_id=job_id,
+                    stage=stage_name,
+                    error=str(persist_exc),
+                )
         state.clear_checkpoint(checkpoint_label)
 
         if job_id:
@@ -262,6 +359,10 @@ def _make_stage_op(
                     f"state.{stage_name}.snapshot": snapshot_b64,
                 },
             )
+            if stage_type == "pdf-download":
+                ledger.set_pdf_downloaded(job_id)
+            elif stage_type == "pdf-ir-gate":
+                ledger.set_pdf_ir_ready(job_id)
         emitter.emit_completed(
             stage_ctx,
             stage_name,
@@ -286,26 +387,7 @@ def _make_stage_op(
 
 
 def _topological_order(stages: list[StageDefinition]) -> list[str]:
-    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
-    resolved: list[str] = []
-    temporary: set[str] = set()
-    permanent: set[str] = set()
-
-    def visit(node: str) -> None:
-        if node in permanent:
-            return
-        if node in temporary:
-            raise ValueError(f"Cycle detected involving stage '{node}'")
-        temporary.add(node)
-        for dep in graph.get(node, set()):
-            visit(dep)
-        temporary.remove(node)
-        permanent.add(node)
-        resolved.append(node)
-
-    for stage in graph:
-        visit(stage)
-    return resolved
+    return derive_stage_execution_order(stages)
 
 
 @dataclass(slots=True)
@@ -404,6 +486,7 @@ class DagsterOrchestrator:
         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
         self.openlineage = openlineage_emitter or OpenLineageEmitter()
+        self.state_cache = PipelineStateCache(max_entries=256, ttl_seconds=1800)
         self._resource_defs: dict[str, ResourceDefinition] = {
             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
@@ -413,6 +496,7 @@ class DagsterOrchestrator:
             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
             "kafka": ResourceDefinition.hardcoded_resource(self.kafka_client),
             "openlineage": ResourceDefinition.hardcoded_resource(self.openlineage),
+            "state_cache": ResourceDefinition.hardcoded_resource(self.state_cache),
         }
         self._jobs: dict[str, BuiltPipelineJob] = {}
         self._definitions: Definitions | None = None
@@ -640,6 +724,11 @@ def build_default_orchestrator() -> DagsterOrchestrator:
     adapter_manager = get_plugin_manager()
     pipeline_resource = create_default_pipeline_resource()
     job_ledger = JobLedger()
+    stage_factory = build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
+    logger.info(
+        "dagster.stage_plugins.initialised",
+        stage_types=stage_factory.plugins.available_stage_types(),
+    )
     stage_plugin_manager = create_stage_plugin_manager(
         adapter_manager,
         pipeline_resource,

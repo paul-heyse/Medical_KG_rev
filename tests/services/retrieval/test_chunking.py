@@ -5,7 +5,8 @@ import pytest
 from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
-from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions, ChunkingService
+from Medical_KG_rev.services.retrieval.chunking import ChunkingService
+from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 
 
 class _StubChunkStage:
@@ -36,26 +37,26 @@ class _StubChunkStage:
 def test_chunking_service_builds_document() -> None:
     stage = _StubChunkStage()
     service = ChunkingService(chunk_stage=stage)
-    options = ChunkingOptions(strategy="semantic", metadata={"title": "Sample"})
-    chunks = service.chunk(
-        "tenant-1",
-        "doc-1",
-        "Heading\n\nBody paragraph.",
-        options,
+    command = ChunkCommand(
+        tenant_id="tenant-1",
+        document_id="doc-1",
+        text="Heading\n\nBody paragraph.",
+        strategy="semantic",
+        metadata={"title": "Sample"},
     )
+    chunks = service.chunk(command)
     assert len(chunks) == 1
     ctx, document = stage.executions[0]
     assert ctx.tenant_id == "tenant-1"
     assert document.id == "doc-1"
     assert document.metadata["title"] == "Sample"
+    assert ctx.metadata["strategy"] == "semantic"
     assert chunks[0].body == "Heading\n\nBody paragraph."
 
 
 def test_chunking_service_requires_text() -> None:
-    stage = _StubChunkStage()
-    service = ChunkingService(chunk_stage=stage)
     with pytest.raises(InvalidDocumentError):
-        service.chunk("tenant", "doc", "  ")
+        ChunkCommand(tenant_id="tenant", document_id="doc", text="  ")
 
 
 def test_available_strategies_exposed() -> None:

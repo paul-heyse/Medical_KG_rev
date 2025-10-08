@@ -15,6 +15,9 @@ from Medical_KG_rev.chunking.exceptions import (
     ProfileNotFoundError,
     TokenizerMismatchError,
 )
+from Medical_KG_rev.gateway.models import DocumentChunk, ProblemDetail
+from Medical_KG_rev.observability.metrics import record_chunking_failure
+from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions, ChunkingService
 from Medical_KG_rev.gateway.models import DocumentChunk
 from Medical_KG_rev.observability.metrics import record_chunking_failure
 from Medical_KG_rev.services.retrieval.chunking import ChunkCommand, ChunkingService
@@ -79,6 +82,12 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             chunk_size=request.chunk_size,
             overlap=request.overlap,
             options=dict(request.options or {}),
+        metadata = dict(self._metadata_without_text(request.options))
+        options = ChunkingOptions(
+            strategy=request.strategy,
+            max_tokens=request.chunk_size,
+            overlap=request.overlap,
+            metadata=metadata,
         )
 
         started = time.perf_counter()
@@ -108,6 +117,96 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             message = str(exc)
             if "GPU semantic checks" in message:
                 raise self._translate_error(job_id, command, exc)
+            raw_chunks = self._chunker.chunk(
+                request.tenant_id,
+                request.document_id,
+                text,
+                options,
+            )
+        except ProfileNotFoundError as exc:
+            raise self._error(job_id, request, "Chunking profile not found", 400, exc, "ProfileNotFoundError")
+        except TokenizerMismatchError as exc:
+            raise self._error(job_id, request, "Tokenizer mismatch", 500, exc, "TokenizerMismatchError")
+        except ChunkingFailedError as exc:
+            message = exc.detail or str(exc) or "Chunking process failed"
+            raise self._error(job_id, request, message, 500, exc, "ChunkingFailedError")
+        except InvalidDocumentError as exc:
+            raise self._error(job_id, request, "Invalid document payload", 400, exc, "InvalidDocumentError")
+        except ChunkerConfigurationError as exc:
+            detail = ProblemDetail(
+                title="Chunker configuration invalid",
+                status=422,
+                type="https://httpstatuses.com/422",
+                detail=str(exc),
+                extensions={"valid_strategies": self._chunker.available_strategies()},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except ChunkingUnavailableError as exc:
+            retry_after = max(1, int(round(exc.retry_after)))
+            detail = ProblemDetail(
+                title="Chunking temporarily unavailable",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=str(exc),
+                extensions={"retry_after": retry_after},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except MineruOutOfMemoryError as exc:
+            detail = ProblemDetail(
+                title="MinerU out of memory",
+                status=503,
+                type="https://medical-kg/errors/mineru-oom",
+                detail=str(exc),
+                extensions={"reason": "gpu_out_of_memory"},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except MineruGpuUnavailableError as exc:
+            detail = ProblemDetail(
+                title="MinerU GPU unavailable",
+                status=503,
+                type="https://medical-kg/errors/mineru-gpu-unavailable",
+                detail=str(exc),
+                extensions={"reason": "gpu_unavailable"},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except MemoryError as exc:
+            message = str(exc) or "Chunking operation exhausted available memory"
+            detail = ProblemDetail(
+                title="Chunking resources exhausted",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=message,
+                extensions={"retry_after": 60},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except TimeoutError as exc:
+            message = str(exc) or "Chunking operation timed out"
+            detail = ProblemDetail(
+                title="Chunking resources exhausted",
+                status=503,
+                type="https://httpstatuses.com/503",
+                detail=message,
+                extensions={"retry_after": 30},
+            )
+            self._record_failure(job_id, request, detail, exc)
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+        except RuntimeError as exc:
+            message = str(exc)
+            if "GPU semantic checks" in message:
+                detail = ProblemDetail(
+                    title="GPU unavailable for semantic chunking",
+                    status=503,
+                    type="https://httpstatuses.com/503",
+                    detail=message,
+                    extensions={"reason": "gpu_unavailable"},
+                )
+                self._record_failure(job_id, request, detail, exc)
+                raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
             self._lifecycle.mark_failed(job_id, reason=message or "Runtime error during chunking", stage="chunk")
             raise
 
@@ -127,6 +226,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             )
         duration = time.perf_counter() - started
         payload = {"chunks": len(chunks), "strategy": command.strategy}
+        payload = {"chunks": len(chunks)}
         self._lifecycle.update_metadata(job_id, payload)
         self._lifecycle.mark_completed(job_id, payload=payload)
         return ChunkingResult(
@@ -172,6 +272,50 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
                 "metric": report.metric,
             },
         )
+        payload = request.options or {}
+        raw_text = payload.get("text") if isinstance(payload, Mapping) else None
+        if not isinstance(raw_text, str) or not raw_text.strip():
+            detail = ProblemDetail(
+                title="Invalid document payload",
+                status=400,
+                type="https://httpstatuses.com/400",
+                detail="Chunking requests must include a non-empty 'text' field in options",
+                instance=f"/v1/chunk/{request.document_id}",
+            )
+            self._lifecycle.mark_failed(job_id, reason=detail.detail or detail.title, stage="chunk")
+            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id})
+        return raw_text
+
+    @staticmethod
+    def _metadata_without_text(options: Mapping[str, Any] | None) -> Mapping[str, Any]:
+        if not isinstance(options, Mapping):
+            return {}
+        return {key: value for key, value in options.items() if key != "text"}
+
+    def _error(
+        self,
+        job_id: str,
+        request: ChunkingRequest,
+        title: str,
+        status: int,
+        exc: Exception,
+        metric: str,
+    ) -> CoordinatorError:
+        detail = ProblemDetail(
+            title=title,
+            status=status,
+            type="https://medical-kg/errors/chunking",
+            detail=str(exc),
+            instance=f"/v1/chunk/{request.document_id}",
+        )
+        profile = None
+        if isinstance(request.options, Mapping):
+            raw_profile = request.options.get("profile")
+            if isinstance(raw_profile, str):
+                profile = raw_profile
+        record_chunking_failure(profile, metric)
+        self._lifecycle.mark_failed(job_id, reason=detail.detail or detail.title, stage="chunk")
+        return CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id})
 
     def _record_failure(
         self,
@@ -189,6 +333,17 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             reason=report.problem.detail or report.problem.title,
             stage="chunk",
         )
+        request: ChunkingRequest,
+        detail: ProblemDetail,
+        exc: Exception,
+    ) -> None:
+        profile = None
+        if isinstance(request.options, Mapping):
+            raw_profile = request.options.get("profile")
+            if isinstance(raw_profile, str):
+                profile = raw_profile
+        record_chunking_failure(profile, exc.__class__.__name__)
+        self._lifecycle.mark_failed(job_id, reason=detail.detail or detail.title, stage="chunk")
 
 
 __all__ = [

@@ -45,6 +45,10 @@ class _StubChunker:
         if self._raise:
             raise self._raise
         return [_StubChunk(command.text)]
+    def chunk(self, tenant_id: str, document_id: str, text: str, options) -> list[_StubChunk]:  # noqa: D401
+        if self._raise:
+            raise self._raise
+        return [_StubChunk(text)]
 
 
 class _StubEmbeddingPersister:
@@ -193,6 +197,7 @@ def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_conf
         config=chunk_config,
         errors=translator,
     )
+    coordinator = ChunkingCoordinator(lifecycle=lifecycle, chunker=chunker, config=chunk_config)
 
     request = ChunkingRequest(
         tenant_id="tenant-a",
@@ -208,6 +213,7 @@ def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_conf
     assert len(result.chunks) == 1
     assert isinstance(result.chunks[0], DocumentChunk)
     assert result.metadata == {"chunks": 1, "strategy": "section"}
+    assert result.metadata == {"chunks": 1}
 
 
 def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
@@ -219,6 +225,7 @@ def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager,
         config=chunk_config,
         errors=translator,
     )
+    coordinator = ChunkingCoordinator(lifecycle=lifecycle, chunker=chunker, config=chunk_config)
 
     request = ChunkingRequest(
         tenant_id="tenant-a",

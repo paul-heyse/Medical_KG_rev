@@ -39,7 +39,6 @@ from .runtime import AdapterExecutionPlan, AdapterInvocationResult
 from .resilience import (
     BackoffStrategy,
     CircuitBreaker,
-    CircuitState,
     ResilienceConfig,
     ResilientHTTPClient,
     circuit_breaker,
@@ -72,7 +71,6 @@ __all__ = [
     "BaseAdapterPlugin",
     "BiomedicalPayload",
     "CircuitBreaker",
-    "CircuitState",
     "ConfigValidationResult",
     "FinancialPayload",
     "LegalPayload",

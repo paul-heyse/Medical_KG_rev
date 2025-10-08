@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 
 import yaml
 from pydantic import (
@@ -28,6 +28,7 @@ from Medical_KG_rev.observability.metrics import (
     record_resilience_rate_limit_wait,
     record_resilience_retry,
 )
+from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -123,7 +124,8 @@ class PipelineTopologyConfig(BaseModel):
                     f"stage '{stage.name}' declares unknown dependencies: {', '.join(sorted(missing))}"
                 )
 
-        order = _topological_sort({stage.name: stage.depends_on for stage in self.stages})
+        graph = build_stage_dependency_graph(self.stages)
+        order = _topological_sort(graph)
         if order is None:
             raise ValueError("cycle detected in pipeline dependencies")
 
@@ -287,6 +289,45 @@ class ResiliencePolicy(BaseModel):
             rate = max(cfg.rate_limit_per_second, 1e-6)
             self._rate_limiter = AsyncLimiter(rate, time_period=1.0)
         return self._rate_limiter
+
+
+def build_stage_dependency_graph(
+    stages: Sequence[StageDefinition],
+) -> dict[str, set[str]]:
+    """Combine explicit and inferred dependencies for pipeline stages."""
+
+    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
+    index_map = {stage.name: idx for idx, stage in enumerate(stages)}
+    type_to_names: dict[str, list[str]] = {}
+    for stage in stages:
+        type_to_names.setdefault(stage.stage_type, []).append(stage.name)
+
+    for stage in stages:
+        required_types = PipelineState.required_stage_types(stage.stage_type)
+        if not required_types:
+            continue
+        current_deps = graph[stage.name]
+        for required_type in required_types:
+            providers = [
+                name
+                for name in type_to_names.get(required_type, [])
+                if index_map[name] < index_map[stage.name]
+            ]
+            if not providers:
+                raise ValueError(
+                    "stage '%s' (type=%s) requires a preceding stage of type '%s'"
+                    % (stage.name, stage.stage_type, required_type)
+                )
+            provider = max(providers, key=lambda candidate: index_map[candidate])
+            current_deps.add(provider)
+    return graph
+
+
+def derive_stage_execution_order(stages: Sequence[StageDefinition]) -> list[str]:
+    order = _topological_sort(build_stage_dependency_graph(stages))
+    if order is None:
+        raise ValueError("cycle detected in pipeline dependencies")
+    return order
 
 
 def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:

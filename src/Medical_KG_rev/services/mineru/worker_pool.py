@@ -188,6 +188,8 @@ class MineruWorkerProcess(Process):
         simulation_mode: bool,
     ) -> None:
         ctx = get_context("spawn")
+        task_queue: MpQueue = ctx.Queue()
+        stop_event: MpEvent = ctx.Event()
         super().__init__(
             name=worker_id,
             daemon=True,
@@ -196,16 +198,16 @@ class MineruWorkerProcess(Process):
                 worker_id,
                 settings.model_dump(mode="json"),
                 allocation,
-                ctx.Queue(),
+                task_queue,
                 result_queue,
-                ctx.Event(),
+                stop_event,
                 processor_factory,
                 simulation_mode,
             ),
         )
-        # The spawn context creates fresh objects, we stash references for external control.
-        self._task_queue: MpQueue = self._args[3]
-        self._stop_event: MpEvent = self._args[5]
+        # Stash references for external control without relying on Process internals.
+        self._task_queue: MpQueue = task_queue
+        self._stop_event: MpEvent = stop_event
         self.allocation = allocation
 
     @property
@@ -262,6 +264,7 @@ class WorkerPool:
         self._idle: set[str] = set()
         self._consumer_thread: threading.Thread | None = None
         self._consumer_stop = threading.Event()
+        self._dispatch_grace_period = 0.02
 
         mineru_gpu = MineruGpuManager(gpu_manager, settings)
         self._mineru_gpu = mineru_gpu
@@ -463,6 +466,8 @@ class WorkerPool:
             handle.busy = False
             MINERU_WORKER_QUEUE_DEPTH.labels(worker_id=worker_id).set(0)
             if not self._stop.is_set():
+                if self._dispatch_grace_period > 0:
+                    time.sleep(self._dispatch_grace_period)
                 self._idle.add(worker_id)
                 self._dispatch_event.set()
 

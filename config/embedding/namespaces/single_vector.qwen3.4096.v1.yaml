@@ -1,0 +1,14 @@
+name: qwen3-embedding
+kind: single_vector
+model_id: Qwen/Qwen2.5-Embedding-8B-Instruct
+model_version: v1
+dim: 4096
+provider: vllm
+endpoint: http://vllm-embeddings:8001/v1
+parameters:
+  timeout: 60
+  max_tokens: 8192
+pooling: mean
+normalize: true
+batch_size: 64
+requires_gpu: true

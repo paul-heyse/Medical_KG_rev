@@ -463,11 +463,11 @@ class MineruService:
   - **Output**: Structured document with tables, figures, text spans
   - **Performance**: 2-3 papers/second, 50+ pages/minute throughput
 
-- **Embedding Service**: SPLADE sparse + Qwen-3 dense embeddings
-  - **Multi-Namespace**: Single vector (BGE), sparse (SPLADE), multi-vector (ColBERT)
-  - **Batch Processing**: GPU-accelerated batch embedding generation
-  - **Vector Storage**: OpenSearch (sparse) + FAISS (dense) indexing
-  - **Performance**: 1000+ embeddings/second with GPU acceleration
+- **Embedding Service**: vLLM dense + Pyserini SPLADE sparse embeddings
+  - **Multi-Namespace**: Single vector (Qwen3), sparse (SPLADE-v3), multi-vector (ColBERT)
+  - **Library Delegation**: OpenAI-compatible vLLM endpoint and Pyserini encoders replace bespoke Python implementations
+  - **Vector Storage**: OpenSearch `rank_features` (sparse) + FAISS (dense) indexing with namespace-aware routing
+  - **Performance**: ≥1000 embeddings/second on GPU with fail-fast GPU enforcement
 
 - **Extraction Service**: LLM-based entity and relationship extraction
   - **Templates**: PICO, EffectMeasure, AdverseEvent, DoseRegimen, EligibilityCriteria
@@ -480,36 +480,15 @@ class MineruService:
 **Embedding Models:**
 
 ```python
-# src/Medical_KG_rev/services/embedding/registry.py
-class EmbeddingNamespace(Enum):
-    SINGLE_VECTOR_BGE = "single_vector.bge_small_en.384.v1"
-    SPARSE_SPLADE = "sparse.splade_v3.400.v1"
-    MULTI_VECTOR_COLBERT = "multi_vector.colbert_v2.128.v1"
+# src/Medical_KG_rev/services/embedding/namespace/loader.py
+from pathlib import Path
 
-# Configuration via pydantic-settings
-class EmbeddingSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="MK_EMBEDDING_")
+from Medical_KG_rev.services.embedding.namespace.loader import load_namespace_registry
 
-    active_namespaces: list[str] = [
-        "single_vector.bge_small_en.384.v1",
-        "sparse.splade_v3.400.v1",
-        "multi_vector.colbert_v2.128.v1"
-    ]
-
-    namespaces: dict[str, NamespaceConfig] = Field(default_factory=lambda: {
-        "single_vector.bge_small_en.384.v1": NamespaceConfig(
-            name="bge-small-en",
-            provider="sentence-transformers",
-            kind="single_vector",
-            model_id="BAAI/bge-small-en-v1.5",
-            model_version="v1.5",
-            dim=384,
-            pooling="mean",
-            normalize=True,
-            batch_size=32,
-            prefixes={"query": "query: ", "document": "passage: "}
-        )
-    })
+registry = load_namespace_registry(Path("config/embedding/namespaces"))
+qwen3 = registry.get("single_vector.qwen3.4096.v1")
+assert qwen3.provider == "vllm"
+assert qwen3.parameters["endpoint"] == "http://vllm-embedding:8001/v1"
 ```
 
 ### 6. Orchestration and Event-Driven Architecture

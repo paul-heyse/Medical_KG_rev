@@ -1,2 +1,12 @@
 -e .[chunking,reranking]
 mineru[gpu]>=2.5.4
+
+# Embedding stack (GPU-only components)
+vllm>=0.3.0
+pyserini>=0.22.0
+faiss-gpu>=1.7.4
+redis[hiredis]>=5.0.0
+cloudevents>=1.9.0
+transformers>=4.38.0  # Qwen3 tokenizer support
+torch>=2.1.0          # CUDA 12.1+ runtime for vLLM and FAISS GPU
+huggingface_hub>=0.24.0

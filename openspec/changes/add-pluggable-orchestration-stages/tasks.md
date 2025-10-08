@@ -70,7 +70,7 @@
 - [x] 5.8 Update stage factory to include download and gate stage implementations
 - [x] 5.9 Add PDF download logic to update JobLedger.set_pdf_downloaded
 - [x] 5.10 Add PDF gate logic to check JobLedger.pdf_ir_ready and control pipeline flow
-- [x] 5.11 Update stage dependency chains for plugin-based execution
+- [ ] 5.11 Update stage dependency chains for plugin-based execution
 - [ ] 5.12 Migrate stage configuration to plugin-based metadata
 - [ ] 5.13 Update stage error handling for plugin isolation
 - [ ] 5.14 Implement stage plugin performance optimizations
@@ -82,7 +82,7 @@
 
 - [x] 6.1 **DECOMMISSION**: Remove `build_default_stage_factory()` static implementation
 - [x] 6.2 **DECOMMISSION**: Delete hardcoded stage registry mapping in `stages.py:255-317`
-- [x] 6.3 **DECOMMISSION**: Remove `_apply_stage_output` and `_infer_output_count` dict manipulation
+- [ ] 6.3 **DECOMMISSION**: Remove `_apply_stage_output` and `_infer_output_count` dict manipulation
 - [ ] 6.4 **DECOMMISSION**: Delete legacy stage configuration files in `config/orchestration/stages/`
 - [x] 6.5 **DECOMMISSION**: Remove unused stage import statements and dependencies
 

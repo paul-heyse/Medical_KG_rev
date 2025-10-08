@@ -17,7 +17,7 @@
 - [x] 1.12 **Integrate `attrs>=25.4.0`**: Add performance optimizations for state object creation
 - [x] 1.13 **Integrate `orjson>=3.11.3`**: Use fast JSON serialization for state persistence
 - [x] 1.14 **Integrate `structlog`**: Add structured logging for state transitions and debugging
-- [x] 1.15 **Integrate `dagster>=1.11.13`**: Ensure typed state works with Dagster's execution model
+- [ ] 1.15 **Integrate `dagster>=1.11.13`**: Ensure typed state works with Dagster's execution model
 - [x] 1.16 **Integrate `tenacity>=9.1.2`**: Add retry logic for state persistence failures
 - [x] 1.17 **Integrate `prometheus-client`**: Add metrics for state object performance
 
@@ -74,8 +74,8 @@
 - [x] 5.6 Implement state serialization for Kafka message passing
 - [x] 5.7 Add state compression for large pipeline states
 - [x] 5.8 Create state caching layer for frequently accessed data
-- [x] 5.9 Implement state lifecycle hooks for monitoring
-- [x] 5.10 Add state performance profiling and optimization
+- [ ] 5.9 Implement state lifecycle hooks for monitoring
+- [ ] 5.10 Add state performance profiling and optimization
 
 ## 6. Testing & Migration
 

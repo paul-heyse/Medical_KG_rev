@@ -558,6 +558,23 @@ class GatewayService:
         try:
             result: ChunkingResult = self.chunking_coordinator(coordinator_request)
         except CoordinatorError as exc:
+            translator = self.chunking_errors or ChunkingErrorTranslator(
+                strategies=self.chunker.available_strategies()
+            )
+            context = exc.context if isinstance(exc.context, Mapping) else {}
+            detail = translator.from_context(context)
+            if detail is not None:
+                raise GatewayError(detail) from exc
+            raise
+        observe_job_duration("chunk", result.duration_s)
+        return list(result.chunks)
+
+    def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.embedding_coordinator is None:
+            raise RuntimeError("Embedding coordinator not initialised")
+        try:
+            result: ChunkingResult = self.chunking_coordinator(coordinator_request)
+        except CoordinatorError as exc:
             detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
             if isinstance(detail, ProblemDetail):
                 raise GatewayError(detail) from exc
@@ -1456,6 +1473,18 @@ def get_gateway_service() -> GatewayService:
             plugin_manager=adapter_manager,
             job_ledger=_ledger,
             pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

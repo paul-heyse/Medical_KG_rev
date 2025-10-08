@@ -36,6 +36,27 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   revisions. `PipelineConfigLoader` loads and caches versions to provide
   deterministic orchestration.
 
+## Gate-Aware Two-Phase Execution
+
+- **Phases** – Every stage is tagged with a `phase` (`pre-gate`, `gate`,
+  `post-gate`). Runtime transitions are emitted via the
+  `orchestration_phase_transitions_total` metric and persisted in the job
+  ledger for observability.
+- **Gate definitions** – Gate metadata lives alongside the stage topology. Each
+  gate specifies the controlling `stage`, `resume_stage`, timeout, retry
+  behaviour, and a list of ledger predicates (e.g., `pdf_ir_ready equals true`).
+  Gate evaluation outcomes are emitted to
+  `orchestration_gate_evaluations_total`, timeouts to
+  `orchestration_gate_timeouts_total`.
+- **Runtime behaviour** – Gate stages poll the ledger until their clauses are
+  satisfied. Successful gates capture a structured result in the run state and
+  ledger (`metadata.gate.<name>`), which the resume sensor uses to skip
+  download work and seed the correct downstream phase.
+- **Tooling** – Run `medkg-gates pdf-two-phase` to render a human-readable gate
+  report (or `--json` for automation). This CLI is backed by
+  `Medical_KG_rev.orchestration.tools.gate_debugger` and validates gate
+  definitions against the live topology cache.
+
 ## Execution Flow
 
 1. **Job submission** – The gateway builds a `StageContext` and calls
@@ -59,9 +80,10 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
 - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
   for required fields (attempts, backoff, circuit breaker thresholds). Invalid
   policies raise validation errors at load time.
-- **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
-  set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
-  and record trigger counts in the ledger metadata.
+- **Gate stalls** – Use `medkg-gates <pipeline>` to confirm the expected resume
+  stage and predicates. At runtime, inspect `metadata.gate.<gate>` within the
+  job ledger and the `orchestration_gate_*` metrics to determine whether the
+  gate failed its clauses or timed out waiting for ledger updates.
 - **Missing embeddings** – Ensure the embed stage resolved the Haystack
   embedder; stubs return deterministic values for test runs but do not persist
   to OpenSearch/FAISS.

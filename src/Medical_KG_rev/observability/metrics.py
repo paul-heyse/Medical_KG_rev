@@ -121,6 +121,21 @@ POSTPDF_START_TRIGGERED = Counter(
     "postpdf_start_triggered_total",
     "Number of times post-PDF resume was triggered",
 )
+GATE_EVALUATIONS = Counter(
+    "orchestration_gate_evaluations_total",
+    "Gate evaluation outcomes grouped by result",
+    labelnames=("gate", "pipeline", "result"),
+)
+GATE_TIMEOUTS = Counter(
+    "orchestration_gate_timeouts_total",
+    "Number of gate evaluations that timed out",
+    labelnames=("gate", "pipeline"),
+)
+PIPELINE_PHASE_TRANSITIONS = Counter(
+    "orchestration_phase_transitions_total",
+    "Pipeline phase transition counter",
+    labelnames=("pipeline", "from_phase", "to_phase"),
+)
 CHUNKING_CIRCUIT_STATE = Gauge(
     "chunking_circuit_breaker_state",
     "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
@@ -312,6 +327,27 @@ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: flo
     """Observe rate limit wait duration."""
 
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
+
+
+def record_gate_evaluation(gate: str, pipeline: str, result: str) -> None:
+    """Record the outcome of a gate evaluation attempt."""
+
+    _increment_with_exemplar(GATE_EVALUATIONS, (gate, pipeline or "unknown", result))
+
+
+def record_gate_timeout(gate: str, pipeline: str) -> None:
+    """Record a gate timeout occurrence."""
+
+    _increment_with_exemplar(GATE_TIMEOUTS, (gate, pipeline or "unknown"))
+
+
+def record_pipeline_phase_transition(
+    pipeline: str, from_phase: str | None, to_phase: str
+) -> None:
+    """Record a transition between pipeline execution phases."""
+
+    labels = (pipeline or "unknown", from_phase or "unknown", to_phase)
+    _increment_with_exemplar(PIPELINE_PHASE_TRANSITIONS, labels)
 
 
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:

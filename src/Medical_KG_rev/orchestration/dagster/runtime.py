@@ -12,6 +12,7 @@ from uuid import uuid4
 from dagster import (
     Definitions,
     ExecuteInProcessResult,
+    Field,
     In,
     Out,
     ResourceDefinition,
@@ -48,6 +49,7 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
+from Medical_KG_rev.observability.metrics import record_pipeline_phase_transition
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -104,6 +106,7 @@ class StageFactory:
         "context": dict,
         "adapter_request": dict,
         "payload": dict,
+        "resume": Field(dict, default_value={}),
     },
 )
 def bootstrap_op(context) -> dict[str, Any]:
@@ -112,6 +115,7 @@ def bootstrap_op(context) -> dict[str, Any]:
     ctx_payload = context.op_config["context"]
     adapter_payload = context.op_config["adapter_request"]
     payload = context.op_config.get("payload", {})
+    resume_payload = context.op_config.get("resume", {})
 
     stage_ctx = StageContext(
         tenant_id=ctx_payload["tenant_id"],
@@ -130,7 +134,18 @@ def bootstrap_op(context) -> dict[str, Any]:
         "payload": payload,
         "results": {},
         "job_id": stage_ctx.job_id,
+        "pipeline": stage_ctx.pipeline_name,
     }
+    if resume_payload:
+        resume_state = {
+            "stage": resume_payload.get("stage"),
+            "phase": resume_payload.get("phase"),
+            "gate": resume_payload.get("gate"),
+            "skip_download": bool(resume_payload.get("skip_download")),
+        }
+        if resume_state["phase"]:
+            state["_phase"] = resume_state["phase"]
+        state["resume"] = resume_state
     logger.debug(
         "dagster.bootstrap.initialised",
         tenant_id=stage_ctx.tenant_id,
@@ -146,7 +161,10 @@ def _apply_stage_output(
     output: Any,
 ) -> dict[str, Any]:
     metadata.output_handler(state, stage_name, output)
-    snapshot = metadata.result_snapshot(state, output)
+    if hasattr(output, "as_dict"):
+        snapshot = output.as_dict()  # type: ignore[attr-defined]
+    else:
+        snapshot = metadata.result_snapshot(state, output)
     state.setdefault("results", {})[stage_name] = {
         "type": metadata.stage_type,
         "output": snapshot,
@@ -265,6 +283,42 @@ def _make_stage_op(
 
         stage_ctx: StageContext = state["context"]
         job_id = stage_ctx.job_id or state.get("job_id")
+        pipeline_label = stage_ctx.pipeline_name or topology.name
+        state.setdefault("pipeline", pipeline_label)
+
+        resume_cfg = state.get("resume")
+        if resume_cfg is None:
+            resume_cfg = {}
+            state["resume"] = resume_cfg
+        skip_download = resume_cfg.get("skip_download", False)
+        if skip_download and stage_type == "download" and not resume_cfg.get("_download_skipped"):
+            logger.info(
+                "dagster.stage.skipped.download",
+                stage=stage_name,
+                pipeline=pipeline_label,
+            )
+            resume_cfg["_download_skipped"] = True
+            return state
+
+        resume_stage = resume_cfg.get("stage")
+        if resume_stage and not resume_cfg.get("_started"):
+            if stage_name != resume_stage:
+                logger.debug(
+                    "dagster.stage.skipped.resume",
+                    stage=stage_name,
+                    resume_stage=resume_stage,
+                    pipeline=pipeline_label,
+                )
+                return state
+            resume_cfg["_started"] = True
+            state["resume"] = resume_cfg
+
+        previous_phase = state.get("_phase")
+        current_phase = stage_definition.phase.value if stage_definition.phase else None
+        if current_phase:
+            if previous_phase and previous_phase != current_phase:
+                record_pipeline_phase_transition(pipeline_label, previous_phase, current_phase)
+            state["_phase"] = current_phase
 
         initial_attempt = 1
         if job_id:
@@ -297,6 +351,8 @@ def _make_stage_op(
                 entities = state.get("entities", [])
                 claims = state.get("claims", [])
                 result = wrapped(stage_ctx, entities, claims)
+            elif stage_type == "gate":
+                result = wrapped(stage_ctx, state, context.resources.job_ledger)
             else:  # pragma: no cover - guard for future expansion
                 upstream = _resolve_upstream_value(state, metadata, stage_factory)
                 result = wrapped(stage_ctx, upstream)
@@ -315,14 +371,15 @@ def _make_stage_op(
         output_count = _infer_output_count(metadata, result)
 
         if job_id:
-            ledger.update_metadata(
-                job_id,
-                {
-                    f"stage.{stage_name}.attempts": attempts,
-                    f"stage.{stage_name}.output_count": output_count,
-                    f"stage.{stage_name}.duration_ms": duration_ms,
-                },
-            )
+            metadata_updates = {
+                f"stage.{stage_name}.attempts": attempts,
+                f"stage.{stage_name}.output_count": output_count,
+                f"stage.{stage_name}.duration_ms": duration_ms,
+            }
+            if current_phase:
+                metadata_updates[f"stage.{stage_name}.phase"] = current_phase
+                metadata_updates.setdefault("phase", current_phase)
+            ledger.update_metadata(job_id, metadata_updates)
         emitter.emit_completed(
             stage_ctx,
             stage_name,
@@ -650,6 +707,17 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
     for entry in ledger.all():
         if entry.pipeline_name != "pdf-two-phase":
             continue
+        gate_metadata = entry.metadata.get("gate") if isinstance(entry.metadata, Mapping) else {}
+        gate_state = gate_metadata.get("pdf_ir_ready") if isinstance(gate_metadata, Mapping) else None
+        resume_stage = "chunk"
+        resume_phase = "post-gate"
+        skip_download = True
+        if isinstance(gate_state, Mapping):
+            resume_stage = gate_state.get("resume_stage", resume_stage)
+            resume_phase = gate_state.get("phase", resume_phase)
+            skip_download = bool(gate_state.get("skip_download_on_resume", skip_download))
+            if gate_state.get("status") != "passed":
+                continue
         if not entry.pdf_ir_ready or entry.status != "processing":
             continue
         run_key = f"{entry.job_id}-resume"
@@ -671,6 +739,12 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                         "context": context_payload,
                         "adapter_request": adapter_payload,
                         "payload": payload,
+                        "resume": {
+                            "stage": resume_stage,
+                            "phase": resume_phase,
+                            "gate": "pdf_ir_ready",
+                            "skip_download": skip_download,
+                        },
                     }
                 }
             }
@@ -681,7 +755,9 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                 run_config=run_config,
                 tags={
                     "medical_kg.pipeline": entry.pipeline_name or "",
-                    "medical_kg.resume_stage": "chunk",
+                    "medical_kg.resume_stage": resume_stage,
+                    "medical_kg.resume_phase": resume_phase,
+                    "medical_kg.resume_gate": "pdf_ir_ready",
                 },
             )
         )

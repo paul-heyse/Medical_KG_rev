@@ -10,47 +10,66 @@ stages:
   - name: ingest
     type: ingest
     policy: default
+    phase: pre-gate
   - name: download
     type: download
     policy: polite-api
     depends_on:
       - ingest
+    phase: pre-gate
   - name: gate_pdf_ir_ready
     type: gate
     policy: default
     depends_on:
       - download
+    phase: gate
   - name: chunk
     type: chunk
     policy: gpu-bound
     depends_on:
       - gate_pdf_ir_ready
+    phase: post-gate
   - name: embed
     type: embed
     policy: gpu-bound
     depends_on:
       - chunk
+    phase: post-gate
   - name: index
     type: index
     policy: default
     depends_on:
       - embed
+    phase: post-gate
   - name: extract
     type: extract
     policy: gpu-bound
     depends_on:
       - chunk
+    phase: post-gate
   - name: kg
     type: knowledge-graph
     policy: default
     depends_on:
       - extract
       - index
+    phase: post-gate
 gates:
   - name: pdf_ir_ready
+    stage: gate_pdf_ir_ready
     resume_stage: chunk
+    skip_download_on_resume: true
+    retry:
+      max_attempts: 5
+      delay_seconds: 5.0
     condition:
-      field: pdf_ir_ready
-      equals: true
+      match: all
+      clauses:
+        - field: pdf_ir_ready
+          operator: equals
+          value: true
+        - field: pdf_downloaded
+          operator: equals
+          value: true
       timeout_seconds: 900
       poll_interval_seconds: 10.0

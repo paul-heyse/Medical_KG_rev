@@ -8,9 +8,10 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
 import yaml
 from pydantic import (
@@ -43,15 +44,86 @@ class BackoffStrategy(str, Enum):
     NONE = "none"
 
 
+class PipelinePhase(str, Enum):
+    """Execution phase indicator for topology stages."""
+
+    PRE_GATE = "pre-gate"
+    GATE = "gate"
+    POST_GATE = "post-gate"
+
+
+class GateConditionOperator(str, Enum):
+    """Supported operators for gate condition clauses."""
+
+    EQUALS = "equals"
+    NOT_EQUALS = "not_equals"
+    EXISTS = "exists"
+    NOT_EXISTS = "not_exists"
+    CHANGED = "changed"
+    IN = "in"
+    NOT_IN = "not_in"
+
+
+class GateConditionMatch(str, Enum):
+    """Logical aggregation for gate clauses."""
+
+    ALL = "all"
+    ANY = "any"
+
+
+class GateConditionClause(BaseModel):
+    """Single conditional clause evaluated against ledger metadata."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
+    operator: GateConditionOperator = Field(default=GateConditionOperator.EQUALS)
+    value: Any | None = None
+    previous_value: Any | None = None
+
+    @model_validator(mode="after")
+    def _validate_values(self) -> "GateConditionClause":
+        if self.operator in {
+            GateConditionOperator.EQUALS,
+            GateConditionOperator.NOT_EQUALS,
+            GateConditionOperator.IN,
+            GateConditionOperator.NOT_IN,
+        } and self.value is None:
+            raise ValueError("clause with operator requires a value")
+        if self.operator is GateConditionOperator.CHANGED and self.previous_value is None:
+            raise ValueError("changed operator requires previous_value to compare against")
+        if self.operator in {GateConditionOperator.IN, GateConditionOperator.NOT_IN}:
+            if not isinstance(self.value, (Sequence, set, frozenset)) or isinstance(
+                self.value, (str, bytes)
+            ):
+                raise ValueError("in/not_in operator requires a non-string iterable value")
+        return self
+
+
+class GateRetryConfig(BaseModel):
+    """Retry configuration for gate polling when a clause fails."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_attempts: int = Field(default=1, ge=1, le=50)
+    delay_seconds: float = Field(default=0.0, ge=0.0, le=300.0)
+
+
 class GateCondition(BaseModel):
     """Predicate evaluated against Job Ledger entries to resume a pipeline."""
 
     model_config = ConfigDict(extra="forbid")
 
-    field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
-    equals: Any
+    match: GateConditionMatch = Field(default=GateConditionMatch.ALL)
+    clauses: list[GateConditionClause] = Field(default_factory=list)
     timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
     poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
+
+    @model_validator(mode="after")
+    def _ensure_clauses(self) -> "GateCondition":
+        if not self.clauses:
+            raise ValueError("gate condition must declare at least one clause")
+        return self
 
 
 class GateDefinition(BaseModel):
@@ -60,8 +132,11 @@ class GateDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
     condition: GateCondition
     resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    retry: GateRetryConfig | None = None
+    skip_download_on_resume: bool = Field(default=True)
 
 
 class StageDefinition(BaseModel):
@@ -74,6 +149,7 @@ class StageDefinition(BaseModel):
     policy: str | None = Field(default=None, alias="policy")
     depends_on: list[str] = Field(default_factory=list, alias="depends_on")
     config: dict[str, Any] = Field(default_factory=dict)
+    phase: PipelinePhase | None = Field(default=None, alias="phase")
 
     @field_validator("depends_on")
     @classmethod
@@ -127,12 +203,35 @@ class PipelineTopologyConfig(BaseModel):
         if order is None:
             raise ValueError("cycle detected in pipeline dependencies")
 
-        gate_stage_set = {stage.name for stage in self.stages}
+        stage_lookup = {stage.name: stage for stage in self.stages}
+        order_index = {name: idx for idx, name in enumerate(order)}
+
         for gate in self.gates:
-            if gate.resume_stage not in gate_stage_set:
+            if gate.stage not in stage_lookup:
+                raise ValueError(f"gate '{gate.name}' references unknown stage '{gate.stage}'")
+            stage_definition = stage_lookup[gate.stage]
+            if stage_definition.stage_type != "gate":
+                raise ValueError(
+                    f"gate '{gate.name}' is bound to stage '{gate.stage}' which is not type 'gate'"
+                )
+            if gate.resume_stage not in stage_lookup:
                 raise ValueError(
                     f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
                 )
+            if order_index[gate.resume_stage] <= order_index[gate.stage]:
+                raise ValueError(
+                    f"gate '{gate.name}' resume_stage '{gate.resume_stage}' must execute after gate stage"
+                )
+            stage_definition.config.setdefault("gate", gate.model_dump())
+
+        current_phase = PipelinePhase.PRE_GATE
+        for name in order:
+            stage = stage_lookup[name]
+            if stage.stage_type == "gate":
+                stage.phase = PipelinePhase.GATE
+                current_phase = PipelinePhase.POST_GATE
+            elif stage.phase is None:
+                stage.phase = current_phase
         return self
 
 

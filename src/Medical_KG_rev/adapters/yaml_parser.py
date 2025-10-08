@@ -13,7 +13,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from Medical_KG_rev.models import Block, Document, Section
-from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
+from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 from .base import AdapterContext, BaseAdapter
 from .biomedical import ResilientHTTPAdapter
@@ -154,7 +154,12 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
             name=config.name,
             base_url=config.base_url,
             rate_limit_per_second=rate,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=RetryConfig(
+                attempts=3,
+                backoff_strategy=BackoffStrategy.EXPONENTIAL,
+                backoff_initial=0.5,
+                backoff_max=4.0,
+            ),
             client=client,
         )
         self._config = config

@@ -23,6 +23,7 @@ from Medical_KG_rev.orchestration.haystack.components import (
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
     EmbedStage,
+    ExtractStage,
     GraphWriteReceipt,
     IngestStage,
     IndexStage,
@@ -141,7 +142,7 @@ class IRValidationStage(ParseStage):
         return document
 
 
-class NoOpExtractStage(ParseStage):
+class NoOpExtractStage(ExtractStage):
     """Stub extraction stage returning empty entity and claim collections."""
 
     def execute(self, ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]:
@@ -272,7 +273,7 @@ def build_default_stage_factory(manager: AdapterPluginManager) -> dict[str, Call
     def _index_builder(_: StageDefinition) -> IndexStage:
         return HaystackIndexWriter(dense_writer=dense_writer, sparse_writer=sparse_writer)
 
-    def _extract_builder(_: StageDefinition) -> ParseStage:
+    def _extract_builder(_: StageDefinition) -> ExtractStage:
         return NoOpExtractStage()
 
     def _kg_builder(_: StageDefinition) -> KGStage:

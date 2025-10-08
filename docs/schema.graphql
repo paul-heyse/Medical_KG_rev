@@ -7,12 +7,14 @@ type Query {
   document(id: ID!): Document!
   organization(id: ID!): Organization!
   search(arguments: SearchInput!): RetrievalResult!
+  namespaces(tenantId: String!): [NamespaceInfo!]!
+  namespace(id: String!, tenantId: String!): NamespaceInfo
 }
 
 type Mutation {
   ingest(dataset: String!, input: IngestionInput!): BatchOperation!
   chunk(input: ChunkInput!): [DocumentChunk!]!
-  embed(input: EmbedInput!): [EmbeddingVector!]!
+  embed(input: EmbedInput!): EmbeddingResult!
   retrieve(input: RetrieveInput!): RetrievalResult!
   entity_link(input: EntityLinkInput!): BatchOperation!
   extract(kind: String!, input: ExtractionInput!): ExtractionResult!
@@ -65,10 +67,34 @@ type EmbeddingVector {
   model: String!
   namespace: String!
   kind: String!
-  dimension: Int!
-  vector: [Float!]!
+  dimension: Int
+  vector: [Float!]
   terms: JSON
   metadata: JSON
+}
+
+type EmbeddingMetadata {
+  provider: String!
+  dimension: Int
+  duration_ms: Float
+  model: String
+}
+
+type EmbeddingResult {
+  namespace: String!
+  embeddings: [EmbeddingVector!]!
+  metadata: EmbeddingMetadata!
+}
+
+type NamespaceInfo {
+  id: ID!
+  provider: String!
+  kind: String!
+  dimension: Int
+  max_tokens: Int
+  enabled: Boolean!
+  allowed_tenants: [String!]!
+  allowed_scopes: [String!]!
 }
 
 type DocumentChunk {
@@ -118,11 +144,15 @@ input ChunkInput {
 }
 
 input EmbedInput {
-  tenant_id: ID!
-  inputs: [String!]!
-  model: String!
+  tenant_id: ID
   namespace: String!
+  texts: [String!]!
+  options: EmbeddingOptionsInput
+}
+
+input EmbeddingOptionsInput {
   normalize: Boolean = true
+  model: String
 }
 
 input RetrieveInput {

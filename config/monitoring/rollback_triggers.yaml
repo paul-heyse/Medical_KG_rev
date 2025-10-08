@@ -1,0 +1,29 @@
+# Auto-generated rollback trigger definitions for embeddings cutover.
+automated_triggers:
+  - name: "Embedding Latency Degradation"
+    condition: "embedding_duration_p95 > 2s for 10 minutes"
+    severity: critical
+    action: rollback
+    dashboard: "grafana://embeddings-latency"
+    notes: "Trigger when p95 latency regression threatens SLO compliance."
+
+  - name: "GPU Failure Rate"
+    condition: "gpu_failure_rate > 20% for 5 minutes"
+    severity: critical
+    action: rollback
+    dashboard: "grafana://gpu-health"
+    notes: "Catches sustained CUDA errors or device resets across the fleet."
+
+  - name: "Token Overflow Rate"
+    condition: "token_overflow_rate > 15% for 15 minutes"
+    severity: warning
+    action: alert
+    dashboard: "grafana://tokenization"
+    notes: "Investigate tokenizer regressions before rolling back."
+
+  - name: "vLLM Service Down"
+    condition: "vllm_service_up == 0 for 5 minutes"
+    severity: critical
+    action: rollback
+    dashboard: "grafana://service-availability"
+    notes: "Fallback to legacy embedding service when vLLM is unavailable."

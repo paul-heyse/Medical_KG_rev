@@ -19,6 +19,7 @@ from ..models import (
     AdapterMetadataView,
     BatchOperationResult,
     ChunkRequest,
+    EmbeddingResponse,
     EmbedRequest,
     EntityLinkRequest,
     EvaluationRequest,
@@ -26,6 +27,9 @@ from ..models import (
     ExtractionRequest,
     IngestionRequest,
     JobStatus,
+    NamespaceInfo,
+    NamespaceValidationRequest,
+    NamespaceValidationResponse,
     KnowledgeGraphWriteRequest,
     PipelineIngestionRequest,
     PipelineQueryRequest,
@@ -171,23 +175,31 @@ async def readiness_check(request: Request) -> JSONResponse:
 TModel = TypeVar("TModel", bound=BaseModel)
 
 
-def _ensure_tenant(request_model: TModel, security: SecurityContext) -> TModel:
+def _ensure_tenant(
+    request_model: TModel,
+    security: SecurityContext,
+    http_request: Request | None = None,
+) -> TModel:
     tenant_id = getattr(request_model, "tenant_id", None)
     if tenant_id and tenant_id != security.tenant_id:
         raise HTTPException(status_code=403, detail="Tenant mismatch")
-    return cast(TModel, request_model.model_copy(update={"tenant_id": security.tenant_id}))
+    updated = cast(TModel, request_model.model_copy(update={"tenant_id": security.tenant_id}))
+    if http_request is not None:
+        http_request.state.requested_tenant_id = getattr(updated, "tenant_id", security.tenant_id)
+    return updated
 
 
 @router.post("/ingest/{dataset}", status_code=207, response_model=None)
 async def ingest_dataset(
     dataset: str,
     request: IngestionRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/ingest")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     result: BatchOperationResult = service.ingest(dataset, request)
     meta = {"total": result.total, "dataset": dataset}
     get_audit_trail().record(
@@ -202,12 +214,13 @@ async def ingest_dataset(
 @router.post("/pipelines/ingest", status_code=207, response_model=None)
 async def ingest_pipeline(
     request: PipelineIngestionRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/pipelines/ingest")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     ingest_request = IngestionRequest.model_validate(
         request.model_dump(exclude={"dataset"})
     )
@@ -312,36 +325,40 @@ async def cancel_job(
 @router.post("/ingest/clinicaltrials", status_code=207, include_in_schema=False)
 async def ingest_clinicaltrials(
     request: IngestionRequest,
+    http_request: Request,
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    return await ingest_dataset("clinicaltrials", request, service)
+    return await ingest_dataset("clinicaltrials", request, http_request, service)
 
 
 @router.post("/ingest/dailymed", status_code=207, include_in_schema=False)
 async def ingest_dailymed(
     request: IngestionRequest,
+    http_request: Request,
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    return await ingest_dataset("dailymed", request, service)
+    return await ingest_dataset("dailymed", request, http_request, service)
 
 
 @router.post("/ingest/pmc", status_code=207, include_in_schema=False)
 async def ingest_pmc(
     request: IngestionRequest,
+    http_request: Request,
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    return await ingest_dataset("pmc", request, service)
+    return await ingest_dataset("pmc", request, http_request, service)
 
 
 @router.post("/chunk", status_code=200)
 async def chunk_document(
     request: ChunkRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/chunk")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     chunks = service.chunk_document(request)
     meta = {"total": len(chunks), "document_id": request.document_id}
     get_audit_trail().record(
@@ -356,29 +373,31 @@ async def chunk_document(
 @router.post("/embed", status_code=200)
 async def embed_text(
     request: EmbedRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.EMBED_WRITE], endpoint="POST /v1/embed")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
-    embeddings = service.embed(request)
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    response = service.embed(request)
     meta = {
-        "total": len(embeddings),
-        "model": request.model,
-        "namespace": request.namespace,
+        "total": len(response.embeddings),
+        "namespace": response.namespace,
+        "provider": response.metadata.provider,
+        "model": response.metadata.model,
     }
     get_audit_trail().record(
         context=security,
         action="embed",
         resource="embedding",
         metadata={
-            "inputs": len(request.inputs),
-            "model": request.model,
-            "namespace": request.namespace,
+            "inputs": len(request.texts),
+            "namespace": response.namespace,
+            "provider": response.metadata.provider,
         },
     )
-    return json_api_response(embeddings, meta=meta)
+    return json_api_response(response, meta=meta)
 
 
 @router.post("/retrieve", status_code=200)
@@ -391,7 +410,7 @@ async def retrieve(
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
     odata = ODataParams.from_request(http_request)
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
     meta = {
         "total": result.total,
@@ -407,15 +426,48 @@ async def retrieve(
     return json_api_response(result, meta=meta)
 
 
+@router.get("/namespaces", status_code=200)
+async def list_namespaces(
+    http_request: Request,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EMBED_READ], endpoint="GET /v1/namespaces")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    http_request.state.requested_tenant_id = security.tenant_id
+    namespaces = service.list_namespaces(tenant_id=security.tenant_id, scope=Scopes.EMBED_READ)
+    return json_api_response(namespaces, meta={"total": len(namespaces)})
+
+
+@router.post("/namespaces/{namespace}/validate", status_code=200)
+async def validate_namespace(
+    namespace: str,
+    request: NamespaceValidationRequest,
+    http_request: Request,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EMBED_READ], endpoint="POST /v1/namespaces/{namespace}/validate")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    result = service.validate_namespace_texts(
+        tenant_id=request.tenant_id,
+        namespace=namespace,
+        texts=request.texts,
+    )
+    return json_api_response(result)
+
+
 @router.post("/evaluate", status_code=200)
 async def evaluate(
     request: EvaluationRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.EVALUATE_WRITE], endpoint="POST /v1/evaluate")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     try:
         result = service.evaluate_retrieval(request)
     except ValueError as exc:
@@ -435,7 +487,7 @@ async def query_pipeline(
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
     odata = ODataParams.from_request(http_request)
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
     meta = {
         "total": result.total,
@@ -496,12 +548,13 @@ async def search(
 @router.post("/map/el", status_code=207)
 async def entity_link(
     request: EntityLinkRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/map/el")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     results = service.entity_link(request)
     meta = {"total": len(results)}
     get_audit_trail().record(
@@ -518,12 +571,13 @@ async def extract(
     *,
     kind: str = Path(pattern="^(pico|effects|ae|dose|eligibility)$"),
     request: ExtractionRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/extract")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     extraction = service.extract(kind, request)
     get_audit_trail().record(
         context=security,
@@ -537,12 +591,13 @@ async def extract(
 @router.post("/kg/write", status_code=200)
 async def kg_write(
     request: KnowledgeGraphWriteRequest,
+    http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.KG_WRITE], endpoint="POST /v1/kg/write")
     ),
     service: GatewayService = Depends(get_gateway_service),
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.write_kg(request)
     get_audit_trail().record(
         context=security,

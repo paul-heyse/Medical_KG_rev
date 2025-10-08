@@ -130,6 +130,54 @@ services:
     ports:
       - '3000:3000'
 
+  vllm-server:
+    image: vllm/vllm-openai:v0.8.4
+    command: >
+      python -m vllm.entrypoints.openai.api_server \
+        --model Qwen/Qwen2.5-VL-7B-Instruct \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --gpu-memory-utilization 0.92 \
+        --max-model-len 32768 \
+        --tensor-parallel-size 1 \
+        --dtype auto \
+        --enforce-eager
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: '0'
+    ports:
+      - '8000:8000'
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface:ro
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+  mineru-worker:
+    image: ghcr.io/your-org/mineru-worker:split-container
+    environment:
+      MK_MINERU__VLLM_SERVER__BASE_URL: http://vllm-server:8000
+      MK_MINERU__WORKERS__BACKEND: vlm-http-client
+      MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: '10'
+      MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: '5'
+      MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: '3'
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+
   loki:
     image: grafana/loki:2.9.7
     command: ['-config.file=/etc/loki/local-config.yaml']

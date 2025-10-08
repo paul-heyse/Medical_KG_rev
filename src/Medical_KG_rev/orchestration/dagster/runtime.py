@@ -192,20 +192,35 @@ def _make_stage_op(
 
         start_time = time.perf_counter()
 
+        state.ensure_tenant_scope(stage_ctx.tenant_id)
+
         try:
             state.validate_transition(stage_type)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
-            emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
+            state.mark_stage_failed(
+                stage_name,
+                error=str(exc),
+                stage_type=stage_type,
+            )
+            snapshot_b64 = state.serialise_base64()
+            emitter.emit_failed(
+                stage_ctx,
+                stage_name,
+                attempt=attempts,
+                error=str(exc),
+                state_snapshot=snapshot_b64,
+            )
             if job_id:
                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
-            state.record_stage_metrics(
-                stage_name,
-                stage_type=stage_type,
-                attempts=attempts,
-                error=str(exc),
-            )
+                ledger.update_metadata(
+                    job_id,
+                    {
+                        f"stage.{stage_name}.error": str(exc),
+                        f"state.{stage_name}.snapshot": snapshot_b64,
+                    },
+                )
             raise
 
         state.apply_stage_output(stage_type, stage_name, result)
@@ -220,6 +235,7 @@ def _make_stage_op(
             duration_ms=duration_ms,
             output_count=output_count,
         )
+        snapshot_b64 = state.serialise_base64()
 
         if job_id:
             ledger.update_metadata(
@@ -228,6 +244,7 @@ def _make_stage_op(
                     f"stage.{stage_name}.attempts": attempts,
                     f"stage.{stage_name}.output_count": output_count,
                     f"stage.{stage_name}.duration_ms": duration_ms,
+                    f"state.{stage_name}.snapshot": snapshot_b64,
                 },
             )
         emitter.emit_completed(
@@ -236,6 +253,7 @@ def _make_stage_op(
             attempt=attempts,
             duration_ms=duration_ms,
             output_count=output_count,
+            state_snapshot=snapshot_b64,
         )
         logger.debug(
             "dagster.stage.completed",

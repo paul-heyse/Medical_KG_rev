@@ -140,6 +140,23 @@ class StageResultSnapshot:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class PipelineStateSnapshot:
+    """Immutable snapshot used for state rollback and diagnostics."""
+
+    payloads: tuple[RawPayload, ...]
+    document: Document | None
+    chunks: tuple[Chunk, ...]
+    embedding_batch: EmbeddingBatch | None
+    entities: tuple[Entity, ...]
+    claims: tuple[Claim, ...]
+    index_receipt: IndexReceipt | None
+    graph_receipt: GraphWriteReceipt | None
+    metadata: dict[str, Any]
+    stage_results: dict[str, StageResultSnapshot]
+    job_id: str | None
+
+
 class PipelineStateValidationError(ValueError):
     """Raised when the pipeline state fails validation."""
 
@@ -169,8 +186,12 @@ class PipelineState:
     job_id: str | None = None
     _dirty: bool = field(default=True, init=False, repr=False)
     _serialised_cache: dict[str, Any] | None = field(default=None, init=False, repr=False)
+    _tenant_id: str = field(init=False, repr=False)
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
+
+    def __post_init__(self) -> None:
+        self._tenant_id = self.context.tenant_id
 
     @classmethod
     def initialise(
@@ -200,6 +221,20 @@ class PipelineState:
         """Return whether the state has pending changes since last snapshot."""
 
         return self._dirty
+
+    @property
+    def tenant_id(self) -> str:
+        """Return the tenant that owns the current state."""
+
+        return self._tenant_id
+
+    def ensure_tenant_scope(self, tenant_id: str) -> None:
+        """Validate that the state is being accessed by the owning tenant."""
+
+        if tenant_id != self._tenant_id:
+            raise PipelineStateValidationError(
+                f"PipelineState initialised for tenant '{self._tenant_id}' cannot be reused for tenant '{tenant_id}'"
+            )
 
     def get_payloads(self) -> tuple[RawPayload, ...]:
         return self.payloads
@@ -446,6 +481,61 @@ class PipelineState:
         self._mark_dirty()
 
     # ------------------------------------------------------------------
+    # Snapshot & rollback helpers
+    # ------------------------------------------------------------------
+    def snapshot(self, *, include_stage_results: bool = True) -> PipelineStateSnapshot:
+        """Capture an immutable snapshot for later rollback or diagnostics."""
+
+        stage_payload: dict[str, StageResultSnapshot] = {}
+        if include_stage_results:
+            stage_payload = {
+                name: copy.deepcopy(result)
+                for name, result in self.stage_results.items()
+            }
+        return PipelineStateSnapshot(
+            payloads=tuple(copy.deepcopy(self.payloads)),
+            document=copy.deepcopy(self.document),
+            chunks=tuple(copy.deepcopy(self.chunks)),
+            embedding_batch=copy.deepcopy(self.embedding_batch),
+            entities=tuple(copy.deepcopy(self.entities)),
+            claims=tuple(copy.deepcopy(self.claims)),
+            index_receipt=copy.deepcopy(self.index_receipt),
+            graph_receipt=copy.deepcopy(self.graph_receipt),
+            metadata=copy.deepcopy(self.metadata),
+            stage_results=stage_payload,
+            job_id=self.job_id,
+        )
+
+    def restore(
+        self,
+        snapshot: PipelineStateSnapshot,
+        *,
+        restore_stage_results: bool = True,
+    ) -> None:
+        """Restore the state from a previously captured snapshot."""
+
+        self.payloads = tuple(copy.deepcopy(snapshot.payloads))
+        self.document = copy.deepcopy(snapshot.document)
+        self.chunks = tuple(copy.deepcopy(snapshot.chunks))
+        self.embedding_batch = copy.deepcopy(snapshot.embedding_batch)
+        self.entities = tuple(copy.deepcopy(snapshot.entities))
+        self.claims = tuple(copy.deepcopy(snapshot.claims))
+        self.index_receipt = copy.deepcopy(snapshot.index_receipt)
+        self.graph_receipt = copy.deepcopy(snapshot.graph_receipt)
+        self.metadata = copy.deepcopy(snapshot.metadata)
+        if restore_stage_results:
+            self.stage_results = {
+                name: copy.deepcopy(result) for name, result in snapshot.stage_results.items()
+            }
+        self.job_id = snapshot.job_id
+        self._mark_dirty()
+
+    def rollback(self, snapshot: PipelineStateSnapshot) -> None:
+        """Alias for :meth:`restore` to emphasise rollback semantics."""
+
+        self.restore(snapshot)
+
+    # ------------------------------------------------------------------
     # Serialisation helpers
     # ------------------------------------------------------------------
     def serialise(
@@ -683,6 +773,7 @@ __all__ = [
     "IndexReceipt",
     "IndexStage",
     "PipelineState",
+    "PipelineStateSnapshot",
     "PipelineStateValidationError",
     "KGStage",
     "StageResultSnapshot",

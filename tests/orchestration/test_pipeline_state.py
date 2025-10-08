@@ -16,6 +16,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     GraphWriteReceipt,
     IndexReceipt,
     PipelineState,
+    PipelineStateSnapshot,
     PipelineStateValidationError,
     StageContext,
 )
@@ -180,3 +181,26 @@ def test_cleanup_stage_releases_outputs() -> None:
     state.apply_stage_output("ingest", "ingest", [{"id": 1}])
     state.cleanup_stage("ingest")
     assert not state.get_payloads()
+
+
+def test_snapshot_and_restore_rollback_changes() -> None:
+    state = _sample_state()
+    state.apply_stage_output("ingest", "ingest", [{"id": "a"}])
+    state.apply_stage_output("parse", "parse", _build_document())
+    original = state.snapshot()
+
+    state.set_payloads([{"id": "b"}])
+    state.metadata["flag"] = True
+    assert state.require_payloads()[0]["id"] == "b"
+
+    state.restore(original)
+    assert isinstance(original, PipelineStateSnapshot)
+    assert state.require_payloads()[0]["id"] == "a"
+    assert "flag" not in state.metadata
+
+
+def test_tenant_scope_enforcement() -> None:
+    state = _sample_state()
+    state.ensure_tenant_scope("tenant")
+    with pytest.raises(PipelineStateValidationError):
+        state.ensure_tenant_scope("other")

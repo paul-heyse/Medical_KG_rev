@@ -1,20 +1,29 @@
-"""Configuration loader for the universal embedding system."""
+"""Embedding configuration loader without external dependencies."""
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-from pydantic import BaseModel, Field
+import importlib.util
+
+if importlib.util.find_spec("yaml") is not None:  # pragma: no cover - depends on PyYAML
+    from yaml import safe_load as _safe_load  # type: ignore
+else:  # pragma: no cover - fallback when PyYAML unavailable
+
+    def _safe_load(_: str) -> dict[str, Any]:
+        return {}
 
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingKind
+
 
 DEFAULT_EMBEDDING_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embeddings.yaml"
 
 
-class NamespaceDefinition(BaseModel):
+@dataclass(slots=True)
+class NamespaceDefinition:
     name: str
     provider: str
     kind: EmbeddingKind
@@ -25,8 +34,25 @@ class NamespaceDefinition(BaseModel):
     normalize: bool = True
     batch_size: int = 32
     requires_gpu: bool = False
-    prefixes: dict[str, str] = Field(default_factory=dict)
-    parameters: dict[str, Any] = Field(default_factory=dict)
+    prefixes: dict[str, str] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any]) -> "NamespaceDefinition":
+        return cls(
+            name=str(data["name"]),
+            provider=str(data["provider"]),
+            kind=data.get("kind", "single_vector"),
+            model_id=str(data["model_id"]),
+            model_version=str(data.get("model_version", "v1")),
+            dim=data.get("dim"),
+            pooling=data.get("pooling"),
+            normalize=bool(data.get("normalize", True)),
+            batch_size=int(data.get("batch_size", 32)),
+            requires_gpu=bool(data.get("requires_gpu", False)),
+            prefixes=dict(data.get("prefixes", {})),
+            parameters=dict(data.get("parameters", {})),
+        )
 
     def to_embedder_config(self, namespace: str) -> EmbedderConfig:
         return EmbedderConfig(
@@ -46,19 +72,36 @@ class NamespaceDefinition(BaseModel):
         )
 
 
-class EmbeddingsConfiguration(BaseModel):
-    active_namespaces: list[str] = Field(default_factory=list)
-    namespaces: dict[str, NamespaceDefinition] = Field(default_factory=dict)
+@dataclass(slots=True)
+class EmbeddingsConfiguration:
+    active_namespaces: list[str] = field(default_factory=list)
+    namespaces: dict[str, NamespaceDefinition] = field(default_factory=dict)
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any]) -> "EmbeddingsConfiguration":
+        namespaces: dict[str, NamespaceDefinition] = {}
+        for namespace, raw in (data.get("namespaces") or {}).items():
+            namespaces[namespace] = NamespaceDefinition.from_mapping(raw)
+        return cls(
+            active_namespaces=list(data.get("active_namespaces", [])),
+            namespaces=namespaces,
+        )
 
     def to_embedder_configs(self) -> list[EmbedderConfig]:
-        configs: list[EmbedderConfig] = []
-        for namespace, definition in self.namespaces.items():
-            configs.append(definition.to_embedder_config(namespace))
-        return configs
+        return [definition.to_embedder_config(namespace) for namespace, definition in self.namespaces.items()]
 
 
 def load_embeddings_config(path: Path | None = None) -> EmbeddingsConfiguration:
     config_path = path or Path(os.environ.get("MK_EMBEDDINGS_CONFIG", DEFAULT_EMBEDDING_CONFIG))
-    with config_path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
-    return EmbeddingsConfiguration.model_validate(data)
+    data: dict[str, Any] = {}
+    if config_path.exists():
+        data = _safe_load(config_path.read_text()) or {}
+    return EmbeddingsConfiguration.from_mapping(data)
+
+
+__all__ = [
+    "EmbeddingsConfiguration",
+    "NamespaceDefinition",
+    "DEFAULT_EMBEDDING_CONFIG",
+    "load_embeddings_config",
+]

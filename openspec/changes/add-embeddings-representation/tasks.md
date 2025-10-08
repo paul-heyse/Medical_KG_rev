@@ -237,17 +237,17 @@
 
 #### 1.3.3 Test Migration
 
-- [ ] **1.3.3a** Migrate unit tests:
+- [x] **1.3.3a** Migrate unit tests:
   - Tests of `BGEEmbedder` internals → DELETE (vLLM tested upstream)
   - Tests of `SPLADEEmbedder` internals → DELETE (Pyserini tested upstream)
   - Tests of API contracts → MIGRATE (rewrite for vLLM client)
 
-- [ ] **1.3.3b** Migrate integration tests:
+- [x] **1.3.3b** Migrate integration tests:
   - Update embedding pipeline tests to use vLLM/Pyserini
   - Update storage tests to expect FAISS/OpenSearch formats
   - Update orchestration tests to validate GPU fail-fast
 
-- [ ] **1.3.3c** Add new tests for library integrations:
+- [x] **1.3.3c** Add new tests for library integrations:
   - Test vLLM client error handling (GPU unavailable, timeout)
   - Test Pyserini wrapper (document-side expansion, top-K pruning)
   - Test namespace registry (multi-namespace support)

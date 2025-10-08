@@ -112,7 +112,7 @@ class PyseriniSparseEmbedder:
                 final_records.append(record)
                 continue
             final_records.append(
-                EmbeddingRecord.model_construct(
+                EmbeddingRecord(
                     id=record.id,
                     tenant_id=record.tenant_id,
                     namespace=record.namespace,
@@ -122,6 +122,7 @@ class PyseriniSparseEmbedder:
                     dim=0,
                     terms={},
                     metadata=record.metadata,
+                    normalized=record.normalized,
                     correlation_id=record.correlation_id,
                 )
             )

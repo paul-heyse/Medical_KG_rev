@@ -5,7 +5,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-import httpx
+try:  # pragma: no cover - optional dependency guard
+    import httpx
+except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environments
+    class _HttpxFallback:
+        class HTTPError(Exception):
+            pass
+
+        class HTTPStatusError(HTTPError):
+            pass
+
+        def post(self, *args: Any, **kwargs: Any):  # noqa: D401 - mimic httpx.post signature
+            raise RuntimeError("httpx is required for network operations")
+
+    httpx = _HttpxFallback()  # type: ignore[assignment]
+
+from Medical_KG_rev.services import GpuNotAvailableError
 
 from Medical_KG_rev.services import GpuNotAvailableError
 

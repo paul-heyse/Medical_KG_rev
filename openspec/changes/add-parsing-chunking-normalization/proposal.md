@@ -76,7 +76,7 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 **REPLACE**:
 
 - Custom recursive splitters → `langchain_text_splitters.RecursiveCharacterTextSplitter`
-- Custom sentence splitters → HuggingFace biomedical models or `syntok.segment`
+- Custom sentence splitters → Hugging Face tokenizer-backed segmenter or `syntok.segment`
 - Custom tokenizers → `transformers.AutoTokenizer` (aligned with Qwen3)
 - Bespoke XML parsing → `unstructured.partition_xml`
 
@@ -118,11 +118,10 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
+transformers>=4.38.0  # Hugging Face tokenizers for segmentation and Qwen3 alignment
 syntok>=1.4.4  # Fast sentence splitter
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0  # OpenAI tokenizer
-transformers>=4.38.0  # HF tokenizers for Qwen3 alignment and biomedical sentence segmentation
-sentence-transformers>=2.2.0  # For biomedical sentence boundary detection
 ```
 
 ### Migration Path

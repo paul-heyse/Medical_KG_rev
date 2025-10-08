@@ -24,7 +24,31 @@
 
 ## Overview
 
-This proposal **replaces fragmented parsing/chunking with a unified, library-based architecture** that respects clinical document structure, enforces GPU-only PDF processing, and produces span-grounded chunks with complete provenance.
+```yaml
+# config/chunking/profiles/pmc-imrad.yaml
+name: pmc-imrad
+domain: literature
+chunker_type: langchain_recursive
+target_tokens: 450
+overlap_tokens: 50
+respect_boundaries:
+  - heading  # Never split across IMRaD sections
+  - figure_caption
+  - table
+sentence_splitter: huggingface  # Biomedical-aware tokenizer configured via MEDICAL_KG_SENTENCE_MODEL
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+  - exclude_references
+  - deduplicate_page_furniture
+metadata:
+  section_label_source: imrad_heading
+  intent_hints:
+    Introduction: narrative
+    Methods: narrative
+    Results: outcome
+    Discussion: narrative
+```
 
 ### Key Innovations
 
@@ -49,7 +73,31 @@ Current codebase has **fragmented, source-specific parsing/chunking logic** caus
 
 ## Solution Architecture
 
-### ChunkerPort Interface
+```yaml
+# config/chunking/profiles/spl-label.yaml
+name: spl-label
+domain: label
+chunker_type: langchain_recursive
+target_tokens: 400
+overlap_tokens: 30
+respect_boundaries:
+  - loinc_section  # LOINC-coded sections
+  - table
+sentence_splitter: huggingface
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+  - exclude_references
+metadata:
+  section_label_source: loinc_code
+  intent_hints:
+    LOINC:34089-3: indications
+    LOINC:34068-7: dosage
+    LOINC:43685-7: warnings
+    LOINC:34084-4: adverse_reactions
+```
+
+**Usage**:
 
 ```python
 class ChunkerPort(Protocol):
@@ -294,12 +342,11 @@ MINERU_FAILURES = Counter(
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4
-en-core-sci-sm @ https://...
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0
 transformers>=4.38.0
+pydantic>=2.6.0
 ```
 
 ---

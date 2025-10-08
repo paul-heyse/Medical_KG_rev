@@ -21,6 +21,8 @@ from ..models import (
     ChunkRequest,
     EmbedRequest,
     EntityLinkRequest,
+    EvaluationRequest,
+    EvaluationResponse,
     ExtractionRequest,
     IngestionRequest,
     JobStatus,
@@ -394,6 +396,24 @@ async def retrieve(
         "errors": [error.model_dump(mode="json") for error in result.errors],
     }
     return json_api_response(result, meta=meta)
+
+
+@router.post("/evaluate", status_code=200)
+async def evaluate(
+    request: EvaluationRequest,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EVALUATE_WRITE], endpoint="POST /v1/evaluate")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    try:
+        result = service.evaluate_retrieval(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response = EvaluationResponse.from_result(result)
+    meta = {"cache": response.cache, "test_set_version": response.test_set_version}
+    return json_api_response(response, meta=meta)
 
 
 @router.post("/pipelines/query", status_code=200)

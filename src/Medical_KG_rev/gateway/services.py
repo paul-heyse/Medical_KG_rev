@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -9,6 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+
+import json
 
 import structlog
 from Medical_KG_rev.chunking.exceptions import (
@@ -36,6 +39,13 @@ from ..orchestration import (
 )
 from ..orchestration.kafka import KafkaClient
 from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
+from ..services.evaluation import (
+    EvaluationConfig,
+    EvaluationResult,
+    EvaluationRunner,
+    TestSetManager,
+    build_test_set,
+)
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
@@ -63,6 +73,7 @@ from .models import (
     EntityLinkResult,
     ExtractionRequest,
     ExtractionResult,
+    EvaluationRequest,
     IngestionRequest,
     JobEvent,
     JobHistoryEntry,
@@ -108,6 +119,8 @@ class GatewayService:
     profile_detector: ProfileDetector | None = None
     query_pipeline_builder: QueryPipelineBuilder | None = None
     retrieval_router: RetrievalRouter | None = None
+    test_set_manager: TestSetManager = field(default_factory=TestSetManager)
+    _evaluation_runner: EvaluationRunner | None = field(default=None, init=False, repr=False)
     _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
@@ -603,6 +616,77 @@ class GatewayService:
         else:
             self._complete_job(job_id, payload=ledger_metadata)
         return result
+
+    def evaluate_retrieval(self, request: EvaluationRequest) -> EvaluationResult:
+        self._ensure_pipeline_components()
+        self._refresh_pipeline_components()
+        if self._evaluation_runner is None:
+            self._evaluation_runner = EvaluationRunner()
+        if request.test_set_name:
+            test_set = self.test_set_manager.load(
+                request.test_set_name,
+                expected_version=request.test_set_version,
+            )
+        else:
+            inline_queries = [
+                {
+                    "query_id": query.query_id,
+                    "query_text": query.query_text,
+                    "query_type": query.query_type,
+                    "relevant_docs": [
+                        {"doc_id": doc.doc_id, "grade": doc.grade} for doc in query.relevant_docs
+                    ],
+                    "metadata": dict(query.metadata),
+                }
+                for query in request.queries or []
+            ]
+            version = request.test_set_version or "inline"
+            serialised = json.dumps(inline_queries, sort_keys=True).encode("utf-8")
+            inline_id = hashlib.sha256(serialised).hexdigest()[:8]
+            name = request.test_set_name or f"inline-{inline_id}"
+            test_set = build_test_set(name=name, queries=inline_queries, version=version)
+        config = EvaluationConfig(
+            top_k=request.top_k,
+            components=tuple(request.components) if request.components else None,
+            rerank=request.rerank,
+        )
+
+        def _run(record) -> Sequence[str]:
+            metadata = dict(request.metadata)
+            evaluation_meta = dict(metadata.get("evaluation", {}))
+            evaluation_meta.update(
+                {
+                    "query_id": record.query_id,
+                    "query_type": record.query_type.value,
+                    "test_set_version": test_set.version,
+                }
+            )
+            if record.metadata:
+                evaluation_meta.setdefault("query_metadata", dict(record.metadata))
+            if config.components:
+                evaluation_meta["components"] = list(config.components)
+            metadata["evaluation"] = evaluation_meta
+            retrieval_request = RetrieveRequest(
+                tenant_id=request.tenant_id,
+                query=record.query_text,
+                top_k=request.top_k,
+                filters=dict(request.filters),
+                rerank=request.rerank if request.rerank is not None else True,
+                rerank_top_k=request.rerank_top_k,
+                rerank_overflow=request.rerank_overflow,
+                profile=request.profile,
+                metadata=metadata,
+                explain=False,
+            )
+            response = self.retrieve(retrieval_request)
+            return [document.id for document in response.documents]
+
+        return self._evaluation_runner.evaluate(
+            test_set,
+            _run,
+            config=config,
+            use_cache=request.use_cache,
+        )
 
     def entity_link(self, request: EntityLinkRequest) -> Sequence[EntityLinkResult]:
         job_id = self._new_job(request.tenant_id, "entity-link")

@@ -1,6 +1,6 @@
 name: ctgov-registry
 domain: registry
-chunker_type: simple
+chunker_type: ctgov_registry
 target_tokens: 300
 overlap_tokens: 0
 respect_boundaries:

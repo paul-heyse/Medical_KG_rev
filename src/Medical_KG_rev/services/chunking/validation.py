@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, ValidationError
 
-from .port import Chunk
+if TYPE_CHECKING:  # pragma: no cover - avoid circular import at runtime
+    from .port import Chunk
+else:
+    Chunk = Any
 
 
 class ChunkValidationError(ValueError):
@@ -34,23 +37,27 @@ class ChunkModel(BaseModel):
     page_bbox: dict[str, Any] | None = None
     metadata: dict[str, Any]
 
-    @model_validator(mode="after")
-    def _validate_offsets(cls, values: "ChunkModel") -> "ChunkModel":
-        start, end = values.char_offsets
-        if start < 0 or end < start:
-            raise ValueError("char_offsets must be ordered and non-negative")
-        missing = _REQUIRED_METADATA.difference(values.metadata)
-        if missing:
-            raise ValueError(f"missing metadata: {', '.join(sorted(missing))}")
-        return values
-
 
 def validate_chunk(chunk: Chunk) -> ChunkValidationResult:
     try:
-        ChunkModel(**asdict(chunk))
+        model = ChunkModel(**asdict(chunk))
     except ValidationError as exc:
         reason = ", ".join(err.get("msg", "invalid") for err in exc.errors())
         return ChunkValidationResult(chunk_id=getattr(chunk, "chunk_id", ""), valid=False, reason=reason)
+    start, end = model.char_offsets
+    if start < 0 or end < start:
+        return ChunkValidationResult(
+            chunk_id=model.chunk_id,
+            valid=False,
+            reason="char_offsets must be ordered and non-negative",
+        )
+    missing = _REQUIRED_METADATA.difference(model.metadata)
+    if missing:
+        return ChunkValidationResult(
+            chunk_id=model.chunk_id,
+            valid=False,
+            reason=f"missing metadata: {', '.join(sorted(missing))}",
+        )
     return ChunkValidationResult(chunk_id=chunk.chunk_id, valid=True)
 
 

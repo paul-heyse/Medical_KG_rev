@@ -106,10 +106,10 @@
 
 ### 1.6 Test Migration (Delete and Replace)
 
-- [ ] 1.6.1 Delete legacy chunking tests:
-  - [ ] `tests/chunking/test_custom_splitters.py` (8 chunker tests)
-  - [ ] `tests/chunking/test_semantic_splitter.py`
-  - [ ] `tests/chunking/test_sliding_window.py`
+- [x] 1.6.1 Delete legacy chunking tests:
+  - [x] `tests/chunking/test_custom_splitters.py` (8 chunker tests)
+  - [x] `tests/chunking/test_semantic_splitter.py`
+  - [x] `tests/chunking/test_sliding_window.py`
 - [ ] 1.6.2 Create new ChunkerPort tests:
   - [ ] `tests/chunking/test_chunker_port.py` (interface compliance)
   - [ ] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
@@ -251,12 +251,12 @@
     - drop_boilerplate
   ```
 
-- [ ] 4.3.2 Implement registry chunker with atomic units:
-  - [ ] Eligibility criteria as single chunk
-  - [ ] Each outcome measure as separate chunk
-  - [ ] Adverse event tables as atomic chunks (preserve effect pairs)
+- [x] 4.3.2 Implement registry chunker with atomic units:
+  - [x] Eligibility criteria as single chunk
+  - [x] Each outcome measure as separate chunk
+  - [x] Adverse event tables as atomic chunks (preserve effect pairs)
 - [ ] 4.3.3 Test on 10 CT.gov studies
-- [ ] 4.3.4 Validate intent hints: "eligibility", "outcome", "ae", "results"
+- [x] 4.3.4 Validate intent hints: "eligibility", "outcome", "ae", "results"
 
 ### 4.4 SPL Profile (DailyMed)
 
@@ -277,11 +277,11 @@
     - exclude_references
   ```
 
-- [ ] 4.4.2 Implement SPL chunker with LOINC section awareness:
-  - [ ] Parse LOINC codes from SPL XML
-  - [ ] Chunk by section: "Indications", "Dosage", "Warnings", "Adverse Reactions"
+- [x] 4.4.2 Implement SPL chunker with LOINC section awareness:
+  - [x] Parse LOINC codes from SPL XML
+  - [x] Chunk by section: "Indications", "Dosage", "Warnings", "Adverse Reactions"
 - [ ] 4.4.3 Test on 10 SPL labels
-- [ ] 4.4.4 Validate section labels include LOINC codes (e.g., "LOINC:34089-3 Indications")
+- [x] 4.4.4 Validate section labels include LOINC codes (e.g., "LOINC:34089-3 Indications")
 
 ### 4.5 Guideline Profile
 
@@ -301,11 +301,11 @@
     - drop_boilerplate
   ```
 
-- [ ] 4.5.2 Implement guideline chunker:
-  - [ ] Isolate recommendation units (statement, strength, certainty/grade)
-  - [ ] Keep evidence tables attached to recommendations
+- [x] 4.5.2 Implement guideline chunker:
+  - [x] Isolate recommendation units (statement, strength, certainty/grade)
+  - [x] Keep evidence tables attached to recommendations
 - [ ] 4.5.3 Test on 5 clinical guidelines
-- [ ] 4.5.4 Validate intent hints: "recommendation", "evidence"
+- [x] 4.5.4 Validate intent hints: "recommendation", "evidence"
 
 ---
 

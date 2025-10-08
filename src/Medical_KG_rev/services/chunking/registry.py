@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .wrappers import langchain_splitter, llamaindex_parser, simple
+from . import profile_chunkers
 
 
 def register_defaults() -> None:
@@ -20,3 +21,4 @@ def register_defaults() -> None:
     except RuntimeError:
         # LlamaIndex is optional; fallback behaviour is provided.
         pass
+    profile_chunkers.register()

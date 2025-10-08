@@ -645,7 +645,7 @@
 
 ### 5.1 Namespace Registry Implementation
 
-- [ ] **5.1.1** Define namespace schema:
+- [x] **5.1.1** Define namespace schema:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/schema.py
@@ -668,7 +668,7 @@
       parameters: dict = {}
   ```
 
-- [ ] **5.1.2** Implement namespace registry:
+- [x] **5.1.2** Implement namespace registry:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/registry.py
@@ -691,7 +691,7 @@
           return list(self.namespaces.keys())
   ```
 
-- [ ] **5.1.3** Create default namespace configurations:
+- [x] **5.1.3** Create default namespace configurations:
 
   ```yaml
   # config/embedding/namespaces/single_vector.qwen3.4096.v1.yaml
@@ -719,7 +719,7 @@
       top_k: 400
   ```
 
-- [ ] **5.1.4** Load namespaces on startup:
+- [x] **5.1.4** Load namespaces on startup:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/loader.py

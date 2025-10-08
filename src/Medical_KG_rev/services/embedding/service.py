@@ -26,6 +26,7 @@ from Medical_KG_rev.embeddings.utils.tokenization import (
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
+from .namespace.registry import EmbeddingNamespaceRegistry
 from .registry import EmbeddingModelRegistry
 
 logger = structlog.get_logger(__name__)
@@ -111,6 +112,7 @@ class EmbeddingWorker:
     vector_store: VectorStoreService | None = None
     config_path: str | None = None
     tokenizer_cache: TokenizerCache | None = None
+    namespace_registry: EmbeddingNamespaceRegistry | None = None
     registry: EmbedderRegistry | None = field(init=False, default=None)
     factory: EmbedderFactory | None = field(init=False, default=None)
     storage_router: StorageRouter | None = field(init=False, default=None)
@@ -123,6 +125,7 @@ class EmbeddingWorker:
                 config_path=self.config_path,
             )
         self.namespace_manager = self.model_registry.namespace_manager
+        self.namespace_registry = self.model_registry.namespace_registry
         self.registry = self.model_registry.registry
         self.factory = self.model_registry.factory
         self.storage_router = self.model_registry.storage_router

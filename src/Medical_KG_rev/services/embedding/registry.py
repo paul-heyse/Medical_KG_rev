@@ -11,7 +11,6 @@ import structlog
 
 from Medical_KG_rev.config.embeddings import (
     EmbeddingsConfiguration,
-    NamespaceDefinition,
     load_embeddings_config,
 )
 from Medical_KG_rev.embeddings.namespace import NamespaceManager
@@ -19,12 +18,17 @@ from Medical_KG_rev.embeddings.ports import BaseEmbedder, EmbedderConfig
 from Medical_KG_rev.embeddings.providers import register_builtin_embedders
 from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
 from Medical_KG_rev.embeddings.storage import StorageRouter
+from Medical_KG_rev.services.embedding.namespace.loader import load_namespace_configs
+from Medical_KG_rev.services.embedding.namespace.registry import (
+    EmbeddingNamespaceRegistry,
+)
+from Medical_KG_rev.services.embedding.namespace.schema import NamespaceConfig
 
 logger = structlog.get_logger(__name__)
 
 
-_DEFAULT_NAMESPACES: dict[str, NamespaceDefinition] = {
-    "single_vector.qwen3.4096.v1": NamespaceDefinition(
+_DEFAULT_NAMESPACES: dict[str, NamespaceConfig] = {
+    "single_vector.qwen3.4096.v1": NamespaceConfig(
         name="qwen3-embedding",
         provider="vllm",
         kind="single_vector",
@@ -35,13 +39,10 @@ _DEFAULT_NAMESPACES: dict[str, NamespaceDefinition] = {
         normalize=True,
         batch_size=64,
         requires_gpu=True,
-        parameters={
-            "endpoint": "http://vllm-embeddings:8001/v1",
-            "timeout": 60,
-            "max_tokens": 8192,
-        },
+        endpoint="http://vllm-embeddings:8001/v1",
+        parameters={"timeout": 60, "max_tokens": 8192},
     ),
-    "sparse.splade_v3.400.v1": NamespaceDefinition(
+    "sparse.splade_v3.400.v1": NamespaceConfig(
         name="splade-v3",
         provider="pyserini",
         kind="sparse",
@@ -50,13 +51,9 @@ _DEFAULT_NAMESPACES: dict[str, NamespaceDefinition] = {
         dim=400,
         normalize=False,
         batch_size=32,
-        parameters={
-            "top_k": 400,
-            "mode": "document",
-            "max_terms": 400,
-        },
+        parameters={"top_k": 400, "mode": "document", "max_terms": 400},
     ),
-    "multi_vector.colbert_v2.128.v1": NamespaceDefinition(
+    "multi_vector.colbert_v2.128.v1": NamespaceConfig(
         name="colbert-v2",
         provider="colbert",
         kind="multi_vector",
@@ -78,6 +75,8 @@ class EmbeddingModelRegistry:
     namespace_manager: NamespaceManager | None = None
     config_path: str | Path | None = None
     storage_router: StorageRouter | None = None
+    namespace_registry: EmbeddingNamespaceRegistry | None = None
+    _namespace_configs: dict[str, NamespaceConfig] = field(init=False, default_factory=dict)
     _config: EmbeddingsConfiguration = field(init=False)
     _registry: EmbedderRegistry = field(init=False)
     _factory: EmbedderFactory = field(init=False)
@@ -90,9 +89,11 @@ class EmbeddingModelRegistry:
         self.namespace_manager = self.namespace_manager or NamespaceManager()
         self.storage_router = self.storage_router or StorageRouter()
         self._config = self._load_configuration(self.config_path)
+        self.namespace_registry = self.namespace_registry or EmbeddingNamespaceRegistry()
         self._registry = EmbedderRegistry(namespace_manager=self.namespace_manager)
         register_builtin_embedders(self._registry)
         self._factory = EmbedderFactory(self._registry)
+        self._namespace_configs = self._load_namespace_configs(self.config_path)
         self._prime_configs()
         self._register_namespaces()
 
@@ -108,20 +109,33 @@ class EmbeddingModelRegistry:
             )
             return EmbeddingsConfiguration(
                 active_namespaces=list(_DEFAULT_NAMESPACES.keys()),
-                namespaces={k: v for k, v in _DEFAULT_NAMESPACES.items()},
+                namespaces={},
             )
 
+    def _load_namespace_configs(
+        self, config_path: str | Path | None
+    ) -> dict[str, NamespaceConfig]:
+        path_obj = Path(config_path) if config_path else None
+        directory = None
+        if path_obj is not None:
+            directory = path_obj.parent / "embedding" / "namespaces"
+        return load_namespace_configs(directory, fallback_config=self._config) or dict(_DEFAULT_NAMESPACES)
+
     def _prime_configs(self) -> None:
-        embedder_configs = self._config.to_embedder_configs()
-        if not embedder_configs:
-            embedder_configs = [
-                definition.to_embedder_config(namespace)
-                for namespace, definition in _DEFAULT_NAMESPACES.items()
-            ]
-        self._configs_by_name = {config.name: config for config in embedder_configs}
-        self._configs_by_namespace = {
-            config.namespace: config for config in embedder_configs
-        }
+        self.namespace_registry.reset()
+        self._configs_by_namespace.clear()
+        self._configs_by_name.clear()
+        for namespace, config in self._namespace_configs.items():
+            self.namespace_registry.register(namespace, config)
+            embedder_config = config.to_embedder_config(namespace)
+            self._configs_by_namespace[namespace] = embedder_config
+            self._configs_by_name[embedder_config.name] = embedder_config
+        if not self._configs_by_namespace:
+            for namespace, config in _DEFAULT_NAMESPACES.items():
+                self.namespace_registry.register(namespace, config)
+                embedder_config = config.to_embedder_config(namespace)
+                self._configs_by_namespace[namespace] = embedder_config
+                self._configs_by_name[embedder_config.name] = embedder_config
 
     def _register_namespaces(self) -> None:
         self.namespace_manager.reset()
@@ -160,21 +174,21 @@ class EmbeddingModelRegistry:
         namespaces: Sequence[str] | None = None,
     ) -> list[EmbedderConfig]:
         if namespaces:
-            resolved = [
-                self._configs_by_namespace[ns]
-                for ns in namespaces
-                if ns in self._configs_by_namespace
-            ]
-            if resolved:
-                return resolved
+            missing = [ns for ns in namespaces if ns not in self._configs_by_namespace]
+            if missing:
+                available = ", ".join(self.namespace_registry.list_namespaces())
+                raise ValueError(
+                    f"Namespaces {', '.join(missing)} not found. Available: {available}"
+                )
+            return [self._configs_by_namespace[ns] for ns in namespaces]
         if models:
-            resolved = [
-                self._configs_by_name[name]
-                for name in models
-                if name in self._configs_by_name
-            ]
-            if resolved:
-                return resolved
+            missing = [name for name in models if name not in self._configs_by_name]
+            if missing:
+                available = ", ".join(sorted(self._configs_by_name))
+                raise ValueError(
+                    f"Models {', '.join(missing)} not found. Available: {available}"
+                )
+            return [self._configs_by_name[name] for name in models]
         return self.active_configs()
 
     def get(self, key: str | EmbedderConfig) -> BaseEmbedder:
@@ -192,9 +206,10 @@ class EmbeddingModelRegistry:
             return self._configs_by_namespace[key]
         if key in self._configs_by_name:
             return self._configs_by_name[key]
-        msg = f"Unknown embedder configuration '{key}'"
+        available = ", ".join(sorted(self._configs_by_namespace))
+        msg = f"Unknown embedder configuration '{key}'. Available namespaces: {available}"
         logger.error("embedding.registry.config_missing_entry", key=key)
-        raise KeyError(msg)
+        raise ValueError(msg)
 
     def reload(self, *, config_path: str | Path | None = None) -> None:
         """Reload embedding configurations and refresh namespace registrations."""
@@ -202,6 +217,7 @@ class EmbeddingModelRegistry:
         if config_path is not None:
             self.config_path = config_path
         self._config = self._load_configuration(self.config_path)
+        self._namespace_configs = self._load_namespace_configs(self.config_path)
         self._prime_configs()
         self._register_namespaces()
         logger.info(

@@ -11,7 +11,7 @@ from Medical_KG_rev.services.evaluation.test_sets import (
 
 
 def test_loads_yaml_test_set() -> None:
-    manager = TestSetManager(root=Path("eval/test_sets"))
+    manager = TestSetManager()
     test_set = manager.load("test_set_v1")
     assert test_set.version == "v1"
     assert len(test_set.queries) == 3

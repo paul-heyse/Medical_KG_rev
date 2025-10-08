@@ -44,21 +44,21 @@
 
 #### 1.1.2 Dependency Graph Analysis
 
- - [x] **1.1.2a** Map dependencies of legacy embedding code:
-  - Which orchestration stages depend on `BGEEmbedder`?
-  - Which API endpoints expose embedding functionality?
-  - Which storage layers expect legacy embedding formats?
+- [x] **1.1.2a** Map dependencies of legacy embedding code:
+- Which orchestration stages depend on `BGEEmbedder`?
+- Which API endpoints expose embedding functionality?
+- Which storage layers expect legacy embedding formats?
 
- - [x] **1.1.2b** Identify circular dependencies or tight coupling:
+- [x] **1.1.2b** Identify circular dependencies or tight coupling:
 
   ```bash
   pydeps src/Medical_KG_rev/services/embedding/ --show-deps
   ```
 
- - [x] **1.1.2c** Document external library usage by legacy code:
-  - `sentence-transformers` (used by `bge_embedder.py`)
-  - `transformers` (used by `splade_embedder.py`)
-  - Custom batching logic (used by `manual_batching.py`)
+- [x] **1.1.2c** Document external library usage by legacy code:
+- `sentence-transformers` (used by `bge_embedder.py`)
+- `transformers` (used by `splade_embedder.py`)
+- Custom batching logic (used by `manual_batching.py`)
 
 #### 1.1.3 Test Coverage Audit
 
@@ -298,16 +298,19 @@
 - [x] **2.1.1** Add new libraries to `requirements.txt`:
 
   ```txt
-  vllm>=0.3.0
   pyserini>=0.22.0
   faiss-gpu>=1.7.4
+  redis[hiredis]>=5.0.0
   ```
+
+  > vLLM ships as the Docker image `ghcr.io/example/vllm-qwen3-embedding:latest` and
+  > is no longer installed via `pip`.
 
 - [x] **2.1.2** Update existing libraries:
 
   ```txt
   transformers>=4.38.0  # Qwen3 tokenizer support
-  torch>=2.1.0  # CUDA 12.1+ for vLLM and FAISS GPU
+  torch>=2.1.0  # CUDA 12.1+ for FAISS GPU helpers and health checks
   ```
 
 - [x] **2.1.3** Install dependencies:
@@ -319,7 +322,7 @@
 - [x] **2.1.4** Validate installations:
 
   ```bash
-  python -c "import vllm; print(vllm.__version__)"
+  docker compose build vllm-qwen3
   python -c "import pyserini; print(pyserini.__version__)"
   python -c "import faiss; print(faiss.get_num_gpus())"
   ```
@@ -374,11 +377,12 @@
 - [x] **3.1.1** Create vLLM Docker image:
 
   ```dockerfile
-  # ops/Dockerfile.vllm
+  # ops/vllm/Dockerfile.qwen3-embedding-8b
   FROM vllm/vllm-openai:latest
 
   COPY models/qwen3-embedding-8b /models/qwen3-embedding-8b
 
+  ENV MODEL_ID="Qwen/Qwen2.5-Coder-1.5B"
   ENV MODEL_PATH=/models/qwen3-embedding-8b
   ENV GPU_MEMORY_UTILIZATION=0.9
   ENV MAX_MODEL_LEN=8192
@@ -386,16 +390,18 @@
   CMD ["vllm", "serve", "${MODEL_PATH}", \
        "--host", "0.0.0.0", \
        "--port", "8001", \
-       "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}"]
+       "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}", \
+       "--max-model-len", "${MAX_MODEL_LEN}", \
+       "--served-model-name", "${MODEL_ID}"]
   ```
 
 - [x] **3.1.2** Add vLLM service to `docker-compose.yml`:
 
   ```yaml
-  vllm-embedding:
+  vllm-qwen3:
     build:
       context: .
-      dockerfile: ops/Dockerfile.vllm
+      dockerfile: ops/vllm/Dockerfile.qwen3-embedding-8b
     ports:
       - "8001:8001"
     environment:
@@ -417,7 +423,7 @@
 - [x] **3.1.3** Start vLLM service:
 
   ```bash
-  docker-compose up -d vllm-embedding
+  docker-compose up -d vllm-qwen3
   ```
 
 - [x] **3.1.4** Validate vLLM health:
@@ -1037,8 +1043,6 @@
 
 **Gap Analysis Findings**: Added 8 Prometheus metrics (was 4), CloudEvents schema with GPU metrics, 7 Grafana dashboard panels, token overflow tracking
 
-### 9.1 Prometheus Metrics (Enhanced from Gap Analysis)
-
 - [x] **9.1.1** Add embedding metrics:
 
   ```python
@@ -1101,13 +1105,7 @@
   )
   ```
 
-- [ ] **9.1.1a** Validate metric labels align with gap analysis requirements:
-  - ✅ tenant_id included for multi-tenancy tracking
-  - ✅ service label differentiates vLLM vs Pyserini GPU usage
-  - ✅ error_type enables failure analysis (gpu_unavailable, token_overflow, timeout)
-  - ✅ operation label tracks namespace validation calls
-
-- [ ] **9.1.2** Instrument embedding service:
+- [x] **9.1.2** Instrument embedding service:
 
   ```python
   with EMBEDDING_DURATION.labels(namespace=namespace, provider=config.provider).time():

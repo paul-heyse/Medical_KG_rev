@@ -255,16 +255,20 @@ def health():
 ### New Libraries (3)
 
 ```txt
-vllm>=0.3.0  # OpenAI-compatible serving for Qwen3 embeddings
-pyserini>=0.22.0  # SPLADE-v3 wrapper with document-side expansion
-faiss-gpu>=1.7.4  # GPU-accelerated dense vector search
+pyserini>=0.22.0       # SPLADE-v3 wrapper with document-side expansion
+faiss-gpu>=1.7.4       # GPU-accelerated dense vector search
+redis[hiredis]>=5.0.0  # Embedding cache backend
 ```
+
+> vLLM is distributed as the Docker image
+> `ghcr.io/example/vllm-qwen3-embedding:latest`; it is not installed as a Python
+> dependency.
 
 ### Updated Libraries
 
 ```txt
 transformers>=4.38.0  # Qwen3 tokenizer support
-torch>=2.1.0  # CUDA 12.1+ for vLLM and FAISS GPU
+torch>=2.1.0  # CUDA 12.1+ for FAISS GPU helpers and health checks
 ```
 
 ---

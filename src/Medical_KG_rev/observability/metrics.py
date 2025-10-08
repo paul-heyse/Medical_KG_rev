@@ -163,12 +163,6 @@ RERANK_GPU = Gauge(
     "GPU utilisation while reranking",
     labelnames=("reranker",),
 )
-PIPELINE_STAGE_DURATION = Histogram(
-    "retrieval_pipeline_stage_duration_seconds",
-    "Latency per stage of the retrieval pipeline",
-    labelnames=("stage",),
-    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
-)
 RERANK_CACHE_HIT = Gauge(
     "reranking_cache_hit_rate",
     "Cache hit rate for reranker results",
@@ -425,21 +419,6 @@ def record_chunk_size(profile: str, granularity: str, size: int) -> None:
     CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(size)
 
 
-def observe_query_latency(strategy: str, duration: float) -> None:
-    """Observe query latency."""
-    QUERY_LATENCY.labels(strategy=strategy).observe(duration)
-
-
-def observe_query_stage_latency(stage: str, duration: float) -> None:
-    """Observe query stage latency."""
-    QUERY_STAGE_LATENCY.labels(stage=stage).observe(duration)
-
-
-def record_query_operation(strategy: str, tenant_id: str, status: str) -> None:
-    """Record query operation."""
-    QUERY_OPERATIONS.labels(strategy=strategy, status=status).inc()
-
-
 def record_dead_letter_event(queue: str, reason: str) -> None:
     """Record dead letter event."""
     DEAD_LETTER_EVENTS.labels(queue=queue, reason=reason).inc()
@@ -530,26 +509,6 @@ TIMEOUT_BREACHES = Counter(
 ORCHESTRATION_CIRCUIT_STATE = Gauge(
     "orchestration_circuit_state",
     "Orchestration circuit breaker state (0=closed, 1=half-open, 2=open)",
-)
-
-QUERY_LATENCY = Histogram(
-    "query_latency_seconds",
-    "Query latency distribution",
-    labelnames=("strategy",),
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
-)
-
-QUERY_STAGE_LATENCY = Histogram(
-    "query_stage_latency_seconds",
-    "Query stage latency distribution",
-    labelnames=("stage",),
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
-)
-
-QUERY_OPERATIONS = Counter(
-    "query_operations_total",
-    "Total number of query operations",
-    labelnames=("strategy", "status"),
 )
 
 DEAD_LETTER_EVENTS = Counter(

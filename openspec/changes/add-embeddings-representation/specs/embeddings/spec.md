@@ -90,7 +90,7 @@ The system SHALL provide a multi-namespace embedding registry supporting multipl
 
 - **GIVEN** a namespace `"single_vector.qwen3.4096.v1"` registered
 - **WHEN** the embedding service calls `registry.get("single_vector.qwen3.4096.v1")`
-- **THEN** the registry returns a `NamespaceConfig` object with provider="vllm", dim=4096, endpoint="<http://vllm-service:8001>"
+- **THEN** the registry returns a `NamespaceConfig` object with provider="vllm", dim=4096, endpoint="<http://vllm-qwen3:8001>"
 - **AND** the service routes the embedding request to vLLM
 
 #### Scenario: Unknown namespace error

@@ -36,3 +36,17 @@ def test_validate_chunk_missing_metadata_raises():
     chunk = _chunk(metadata={"chunking_profile": "default"})
     with pytest.raises(ChunkValidationError):
         ensure_valid_chunks([chunk])
+
+
+def test_validate_chunk_invalid_offsets():
+    chunk = _chunk(char_offsets=(5, 2))
+    result = validate_chunk(chunk)
+    assert result.valid is False
+    assert "ordered" in (result.reason or "")
+
+
+def test_validate_chunk_schema_errors():
+    bad_chunk = _chunk(text="", metadata={})
+    result = validate_chunk(bad_chunk)
+    assert result.valid is False
+    assert "at least 1 character" in (result.reason or "")

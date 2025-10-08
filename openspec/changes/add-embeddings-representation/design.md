@@ -71,17 +71,19 @@ The current embedding architecture evolved organically over 18 months, resulting
 **Implementation**:
 
 ```python
-# vLLM server startup (Docker)
-vllm serve Qwen/Qwen2.5-Coder-1.5B \
-  --host 0.0.0.0 \
-  --port 8001 \
-  --gpu-memory-utilization 0.9 \
-  --max-model-len 8192 \
-  --trust-remote-code
+# vLLM server startup (Docker first-class)
+docker run --rm \
+  --gpus all \
+  -p 8001:8001 \
+  -e MODEL_PATH=/models/qwen3-embedding-8b \
+  -e GPU_MEMORY_UTILIZATION=0.9 \
+  -e MAX_MODEL_LEN=8192 \
+  -v $(pwd)/models/qwen3-embedding-8b:/models/qwen3-embedding-8b:ro \
+  ghcr.io/example/vllm-qwen3-embedding:latest
 
-# Client code (5 lines)
+# Client code (5 lines) – talks to containerised vLLM endpoint
 response = await httpx.post(
-    "http://vllm-service:8001/v1/embeddings",
+    "http://vllm-qwen3:8001/v1/embeddings",
     json={"input": ["text1", "text2"], "model": "Qwen/Qwen2.5-Coder-1.5B"}
 )
 embeddings = [item["embedding"] for item in response.json()["data"]]
@@ -90,10 +92,21 @@ embeddings = [item["embedding"] for item in response.json()["data"]]
 **GPU Enforcement**:
 
 ```python
-# vLLM refuses to start without GPU
-$ vllm serve ... (on CPU-only machine)
+# Container startup fails-fast without GPU
+$ docker run --rm ghcr.io/example/vllm-qwen3-embedding:latest
 # Output: RuntimeError: No GPU available. vLLM requires CUDA.
 ```
+
+**Container Standard**:
+
+- All GPU-serving models (Qwen3 single-vector, ColBERT multi-vector) are
+  packaged as Docker images stored under `ops/vllm/` (for example,
+  `Dockerfile.qwen3-embedding-8b`).
+- Kubernetes and Docker Compose deployments reference the images directly;
+  the application never imports `vllm` as a Python module.
+- Environment-specific tuning (e.g., `GPU_MEMORY_UTILIZATION`) is supplied via
+  container environment variables, keeping runtime parity between staging and
+  production.
 
 **Trade-offs**:
 
@@ -444,7 +457,7 @@ model_id: Qwen/Qwen2.5-Coder-1.5B
 model_version: v1
 dim: 4096
 provider: vllm
-endpoint: http://vllm-service:8001/v1/embeddings
+endpoint: http://vllm-qwen3:8001/v1/embeddings
 parameters:
   batch_size: 64
   normalize: true
@@ -757,7 +770,7 @@ model_id: Qwen/Qwen2.5-Coder-1.5B
 model_version: v1
 dim: 4096
 provider: vllm
-endpoint: http://vllm-service:8001/v1/embeddings
+endpoint: http://vllm-qwen3:8001/v1/embeddings
 parameters:
   batch_size: 64
   normalize: true
@@ -784,7 +797,7 @@ parameters:
 
 ```bash
 # vLLM Service
-export VLLM_ENDPOINT=http://vllm-service:8001
+export VLLM_ENDPOINT=http://vllm-qwen3:8001
 export VLLM_GPU_MEMORY_UTILIZATION=0.9
 export VLLM_MAX_MODEL_LEN=8192
 
@@ -947,7 +960,7 @@ OPENSEARCH_SPARSE_SEARCH_LATENCY = Histogram(
 
 # vLLM service down
 - alert: VLLMServiceDown
-  expr: up{job="vllm-service"} == 0
+  expr: up{job="vllm-qwen3"} == 0
   for: 1m
   labels:
     severity: critical
@@ -1071,14 +1084,14 @@ OPENSEARCH_SPARSE_SEARCH_LATENCY = Histogram(
 
 ```bash
 # Deploy vLLM to GPU nodes
-kubectl apply -f ops/k8s/deployments/vllm-service.yaml
+kubectl apply -f ops/k8s/base/deployment-vllm-qwen3.yaml
 
 # Verify vLLM health
-curl http://vllm-service:8001/health
+curl http://vllm-qwen3:8001/health
 # Expected: {"status": "healthy", "gpu": "available"}
 
 # Test embedding request
-curl -X POST http://vllm-service:8001/v1/embeddings \
+curl -X POST http://vllm-qwen3:8001/v1/embeddings \
   -H "Content-Type: application/json" \
   -d '{"input": ["test text"], "model": "Qwen/Qwen2.5-Coder-1.5B"}'
 ```

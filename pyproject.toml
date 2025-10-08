@@ -687,6 +687,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "Medical_KG_rev.kg" = ["*.ttl"]
+"Medical_KG_rev.services.evaluation.data" = ["test_sets/*.yaml"]
 
 [tool.black]
 line-length = 100

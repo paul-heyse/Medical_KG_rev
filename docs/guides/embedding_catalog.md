@@ -34,7 +34,7 @@ embeddings:
       model_id: Qwen/Qwen2.5-Coder-1.5B
       dim: 4096
       parameters:
-        endpoint: http://vllm-embedding:8001/v1
+        endpoint: http://vllm-qwen3:8001/v1
         timeout: 60
         normalize: true
     - name: splade-v3
@@ -60,7 +60,7 @@ embeddings:
 Build and run the dedicated embedding container with Docker Compose:
 
 ```bash
-docker-compose up -d vllm-embedding
+docker-compose up -d vllm-qwen3
 ```
 
 The service exposes an OpenAI-compatible `/v1/embeddings` endpoint on

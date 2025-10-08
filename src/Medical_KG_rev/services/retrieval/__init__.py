@@ -11,6 +11,9 @@ __all__ = [
     "ChunkingService",
     "CrossEncoderReranker",
     "DocumentIndexTemplate",
+    "HybridComponentSettings",
+    "HybridSearchCoordinator",
+    "HybridSearchResult",
     "FAISSIndex",
     "OpenSearchClient",
     "QueryDSL",
@@ -30,6 +33,18 @@ _RETRIEVAL_MAP = {
     "DocumentIndexTemplate": (
         "Medical_KG_rev.services.retrieval.opensearch_client",
         "DocumentIndexTemplate",
+    ),
+    "HybridComponentSettings": (
+        "Medical_KG_rev.services.retrieval.hybrid",
+        "HybridComponentSettings",
+    ),
+    "HybridSearchCoordinator": (
+        "Medical_KG_rev.services.retrieval.hybrid",
+        "HybridSearchCoordinator",
+    ),
+    "HybridSearchResult": (
+        "Medical_KG_rev.services.retrieval.hybrid",
+        "HybridSearchResult",
     ),
     "FAISSIndex": ("Medical_KG_rev.services.retrieval.faiss_index", "FAISSIndex"),
     "OpenSearchClient": (

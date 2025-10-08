@@ -28,6 +28,18 @@
 
 ---
 
+## Work Stream #0: Legacy Decommission & Deployment Readiness (Added)
+
+**Goal**: Pivot to the production retrieval stack and ensure new evaluation assets ship with the application.
+
+- [x] 0.1 Retire orchestration retrieval pipeline implementation
+  - **Action**: Remove `Medical_KG_rev.orchestration.retrieval_pipeline` modules and associated tests.
+  - **Action**: Adopt the `RetrievalService` integration as the supported retrieval path.
+- [x] 0.2 Package evaluation datasets for deployment
+  - **Action**: Relocate seeded YAML datasets under the Python package, update `TestSetManager` to load from package resources, and ensure package metadata includes the files.
+
+---
+
 ## Work Stream #1: Legacy Analysis & Validation (Pre-Implementation)
 
 **Goal**: Confirm no conflicting retrieval implementations to remove
@@ -67,53 +79,53 @@
 
 ### 2.1 Hybrid Search Coordinator (12 tasks)
 
-- [ ] 2.1.1 Create `HybridSearchCoordinator` class
+- [x] 2.1.1 Create `HybridSearchCoordinator` class
   - **File**: `src/Medical_KG_rev/services/retrieval/hybrid.py`
   - **Signature**: `async def search(query: str, k: int, components: list[str]) -> HybridSearchResult`
   - **Components**: `["bm25", "splade", "dense"]` (configurable)
 
-- [ ] 2.1.2 Implement parallel component execution
+- [x] 2.1.2 Implement parallel component execution
   - **Method**: `asyncio.gather()` for concurrent BM25, SPLADE, dense searches
   - **Timeout**: 300ms per component (fail gracefully if one slow)
 
-- [ ] 2.1.3 Add component selection logic
+- [x] 2.1.3 Add component selection logic
   - **Config**: `config/retrieval/components.yaml` (enable/disable components)
   - **Feature flags**: `enable_splade`, `enable_dense` (BM25 always enabled)
 
-- [ ] 2.1.4 Implement result aggregation
+- [x] 2.1.4 Implement result aggregation
   - **Input**: 3 ranked lists (BM25, SPLADE, dense)
   - **Output**: `HybridSearchResult` with `component_results: dict[str, list[SearchResult]]`
 
-- [ ] 2.1.5 Add per-component score tracking
+- [x] 2.1.5 Add per-component score tracking
   - **Model**: `SearchResult` includes `component_scores: dict[str, float]`
   - **Example**: `{"bm25": 12.5, "splade": 8.3, "dense": 0.87}`
 
-- [ ] 2.1.6 Handle component failures gracefully
+- [x] 2.1.6 Handle component failures gracefully
   - **Strategy**: If SPLADE fails, continue with BM25+Dense
   - **Logging**: Warn on component failure, emit CloudEvent
 
-- [ ] 2.1.7 Implement query preprocessing
+- [x] 2.1.7 Implement query preprocessing
   - **Steps**: Unicode normalization, stopword handling (optional), tokenization
   - **Consistency**: Same preprocessing for all components
 
-- [ ] 2.1.8 Add query expansion (optional)
+- [x] 2.1.8 Add query expansion (optional)
   - **Method**: Synonym expansion using concept catalog
   - **Config**: `enable_query_expansion=false` (default off)
 
-- [ ] 2.1.9 Implement caching layer
+- [x] 2.1.9 Implement caching layer
   - **Key**: `hash(query + k + components + filters)`
   - **TTL**: 5 minutes (short cache for real-time updates)
   - **Backend**: Redis
 
-- [ ] 2.1.10 Add correlation ID propagation
+- [x] 2.1.10 Add correlation ID propagation
   - **Flow**: Gateway → Coordinator → Components
   - **Tracing**: OpenTelemetry span per component
 
-- [ ] 2.1.11 Write unit tests for coordinator
+- [x] 2.1.11 Write unit tests for coordinator
   - **Cases**: All components enabled, partial failures, empty results
   - **Assertions**: Result structure, score tracking, graceful degradation
 
-- [ ] 2.1.12 Write integration tests with mocked components
+- [x] 2.1.12 Write integration tests with mocked components
   - **Setup**: Mock BM25, SPLADE, Dense services
   - **Cases**: Verify parallel execution, result aggregation
 

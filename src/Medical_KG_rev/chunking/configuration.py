@@ -10,7 +10,7 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError
 
 from .models import ChunkerConfig, Granularity
-from .exceptions import ChunkerConfigurationError
+from .exceptions import ChunkerConfigurationError, ProfileNotFoundError
 
 
 class ChunkerSettings(BaseModel):
@@ -81,8 +81,12 @@ class ChunkingConfig(BaseModel):
             raise ChunkerConfigurationError(str(exc)) from exc
 
     def profile_for_source(self, source: str | None) -> ChunkingProfile:
-        if source and source in self.profiles:
-            return self.profiles[source]
+        available = tuple(self.profiles.keys())
+        if source:
+            try:
+                return self.profiles[source]
+            except KeyError as exc:
+                raise ProfileNotFoundError(source, available) from exc
         try:
             return self.profiles[self.default_profile]
         except KeyError as exc:

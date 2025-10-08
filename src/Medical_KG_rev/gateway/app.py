@@ -14,6 +14,14 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from Medical_KG_rev.chunking.exceptions import (
+    ChunkingFailedError,
+    MineruGpuUnavailableError,
+    MineruOutOfMemoryError,
+    ProfileNotFoundError,
+    TokenizerMismatchError,
+)
+
 from ..config.settings import get_settings
 from ..observability import setup_observability
 from ..services.health import CheckResult, HealthService, success
@@ -235,8 +243,18 @@ def create_app() -> FastAPI:
             media_type="text/html",
         )
 
+    def _log_problem(event: str, detail: ProblemDetail) -> None:
+        logger.error(
+            event,
+            extra={
+                "correlation_id": get_correlation_id(),
+                "problem": detail.model_dump(mode="json"),
+            },
+        )
+
     @app.exception_handler(GatewayError)
     async def handle_gateway_error(_: Request, exc: GatewayError) -> JSONResponse:
+        _log_problem("gateway.error", exc.detail)
         return create_problem_response(exc.detail)
 
     @app.exception_handler(HTTPException)
@@ -246,6 +264,7 @@ def create_app() -> FastAPI:
             status=exc.status_code,
             type="https://httpstatuses.com/" + str(exc.status_code),
         )
+        _log_problem("gateway.http_error", detail)
         return create_problem_response(detail)
 
     @app.exception_handler(RequestValidationError)
@@ -257,6 +276,66 @@ def create_app() -> FastAPI:
             detail="One or more parameters are invalid.",
             extensions={"errors": exc.errors()},
         )
+        _log_problem("gateway.validation_error", detail)
+        return create_problem_response(detail)
+
+    @app.exception_handler(ProfileNotFoundError)
+    async def handle_profile_error(_: Request, exc: ProfileNotFoundError) -> JSONResponse:
+        detail = ProblemDetail(
+            title="Chunking profile not found",
+            status=400,
+            type="https://medical-kg/errors/chunking-profile-not-found",
+            detail=str(exc),
+            extensions={"available_profiles": list(getattr(exc, "available", []))},
+        )
+        _log_problem("gateway.chunking.profile_not_found", detail)
+        return create_problem_response(detail)
+
+    @app.exception_handler(TokenizerMismatchError)
+    async def handle_tokenizer_error(_: Request, exc: TokenizerMismatchError) -> JSONResponse:
+        detail = ProblemDetail(
+            title="Tokenizer mismatch",
+            status=500,
+            type="https://medical-kg/errors/tokenizer-mismatch",
+            detail=str(exc),
+        )
+        _log_problem("gateway.chunking.tokenizer_mismatch", detail)
+        return create_problem_response(detail)
+
+    @app.exception_handler(ChunkingFailedError)
+    async def handle_chunking_failed(_: Request, exc: ChunkingFailedError) -> JSONResponse:
+        message = exc.detail or str(exc) or "Chunking process failed"
+        detail = ProblemDetail(
+            title="Chunking failed",
+            status=500,
+            type="https://medical-kg/errors/chunking-failed",
+            detail=message,
+        )
+        _log_problem("gateway.chunking.failed", detail)
+        return create_problem_response(detail)
+
+    @app.exception_handler(MineruOutOfMemoryError)
+    async def handle_mineru_oom(_: Request, exc: MineruOutOfMemoryError) -> JSONResponse:
+        detail = ProblemDetail(
+            title="MinerU out of memory",
+            status=503,
+            type="https://medical-kg/errors/mineru-oom",
+            detail=str(exc),
+            extensions={"reason": "gpu_out_of_memory"},
+        )
+        _log_problem("gateway.mineru.out_of_memory", detail)
+        return create_problem_response(detail)
+
+    @app.exception_handler(MineruGpuUnavailableError)
+    async def handle_mineru_unavailable(_: Request, exc: MineruGpuUnavailableError) -> JSONResponse:
+        detail = ProblemDetail(
+            title="MinerU GPU unavailable",
+            status=503,
+            type="https://medical-kg/errors/mineru-gpu-unavailable",
+            detail=str(exc),
+            extensions={"reason": "gpu_unavailable"},
+        )
+        _log_problem("gateway.mineru.gpu_unavailable", detail)
         return create_problem_response(detail)
 
     return app

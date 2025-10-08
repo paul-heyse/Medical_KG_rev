@@ -45,3 +45,34 @@ groups:
         annotations:
           summary: "Embedding throughput dropped below 10 vectors/sec"
           description: "Check cache hit ratio and vLLM health; throughput degraded below expected baseline."
+  - name: mineru-vllm
+    rules:
+      - alert: MinerUVLLMClientFailures
+        expr: sum(rate(mineru_vllm_client_failures_total[5m])) by (error_type) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MinerU vLLM client failures above threshold"
+          description: |
+            Error type {{ $labels.error_type }} is breaching the expected threshold. Investigate vLLM availability
+            and recent deployment events.
+      - alert: MinerUVLLMCircuitBreakerOpen
+        expr: mineru_vllm_circuit_breaker_state == 2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MinerU vLLM circuit breaker is OPEN"
+          description: |
+            Circuit breaker is open which means workers are refusing to call vLLM. Check GPU utilisation and
+            service health immediately.
+      - alert: MinerUVLLMHighLatency
+        expr: histogram_quantile(0.95, sum(rate(mineru_vllm_request_duration_seconds_bucket[5m])) by (le)) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MinerU vLLM P95 latency over 10 seconds"
+          description: |
+            vLLM request latency is degrading. Review batching configuration and GPU pressure before pipelines stall.

@@ -54,21 +54,21 @@
   - [x] Decision: Keep namespace management, delegate embedding to Haystack
   - [x] Delete: Custom embedding loops, batch processing logic (Haystack handles)
   - [x] Verify: GPU fail-fast preserved in Haystack wrapper
-- [ ] 1.3.3 **Retry Logic**: Verify all retries use tenacity decorators
-  - [ ] Audit: Search for `for attempt in range(max_retries)` patterns
-  - [ ] Decision: Delete all custom retry loops
-  - [ ] Replace: With `@retry_on_failure` decorator from resilience policies
-  - [ ] Verify: Retry behavior identical (exponential backoff, jitter)
-- [ ] 1.3.4 **Circuit Breakers**: Verify all failure handling uses pybreaker
-  - [ ] Audit: Search for custom failure counting logic
-  - [ ] Decision: Delete all bespoke circuit breaker implementations
-  - [ ] Replace: With `@circuit_breaker` decorator from resilience policies
-  - [ ] Verify: Circuit state transitions match expected behavior
-- [ ] 1.3.5 **Rate Limiting**: Verify all throttling uses aiolimiter
-  - [ ] Audit: Search for `time.sleep()` or custom rate limit logic
-  - [ ] Decision: Delete all bespoke rate limiting
-  - [ ] Replace: With `@rate_limit` decorator from resilience policies
-  - [ ] Verify: Request rates honor configured limits
+- [x] 1.3.3 **Retry Logic**: Verify all retries use tenacity decorators
+  - [x] Audit: Search for `for attempt in range(max_retries)` patterns
+  - [x] Decision: Delete all custom retry loops
+  - [x] Replace: With `@retry_on_failure` decorator from resilience policies
+  - [x] Verify: Retry behavior identical (exponential backoff, jitter)
+- [x] 1.3.4 **Circuit Breakers**: Verify all failure handling uses pybreaker
+  - [x] Audit: Search for custom failure counting logic
+  - [x] Decision: Delete all bespoke circuit breaker implementations
+  - [x] Replace: With `@circuit_breaker` decorator from resilience policies
+  - [x] Verify: Circuit state transitions match expected behavior
+- [x] 1.3.5 **Rate Limiting**: Verify all throttling uses aiolimiter
+  - [x] Audit: Search for `time.sleep()` or custom rate limit logic
+  - [x] Decision: Delete all bespoke rate limiting
+  - [x] Replace: With `@rate_limit` decorator from resilience policies
+  - [x] Verify: Request rates honor configured limits
 
 ### 1.4 Atomic Deletion (Commit Strategy)
 
@@ -92,7 +92,7 @@
 - [x] 1.5.2 Update `src/Medical_KG_rev/gateway/services.py`:
   - [x] Remove: `self.orchestrator = Orchestrator(...)`
   - [x] Add: `self.orchestrator = DagsterOrchestrator(...)`
-- [ ] 1.5.3 Run `ruff check --select F401` to find unused imports
+- [x] 1.5.3 Run `ruff check --select F401` to find unused imports
 - [ ] 1.5.4 Run `mypy src/` to verify no type errors from deletions
 
 ### 1.6 Test Migration (Delete and Replace)
@@ -401,15 +401,15 @@
 ## 17. Dependency Management & Version Pinning
 
 - [ ] 17.1 Create dependency compatibility matrix for Dagster + Haystack + resilience libs
-- [ ] 17.2 Pin exact versions in `requirements.txt`:
-  - [ ] 17.2.1 `dagster==1.5.14` (latest stable in 1.5.x series)
-  - [ ] 17.2.2 `dagster-postgres==0.21.14` (matching Dagster version)
-  - [ ] 17.2.3 `haystack-ai==2.0.1` (latest stable in 2.0.x series)
-  - [ ] 17.2.4 `tenacity==8.2.3`
-  - [ ] 17.2.5 `pybreaker==1.0.2`
-  - [ ] 17.2.6 `aiolimiter==1.1.0`
-  - [ ] 17.2.7 `cloudevents==1.9.0`
-  - [ ] 17.2.8 `openlineage-python==1.1.0` (optional)
+- [x] 17.2 Pin exact versions in `requirements.txt`:
+  - [x] 17.2.1 `dagster==1.5.14` (latest stable in 1.5.x series)
+  - [x] 17.2.2 `dagster-postgres==0.21.14` (matching Dagster version)
+  - [x] 17.2.3 `haystack-ai==2.0.1` (latest stable in 2.0.x series)
+  - [x] 17.2.4 `tenacity==8.2.3`
+  - [x] 17.2.5 `pybreaker==1.0.2`
+  - [x] 17.2.6 `aiolimiter==1.1.0`
+  - [x] 17.2.7 `cloudevents==1.9.0`
+  - [x] 17.2.8 `openlineage-python==1.1.0` (optional)
 - [ ] 17.3 Test upgrade path from Dagster 1.5.x to 1.6.x
 - [ ] 17.4 Document breaking changes in Haystack 2.0.x → 2.1.x
 - [ ] 17.5 Create Dependabot config for automated security updates

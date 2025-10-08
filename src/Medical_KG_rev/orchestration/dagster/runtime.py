@@ -374,6 +374,7 @@ class BuiltPipelineJob:
     job_definition: Any
     final_node: str
     version: str
+    total_phases: int
 
 
 def _normalise_name(name: str) -> str:
@@ -419,11 +420,14 @@ def _build_pipeline_job(
         },
     )
 
+    total_phases = max((stage.phase_index for stage in topology.stages), default=1)
+
     return BuiltPipelineJob(
         job_name=job.name,
         job_definition=job,
         final_node=order[-1] if order else "bootstrap",
         version=topology.version,
+        total_phases=total_phases,
     )
 
 
@@ -599,10 +603,30 @@ class DagsterOrchestrator:
 
         duration_ms = int((time.perf_counter() - start_time) * 1000)
 
+        final_state = result.output_for_node(job.final_node)
+        phase_index = job.total_phases
+        phase_ready = True
+        if isinstance(final_state, Mapping):
+            phase_index = int(final_state.get("phase_index", phase_index))
+            phase_ready = bool(final_state.get("phase_ready", True))
+
         ledger_entry = None
         if context.job_id:
             try:
-                ledger_entry = self.job_ledger.mark_completed(context.job_id)
+                if phase_index >= job.total_phases and phase_ready:
+                    ledger_entry = self.job_ledger.mark_completed(context.job_id)
+                else:
+                    ledger_entry = self.job_ledger.set_phase(
+                        context.job_id,
+                        f"phase-{phase_index}",
+                    )
+                    self.job_ledger.update_metadata(
+                        context.job_id,
+                        {
+                            "phase_ready": phase_ready,
+                            "phase_index": phase_index,
+                        },
+                    )
             except JobLedgerError:
                 ledger_entry = self.job_ledger.get(context.job_id)
 
@@ -616,7 +640,6 @@ class DagsterOrchestrator:
             duration_ms=duration_ms,
         )
 
-        final_state = result.output_for_node(job.final_node)
         return DagsterRunResult(
             pipeline=pipeline,
             success=result.success,
@@ -652,15 +675,25 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
             continue
         if not entry.pdf_ir_ready or entry.status != "processing":
             continue
-        run_key = f"{entry.job_id}-resume"
+        phase_label = entry.phase or entry.metadata.get("phase") or "phase-1"
+        try:
+            current_phase_index = int(str(phase_label).split("-", maxsplit=1)[1])
+        except Exception:
+            current_phase_index = 1
+        resume_phase_index = max(current_phase_index + 1, 2)
+        resume_phase = f"phase-{resume_phase_index}"
+        run_key = f"{entry.job_id}-resume-{resume_phase_index}"
+        resume_stage = entry.metadata.get("resume_stage", "chunk")
         context_payload = {
             "tenant_id": entry.tenant_id,
             "job_id": entry.job_id,
             "doc_id": entry.doc_key,
             "correlation_id": entry.metadata.get("correlation_id"),
-            "metadata": dict(entry.metadata),
+            "metadata": {**dict(entry.metadata), "resume_stage": resume_stage},
             "pipeline_name": entry.pipeline_name,
             "pipeline_version": entry.metadata.get("pipeline_version", entry.pipeline_name or ""),
+            "phase": resume_phase,
+            "phase_ready": True,
         }
         adapter_payload = entry.metadata.get("adapter_request", {})
         payload = entry.metadata.get("payload", {})
@@ -681,7 +714,8 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                 run_config=run_config,
                 tags={
                     "medical_kg.pipeline": entry.pipeline_name or "",
-                    "medical_kg.resume_stage": "chunk",
+                    "medical_kg.resume_stage": resume_stage,
+                    "medical_kg.resume_phase": resume_phase,
                 },
             )
         )

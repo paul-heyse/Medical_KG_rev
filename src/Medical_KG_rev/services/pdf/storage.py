@@ -1,121 +1,165 @@
-"""Storage helpers for persisting downloaded PDFs."""
-
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from dataclasses import dataclass
-from typing import Iterable
+from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 
+from Medical_KG_rev.observability.metrics import BUSINESS_EVENTS
 from Medical_KG_rev.storage.base import ObjectStore, StorageError
-from Medical_KG_rev.utils.logging import get_correlation_id
+from Medical_KG_rev.storage.object_store import InMemoryObjectStore
 
 logger = structlog.get_logger(__name__)
 
 
 @dataclass(slots=True)
-class StoredPdf:
-    """Metadata describing a stored PDF object."""
+class PdfStorageConfig:
+    """Configuration for storing downloaded PDFs."""
 
-    key: str
-    size_bytes: int
-    content_type: str | None
-    checksum: str
+    base_prefix: str = "pdf"
+    enable_access_logging: bool = True
 
 
 class PdfStorageClient:
-    """Synchronously interact with an underlying :class:`ObjectStore` for PDFs."""
+    """Store downloaded PDFs using the configured object store backend."""
 
     def __init__(
         self,
-        backend: ObjectStore,
+        backend: ObjectStore | None = None,
         *,
-        base_prefix: str = "pdfs",
+        config: PdfStorageConfig | None = None,
     ) -> None:
-        self._backend = backend
-        self._base_prefix = base_prefix.strip("/") or "pdfs"
+        self._backend = backend or InMemoryObjectStore()
+        self._config = config or PdfStorageConfig()
 
-    def store_pdf(
+    async def store(
         self,
+        *,
         tenant_id: str,
         document_id: str,
-        payload: bytes,
-        *,
-        checksum: str,
+        data: bytes,
         content_type: str | None,
-    ) -> StoredPdf:
+        metadata: dict[str, str] | None = None,
+    ) -> tuple[str, str]:
+        checksum = hashlib.sha256(data).hexdigest()
         key = self._object_key(tenant_id, document_id, checksum)
-        metadata = {
+        storage_metadata = {
             "tenant-id": tenant_id,
             "document-id": document_id,
             "checksum": checksum,
         }
         if content_type:
-            metadata["content-type"] = content_type
-        self._run(self._backend.put(key, payload, metadata=metadata))
-        self._audit(
-            "store",
-            key=key,
-            tenant_id=tenant_id,
-            document_id=document_id,
-            bytes=len(payload),
-            content_type=content_type,
-        )
-        return StoredPdf(
-            key=key,
-            size_bytes=len(payload),
-            content_type=content_type,
-            checksum=checksum,
-        )
-
-    def fetch_pdf(self, key: str) -> bytes:
-        try:
-            data = self._run(self._backend.get(key))
-        except StorageError as exc:
-            raise StorageError(f"Stored PDF '{key}' could not be retrieved") from exc
-        self._audit("fetch", key=key, bytes=len(data))
-        return data
-
-    def delete_pdf(self, key: str) -> None:
-        try:
-            self._run(self._backend.delete(key))
-        except StorageError:
-            logger.warning("pdf.storage.delete_missing", key=key)
-        else:
-            self._audit("delete", key=key)
-
-    def cleanup_document(self, tenant_id: str, document_id: str) -> int:
-        """Remove all stored PDFs for the supplied document.
-
-        Returns the number of artefacts removed which is useful for auditing
-        cleanup operations triggered after failed downloads.
-        """
-
-        prefix = self._document_prefix(tenant_id, document_id)
-        removed = 0
-        for key in self._list_keys(prefix):
-            self.delete_pdf(key)
-            removed += 1
-        if removed:
-            self._audit(
-                "cleanup",
+            storage_metadata["content-type"] = content_type
+        if metadata:
+            storage_metadata.update({str(k): str(v) for k, v in metadata.items()})
+        await self._backend.put(key, data, metadata=storage_metadata)
+        if self._config.enable_access_logging:
+            logger.info(
+                "pdf.storage.store",
                 tenant_id=tenant_id,
                 document_id=document_id,
-                removed=removed,
-                prefix=prefix,
+                key=key,
+                size=len(data),
+                content_type=content_type,
             )
-        return removed
+        BUSINESS_EVENTS.labels("pdf_downloaded").inc()
+        return key, checksum
+
+    async def fetch(self, key: str) -> bytes:
+        data = await self._backend.get(key)
+        if self._config.enable_access_logging:
+            logger.debug("pdf.storage.fetch", key=key, size=len(data))
+        return data
+
+    async def delete(self, key: str) -> None:
+        await self._backend.delete(key)
+        if self._config.enable_access_logging:
+            logger.info("pdf.storage.delete", key=key)
+
+    async def store_processing_state(
+        self,
+        tenant_id: str,
+        document_id: str,
+        state: dict[str, Any],
+    ) -> str:
+        payload = json.dumps(state, separators=(",", ":"), default=str).encode("utf-8")
+        key = self._processing_state_key(tenant_id, document_id)
+        await self._backend.put(
+            key,
+            payload,
+            metadata={
+                "tenant-id": tenant_id,
+                "document-id": document_id,
+                "content-type": "application/json",
+            },
+        )
+        if self._config.enable_access_logging:
+            logger.info(
+                "pdf.storage.state.store",
+                tenant_id=tenant_id,
+                document_id=document_id,
+                key=key,
+            )
+        return key
+
+    async def fetch_processing_state(
+        self, tenant_id: str, document_id: str
+    ) -> dict[str, Any] | None:
+        key = self._processing_state_key(tenant_id, document_id)
+        try:
+            payload = await self._backend.get(key)
+        except StorageError:
+            return None
+        try:
+            state = json.loads(payload.decode("utf-8"))
+        except Exception:
+            logger.warning(
+                "pdf.storage.state.invalid",
+                tenant_id=tenant_id,
+                document_id=document_id,
+                key=key,
+            )
+            return None
+        return state
+
+    async def delete_processing_state(self, tenant_id: str, document_id: str) -> None:
+        key = self._processing_state_key(tenant_id, document_id)
+        await self._backend.delete(key)
+        if self._config.enable_access_logging:
+            logger.info(
+                "pdf.storage.state.delete",
+                tenant_id=tenant_id,
+                document_id=document_id,
+                key=key,
+            )
+
+    async def cleanup_document(self, tenant_id: str, document_id: str) -> None:
+        prefix = self._document_prefix(tenant_id, document_id)
+        if hasattr(self._backend, "list_prefix"):
+            keys = await getattr(self._backend, "list_prefix")(prefix)
+            for key in keys:
+                await self._backend.delete(key)
+                if self._config.enable_access_logging:
+                    logger.info("pdf.storage.cleanup", key=key)
 
     def _object_key(self, tenant_id: str, document_id: str, checksum: str) -> str:
-        tenant_segment = self._safe_segment(tenant_id)
-        document_segment = self._safe_segment(document_id)
-        return f"{self._base_prefix}/{tenant_segment}/{document_segment}/{checksum}.pdf"
+        prefix = self._document_prefix(tenant_id, document_id)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        return f"{prefix}{timestamp}-{checksum}.pdf"
+
+    def _processing_state_key(self, tenant_id: str, document_id: str) -> str:
+        prefix = self._document_prefix(tenant_id, document_id)
+        return f"{prefix}processing-state.json"
 
     def _document_prefix(self, tenant_id: str, document_id: str) -> str:
         tenant_segment = self._safe_segment(tenant_id)
-        document_segment = self._safe_segment(document_id)
-        return f"{self._base_prefix}/{tenant_segment}/{document_segment}/"
+        doc_segment = self._safe_segment(document_id)
+        base = self._config.base_prefix.strip("/")
+        return f"{base}/{tenant_segment}/{doc_segment}/"
 
     def _safe_segment(self, value: str) -> str:
         cleaned = [ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value]
@@ -140,11 +184,9 @@ class PdfStorageClient:
         except RuntimeError:
             loop = asyncio.new_event_loop()
             try:
-                asyncio.set_event_loop(loop)
                 return loop.run_until_complete(awaitable)
             finally:
-                asyncio.set_event_loop(None)
                 loop.close()
 
 
-__all__ = ["PdfStorageClient", "StoredPdf"]
+__all__ = ["PdfStorageClient", "PdfStorageConfig"]

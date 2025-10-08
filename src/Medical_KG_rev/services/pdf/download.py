@@ -1,204 +1,394 @@
-"""Robust PDF download service used by orchestration stages."""
-
 from __future__ import annotations
 
-import hashlib
 import time
+from collections import deque
 from dataclasses import dataclass
-from tempfile import SpooledTemporaryFile
-from typing import Mapping
+from threading import Lock
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import structlog
-from pybreaker import CircuitBreakerError
+from opentelemetry import trace
 
+from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.observability.metrics import (
-    record_pdf_download_failure,
-    record_pdf_download_success,
+    PDF_DOWNLOAD_ATTEMPTS,
+    PDF_DOWNLOAD_BYTES,
+    PDF_DOWNLOAD_FAILURES,
+    PDF_DOWNLOAD_LATENCY,
+    set_pdf_download_circuit_state,
+    set_pdf_download_failure_rate,
 )
-from Medical_KG_rev.utils.http_client import HttpClient
+
+from .storage import PdfStorageClient
+from .validation import PdfMetadata, PdfUrlValidator
 
 logger = structlog.get_logger(__name__)
+tracer = trace.get_tracer("Medical_KG_rev.services.pdf.download")
+
+
+@dataclass(slots=True)
+class PdfDownloadRequest:
+    tenant_id: str
+    document_id: str
+    url: str
+    correlation_id: str | None = None
+    expected_size: int | None = None
+    expected_content_type: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
 class PdfDownloadResult:
-    """Represents a completed PDF download."""
-
-    url: str
-    data: bytes
-    size_bytes: int
-    content_type: str | None
+    request: PdfDownloadRequest
+    storage_key: str
     checksum: str
+    content_type: str | None
+    size: int
     duration_seconds: float
-    headers: Mapping[str, str]
+    attempts: int
     resumed: bool
+    pdf_metadata: PdfMetadata | None
 
 
 class PdfDownloadError(RuntimeError):
-    """Raised when a PDF cannot be downloaded or validated."""
-
-    def __init__(self, message: str, *, error_type: str = "download-error") -> None:
-        super().__init__(message)
-        self.error_type = error_type
-
-
-class PdfDownloadService:
-    """Service responsible for retrieving PDFs over HTTP with resilience."""
+    """Exception raised when the download service fails."""
 
     def __init__(
         self,
-        client: HttpClient,
+        message: str,
         *,
-        chunk_size: int = 1024 * 128,
-        spool_threshold: int = 8 * 1024 * 1024,
-        max_resume_attempts: int = 3,
-        accept_content_types: tuple[str, ...] = (
-            "application/pdf",
-            "application/octet-stream",
-        ),
+        retryable: bool = False,
+        code: str = "unknown",
+        metadata: dict[str, Any] | None = None,
     ) -> None:
-        self._client = client
-        self._chunk_size = max(1024, chunk_size)
-        self._spool_threshold = max(1024 * 1024, spool_threshold)
-        self._max_resume_attempts = max(1, max_resume_attempts)
-        self._accept_content_types = accept_content_types
+        super().__init__(message)
+        self.retryable = retryable
+        self.code = code
+        self.metadata = metadata or {}
 
-    def download(
+
+class DownloadCircuitBreaker:
+    """Simple in-memory circuit breaker tracking failures per host."""
+
+    def __init__(self, *, failure_threshold: int = 5, recovery_timeout: float = 300.0) -> None:
+        self._failure_threshold = max(1, failure_threshold)
+        self._recovery_timeout = max(1.0, recovery_timeout)
+        self._failures: dict[str, tuple[int, float]] = {}
+        self._lock = Lock()
+
+    def is_open(self, key: str) -> bool:
+        now = time.time()
+        with self._lock:
+            count, opened_at = self._failures.get(key, (0, 0.0))
+            if count < self._failure_threshold:
+                return False
+            if opened_at and now - opened_at >= self._recovery_timeout:
+                self._failures.pop(key, None)
+                return False
+            if not opened_at:
+                self._failures[key] = (count, now)
+            return True
+
+    def record_failure(self, key: str) -> bool:
+        now = time.time()
+        with self._lock:
+            count, opened_at = self._failures.get(key, (0, 0.0))
+            count += 1
+            if count >= self._failure_threshold and not opened_at:
+                opened_at = now
+            self._failures[key] = (count, opened_at)
+            return count >= self._failure_threshold
+
+    def record_success(self, key: str) -> None:
+        with self._lock:
+            self._failures.pop(key, None)
+
+
+class FailureRateTracker:
+    """Rolling failure rate calculator using a bounded deque."""
+
+    def __init__(self, *, window_seconds: float = 300.0, max_samples: int = 50) -> None:
+        self._window = max(1.0, window_seconds)
+        self._samples: deque[tuple[float, bool]] = deque(maxlen=max(1, max_samples))
+
+    def record(self, success: bool) -> float:
+        now = time.time()
+        self._samples.append((now, success))
+        while self._samples and now - self._samples[0][0] > self._window:
+            self._samples.popleft()
+        if not self._samples:
+            return 0.0
+        failures = sum(1 for _, ok in self._samples if not ok)
+        return failures / len(self._samples)
+
+
+class PdfDownloadService:
+    """Download PDF documents with retry, tracing, and failure safeguards."""
+
+    def __init__(
         self,
-        url: str,
         *,
-        correlation_id: str | None = None,
-    ) -> PdfDownloadResult:
-        """Download a PDF from the given URL and return the payload."""
+        storage: PdfStorageClient,
+        validator: PdfUrlValidator | None = None,
+        timeout: float = 60.0,
+        max_attempts: int = 3,
+        chunk_size: int = 1024 * 512,
+        circuit_breaker: DownloadCircuitBreaker | None = None,
+        circuit_failure_threshold: int = 5,
+        circuit_recovery_seconds: float = 300.0,
+        failure_alert_threshold: float = 0.5,
+        failure_window_seconds: float = 300.0,
+        backoff_initial: float = 1.0,
+        backoff_max: float = 10.0,
+    ) -> None:
+        self._storage = storage
+        self._validator = validator or PdfUrlValidator()
+        self._timeout = timeout
+        self._max_attempts = max(1, max_attempts)
+        self._chunk_size = max(4096, chunk_size)
+        self._circuit_breaker = circuit_breaker or DownloadCircuitBreaker(
+            failure_threshold=circuit_failure_threshold,
+            recovery_timeout=circuit_recovery_seconds,
+        )
+        self._failure_alert_threshold = max(0.0, min(1.0, failure_alert_threshold))
+        self._failure_window = max(1.0, failure_window_seconds)
+        self._backoff_initial = max(0.1, backoff_initial)
+        self._backoff_max = max(self._backoff_initial, backoff_max)
+        self._failure_trackers: dict[str, FailureRateTracker] = {}
+        self._open_circuits: set[str] = set()
+        self._alert_manager = get_alert_manager()
 
-        parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"}:
-            raise PdfDownloadError(
-                f"Unsupported URL scheme for PDF download: {url}", error_type="invalid-url"
-            )
-
-        attempt = 0
-        total_downloaded = 0
-        resumed = False
-        sha256 = hashlib.sha256()
-        start_time = time.monotonic()
-        headers: dict[str, str] = {
-            "Accept": "application/pdf,application/octet-stream;q=0.8",
-        }
-
-        with SpooledTemporaryFile(max_size=self._spool_threshold) as buffer:
-            while True:
-                attempt += 1
-                range_headers = dict(headers)
-                if total_downloaded:
-                    range_headers["Range"] = f"bytes={total_downloaded}-"
-                logger.info(
-                    "pdf.download.attempt",
-                    url=url,
-                    attempt=attempt,
-                    resumed=total_downloaded > 0,
-                    correlation_id=correlation_id,
-                )
-                try:
-                    response = self._client.request(
-                        "GET",
-                        url,
-                        headers=range_headers,
-                        stream=True,
-                    )
-                except httpx.TimeoutException as exc:
-                    record_pdf_download_failure(source="http", error_type="timeout")
-                    raise PdfDownloadError("PDF download timed out", error_type="timeout") from exc
-                except httpx.NetworkError as exc:
-                    record_pdf_download_failure(source="http", error_type="network-error")
-                    raise PdfDownloadError(
-                        "Network error while downloading PDF",
-                        error_type="network-error",
-                    ) from exc
-                except CircuitBreakerError as exc:
-                    record_pdf_download_failure(source="http", error_type="circuit-open")
-                    raise PdfDownloadError(
-                        "Circuit breaker open for PDF download",
-                        error_type="circuit-open",
-                    ) from exc
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPError as exc:  # pragma: no cover - handled by HttpClient retries
-                    raise PdfDownloadError(str(exc), error_type="http-error") from exc
-
-                if total_downloaded and response.status_code != httpx.codes.PARTIAL_CONTENT:
-                    logger.warning(
-                        "pdf.download.resume_unsupported",
-                        url=url,
-                        status=response.status_code,
-                    )
-                    buffer.seek(0)
-                    buffer.truncate(0)
-                    sha256 = hashlib.sha256()
-                    total_downloaded = 0
-
-                try:
-                    for chunk in response.iter_bytes(chunk_size=self._chunk_size):
-                        if not chunk:
-                            continue
-                        buffer.write(chunk)
-                        sha256.update(chunk)
-                        total_downloaded += len(chunk)
-                except httpx.HTTPError as exc:
-                    if attempt >= self._max_resume_attempts:
-                        record_pdf_download_failure(source="http", error_type="stream-error")
-                        raise PdfDownloadError(
-                            "PDF download interrupted repeatedly",
-                            error_type="stream-error",
-                        ) from exc
-                    resumed = True
-                    logger.warning(
-                        "pdf.download.resume",
-                        url=url,
-                        attempt=attempt,
-                        downloaded=total_downloaded,
-                        error=str(exc),
-                    )
-                    continue
-                break
-
-            duration = time.monotonic() - start_time
-            buffer.seek(0)
-            payload = buffer.read()
-
-        content_type = response.headers.get("Content-Type")
-        if content_type:
-            content_type = content_type.split(";")[0].strip().lower()
-        if content_type and not any(
-            content_type.startswith(prefix) for prefix in self._accept_content_types
-        ):
-            record_pdf_download_failure(source="http", error_type="invalid-content-type")
-            raise PdfDownloadError(
-                f"Remote resource is not a PDF (content-type={content_type})",
-                error_type="invalid-content-type",
-            )
-
-        checksum = sha256.hexdigest()
+    def download(self, request: PdfDownloadRequest) -> PdfDownloadResult:
+        host = self._extract_host(request.url)
         logger.info(
-            "pdf.download.completed",
-            url=url,
-            bytes=total_downloaded,
-            checksum=checksum,
-            duration_seconds=round(duration, 3),
-            resumed=resumed,
-            correlation_id=correlation_id,
+            "pdf.download.start",
+            tenant_id=request.tenant_id,
+            document_id=request.document_id,
+            url=request.url,
+            correlation_id=request.correlation_id,
         )
-        record_pdf_download_success(source="http", size_bytes=total_downloaded, duration_seconds=duration)
 
-        return PdfDownloadResult(
-            url=url,
-            data=payload,
-            size_bytes=total_downloaded,
-            content_type=content_type,
-            checksum=checksum,
-            duration_seconds=duration,
-            headers=dict(response.headers),
-            resumed=resumed,
+        with tracer.start_as_current_span(
+            "pdf.download",
+            attributes={
+                "tenant_id": request.tenant_id,
+                "document_id": request.document_id,
+                "pdf.url": request.url,
+            },
+        ):
+            if self._circuit_breaker.is_open(host):
+                PDF_DOWNLOAD_FAILURES.labels("circuit_open").inc()
+                set_pdf_download_circuit_state(request.tenant_id, host, True)
+                if host not in self._open_circuits:
+                    self._open_circuits.add(host)
+                    self._alert_manager.circuit_state_changed(
+                        f"pdf-download:{host}", "open"
+                    )
+                raise PdfDownloadError(
+                    f"Circuit breaker open for host '{host}'",
+                    retryable=False,
+                    code="circuit_open",
+                )
+
+            metadata: PdfMetadata | None = None
+            try:
+                metadata = self._validator.validate(request.url)
+            except Exception as exc:
+                PDF_DOWNLOAD_FAILURES.labels("validation").inc()
+                self._record_failure(request.tenant_id, host, success=False)
+                self._alert_manager.error_observed("pdf.download", "validation")
+                raise PdfDownloadError(
+                    f"PDF URL validation failed: {exc}",
+                    retryable=False,
+                    code="validation",
+                ) from exc
+
+            if request.expected_content_type and metadata.content_type:
+                if request.expected_content_type.lower() not in metadata.content_type.lower():
+                    PDF_DOWNLOAD_FAILURES.labels("content_type_mismatch").inc()
+                    self._record_failure(request.tenant_id, host, success=False)
+                    raise PdfDownloadError(
+                        "PDF content type mismatch: "
+                        f"expected {request.expected_content_type}, got {metadata.content_type}",
+                        retryable=False,
+                        code="content_type_mismatch",
+                    )
+
+            attempts = 0
+            start_time = time.perf_counter()
+            data = bytearray()
+            resumed = False
+            accept_ranges = metadata.headers.get("Accept-Ranges", "").lower() == "bytes" if metadata else False
+            last_error: Exception | None = None
+
+            for attempt in range(1, self._max_attempts + 1):
+                attempts = attempt
+                try:
+                    chunk_count = 0
+                    for chunk in self._stream(
+                        request.url,
+                        offset=len(data) if resumed else 0,
+                        accept_ranges=accept_ranges,
+                    ):
+                        data.extend(chunk)
+                        chunk_count += 1
+                        if chunk_count % 50 == 0:
+                            logger.debug(
+                                "pdf.download.progress",
+                                tenant_id=request.tenant_id,
+                                document_id=request.document_id,
+                                bytes=len(data),
+                            )
+                    break
+                except httpx.HTTPError as exc:
+                    last_error = exc
+                    retryable = not isinstance(exc, httpx.HTTPStatusError) or (
+                        isinstance(exc, httpx.HTTPStatusError)
+                        and exc.response.status_code >= 500
+                    )
+                    reason = "http_error"
+                    PDF_DOWNLOAD_ATTEMPTS.labels(reason).inc()
+                    logger.warning(
+                        "pdf.download.retry",
+                        attempt=attempt,
+                        tenant_id=request.tenant_id,
+                        document_id=request.document_id,
+                        error=str(exc),
+                        retryable=retryable,
+                    )
+                    if not accept_ranges:
+                        data.clear()
+                    else:
+                        resumed = True
+                    if attempt == self._max_attempts:
+                        PDF_DOWNLOAD_FAILURES.labels(reason).inc()
+                        self._record_failure(request.tenant_id, host, success=False)
+                        raise PdfDownloadError(
+                            f"Failed to download PDF after {attempt} attempts", retryable=retryable, code=reason
+                        ) from exc
+                    sleep_for = min(
+                        self._backoff_initial * (2 ** (attempt - 1)),
+                        self._backoff_max,
+                    )
+                    time.sleep(sleep_for)
+                    continue
+
+            if last_error:
+                logger.debug(
+                    "pdf.download.recovered",
+                    tenant_id=request.tenant_id,
+                    document_id=request.document_id,
+                    attempts=attempts,
+                    resumed=resumed,
+                )
+
+            total_bytes = len(data)
+            if request.expected_size and total_bytes < request.expected_size:
+                PDF_DOWNLOAD_FAILURES.labels("size_mismatch").inc()
+                self._record_failure(request.tenant_id, host, success=False)
+                raise PdfDownloadError(
+                    "Downloaded PDF smaller than expected size "
+                    f"({total_bytes} < {request.expected_size})",
+                    retryable=False,
+                    code="size_mismatch",
+                )
+
+            duration = time.perf_counter() - start_time
+            key, checksum = self._storage.run(
+                self._storage.store(
+                    tenant_id=request.tenant_id,
+                    document_id=request.document_id,
+                    data=bytes(data),
+                    content_type=metadata.content_type if metadata else None,
+                    metadata={"correlation-id": request.correlation_id or ""} | (request.metadata or {}),
+                )
+            )
+
+            PDF_DOWNLOAD_LATENCY.observe(duration)
+            PDF_DOWNLOAD_BYTES.observe(total_bytes)
+            PDF_DOWNLOAD_ATTEMPTS.labels("success").inc()
+            self._record_failure(request.tenant_id, host, success=True)
+            self._alert_manager.latency_breach("pdf.download", duration * 1000)
+
+            if host in self._open_circuits:
+                self._open_circuits.remove(host)
+                self._alert_manager.circuit_state_changed(f"pdf-download:{host}", "closed")
+            set_pdf_download_circuit_state(request.tenant_id, host, False)
+
+            logger.info(
+                "pdf.download.completed",
+                stage="download",
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+                bytes=total_bytes,
+                duration=round(duration, 3),
+                key=key,
+                attempts=attempts,
+                resumed=resumed,
+            )
+
+            return PdfDownloadResult(
+                request=request,
+                storage_key=key,
+                checksum=checksum,
+                content_type=metadata.content_type if metadata else None,
+                size=total_bytes,
+                duration_seconds=duration,
+                attempts=attempts,
+                resumed=resumed,
+                pdf_metadata=metadata,
+            )
+
+    def _stream(self, url: str, *, offset: int, accept_ranges: bool):
+        headers = {
+            "User-Agent": "Medical-KG-PdfDownloader/1.0",
+            "Accept": "application/pdf,application/octet-stream",
+        }
+        if offset and accept_ranges:
+            headers["Range"] = f"bytes={offset}-"
+        with httpx.stream("GET", url, headers=headers, timeout=self._timeout) as response:
+            response.raise_for_status()
+            for chunk in response.iter_bytes(self._chunk_size):
+                if not chunk:
+                    continue
+                yield chunk
+
+    def _record_failure(self, tenant_id: str, host: str, *, success: bool) -> None:
+        tracker = self._failure_trackers.setdefault(
+            tenant_id, FailureRateTracker(window_seconds=self._failure_window)
         )
+        failure_rate = tracker.record(success)
+        set_pdf_download_failure_rate(tenant_id, failure_rate)
+        if success:
+            self._circuit_breaker.record_success(host)
+            return
+
+        if self._circuit_breaker.record_failure(host):
+            set_pdf_download_circuit_state(tenant_id, host, True)
+            if host not in self._open_circuits:
+                self._open_circuits.add(host)
+                self._alert_manager.circuit_state_changed(
+                    f"pdf-download:{host}", "open"
+                )
+        if failure_rate >= self._failure_alert_threshold:
+            self._alert_manager.download_failure_rate(tenant_id, failure_rate, self._failure_window)
+
+    def _extract_host(self, url: str) -> str:
+        try:
+            parsed = urlparse(url)
+            if parsed.netloc:
+                return parsed.netloc.lower()
+        except Exception:  # pragma: no cover - defensive guard
+            pass
+        return "unknown"
+
+
+__all__ = [
+    "DownloadCircuitBreaker",
+    "PdfDownloadError",
+    "PdfDownloadRequest",
+    "PdfDownloadResult",
+    "PdfDownloadService",
+]

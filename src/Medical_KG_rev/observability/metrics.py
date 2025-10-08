@@ -195,6 +195,57 @@ BUSINESS_EVENTS = Counter(
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
 )
+PDF_DOWNLOAD_ATTEMPTS = Counter(
+    "pdf_download_attempts_total",
+    "Number of attempts performed by the PDF downloader",
+    labelnames=("result",),
+)
+PDF_DOWNLOAD_FAILURES = Counter(
+    "pdf_download_failures_total",
+    "Number of PDF download failures grouped by reason",
+    labelnames=("reason",),
+)
+PDF_DOWNLOAD_CIRCUIT_STATE = Gauge(
+    "pdf_download_circuit_state",
+    "Circuit breaker state for PDF download sources (1=open)",
+    labelnames=("tenant", "host"),
+)
+PDF_DOWNLOAD_FAILURE_RATE = Gauge(
+    "pdf_download_failure_rate",
+    "Rolling failure rate for PDF downloads",
+    labelnames=("tenant",),
+)
+PDF_DOWNLOAD_BYTES = Histogram(
+    "pdf_download_size_bytes",
+    "Distribution of downloaded PDF sizes",
+    buckets=(1024 * 50, 1024 * 200, 1024 * 1024, 5 * 1024 * 1024, 10 * 1024 * 1024, 20 * 1024 * 1024),
+)
+PDF_DOWNLOAD_LATENCY = Histogram(
+    "pdf_download_latency_seconds",
+    "Latency distribution for PDF downloads",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0),
+)
+PDF_PROCESSING_FAILURES = Counter(
+    "pdf_processing_failures_total",
+    "Number of MinerU processing failures grouped by reason",
+    labelnames=("reason",),
+)
+PDF_PROCESSING_LATENCY = Histogram(
+    "pdf_processing_latency_seconds",
+    "Latency distribution for MinerU PDF processing",
+    buckets=(1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+PDF_PROCESSING_DURATION_BY_SIZE = Histogram(
+    "pdf_processing_duration_by_size_seconds",
+    "MinerU processing latency bucketed by PDF size",
+    labelnames=("size_bucket",),
+    buckets=(1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0),
+)
+PDF_PROCESSING_SLA_BREACHES = Counter(
+    "pdf_processing_sla_breaches_total",
+    "Number of PDF processing operations breaching SLA thresholds",
+    labelnames=("stage",),
+)
 JOB_STATUS_COUNTS = Gauge(
     "job_status_counts",
     "Current count of jobs by status",
@@ -625,6 +676,26 @@ def set_dead_letter_queue_depth(queue: str, depth: int) -> None:
 def set_orchestration_queue_depth(queue: str, depth: int) -> None:
     """Set orchestration queue depth."""
     ORCHESTRATION_QUEUE_DEPTH.labels(queue=queue).set(max(0, depth))
+
+
+def set_pdf_download_circuit_state(tenant: str, host: str, open_state: bool) -> None:
+    """Record the open/closed state of the download circuit breaker."""
+    PDF_DOWNLOAD_CIRCUIT_STATE.labels(tenant=tenant, host=host).set(1 if open_state else 0)
+
+
+def set_pdf_download_failure_rate(tenant: str, failure_rate: float) -> None:
+    """Record the rolling failure rate for PDF downloads."""
+    PDF_DOWNLOAD_FAILURE_RATE.labels(tenant=tenant).set(max(0.0, failure_rate))
+
+
+def observe_pdf_processing_duration(size_bucket: str, duration: float) -> None:
+    """Observe MinerU processing duration grouped by PDF size bucket."""
+    PDF_PROCESSING_DURATION_BY_SIZE.labels(size_bucket=size_bucket).observe(duration)
+
+
+def record_pdf_processing_sla_breach(stage: str) -> None:
+    """Increment counter when PDF processing stages breach the SLA."""
+    PDF_PROCESSING_SLA_BREACHES.labels(stage=stage).inc()
 
 
 def observe_ingestion_stage_latency(stage: str, duration: float) -> None:

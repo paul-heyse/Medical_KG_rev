@@ -13,6 +13,8 @@ try:  # Optional dependency
 except Exception:  # pragma: no cover
     boto3 = None  # type: ignore
 
+from pathlib import Path
+
 from .base import ObjectStore, StorageError
 
 
@@ -51,6 +53,45 @@ class InMemoryObjectStore(ObjectStore):
     async def get_metadata(self, key: str) -> dict[str, str] | None:
         async with self._lock:
             return dict(self._metadata.get(key, {}))
+
+
+class LocalFileObjectStore(ObjectStore):
+    """Filesystem-backed object store used for local development."""
+
+    def __init__(self, base_path: str | Path) -> None:
+        self._base = Path(base_path)
+        self._base.mkdir(parents=True, exist_ok=True)
+
+    async def put(self, key: str, data: bytes, *, metadata: dict[str, str] | None = None) -> None:
+        path = self._base / key
+        await asyncio.to_thread(path.parent.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(path.write_bytes, data)
+        if metadata:
+            meta_path = path.with_suffix(path.suffix + ".meta")
+            await asyncio.to_thread(meta_path.write_text, "\n".join(f"{k}={v}" for k, v in metadata.items()))
+
+    async def get(self, key: str) -> bytes:
+        path = self._base / key
+        try:
+            return await asyncio.to_thread(path.read_bytes)
+        except FileNotFoundError as exc:  # pragma: no cover - guard
+            raise StorageError(f"Object '{key}' not found") from exc
+
+    async def delete(self, key: str) -> None:
+        path = self._base / key
+        await asyncio.to_thread(path.unlink, missing_ok=True)
+        meta_path = path.with_suffix(path.suffix + ".meta")
+        await asyncio.to_thread(meta_path.unlink, missing_ok=True)
+
+    async def list_prefix(self, prefix: str) -> list[str]:
+        folder = self._base / prefix
+        if not folder.exists():
+            return []
+        keys: list[str] = []
+        for file_path in folder.rglob("*"):
+            if file_path.is_file() and not file_path.name.endswith(".meta"):
+                keys.append(str(file_path.relative_to(self._base)))
+        return keys
 
 
 class S3ObjectStore(ObjectStore):
@@ -275,9 +316,4 @@ class FigureStorageClient:
                 loop.close()
 
 
-__all__ = [
-    "FileSystemObjectStore",
-    "FigureStorageClient",
-    "InMemoryObjectStore",
-    "S3ObjectStore",
-]
+__all__ = ["InMemoryObjectStore", "LocalFileObjectStore", "S3ObjectStore", "FigureStorageClient"]

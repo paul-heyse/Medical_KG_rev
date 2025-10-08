@@ -225,7 +225,18 @@ def _make_stage_op(
         stage = stage_factory.resolve(topology.name, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
-        state_manager: LedgerStateManager = context.resources.job_state_manager
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
+        kafka_client: KafkaClient = context.resources.kafka
+
+        if hasattr(stage, "bind_runtime"):
+            try:
+                stage.bind_runtime(ledger=ledger, kafka=kafka_client)
+            except TypeError:
+                try:
+                    stage.bind_runtime(ledger=ledger)
+                except TypeError:
+                    stage.bind_runtime(ledger)
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {

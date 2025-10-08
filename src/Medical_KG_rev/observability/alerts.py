@@ -15,6 +15,8 @@ class AlertThresholds:
     latency_ms: float = 200.0
     error_rate_threshold: float = 0.05
     dlq_threshold: int = 50
+    mineru_timeout_seconds: float = 300.0
+    pdf_processing_sla_seconds: float = 240.0
 
 
 class AlertManager:
@@ -39,6 +41,34 @@ class AlertManager:
             error_type=error_type,
         )
 
+    def download_failure_rate(self, tenant_id: str, failure_rate: float, window: float) -> None:
+        if failure_rate >= self.thresholds.error_rate_threshold:
+            logger.error(
+                "alerts.pdf_download.failure_rate",
+                tenant_id=tenant_id,
+                failure_rate=round(failure_rate, 4),
+                window_seconds=window,
+            )
+
+    def mineru_timeout(self, tenant_id: str, document_id: str, duration: float) -> None:
+        if duration >= self.thresholds.mineru_timeout_seconds:
+            logger.error(
+                "alerts.mineru.timeout",
+                tenant_id=tenant_id,
+                document_id=document_id,
+                duration_seconds=round(duration, 2),
+                threshold_seconds=self.thresholds.mineru_timeout_seconds,
+            )
+
+    def processing_sla_breach(self, stage: str, duration: float) -> None:
+        if duration >= self.thresholds.pdf_processing_sla_seconds:
+            logger.error(
+                "alerts.pdf_processing.sla_breach",
+                stage=stage,
+                duration_seconds=round(duration, 2),
+                threshold_seconds=self.thresholds.pdf_processing_sla_seconds,
+            )
+
     def circuit_state_changed(self, service: str, state: str) -> None:
         if state == "open":
             logger.error("alerts.circuit_open", service=service)
@@ -49,6 +79,15 @@ class AlertManager:
         if depth > self.thresholds.dlq_threshold:
             logger.error(
                 "alerts.dlq_depth",
+                depth=depth,
+                threshold=self.thresholds.dlq_threshold,
+            )
+
+    def pipeline_backlog(self, queue: str, depth: int) -> None:
+        if depth > self.thresholds.dlq_threshold:
+            logger.error(
+                "alerts.pdf_pipeline.backlog",
+                queue=queue,
                 depth=depth,
                 threshold=self.thresholds.dlq_threshold,
             )

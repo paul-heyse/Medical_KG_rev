@@ -5,25 +5,31 @@ from __future__ import annotations
 from functools import lru_cache
 
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
-from Medical_KG_rev.adapters.biomedical import (
-    COREAdapter,
-    ChEMBLAdapter,
-    ClinicalTrialsAdapter,
-    CrossrefAdapter,
-    ICD11Adapter,
-    MeSHAdapter,
-    OpenAlexAdapter,
+from Medical_KG_rev.adapters.clinicaltrials import ClinicalTrialsAdapter
+from Medical_KG_rev.adapters.core import COREAdapter
+from Medical_KG_rev.adapters.crossref import CrossrefAdapter
+from Medical_KG_rev.adapters.openalex import OpenAlexAdapter
+from Medical_KG_rev.adapters.openfda import (
     OpenFDADeviceAdapter,
     OpenFDADrugEventAdapter,
     OpenFDADrugLabelAdapter,
-    PMCAdapter,
-    RxNormAdapter,
-    SemanticScholarAdapter,
-    UnpaywallAdapter,
 )
 from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
-from Medical_KG_rev.adapters.plugins.models import AdapterRequest, AdapterResponse, ValidationOutcome
+from Medical_KG_rev.adapters.plugins.models import (
+    AdapterRequest,
+    AdapterResponse,
+    ValidationOutcome,
+)
+from Medical_KG_rev.adapters.pmc import PMCAdapter
+from Medical_KG_rev.adapters.semanticscholar import SemanticScholarAdapter
+from Medical_KG_rev.adapters.terminology import (
+    ChEMBLAdapter,
+    ICD11Adapter,
+    MeSHAdapter,
+    RxNormAdapter,
+)
+from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter
 
 from ..metadata import BiomedicalAdapterMetadata
 

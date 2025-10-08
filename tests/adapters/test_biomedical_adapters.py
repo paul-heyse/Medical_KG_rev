@@ -1,3 +1,6 @@
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 import httpx
 import pytest
 
@@ -9,7 +12,6 @@ from Medical_KG_rev.adapters.biomedical import (
     CrossrefAdapter,
     ICD11Adapter,
     MeSHAdapter,
-    OpenAlexAdapter,
     OpenFDADeviceAdapter,
     OpenFDADrugEventAdapter,
     OpenFDADrugLabelAdapter,
@@ -18,6 +20,7 @@ from Medical_KG_rev.adapters.biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
+from Medical_KG_rev.adapters.openalex import OpenAlexAdapter
 from Medical_KG_rev.adapters.plugins.domains.biomedical import (
     ChEMBLAdapterPlugin,
     ClinicalTrialsAdapterPlugin,
@@ -65,6 +68,48 @@ def _run_plugin(
     outcome = plugin.validate(response, request)
     assert outcome.valid
     return response
+
+
+class _StubResponseList(list):
+    """Lightweight stand-in for ``pyalex`` response pages."""
+
+
+class _StubSearch:
+    def __init__(self, results: Sequence[Mapping[str, Any]]) -> None:
+        self._results = [dict(item) for item in results]
+
+    def paginate(self, per_page: int):
+        stride = per_page if per_page > 0 else max(1, len(self._results))
+
+        def _iterator():
+            for index in range(0, len(self._results), stride):
+                yield _StubResponseList(self._results[index : index + stride])
+
+        return _iterator()
+
+
+class _StubWorks:
+    """Stub implementation of the ``pyalex.Works`` client."""
+
+    def __init__(
+        self,
+        *,
+        records: Mapping[str, Mapping[str, Any]] | None = None,
+        search_results: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
+    ) -> None:
+        self._records = {key: dict(value) for key, value in (records or {}).items()}
+        self._search = {
+            key: [dict(entry) for entry in values] for key, values in (search_results or {}).items()
+        }
+
+    def __getitem__(self, identifier: str) -> Mapping[str, Any]:
+        if identifier not in self._records:
+            raise KeyError(identifier)
+        return dict(self._records[identifier])
+
+    def search(self, query: str) -> _StubSearch:
+        results = self._search.get(query, [])
+        return _StubSearch(results)
 
 
 def test_clinical_trials_adapter_maps_metadata():
@@ -221,34 +266,56 @@ def test_openfda_device_adapter_handles_definition():
     assert document.sections[0].blocks[0].text == "Device description"
 
 
-def test_openalex_adapter_flattens_abstract():
-    payload = {
-        "results": [
-            {
-                "id": "https://openalex.org/W123",
-                "display_name": "Lung cancer immunotherapy",
-                "doi": "10.1000/example",
-                "publication_year": 2023,
-                "authorships": [{"author": {"display_name": "Dr. Doe"}}],
-                "concepts": [{"display_name": "Immunotherapy"}],
-                "abstract_inverted_index": {"Immune": [0], "therapy": [1]},
-                "open_access": {"is_oa": True},
-            }
-        ]
+def test_openalex_adapter_surfaces_pdf_metadata():
+    work_payload = {
+        "id": "https://openalex.org/W123",
+        "display_name": "Lung cancer immunotherapy",
+        "doi": "https://doi.org/10.1000/example",
+        "publication_year": 2023,
+        "publication_date": "2023-03-01",
+        "authorships": [{"author": {"display_name": "Dr. Doe"}}],
+        "concepts": [{"display_name": "Immunotherapy"}],
+        "topics": [{"display_name": "Oncology"}],
+        "abstract_inverted_index": {"Immune": [0], "therapy": [1]},
+        "open_access": {"is_oa": True, "oa_status": "green"},
+        "best_oa_location": {
+            "pdf_url": "https://example.org/paper.pdf",
+            "landing_page_url": "https://example.org/paper",
+            "source": {"display_name": "Example Repository", "id": "https://openalex.org/S1"},
+            "license": "cc-by",
+            "version": "publishedVersion",
+            "is_oa": True,
+        },
+        "primary_location": {
+            "pdf_url": "https://example.org/paper.pdf",
+            "source": {"display_name": "Journal"},
+            "version": "publishedVersion",
+        },
+        "locations": [
+            {"pdf_url": "https://example.org/alternate.pdf", "source": {"display_name": "Mirror"}},
+            {"pdf_url": None},
+        ],
+        "ids": {"doi": "https://doi.org/10.1000/example"},
+        "cited_by_count": 42,
     }
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/works"
-        return httpx.Response(200, json=payload)
-
-    plugin = OpenAlexAdapterPlugin(
-        adapter=OpenAlexAdapter(
-            client=_client("https://api.openalex.org", _mock_transport(handler))
-        )
+    client = _StubWorks(
+        records={"https://doi.org/10.1000/example": work_payload},
+        search_results={"lung cancer": [work_payload]},
     )
+    plugin = OpenAlexAdapterPlugin(adapter=OpenAlexAdapter(client=client, max_results=3))
+
     response = _run_plugin(plugin, parameters={"query": "lung cancer"})
     document = response.items[0]
-    assert document.metadata["doi"] == "10.1000/example"
+
+    assert document.id.startswith("openalex:W123")
+    assert document.metadata["doi"].lower() == "10.1000/example"
+    assert document.metadata["authorships"] == ["Dr. Doe"]
+    assert document.metadata["pdf_urls"] == [
+        "https://example.org/paper.pdf",
+        "https://example.org/alternate.pdf",
+    ]
+    assert document.metadata["document_type"] == "pdf"
     assert document.sections[0].blocks[0].text == "Immune therapy"
 
 

@@ -15,7 +15,13 @@ import httpx
 from aiolimiter import AsyncLimiter
 from opentelemetry import trace
 from pybreaker import CircuitBreaker, CircuitBreakerError
-from tenacity import AsyncRetrying, RetryCallState, Retrying, retry_if_exception_type, stop_after_attempt
+from tenacity import (
+    AsyncRetrying,
+    RetryCallState,
+    Retrying,
+    retry_if_exception_type,
+    stop_after_attempt,
+)
 from tenacity.wait import wait_base, wait_exponential, wait_incrementing, wait_none
 
 
@@ -245,8 +251,7 @@ class HttpClient:
                 return self._breaker.call(_perform)
             return _perform()
 
-        send = self._retry(_attempt)
-        return send()
+        return self._retry(_attempt)
 
     def close(self) -> None:
         if self._sync_limiter is not None:

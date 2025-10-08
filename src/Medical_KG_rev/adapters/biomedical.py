@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
 from Medical_KG_rev.models import Block, BlockType, Document, Section
+from Medical_KG_rev.adapters.openalex import OpenAlexAdapter  # noqa: F401 - re-export for backwards compatibility
 from Medical_KG_rev.utils.http_client import (
     BackoffStrategy,
     CircuitBreakerConfig,
@@ -47,12 +48,6 @@ def _to_text(value: Any) -> str:
     if isinstance(value, str):
         return value
     return str(value)
-
-
-def _flatten_abstract(inverted_index: Mapping[str, Sequence[int]]) -> str:
-    terms = sorted(((pos, term) for term, positions in inverted_index.items() for pos in positions))
-    ordered = [term for _, term in terms]
-    return " ".join(ordered)
 
 
 def _listify(items: Iterable[Any]) -> list[Any]:
@@ -380,81 +375,6 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
                     id=build_document_id("openfda-device", product_code),
                     source="openfda-device",
                     title=metadata.get("device_name"),
-                    sections=[section],
-                    metadata=metadata,
-                )
-            )
-        return documents
-
-
-class OpenAlexAdapter(ResilientHTTPAdapter):
-    """Adapter for the OpenAlex works API."""
-
-    def __init__(self, client: HttpClient | None = None) -> None:
-        super().__init__(
-            name="openalex",
-            base_url="https://api.openalex.org",
-            rate_limit_per_second=5,
-            retry=_linear_retry_config(4, 0.5),
-            client=client,
-        )
-
-    def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
-        doi = context.parameters.get("doi")
-        work_id = context.parameters.get("openalex_id")
-        query = context.parameters.get("query")
-        if doi:
-            identifier = validate_doi(str(doi))
-            payload = self._get_json(f"/works/https://doi.org/{identifier}")
-            return [payload]
-        if work_id:
-            payload = self._get_json(f"/works/{work_id}")
-            return [payload]
-        if not query:
-            raise ValueError("Either 'doi', 'openalex_id', or 'query' parameter must be provided")
-        response = self._get_json("/works", params={"search": query, "per-page": 5})
-        return response.get("results", [])
-
-    def parse(
-        self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
-    ) -> Sequence[Document]:
-        documents: list[Document] = []
-        for payload in payloads:
-            work_id = payload.get("id") or payload.get("openalex_id")
-            if not work_id:
-                continue
-            doi = payload.get("doi") or payload.get("ids", {}).get("doi")
-            authors = [
-                auth.get("author", {}).get("display_name")
-                for auth in payload.get("authorships", [])
-            ]
-            concepts = [concept.get("display_name") for concept in payload.get("concepts", [])]
-            metadata = {
-                "openalex_id": work_id,
-                "doi": doi,
-                "title": payload.get("display_name"),
-                "publication_year": payload.get("publication_year"),
-                "authorships": _listify(authors),
-                "concepts": _listify(concepts),
-                "is_open_access": payload.get("open_access", {}).get("is_oa"),
-                "cited_by_count": payload.get("cited_by_count"),
-            }
-            abstract = payload.get("abstract_inverted_index")
-            abstract_text = (
-                _flatten_abstract(abstract)
-                if isinstance(abstract, Mapping)
-                else payload.get("abstract")
-            )
-            section = Section(
-                id="abstract",
-                title="Abstract",
-                blocks=[Block(id="abstract-block", text=_to_text(abstract_text), spans=[])],
-            )
-            documents.append(
-                Document(
-                    id=work_id,
-                    source="openalex",
-                    title=payload.get("display_name"),
                     sections=[section],
                     metadata=metadata,
                 )

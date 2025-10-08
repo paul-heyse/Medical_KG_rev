@@ -1,6 +1,6 @@
 # Comprehensive Medical_KG_rev Codebase Documentation
 
-> **Documentation Strategy**: This document follows "Documentation as Code" principles, treating documentation with the same rigor as source code. It lives in version control, follows consistent formatting, and evolves alongside the codebase. Last updated: `2025-01-15` | Version: `2.0.0`
+> **Documentation Strategy**: This document follows "Documentation as Code" principles, treating documentation with the same rigor as source code. It lives in version control, follows consistent formatting, and evolves alongside the codebase. Last updated: `2025-10-08` | Version: `2.1.0`
 
 ## 📋 Documentation Overview
 
@@ -81,31 +81,41 @@ Medical_KG_rev is a sophisticated, production-ready multi-protocol API gateway a
 
 ## 📝 Change Log
 
-### Version 2.0.0 (2025-01-15)
+### Version 2.1.0 (2025-10-08)
 
-**Major Enhancement Release**
+**PDF Processing & Legacy Decommissioning Release**
 
 #### 🚀 New Features
 
-- **Pluggable Orchestration Stages**: Dynamic stage discovery via plugin system
-- **Typed Pipeline State**: Strongly-typed state management with validation
-- **Enhanced Biomedical Adapters**: Modular architecture with shared infrastructure
-- **Composable MinerU Service**: Component-based GPU service architecture
-- **Separated Presentation Layer**: Clean separation of HTTP formatting from business logic
+- **Pluggable Orchestration Stages**: Dynamic stage discovery via plugin system with PDF download/gate stages
+- **PDF Pipeline Integration**: Full end-to-end PDF processing pipeline with MinerU integration
+- **Enhanced Biomedical Adapters**: Modular architecture with OpenAlex PDF retrieval and pyalex integration
+- **Gateway Service Coordinators**: Decomposed monolithic service into focused coordinator pattern
+- **Typed Pipeline State**: Strongly-typed state management with PDF-specific state transitions
+- **Legacy Code Decommissioning**: Systematic removal of monolithic components and outdated patterns
 
 #### 🔧 Improvements
 
-- **Enhanced Documentation**: Comprehensive update with visual elements and better structure
-- **Improved Testing Strategy**: Enhanced test coverage and performance testing
-- **Better Error Handling**: Comprehensive error recovery and monitoring
-- **Security Enhancements**: Improved access control and audit logging
+- **Enhanced Documentation**: Updated with latest architectural decisions and implementation details
+- **PDF Processing Barriers Resolved**: Fixed stage factory, adapter, routing, and ledger integration issues
+- **Critical Library Integration**: Modern Python libraries (httpx, pydantic v2, structlog, tenacity, etc.)
+- **Performance Monitoring**: Enhanced metrics collection for all coordinator operations
+- **Security Enhancements**: Improved access control and audit logging across coordinators
 
 #### 🐛 Bug Fixes
 
-- Fixed adapter dependency resolution issues
-- Improved GPU service error handling
-- Enhanced multi-tenant isolation
-- Fixed pipeline state serialization edge cases
+- Fixed PDF pipeline instantiation issues with missing download/gate stages
+- Resolved OpenAlex adapter PDF retrieval and document_type flagging
+- Fixed gateway routing for OpenAlex PDF documents to use pdf-two-phase topology
+- Corrected JobLedger integration for PDF gate sensor triggering
+- Enhanced error handling and recovery mechanisms across all coordinators
+
+#### 🏗️ Architecture Changes
+
+- **Coordinator Pattern**: GatewayService decomposed into focused coordinators (Ingestion, Embedding, Retrieval, etc.)
+- **Plugin System**: Stage factory replaced with pluggable architecture for extensibility
+- **Library Modernization**: Upgraded to modern Python libraries (pydantic v2, httpx, orjson, etc.)
+- **Legacy Removal**: Systematic decommissioning of monolithic components and outdated patterns
 
 ### Version 1.5.0 (2024-12-01)
 
@@ -186,6 +196,16 @@ GPU services implement strict availability checks and fail immediately if requir
 ```
 
 All extracted knowledge includes complete provenance chains, enabling trust in research findings and meeting regulatory requirements for medical data handling.
+
+**4. Pluggy-Based Adapter Interfacing**
+
+```python
+# Why: Consistent adapter lifecycle with discoverable capabilities
+# Decision: Standardise fetch/parse/validate/write hooks via pluggy entry points
+# Impact: Hot-swappable adapters with shared orchestration contracts
+```
+
+Both the adapter and orchestration ecosystems are anchored on [pluggy](https://pluggy.readthedocs.io). Each integration inherits from `BaseAdapter` to implement the `fetch → parse → validate → write` contract, then exposes an adapter plugin by subclassing `BaseAdapterPlugin` and declaring metadata (`AdapterPluginManager` auto-discovers these hook implementations). The same approach powers stage plugins, letting `core-stage` register ingestion, parse, PDF download, and gating stages with `@hookimpl` while downstream pipelines consume them through a uniform builder interface. This decision eliminates monolithic adapter wiring, enables capability-aware routing (e.g., `capabilities=("pdf",)`), and gives us consistent configuration, health checks, and version semantics across every data source—critical for new adapters such as the upcoming pyalex integration.
 
 ### Architecture Patterns
 
@@ -709,9 +729,9 @@ for update in stub.SubmitJob(request):
 
 ## 📈 Implementation Status
 
-**Current Status: Active Development Phase**
+**Current Status: PDF Processing & Coordinator Pattern Implementation**
 
-The Medical_KG_rev project demonstrates systematic development with solid architectural foundations. Framework components are well-implemented, but service integration and comprehensive testing require completion before production deployment.
+The Medical_KG_rev project has made significant progress in implementing the coordinator pattern and resolving PDF processing barriers. Core framework components are well-established, with active development focused on PDF pipeline integration and legacy code decommissioning. The system demonstrates mature architectural patterns while addressing critical integration challenges.
 
 **Framework & Architecture (✅ IMPLEMENTED):**
 
@@ -723,33 +743,35 @@ The Medical_KG_rev project demonstrates systematic development with solid archit
 6. ✅ **Security Framework** - OAuth 2.0, multi-tenancy, audit logging architecture
 7. ✅ **Observability Infrastructure** - Prometheus, OpenTelemetry, structured logging setup
 
-**Partially Implemented (🔄 IN PROGRESS):**
+**Coordinator Pattern & PDF Processing (🔄 IN PROGRESS):**
 
-1. 🔄 **Biomedical Adapters** - Framework exists, but actual adapter implementations are limited
-2. 🔄 **DAG Orchestration Pipeline** - Framework and configuration exist, but integration incomplete
-3. 🔄 **Embeddings & Representation** - Configuration and framework exist, but service integration incomplete
-4. 🔄 **Advanced Chunking** - Profile-based chunking framework exists, but full integration pending
-5. 🔄 **Multi-Strategy Retrieval** - Framework and components exist, but end-to-end integration incomplete
+1. 🔄 **Gateway Service Coordinators** - Decomposed monolithic service into focused coordinator pattern (IngestionCoordinator, EmbeddingCoordinator, etc.)
+2. 🔄 **Pluggable Orchestration Stages** - Dynamic stage discovery with PDF download/gate stages for pipeline instantiation
+3. 🔄 **Enhanced Biomedical Adapters** - Modular architecture with OpenAlex PDF retrieval and pyalex integration
+4. 🔄 **Typed Pipeline State** - Strongly-typed state management with PDF-specific state transitions
+5. 🔄 **Encapsulated Dagster Orchestration** - Clean separation of orchestration logic from gateway concerns
 
 **Framework-Ready (⏳ PLANNED):**
 
-1. ⏳ **Production Biomedical Adapters** - 15+ adapters planned but not yet fully implemented
-2. ⏳ **Complete GPU Service Integration** - MinerU, embedding, and vector services need full integration
-3. ⏳ **Advanced Retrieval Pipelines** - Hybrid search with RRF fusion needs completion
-4. ⏳ **Comprehensive Testing** - Contract, performance, and integration test suites need completion
-5. ⏳ **Production Deployment** - Kubernetes manifests and CI/CD pipelines need completion
+1. ⏳ **Production Biomedical Adapters** - 15+ adapters with full PDF processing capabilities
+2. ⏳ **Complete GPU Service Integration** - MinerU, embedding, and vector services with coordinator integration
+3. ⏳ **Advanced Retrieval Pipelines** - Hybrid search with RRF fusion and coordinator-based retrieval
+4. ⏳ **Comprehensive Testing** - Contract, performance, and integration test suites for coordinator pattern
+5. ⏳ **Production Deployment** - Kubernetes manifests and CI/CD pipelines for coordinator-based architecture
 
 **Key Components Status:**
 
 | Component | Framework | Implementation | Integration | Testing |
 |-----------|-----------|----------------|-------------|---------|
 | API Gateway | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
-| Adapter Framework | ✅ Complete | ✅ Complete | 🔄 Partial | 🔄 Partial |
+| Coordinator Pattern | ✅ Complete | 🔄 In Progress | 🔄 Partial | ⏳ Planned |
+| Pluggable Stages | ✅ Complete | 🔄 In Progress | 🔄 Partial | ⏳ Planned |
+| Biomedical Adapters | ✅ Complete | 🔄 In Progress | 🔄 Partial | ⏳ Planned |
+| PDF Processing Pipeline | ✅ Complete | 🔄 In Progress | 🔄 Partial | ⏳ Planned |
+| Typed Pipeline State | ✅ Complete | 🔄 In Progress | 🔄 Partial | ⏳ Planned |
 | GPU Services | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
-| Chunking System | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 | Embedding System | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 | Vector Storage | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
-| Orchestration | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 | Knowledge Graph | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 | Multi-Tenancy | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 | Observability | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
@@ -767,23 +789,25 @@ This documentation follows "Documentation as Code" principles:
 
 ### Next Development Phases
 
-**Phase 1: Core Integration (In Progress)**
+**Phase 1: Coordinator Pattern & PDF Processing (In Progress)**
 
-- Complete biomedical adapter implementations
-- Finish DAG orchestration pipeline integration
-- Integrate GPU services with orchestration layer
+- Complete coordinator pattern implementation across all gateway operations
+- Resolve PDF processing barriers and achieve end-to-end PDF pipeline testing
+- Integrate modern Python libraries (httpx, pydantic v2, structlog, tenacity, etc.)
+- Decommission legacy monolithic components and outdated patterns
 
 **Phase 2: Production Readiness (Q1 2025)**
 
-- Comprehensive testing suite implementation
-- Performance optimization and load testing
-- Production deployment automation
+- Complete biomedical adapter implementations with full PDF processing capabilities
+- Comprehensive testing suite for coordinator pattern and PDF pipelines
+- Performance optimization and load testing for coordinator-based architecture
+- Production deployment automation with coordinator-based services
 
 **Phase 3: Advanced Features (Q2 2025)**
 
-- Enhanced retrieval algorithms and fusion ranking
-- Advanced analytics and insights capabilities
-- Extended domain support beyond biomedical
+- Enhanced retrieval algorithms with coordinator-based retrieval operations
+- Advanced analytics and insights capabilities using coordinator pattern
+- Extended domain support beyond biomedical with modular adapter framework
 
 ### Contributing Guidelines
 

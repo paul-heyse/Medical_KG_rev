@@ -6,6 +6,9 @@ import zlib
 from typing import Iterable
 
 import pytest
+from Medical_KG_rev.orchestration.stages import contracts as state_contracts
+
+pytest.importorskip("pydantic")
 
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
@@ -13,19 +16,24 @@ from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
     EmbeddingVector,
+    DownloadArtifact,
+    GateDecision,
     GraphWriteReceipt,
     IndexReceipt,
     PipelineState,
     PipelineStateSnapshot,
     PipelineStateValidationError,
     StageContext,
+    StageResultSnapshot,
 )
+
+AdapterRequest = state_contracts.AdapterRequest
+Chunk = state_contracts.Chunk
+Document = state_contracts.Document
 
 
 def _build_document() -> Document:
-    block = Block(id="b1", type=BlockType.PARAGRAPH, text="Hello world")
-    section = Section(id="s1", title="Section", blocks=(block,))
-    return Document(id="doc-1", source="test", sections=(section,), metadata={})
+    return Document(id="doc-1", source="test", sections=(), metadata={})
 
 
 def _sample_state(payload: dict[str, object] | None = None) -> PipelineState:
@@ -33,7 +41,7 @@ def _sample_state(payload: dict[str, object] | None = None) -> PipelineState:
     request = AdapterRequest(
         tenant_id="tenant",
         correlation_id="corr",
-        domain=AdapterDomain.BIOMEDICAL,
+        domain="biomedical",
         parameters={},
     )
     return PipelineState.initialise(context=ctx, adapter_request=request, payload=payload or {})
@@ -54,6 +62,16 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     payloads = [{"id": "p1"}]
     state.apply_stage_output("ingest", "ingest", payloads)
     assert state.require_payloads() == tuple(payloads)
+
+    artifacts = [
+        DownloadArtifact(document_id="doc-1", tenant_id="tenant", uri="s3://bucket/a.pdf")
+    ]
+    state.apply_stage_output("download", "download", artifacts)
+    assert state.require_downloads()[0].uri.endswith("a.pdf")
+
+    gate_decision = GateDecision(name="pdf_gate", ready=True)
+    state.apply_stage_output("gate", "pdf_gate", gate_decision)
+    assert state.get_gate_decision("pdf_gate").ready is True
 
     document = _build_document()
     state.apply_stage_output("parse", "parse", document)
@@ -110,6 +128,8 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     assert snapshot["payload_count"] == 1
     assert snapshot["chunk_count"] == 1
     assert snapshot["embedding_count"] == 1
+    assert snapshot["download_count"] == 1
+    assert snapshot["gate_status"]["pdf_gate"] is True
     assert snapshot["stage_results"]["index"]["output_count"] == 1
     assert snapshot["pdf_asset_count"] == 1
     assert snapshot["gate_status"]["pdf_gate"] is True
@@ -127,6 +147,14 @@ def test_serialise_caches_until_mutation() -> None:
     assert state.is_dirty() is True
 
 
+def test_serialise_json_uses_cache() -> None:
+    state = _sample_state()
+    snapshot = state.serialise_json()
+    assert snapshot
+    cached = state.serialise_json()
+    assert cached == snapshot
+
+
 def test_pipeline_state_recover_handles_compressed_payload() -> None:
     state = _sample_state({"foo": "bar"})
     state.apply_stage_output("ingest", "ingest", [{"foo": 1}])
@@ -138,6 +166,7 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     )
     state.apply_stage_output("gate", "pdf_gate", False)
     payload = state.serialise()
+    encoded = base64.b64encode(zlib.compress(state_contracts.orjson.dumps(payload))).decode("ascii")
     encoded = base64.b64encode(zlib.compress(orjson.dumps(payload))).decode("ascii")
 
     recovered = PipelineState.recover(
@@ -150,6 +179,26 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     assert "ingest" in recovered.stage_results
     assert recovered.has_pdf_assets()
     assert recovered.gate_status["pdf_gate"] is False
+    assert recovered.serialise()["pdf"] == payload["pdf"]
+    assert recovered.has_pdf_assets()
+    assert recovered.gate_status["pdf_gate"] is False
+
+
+def test_dependencies_require_completed_stage() -> None:
+    state = _sample_state()
+    state.stage_results["parse"] = StageResultSnapshot(stage="parse", stage_type="parse")
+    with pytest.raises(ValueError):
+        state.ensure_dependencies("chunk", ["ingest"])
+    state.stage_results["ingest"] = StageResultSnapshot(stage="ingest", stage_type="ingest")
+    assert state.dependencies_satisfied(["ingest"]) is True
+    state.ensure_dependencies("chunk", ["ingest"])
+
+
+def test_to_model_generates_valid_payload() -> None:
+    state = _sample_state()
+    model = state.to_model()
+    assert model.context.tenant_id == "tenant"
+    assert model.payload_count == 0
 
 
 def test_diff_reports_changes_between_states() -> None:
@@ -175,10 +224,39 @@ def test_diff_reports_changes_between_states() -> None:
             )
         ],
     )
+    mutated.apply_stage_output(
+        "download",
+        "download",
+        [
+            DownloadArtifact(
+                document_id="d1",
+                tenant_id="tenant",
+                uri="s3://bucket/doc.pdf",
+            )
+        ],
+    )
+
     diff = mutated.diff(baseline)
     assert diff["payload_count"] == (1, 0)
     assert diff["chunk_count"] == (1, 0)
+    assert diff["download_count"] == (1, 0)
+    assert "gate_status" not in diff
+
+    mutated.record_gate_decision(GateDecision(name="pdf_gate", ready=False))
+    diff = mutated.diff(baseline)
+    assert diff["gate_status"] == ({"pdf_gate": False}, {})
     assert "pipeline_version" not in diff
+
+
+def test_pdf_gate_serialises_state() -> None:
+    state = _sample_state()
+    state.apply_stage_output("pdf-download", "download", {"url": "http://example"})
+    assert state.pdf_gate.downloaded is True
+    state.apply_stage_output("pdf-ir-gate", "gate", {"status": "ready"})
+    assert state.pdf_gate.ir_ready is True
+    payload = state.serialise()
+    assert payload["pdf_gate"]["downloaded"] is True
+    assert payload["pdf_gate"]["ir_ready"] is True
 
 
 def test_custom_validation_rules_raise_errors() -> None:
@@ -215,6 +293,40 @@ def test_snapshot_and_restore_rollback_changes() -> None:
     assert isinstance(original, PipelineStateSnapshot)
     assert state.require_payloads()[0]["id"] == "a"
     assert "flag" not in state.metadata
+
+
+def test_pdf_gate_dependencies_and_serialisation() -> None:
+    state = _sample_state()
+    with pytest.raises(PipelineStateValidationError):
+        state.validate_transition("pdf-gate")
+
+    state.apply_stage_output("pdf-download", "pdf-download", ["asset-1", "asset-2"])
+    state.validate_transition("pdf-gate")
+
+    class _GateDecision:
+        allowed = True
+        reason = "manual-override"
+        ledger_reference = "ledger-123"
+
+    state.apply_stage_output("pdf-gate", "pdf-gate", _GateDecision())
+    snapshot = state.serialise()
+    assert snapshot["pdf"]["downloads"] == ["asset-1", "asset-2"]
+    assert snapshot["pdf"]["gate_open"] is True
+    assert snapshot["pdf"]["ledger_reference"] == "ledger-123"
+
+
+def test_persist_with_retry_invokes_callback_until_success() -> None:
+    state = _sample_state()
+    attempts: list[int] = []
+
+    def _persist(payload: dict[str, object]) -> None:
+        attempts.append(1)
+        if len(attempts) < 2:
+            raise RuntimeError("transient failure")
+        assert "pdf" in payload
+
+    state.persist_with_retry(_persist)
+    assert len(attempts) == 2
 
 
 def test_tenant_scope_enforcement() -> None:

@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Analyze current biomedical adapter implementations and identify common patterns
 - [ ] 1.2 Design shared mixin architecture for common behaviors
-- [ ] 1.3 Plan package structure for individual adapter modules
+- [x] 1.3 Plan package structure for individual adapter modules
 - [ ] 1.4 Design standardized interfaces for metadata extraction and PDF URLs
 - [ ] 1.5 Plan integration strategy with existing plugin manager
 - [ ] 1.6 Analyze adapter-specific requirements and data formats
@@ -13,7 +13,7 @@
 
 ### Critical Library Integration Requirements
 
-- [ ] 1.11 **Integrate `pyalex>=0.1.0`**: Design OpenAlex adapter using official pyalex client for PDF retrieval
+- [x] 1.11 **Integrate `pyalex>=0.1.0`**: Design OpenAlex adapter using official pyalex client for PDF retrieval
 - [ ] 1.12 **Integrate `httpx>=0.28.1`**: Replace legacy HTTP clients with modern async httpx for all adapters
 - [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic with exponential backoff for external API calls
 - [ ] 1.14 **Integrate `pydantic>=2.11.10`**: Design typed adapter request/response models with validation
@@ -49,15 +49,15 @@
 
 ## 4. Individual Adapter Modules
 
-- [ ] 4.1 Create adapters/openalex/ package structure
+- [x] 4.1 Create adapters/openalex/ package structure
 - [ ] 4.2 Create adapters/unpaywall/ package structure
 - [ ] 4.3 Create adapters/crossref/ package structure
 - [ ] 4.4 Create adapters/pmc/ package structure
 - [ ] 4.5 Create remaining adapter packages as needed
-- [ ] 4.6 Implement OpenAlexAdapter with work metadata extraction and PDF asset retrieval
-- [ ] 4.7 Add PDF detection logic to identify works with available full-text PDFs
+- [x] 4.6 Implement OpenAlexAdapter with work metadata extraction and PDF asset retrieval
+- [x] 4.7 Add PDF detection logic to identify works with available full-text PDFs
 - [ ] 4.8 Implement PDF download functionality using pyalex client integration
-- [ ] 4.9 Add document_type="pdf" flagging for works with downloadable PDFs
+- [x] 4.9 Add document_type="pdf" flagging for works with downloadable PDFs
 - [ ] 4.10 Create PDF persistence logic to store downloaded assets for MinerU processing
 - [ ] 4.11 Implement UnpaywallAdapter with OA status resolution
 - [ ] 4.12 Implement CrossrefAdapter with DOI registration data

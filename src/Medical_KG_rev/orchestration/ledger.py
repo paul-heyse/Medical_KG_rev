@@ -49,6 +49,14 @@ class JobLedgerEntry:
     retry_count_per_stage: dict[str, int] = field(default_factory=dict)
     pdf_downloaded: bool = False
     pdf_ir_ready: bool = False
+    pdf_url: str | None = None
+    pdf_storage_key: str | None = None
+    pdf_checksum: str | None = None
+    pdf_size_bytes: int | None = None
+    pdf_content_type: str | None = None
+    pdf_downloaded_at: datetime | None = None
+    pdf_processed_at: datetime | None = None
+    pdf_error: str | None = None
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
@@ -77,6 +85,14 @@ class JobLedgerEntry:
             retry_count_per_stage=dict(self.retry_count_per_stage),
             pdf_downloaded=self.pdf_downloaded,
             pdf_ir_ready=self.pdf_ir_ready,
+            pdf_url=self.pdf_url,
+            pdf_storage_key=self.pdf_storage_key,
+            pdf_checksum=self.pdf_checksum,
+            pdf_size_bytes=self.pdf_size_bytes,
+            pdf_content_type=self.pdf_content_type,
+            pdf_downloaded_at=self.pdf_downloaded_at,
+            pdf_processed_at=self.pdf_processed_at,
+            pdf_error=self.pdf_error,
         )
 
 
@@ -157,6 +173,14 @@ class JobLedger:
         pipeline_name: str | None = None,
         pdf_downloaded: bool | None = None,
         pdf_ir_ready: bool | None = None,
+        pdf_url: str | None = None,
+        pdf_storage_key: str | None = None,
+        pdf_checksum: str | None = None,
+        pdf_size_bytes: int | None = None,
+        pdf_content_type: str | None = None,
+        pdf_downloaded_at: datetime | None = None,
+        pdf_processed_at: datetime | None = None,
+        pdf_error: str | None = None,
     ) -> JobLedgerEntry:
         if job_id not in self._entries:
             raise JobLedgerError(f"Job {job_id} not found")
@@ -191,8 +215,24 @@ class JobLedger:
             entry.metadata.update(metadata)
         if pdf_downloaded is not None:
             entry.pdf_downloaded = pdf_downloaded
+        if pdf_url is not None:
+            entry.pdf_url = pdf_url
+        if pdf_storage_key is not None:
+            entry.pdf_storage_key = pdf_storage_key
+        if pdf_checksum is not None:
+            entry.pdf_checksum = pdf_checksum
+        if pdf_size_bytes is not None:
+            entry.pdf_size_bytes = pdf_size_bytes
+        if pdf_content_type is not None:
+            entry.pdf_content_type = pdf_content_type
+        if pdf_downloaded_at is not None:
+            entry.pdf_downloaded_at = pdf_downloaded_at
         if pdf_ir_ready is not None:
             entry.pdf_ir_ready = pdf_ir_ready
+        if pdf_processed_at is not None:
+            entry.pdf_processed_at = pdf_processed_at
+        if pdf_error is not None:
+            entry.pdf_error = pdf_error
         entry.updated_at = datetime.utcnow()
         self._refresh_metrics()
         return entry
@@ -273,10 +313,47 @@ class JobLedger:
         return entry
 
     def set_pdf_downloaded(self, job_id: str, value: bool = True) -> JobLedgerEntry:
-        return self._update(job_id, pdf_downloaded=value)
+        timestamp = datetime.utcnow() if value else None
+        return self._update(
+            job_id,
+            pdf_downloaded=value,
+            pdf_downloaded_at=timestamp,
+            pdf_error=None if value else None,
+        )
 
     def set_pdf_ir_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
-        return self._update(job_id, pdf_ir_ready=value)
+        timestamp = datetime.utcnow() if value else None
+        return self._update(job_id, pdf_ir_ready=value, pdf_processed_at=timestamp)
+
+    def record_pdf_download(
+        self,
+        job_id: str,
+        *,
+        url: str,
+        storage_key: str,
+        size_bytes: int | None,
+        content_type: str | None,
+        checksum: str | None,
+    ) -> JobLedgerEntry:
+        return self._update(
+            job_id,
+            pdf_downloaded=True,
+            pdf_url=url,
+            pdf_storage_key=storage_key,
+            pdf_size_bytes=size_bytes,
+            pdf_content_type=content_type,
+            pdf_checksum=checksum,
+            pdf_downloaded_at=datetime.utcnow(),
+            pdf_error=None,
+        )
+
+    def record_pdf_error(
+        self,
+        job_id: str,
+        *,
+        error: str,
+    ) -> JobLedgerEntry:
+        return self._update(job_id, pdf_downloaded=False, pdf_error=error)
 
     def record_attempt(self, job_id: str) -> int:
         if job_id not in self._entries:

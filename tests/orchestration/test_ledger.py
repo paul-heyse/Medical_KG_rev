@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("pydantic")
+
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 
 
@@ -13,6 +15,14 @@ def test_create_and_retrieve_entry() -> None:
     assert entry.current_stage == "pending"
     assert not entry.pdf_downloaded
     assert not entry.pdf_ir_ready
+    assert entry.pdf_url is None
+    assert entry.pdf_storage_key is None
+    assert entry.pdf_checksum is None
+    assert entry.pdf_size_bytes is None
+    assert entry.pdf_content_type is None
+    assert entry.pdf_downloaded_at is None
+    assert entry.pdf_processed_at is None
+    assert entry.pdf_error is None
 
     retrieved = ledger.get("job-1")
     assert retrieved is not None
@@ -58,6 +68,38 @@ def test_update_metadata_and_attempts() -> None:
     assert updated is not None
     assert updated.pdf_downloaded is True
     assert updated.pdf_ir_ready is True
+    assert updated.pdf_downloaded_at is not None
+    assert updated.pdf_processed_at is not None
+
+
+def test_record_pdf_download_updates_fields() -> None:
+    ledger = JobLedger()
+    ledger.create(job_id="job-1", doc_key="doc-1", tenant_id="tenant", pipeline="auto")
+
+    ledger.record_pdf_download(
+        "job-1",
+        url="https://example.com/file.pdf",
+        storage_key="pdfs/tenant/doc/hash.pdf",
+        size_bytes=1024,
+        content_type="application/pdf",
+        checksum="abc123",
+    )
+
+    entry = ledger.get("job-1")
+    assert entry is not None
+    assert entry.pdf_downloaded is True
+    assert entry.pdf_url == "https://example.com/file.pdf"
+    assert entry.pdf_storage_key == "pdfs/tenant/doc/hash.pdf"
+    assert entry.pdf_size_bytes == 1024
+    assert entry.pdf_content_type == "application/pdf"
+    assert entry.pdf_checksum == "abc123"
+    assert entry.pdf_error is None
+
+    ledger.record_pdf_error("job-1", error="timeout")
+    entry = ledger.get("job-1")
+    assert entry is not None
+    assert entry.pdf_downloaded is False
+    assert entry.pdf_error == "timeout"
 
 
 def test_mark_failed_records_history() -> None:

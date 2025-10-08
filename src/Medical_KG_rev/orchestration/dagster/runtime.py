@@ -218,6 +218,8 @@ def _make_stage_op(
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
         stage = stage_factory.resolve(topology.name, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
@@ -304,6 +306,11 @@ def _make_stage_op(
             attempts = execution_state.get("attempts") or 1
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
             if job_id:
+                if stage_type == "download":
+                    try:
+                        ledger.record_pdf_error(job_id, error=str(exc))
+                    except JobLedgerError:
+                        logger.debug("dagster.stage.download.error_record_failed", job_id=job_id)
                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
             raise
 
@@ -313,6 +320,64 @@ def _make_stage_op(
         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
         duration_ms = int(duration_seconds * 1000)
         output_count = _infer_output_count(metadata, result)
+
+        if job_id and stage_type == "download":
+            downloads = updated.get("downloaded_files") or []
+            success_record = next(
+                (
+                    record
+                    for record in downloads
+                    if getattr(record, "status", "") == "success"
+                    and getattr(record, "storage_key", None)
+                ),
+                None,
+            )
+            if success_record is not None:
+                try:
+                    ledger.record_pdf_download(
+                        job_id,
+                        url=str(getattr(success_record, "url", "")),
+                        storage_key=str(getattr(success_record, "storage_key")),
+                        size_bytes=getattr(success_record, "size_bytes", None),
+                        content_type=getattr(success_record, "content_type", None),
+                        checksum=getattr(success_record, "checksum", None),
+                    )
+                except JobLedgerError:
+                    logger.debug("dagster.stage.download.ledger_update_failed", job_id=job_id)
+            else:
+                failure = next(
+                    (
+                        getattr(record, "error", None)
+                        for record in downloads
+                        if getattr(record, "status", "") == "failed"
+                    ),
+                    None,
+                )
+                if failure:
+                    try:
+                        ledger.record_pdf_error(job_id, error=str(failure))
+                    except JobLedgerError:
+                        logger.debug("dagster.stage.download.error_record_failed", job_id=job_id)
+
+        if job_id and stage_type == "mineru":
+            try:
+                ledger.set_pdf_ir_ready(job_id, True)
+            except JobLedgerError:
+                logger.debug("dagster.stage.mineru.ledger_update_failed", job_id=job_id)
+            mineru_metadata = updated.get("mineru_metadata")
+            mineru_duration = updated.get("mineru_duration")
+            metadata_updates: dict[str, object] = {}
+            if isinstance(mineru_metadata, Mapping):
+                metadata_updates.update(
+                    {f"mineru.{key}": value for key, value in mineru_metadata.items()}
+                )
+            if mineru_duration is not None:
+                metadata_updates["mineru.duration_seconds"] = float(mineru_duration)
+            if metadata_updates:
+                try:
+                    ledger.update_metadata(job_id, metadata_updates)
+                except JobLedgerError:
+                    logger.debug("dagster.stage.mineru.metadata_update_failed", job_id=job_id)
 
         if job_id:
             ledger.update_metadata(

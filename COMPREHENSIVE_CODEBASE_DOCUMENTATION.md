@@ -65,29 +65,50 @@ The system is built on industry standards to ensure long-term viability and inte
 
 ### Implementation Status
 
-**5 Active OpenSpec change proposals (1,020+ tasks) + 15 Archived proposals**:
+**Current Status: Active Development Phase**
 
-**Active Proposals:**
+The Medical_KG_rev project is in an active development phase with substantial framework and architecture in place, but many features are still under development or partially implemented. The codebase shows evidence of systematic development with good architectural foundations, but production readiness varies significantly across different components.
 
-1. ✅ **Adapter Plugin Framework** - YAML-based biomedical adapter SDK (68 tasks)
-2. ✅ **DAG Orchestration Pipeline** - Kafka-based event-driven processing (85 tasks)
-3. ✅ **Embeddings & Representation** - vLLM + SPLADE multi-namespace embeddings (60 tasks)
-4. ✅ **Parsing, Chunking & Normalization** - Multi-granularity text segmentation (68 tasks)
-5. ✅ **Retrieval, Ranking & Evaluation** - Hybrid search with fusion ranking (60 tasks)
+**Framework & Architecture (✅ IMPLEMENTED):**
 
-**Archived Proposals (15+ completed):**
+1. ✅ **Foundation Infrastructure** - Core models, utilities, and architectural patterns
+2. ✅ **Multi-Protocol API Gateway** - REST, GraphQL, gRPC, SOAP, AsyncAPI/SSE protocol implementations
+3. ✅ **Plugin-Based Adapter Framework** - Extensible adapter SDK with YAML configuration support
+4. ✅ **GPU Service Architecture** - Fail-fast GPU service framework for AI/ML workloads
+5. ✅ **Knowledge Graph Schema** - Neo4j schema design with provenance tracking
+6. ✅ **Security Framework** - OAuth 2.0, multi-tenancy, audit logging architecture
+7. ✅ **Observability Infrastructure** - Prometheus, OpenTelemetry, structured logging setup
 
-- Foundation Infrastructure, Multi-Protocol Gateway, Biomedical Adapters, Ingestion Orchestration, GPU Microservices, Knowledge Graph & Retrieval, Security & Authentication, DevOps & Observability, Domain Validation & Caching, and 6 additional modular system proposals
+**Partially Implemented (🔄 IN PROGRESS):**
 
-**Production-ready features**:
+1. 🔄 **Biomedical Adapters** - Framework exists, but actual adapter implementations are limited
+2. 🔄 **DAG Orchestration Pipeline** - Framework and configuration exist, but integration incomplete
+3. 🔄 **Embeddings & Representation** - Configuration and framework exist, but service integration incomplete
+4. 🔄 **Advanced Chunking** - Profile-based chunking framework exists, but full integration pending
+5. 🔄 **Multi-Strategy Retrieval** - Framework and components exist, but end-to-end integration incomplete
 
-- **15 biomedical data source adapters** (ClinicalTrials.gov, OpenFDA Drug/Event/Device, OpenAlex, Unpaywall, Crossref, CORE, PMC, RxNorm, ICD-11, MeSH, ChEMBL, Semantic Scholar)
-- 5 API protocols fully implemented (REST, GraphQL, gRPC, SOAP, AsyncAPI/SSE)
-- 3 GPU services with fail-fast architecture (MinerU PDF parsing, Embedding service, Vector store)
-- Multi-strategy hybrid retrieval (BM25 + SPLADE + dense vectors with RRF fusion)
-- OAuth 2.0 with multi-tenant isolation and audit logging
-- Comprehensive observability (Prometheus, OpenTelemetry, Grafana with 33+ metrics)
-- Contract, performance, and integration test suites with SLO validation
+**Framework-Ready (⏳ PLANNED):**
+
+1. ⏳ **Production Biomedical Adapters** - 15+ adapters planned but not yet fully implemented
+2. ⏳ **Complete GPU Service Integration** - MinerU, embedding, and vector services need full integration
+3. ⏳ **Advanced Retrieval Pipelines** - Hybrid search with RRF fusion needs completion
+4. ⏳ **Comprehensive Testing** - Contract, performance, and integration test suites need completion
+5. ⏳ **Production Deployment** - Kubernetes manifests and CI/CD pipelines need completion
+
+**Key Components Status:**
+
+| Component | Framework | Implementation | Integration | Testing |
+|-----------|-----------|----------------|-------------|---------|
+| API Gateway | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
+| Adapter Framework | ✅ Complete | ✅ Complete | 🔄 Partial | 🔄 Partial |
+| GPU Services | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Chunking System | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Embedding System | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Vector Storage | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Orchestration | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Knowledge Graph | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Multi-Tenancy | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
+| Observability | ✅ Complete | 🔄 Partial | 🔄 Partial | ⏳ Planned |
 
 ---
 
@@ -333,49 +354,38 @@ def create_app() -> FastAPI:
 
 ### 3.5 Clinical-Aware Chunking Architecture
 
-The legacy bespoke chunkers have been fully decommissioned in favor of a
-library-backed runtime with strict metadata guarantees. The new architecture is
-centered around a lightweight ``ChunkerPort`` protocol that exposes a
-``chunk(document, profile)`` method. Concrete implementations are registered via
-``register_defaults()`` during service initialization so callers can simply
-invoke ``chunk_document``.
+**Framework Architecture (Implemented):**
 
-Key components:
+The codebase includes a sophisticated chunking framework with profile-based configuration and multiple chunking strategies, but full service integration is still under development.
 
-- **ChunkerPort Protocol** – Defines the contract for chunkers and enforces
-  metadata requirements (section labels, intent hints, provenance offsets).
-- **Runtime Registry** – Maps profile names to concrete chunker classes and
-  injects shared filters/validators before returning results.
-- **Profile Loader** – YAML-driven configuration under
-  ``config/chunking/profiles/*.yaml`` describing domain, target token budgets,
-  sentence splitter, and filters.
-- **Sentence Segmentation** – Delegates to Hugging Face tokenizers configured
-  via the ``MEDICAL_KG_SENTENCE_MODEL`` environment variable with a heuristics
-  fallback for development.
-- **Filter Pipeline** – Normalizes documents prior to chunking (boilerplate
-  removal, reference pruning, table preservation) so downstream systems receive
-  clean inputs.
+**Key Framework Components:**
 
-Example usage:
+- **Chunking Profiles** – YAML-based configuration system for domain-specific chunking strategies
+- **Multiple Chunker Types** – Support for LangChain, LlamaIndex, and custom chunking implementations
+- **Sentence Segmentation** – Integration with Hugging Face tokenizers and fallback heuristics
+- **Filter Pipeline** – Document preprocessing with boilerplate removal and content normalization
+- **Metadata Enrichment** – Automatic chunk metadata including intent hints and provenance
+
+**Implemented Profiles:**
+
+| Profile | Chunker Type | Domain | Key Features |
+|---------|--------------|--------|--------------|
+| ``pmc-imrad`` | LangChain recursive | Literature | Section-aware, table preservation, intent hints |
+| ``ctgov-registry`` | Domain-specific | Clinical Trials | Registry-optimized, outcome-focused |
+| ``spl-label`` | SPL-aware | Drug Labels | LOINC mapping, safety section emphasis |
+| ``guideline`` | Evidence-based | Guidelines | Recommendation extraction, evidence linking |
+
+**Framework Usage:**
 
 ```python
-from Medical_KG_rev.services.chunking import chunk_document
+from Medical_KG_rev.chunking import chunk_document
 
+# Profile-based chunking with metadata
 chunks = chunk_document(document, profile="pmc-imrad")
 assert all(chunk.metadata["chunking_profile"] == "pmc-imrad" for chunk in chunks)
 ```
 
-Profile summary:
-
-| Profile | Chunker Type | Sentence Splitter | Intent Highlights |
-|---------|--------------|-------------------|-------------------|
-| ``pmc-imrad`` | LangChain recursive splitter respecting sections/tables | Hugging Face tokenizer | Abstract/IMRaD narrative vs. outcome emphasis |
-| ``ctgov-registry`` | Domain-specific registry chunker | syntok | Eligibility, outcome, AE, results |
-| ``spl-label`` | SPL-aware section chunker with LOINC mapping | Hugging Face tokenizer | Indications, dosage, safety, adverse reactions |
-| ``guideline`` | Recommendation/evidence chunker | syntok | Recommendation statements with attached evidence |
-
-The runtime validates every chunk with a Pydantic schema before returning it to
-callers, ensuring ordered offsets and provenance metadata are always present.
+**Current Status:** The chunking framework is well-architected with comprehensive configuration and multiple chunker implementations, but full service integration and testing are still in progress.
 
 ### 4. Biomedical Adapter Ecosystem
 
@@ -419,29 +429,40 @@ class ClinicalTrialsAdapterPlugin(BaseAdapterPlugin):
 
 #### 4.2 Plugin-Based Data Sources
 
-**Biomedical Domain (15 adapters fully implemented):**
+**Biomedical Domain (Framework Implemented, Adapters Under Development):**
 
-- **ClinicalTrials.gov** (450k+ studies) - NCT ID-based clinical trial registry
-- **OpenFDA Drug Labels** (FDA-approved SPL) - Structured product labeling
-- **OpenFDA Adverse Events** (FAERS reports) - Drug safety reporting system
-- **OpenFDA Device Classification** - Medical device regulatory data
-- **OpenAlex** (250M+ works) - Scholarly literature and citation network
-- **Unpaywall** (40M+ OA articles) - Open access status for publications
-- **Crossref** (140M+ DOI metadata) - DOI registration and metadata
-- **CORE** (200M+ OA papers) - Open research repository aggregator
-- **PubMed Central** (8M+ full-text) - NIH-funded biomedical literature
-- **RxNorm** (~200k drug names → RxCUI) - NLM drug terminology
-- **ICD-11** (55k+ disease codes) - WHO disease classification
-- **MeSH** (Medical Subject Headings) - NLM controlled vocabulary
-- **ChEMBL** (2.3M+ compounds, 20M+ bioactivity) - Drug discovery database
-- **Semantic Scholar** - Academic literature with citation analysis
+The adapter framework provides a solid foundation for biomedical data integration, with configuration files and framework code in place for multiple data sources. However, actual adapter implementations are still under development.
+
+**Configured Data Sources (Framework Ready):**
+
+- **ClinicalTrials.gov** - NCT ID-based clinical trial registry (configuration exists)
+- **OpenFDA Drug Labels** - FDA-approved SPL (configuration exists)
+- **OpenFDA Adverse Events** - FAERS reports (configuration exists)
+- **OpenFDA Device Classification** - Medical device regulatory data (configuration exists)
+- **OpenAlex** - Scholarly literature and citation network (configuration exists)
+- **Unpaywall** - Open access status for publications (configuration exists)
+- **Crossref** - DOI registration and metadata (configuration exists)
+- **CORE** - Open research repository aggregator (configuration exists)
+- **PubMed Central** - NIH-funded biomedical literature (configuration exists)
+- **RxNorm** - NLM drug terminology (configuration exists)
+- **ICD-11** - WHO disease classification (configuration exists)
+- **MeSH** - Medical Subject Headings (configuration exists)
+- **ChEMBL** - Drug discovery database (configuration exists)
+- **Semantic Scholar** - Academic literature with citation analysis (configuration exists)
+
+**Framework Features:**
+
+- **YAML Configuration**: Each adapter has a configuration file defining endpoints, rate limits, and parsing logic
+- **Plugin Architecture**: Extensible framework supporting multiple domains (biomedical, financial, legal)
+- **Resilience Layer**: Built-in retry, circuit breaker, and rate limiting capabilities
+- **Lifecycle Management**: Automatic plugin discovery and dependency injection
+
+**Current Status:** The framework is well-architected and ready for adapter implementation, but actual data fetching and parsing logic needs to be completed for each source.
 
 **Additional Domains (Framework Ready):**
 
 - **Financial Domain** - Market news and financial reporting (framework implemented)
 - **Legal Domain** - Case law and legal documents (framework implemented)
-
-**Total Plugin Registry:** 15 biomedical adapters + framework for additional domains, dynamically discoverable via Pluggy entry points
 
 #### 4.3 Plugin Resilience and Error Handling
 
@@ -486,10 +507,14 @@ async def rate_limited_fetch(self, request: AdapterRequest) -> AdapterResponse:
 
 #### 5.1 Service Architecture
 
-**Fail-Fast GPU Services (Implemented):**
+**GPU Service Framework (Implemented):**
+
+The codebase includes a well-designed GPU service framework with fail-fast architecture, but actual service implementations are still under development.
+
+**Framework Features:**
 
 ```python
-class MineruService:
+class BaseGpuService:
     def __init__(self):
         # Fail-fast GPU detection
         if not torch.cuda.is_available():
@@ -499,106 +524,124 @@ class MineruService:
         # GPU resource management
         self.gpu_manager = GpuManager(min_memory_mb=8192)  # 8GB minimum
         self.device = torch.device("cuda:0")
-        self.model = load_mineru_model().to(self.device)
 
-        # Worker pool for parallel processing
-        self.worker_pool = MineruWorkerPool(gpu_manager=self.gpu_manager)
-        logger.info(f"MinerU service started on {self.device}")
+        logger.info(f"GPU service initialized on {self.device}")
 
-    async def ProcessPDF(self, request: MineruRequest) -> MineruResponse:
-        try:
-            # Process on GPU with worker pool
-            result = await self.worker_pool.process_batch([request])
-            return result[0]
-        except MineruOutOfMemoryError:
-            # Fail-fast: don't fall back to CPU
-            raise grpc.RpcError(grpc.StatusCode.RESOURCE_EXHAUSTED, "GPU out of memory")
-        except MineruCliError as e:
-            # Circuit breaker for repeated failures
-            logger.error("MinerU processing failed", error=str(e))
-            raise grpc.RpcError(grpc.StatusCode.INTERNAL, "Processing failed")
+    async def health_check(self) -> bool:
+        """Verify GPU availability and memory."""
+        return torch.cuda.is_available() and torch.cuda.get_device_properties(0).total_memory > 8 * 1024**3
 ```
 
-**Service Specifications (All Implemented):**
+**Service Specifications (Framework Ready):**
 
-- **MinerU Service**: GPU-accelerated PDF parsing with OCR, layout analysis, table/figure extraction
-  - **GPU Requirements**: 8GB+ VRAM, CUDA support, fail-fast architecture
-  - **Worker Pool**: Parallel processing with GPU resource management and memory budgeting
-  - **Output**: Structured document with tables, figures, text spans, and confidence scores
-  - **Performance**: 2-3 papers/second, 50+ pages/minute throughput
-  - **Integration**: CLI wrapper with GPU budget management and artifact processing
+- **MinerU Service**: GPU-accelerated PDF parsing framework
+  - **Framework**: CLI wrapper architecture with GPU budget management
+  - **Status**: Configuration and framework code exist, but service integration incomplete
 
-- **Embedding Service**: vLLM dense + Pyserini SPLADE sparse embeddings
-  - **Multi-Namespace**: Single vector (Qwen3), sparse (SPLADE-v3), multi-vector (ColBERT)
-  - **Library Delegation**: OpenAI-compatible vLLM endpoint and Pyserini encoders replace bespoke Python implementations
-  - **Vector Storage**: OpenSearch `rank_features` (sparse) + FAISS (dense) indexing with namespace-aware routing
-  - **Performance**: ≥1000 embeddings/second on GPU with fail-fast GPU enforcement
-  - **Container Images**: Per-model vLLM Dockerfiles live under `ops/vllm/` and publish to `ghcr.io/example/vllm-qwen3-embedding`
+- **Embedding Service**: vLLM + SPLADE embedding framework
+  - **Framework**: Multi-namespace configuration and Haystack integration
+  - **Status**: Namespace configurations exist, but service integration incomplete
+  - **Models Configured**: Qwen3, SPLADE-v3, ColBERT-v2 with YAML configurations
 
-- **Vector Store Service**: GPU-accelerated similarity search and indexing
-  - **Storage Backends**: FAISS (dense), OpenSearch (sparse + lexical), Qdrant (optional dense)
-  - **Indexing**: HNSW for dense vectors, BM25/BM25F for lexical, SPLADE expansion terms
-  - **Performance**: Sub-second retrieval for KNN queries with GPU acceleration
-  - **Compression**: Vector quantization and index optimization for storage efficiency
+- **Vector Store Service**: GPU-accelerated similarity search framework
+  - **Framework**: FAISS, OpenSearch, Qdrant integration architecture
+  - **Status**: Storage backend framework exists, but service integration incomplete
 
 #### 5.2 Model Configuration (Implemented)
 
-**Embedding Models:**
+**Embedding Namespace Configuration:**
 
-```python
-# src/Medical_KG_rev/services/embedding/namespace/loader.py
-from pathlib import Path
+```yaml
+# config/embedding/namespaces/single_vector.qwen3.4096.v1.yaml
+name: qwen3-embedding
+kind: single_vector
+model_id: Qwen/Qwen2.5-Embedding-8B-Instruct
+model_version: v1
+dim: 4096
+provider: vllm
+endpoint: http://vllm-qwen3:8001/v1
+parameters:
+  timeout: 60
+  max_tokens: 8192
+  candidate_batch_sizes: [32, 64, 128]
+  gpu_memory_fraction: 0.9
+  gpu_memory_reserve_mb: 2048
+pooling: mean
+normalize: true
+batch_size: 64
+requires_gpu: true
+```
 
-from Medical_KG_rev.services.embedding.namespace.loader import load_namespace_registry
+**Chunking Profiles (Implemented):**
 
-registry = load_namespace_registry(Path("config/embedding/namespaces"))
-qwen3 = registry.get("single_vector.qwen3.4096.v1")
-assert qwen3.provider == "vllm"
-assert qwen3.parameters["endpoint"] == "http://vllm-qwen3:8001/v1"
+```yaml
+# config/chunking/profiles/pmc-imrad.yaml
+name: pmc-imrad
+domain: literature
+chunker_type: langchain_recursive
+target_tokens: 450
+overlap_tokens: 50
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: huggingface
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+  - exclude_references
+  - deduplicate_page_furniture
+metadata:
+  intent_hints:
+    Abstract: narrative
+    Introduction: narrative
+    Methods: narrative
+    Results: outcome
+    Discussion: narrative
 ```
 
 ### 6. Orchestration and Event-Driven Architecture
 
-#### 6.1 Kafka-Based Event Bus (Implemented)
+#### 6.1 Kafka-Based Event Bus (Framework Implemented)
 
-**Topic Structure:**
+**Framework Architecture:**
 
-- `ingest.requests.v1`: Ingestion job requests
-- `ingest.results.v1`: Ingestion completion notifications
-- `mapping.events.v1`: Entity mapping triggers
-- `ingest.dlq.v1`: Dead letter queue for failed jobs
-- `embedding.requests.v1`: Embedding job requests
-- `extraction.requests.v1`: Extraction job requests
+The codebase includes a well-designed Kafka-based event bus framework, but full integration and deployment are still under development.
 
-#### 6.2 Dagster Job Definitions (Implemented)
+**Topic Structure (Framework Ready):**
 
-- **Topology-driven orchestration** – Pipeline structure lives in
-  `config/orchestration/pipelines/*.yaml`. Each stage lists its `type`,
-  dependencies, and resilience policy. `PipelineConfigLoader` validates the YAML
-  and returns immutable models used by the runtime.
-- **Stage resolution** – `Medical_KG_rev.orchestration.dagster.stages` exposes
-  `build_default_stage_factory`, wiring Haystack chunkers, embedders, and index
-  writers into the stage contracts defined in
-  `Medical_KG_rev.orchestration.stages.contracts`.
-- **Dagster jobs** – `Medical_KG_rev.orchestration.dagster.runtime` builds
-  Dagster graphs from the topology. Ops wrap stage execution with resilience
-  policies and persist outputs in the run state for downstream consumers.
-- **Sensors** – The PDF two-phase pipeline uses a ledger-backed sensor to resume
-  post-PDF stages when `pdf_ir_ready=true`. Sensor definitions live alongside
-  the job wiring in the runtime module.
+- `ingest.requests.v1`: Ingestion job requests (framework defined)
+- `ingest.results.v1`: Ingestion completion notifications (framework defined)
+- `mapping.events.v1`: Entity mapping triggers (framework defined)
+- `ingest.dlq.v1`: Dead letter queue for failed jobs (framework defined)
+- `embedding.requests.v1`: Embedding job requests (framework defined)
+- `extraction.requests.v1`: Extraction job requests (framework defined)
 
-#### 6.3 Job State Management (Implemented)
+**Current Status:** Event bus framework is architected with topic definitions and client code, but Kafka infrastructure integration and message flow are incomplete.
 
-- **Ledger updates** – The ledger records `pipeline_name`, `current_stage`, and
-  per-stage retry counts. Dagster ops call the ledger resource after each
-  execution step so the gateway can stream real-time status via SSE.
-- **Gateway integration** – `GatewayService` submits work to Dagster via
-  `submit_to_dagster` for asynchronous jobs, while synchronous APIs (chunk and
-  embed) resolve stages directly with `StageFactory` for low latency.
-- **Telemetry hooks** – Resilience policies emit Prometheus metrics for retry
-  attempts, circuit breaker transitions, and rate limiting delays. CloudEvents
-  and OpenLineage emitters consume the same metadata to publish structured
-  events.
+#### 6.2 Dagster Orchestration (Partially Implemented)
+
+**Framework Components:**
+
+- **Pipeline Configuration** – YAML-based pipeline topology definitions exist in `config/orchestration/pipelines/`
+- **Stage Contracts** – Protocol definitions for ingest, parse, chunk, embed, index, extract, and KG stages
+- **Resilience Policies** – Configuration-driven retry, circuit breaker, and rate limiting policies
+- **Job Definitions** – Dagster job and graph construction framework
+
+**Current Status:** Dagster integration framework exists with job definitions and stage wiring, but:
+
+- No Dagster services in Docker Compose deployment
+- Incomplete integration with actual service implementations
+- Sensor-based pipeline resumption (PDF two-phase) needs completion
+
+#### 6.3 Job State Management (Framework Implemented)
+
+**Ledger Integration:**
+
+- **Job State Tracking** – Framework for recording pipeline execution state and stage progress
+- **Retry Management** – Per-stage retry counting and failure tracking
+- **Status Streaming** – SSE-based real-time job status updates (framework ready)
+
+**Current Status:** State management framework exists, but full integration with Dagster jobs and real-time status streaming needs completion.
 
 ### 7. Knowledge Graph and Storage
 
@@ -818,29 +861,19 @@ logger.bind(
 )
 ```
 
-### 11. Deployment and DevOps (Implemented)
+### 11. Deployment and DevOps (Framework Implemented)
 
 #### 11.1 Container Strategy
 
-**Docker Compose (Development):**
+**Docker Compose (Development Framework):**
+
+The codebase includes Docker Compose configuration for development infrastructure, but GPU services and orchestration components need integration.
+
+**Current Infrastructure:**
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (partial)
 services:
-  gateway:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - MK_ENV=dev
-      - MK_OBSERVABILITY_LOGGING_LEVEL=DEBUG
-    depends_on:
-      - kafka
-      - neo4j
-      - opensearch
-      - redis
-      - minio
-
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     healthcheck:
@@ -877,7 +910,14 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
 ```
 
-#### 11.2 Kubernetes Production Deployment (Implemented)
+**Missing Components:**
+
+- API Gateway service container
+- GPU service containers (MinerU, vLLM, embedding services)
+- Dagster orchestration services
+- Complete service mesh integration
+
+#### 11.2 Kubernetes Production Deployment (Framework Ready)
 
 **Gateway Deployment:**
 

@@ -11,6 +11,187 @@ from __future__ import annotations
 
 import base64
 import copy
+import json as _json
+import time
+import zlib
+from dataclasses import asdict, dataclass, field
+from importlib import util as importlib_util
+from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
+
+import structlog
+from prometheus_client import Counter, Histogram
+
+if importlib_util.find_spec("pydantic") is not None:
+    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
+
+    PYDANTIC_AVAILABLE = True
+else:  # pragma: no cover - fallback for lightweight environments
+    PYDANTIC_AVAILABLE = False
+
+    class ValidationError(ValueError):
+        """Fallback validation error when Pydantic is unavailable."""
+
+    class BaseModel:  # type: ignore[override]
+        model_config: dict[str, Any] = {}
+
+        def __init__(self, **data: Any) -> None:
+            for key, value in data.items():
+                setattr(self, key, value)
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+            payload = self.model_dump(mode="python")
+            if update:
+                payload.update(update)
+            return self.__class__(**payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+            return cls(**dict(payload))
+
+    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
+        if default_factory is not None:
+            return default_factory()
+        return default
+
+    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
+        return dict(kwargs)
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.adapters.plugins.models import AdapterRequest  # type: ignore[import]
+else:  # pragma: no cover - fallback for lightweight test environments
+
+    @dataclass(slots=True)
+    class AdapterRequest:
+        tenant_id: str
+        correlation_id: str | None = None
+        domain: str | None = None
+        parameters: dict[str, Any] = field(default_factory=dict)
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "AdapterRequest":
+            return cls(
+                tenant_id=str(payload.get("tenant_id", "")),
+                correlation_id=payload.get("correlation_id"),
+                domain=payload.get("domain"),
+                parameters=dict(payload.get("parameters", {})),
+            )
+
+        def model_copy(self, *, deep: bool = False) -> "AdapterRequest":
+            return AdapterRequest(
+                tenant_id=self.tenant_id,
+                correlation_id=self.correlation_id,
+                domain=self.domain,
+                parameters=copy.deepcopy(self.parameters) if deep else dict(self.parameters),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:  # pragma: no cover - simple shim
+            return {
+                "tenant_id": self.tenant_id,
+                "correlation_id": self.correlation_id,
+                "domain": self.domain,
+                "parameters": copy.deepcopy(self.parameters),
+            }
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.chunking.models import Chunk  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Chunk:
+        chunk_id: str
+        doc_id: str
+        tenant_id: str
+        body: str
+        title_path: tuple[str, ...]
+        section: str
+        start_char: int
+        end_char: int
+        granularity: str
+        chunker: str
+        chunker_version: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Chunk":
+            return cls(
+                chunk_id=str(payload.get("chunk_id")),
+                doc_id=str(payload.get("doc_id")),
+                tenant_id=str(payload.get("tenant_id", "")),
+                body=str(payload.get("body", "")),
+                title_path=tuple(payload.get("title_path", ())),
+                section=str(payload.get("section", "")),
+                start_char=int(payload.get("start_char", 0)),
+                end_char=int(payload.get("end_char", 0)),
+                granularity=str(payload.get("granularity", "")),
+                chunker=str(payload.get("chunker", "")),
+                chunker_version=str(payload.get("chunker_version", "")),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.models.entities import Claim, Entity  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Entity:
+        id: str
+        type: str
+        text: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Entity":
+            return cls(id=str(payload.get("id", "")), type=str(payload.get("type", "")), text=str(payload.get("text", "")))
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+    @dataclass(slots=True)
+    class Claim:
+        id: str
+        statement: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Claim":
+            return cls(id=str(payload.get("id", "")), statement=str(payload.get("statement", "")))
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.models.ir import Document  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Document:
+        id: str
+        source: str
+        sections: tuple[Any, ...] = ()
+        metadata: dict[str, Any] = field(default_factory=dict)
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Document":
+            return cls(
+                id=str(payload.get("id", "")),
+                source=str(payload.get("source", "")),
+                sections=tuple(payload.get("sections", ())),
+                metadata=dict(payload.get("metadata", {})),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return {
+                "id": self.id,
+                "source": self.source,
+                "sections": list(self.sections),
+                "metadata": copy.deepcopy(self.metadata),
+            }
 import orjson
 import structlog
 import time
@@ -50,6 +231,279 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 RawPayload = dict[str, Any]
 
 
+_state_logger = structlog.get_logger("Medical_KG_rev.pipeline_state")
+
+_STATE_MUTATIONS = Counter(
+    "orchestration_pipeline_state_mutations_total",
+    "Total number of mutating operations executed against PipelineState",
+    labelnames=("operation",),
+)
+_STATE_SERIALISATION_LATENCY = Histogram(
+    "orchestration_pipeline_state_serialisation_seconds",
+    "Latency of PipelineState serialisation operations",
+    labelnames=("format",),
+    buckets=(
+        0.0005,
+        0.001,
+        0.002,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+    ),
+)
+_STATE_DEPENDENCY_FAILURES = Counter(
+    "orchestration_pipeline_state_dependency_failures_total",
+    "Number of times a stage attempted to execute without satisfying dependencies",
+    labelnames=("stage_type",),
+)
+
+
+if importlib_util.find_spec("orjson") is not None:
+    import orjson as _orjson  # type: ignore[import]
+    ORJSON_AVAILABLE = True
+else:  # pragma: no cover - fallback path for minimal environments
+    ORJSON_AVAILABLE = False
+
+    class _OrjsonShim:
+        JSONDecodeError = ValueError
+
+        @staticmethod
+        def dumps(payload: Any) -> bytes:
+            return _json.dumps(payload).encode("utf-8")
+
+        @staticmethod
+        def loads(data: Any) -> Any:
+            if isinstance(data, (bytes, bytearray)):
+                return _json.loads(bytes(data).decode("utf-8"))
+            return _json.loads(data)
+
+    _orjson = _OrjsonShim()
+
+orjson = _orjson
+
+
+if importlib_util.find_spec("pydantic") is not None:
+    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
+
+    PYDANTIC_AVAILABLE = True
+else:  # pragma: no cover - fallback for lightweight environments
+    PYDANTIC_AVAILABLE = False
+
+    class ValidationError(ValueError):
+        """Fallback validation error when Pydantic is unavailable."""
+
+    class BaseModel:  # type: ignore[override]
+        """Minimal shim providing the interface we rely on for tests."""
+
+        model_config: dict[str, Any] = {}
+
+        def __init__(self, **data: Any) -> None:
+            for key, value in data.items():
+                setattr(self, key, value)
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+            payload = self.model_dump(mode="python")
+            if update:
+                payload.update(update)
+            return self.__class__(**payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+            return cls(**dict(payload))
+
+    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
+        if default_factory is not None:
+            return default_factory()
+        return default
+
+    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
+        return dict(kwargs)
+
+
+if importlib_util.find_spec("attrs") is not None:
+    from attrs import asdict as attr_asdict  # type: ignore[import]
+    from attrs import define as attr_define  # type: ignore[import]
+    from attrs import field as attr_field  # type: ignore[import]
+else:  # pragma: no cover - fallback for environments without attrs
+    attr_asdict = asdict
+
+    def attr_define(*, slots: bool = False):  # type: ignore[override]
+        def _decorator(cls):
+            return dataclass(cls, slots=slots)
+
+        return _decorator
+
+    def attr_field(*, default: Any | None = None, factory: Callable[[], Any] | None = None):  # type: ignore[override]
+        if factory is not None:
+            return field(default_factory=factory)
+        return field(default=default)
+
+
+if importlib_util.find_spec("tenacity") is not None:
+    from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential  # type: ignore[import]
+else:  # pragma: no cover - fallback for environments without tenacity
+
+    def stop_after_attempt(count: int) -> int:
+        return max(1, int(count))
+
+    def wait_exponential(**_: Any) -> None:  # pragma: no cover - compatibility shim
+        return None
+
+    def retry_if_exception_type(exc_type: type[BaseException]) -> type[BaseException]:  # pragma: no cover - shim
+        return exc_type
+
+    def retry(*, reraise: bool | None = None, stop: Any | None = None, wait: Any | None = None, retry: Any | None = None):
+        max_attempts = stop if isinstance(stop, int) else 1
+
+        def _decorator(func):
+            def _wrapped(*args, **kwargs):
+                attempts = 0
+                while True:
+                    try:
+                        attempts += 1
+                        return func(*args, **kwargs)
+                    except Exception:  # pragma: no cover - simple retry shim
+                        if attempts >= max_attempts:
+                            raise
+
+            return _wrapped
+
+        return _decorator
+
+
+@attr_define(slots=True)
+class PDFStateTracker:
+    """Track PDF download and gate status for long-running ingest jobs."""
+
+    downloads: tuple[str, ...] = ()
+    last_attempt_ms: int | None = None
+    gate_open: bool = False
+    gate_reason: str | None = None
+    ledger_reference: str | None = None
+
+    def record_download(self, asset_id: str, *, attempt_ms: int | None = None) -> None:
+        if asset_id not in self.downloads:
+            self.downloads = (*self.downloads, asset_id)
+        if attempt_ms is not None:
+            self.last_attempt_ms = attempt_ms
+
+    def mark_gate(self, *, opened: bool, reason: str | None = None) -> None:
+        self.gate_open = opened
+        self.gate_reason = reason
+
+    def set_ledger_reference(self, reference: str | None) -> None:
+        self.ledger_reference = reference
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "downloads": list(self.downloads),
+            "last_attempt_ms": self.last_attempt_ms,
+            "gate_open": self.gate_open,
+            "gate_reason": self.gate_reason,
+            "ledger_reference": self.ledger_reference,
+        }
+
+
+if PYDANTIC_AVAILABLE:
+
+    class StageContext(BaseModel):
+        """Immutable context shared across stage boundaries."""
+
+        model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+
+        tenant_id: str
+        job_id: str | None = None
+        doc_id: str | None = None
+        correlation_id: str | None = None
+        metadata: dict[str, Any] = Field(default_factory=dict)
+        pipeline_name: str | None = None
+        pipeline_version: str | None = None
+
+        def with_metadata(self, **values: Any) -> "StageContext":
+            """Return a new context instance with additional metadata."""
+
+            updated = {**self.metadata, **values}
+            return self.model_copy(update={"metadata": updated})
+
+        def to_dict(self) -> dict[str, Any]:
+            """Return a serialisable representation of the context."""
+
+            return self.model_dump(mode="json")
+
+        @classmethod
+        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+            """Rehydrate a context from a mapping payload."""
+
+            return cls.model_validate(payload)
+
+else:
+
+    @dataclass(slots=True)
+    class StageContext:
+        """Immutable context shared across stage boundaries."""
+
+        tenant_id: str
+        job_id: str | None = None
+        doc_id: str | None = None
+        correlation_id: str | None = None
+        metadata: dict[str, Any] = field(default_factory=dict)
+        pipeline_name: str | None = None
+        pipeline_version: str | None = None
+
+        def with_metadata(self, **values: Any) -> "StageContext":
+            updated = dict(self.metadata)
+            updated.update(values)
+            return StageContext(
+                tenant_id=self.tenant_id,
+                job_id=self.job_id,
+                doc_id=self.doc_id,
+                correlation_id=self.correlation_id,
+                metadata=updated,
+                pipeline_name=self.pipeline_name,
+                pipeline_version=self.pipeline_version,
+            )
+
+        def to_dict(self) -> dict[str, Any]:
+            return {
+                "tenant_id": self.tenant_id,
+                "job_id": self.job_id,
+                "doc_id": self.doc_id,
+                "correlation_id": self.correlation_id,
+                "metadata": dict(self.metadata),
+                "pipeline_name": self.pipeline_name,
+                "pipeline_version": self.pipeline_version,
+            }
+
+        @classmethod
+        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+            return cls(
+                tenant_id=str(payload.get("tenant_id")),
+                job_id=payload.get("job_id"),
+                doc_id=payload.get("doc_id"),
+                correlation_id=payload.get("correlation_id"),
+                metadata=dict(payload.get("metadata", {})),
+                pipeline_name=payload.get("pipeline_name"),
+                pipeline_version=payload.get("pipeline_version"),
+            )
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "StageContext":
+            payload = self.to_dict()
+            if update:
+                payload.update(update)
+            return StageContext.from_dict(payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:
+            return self.to_dict()
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "StageContext":
+            return cls.from_dict(payload)
 logger = structlog.get_logger(__name__)
 _STATE_SERIALISE_COUNTER = Counter(
     "medical_kg_pipeline_state_serialise_total",
@@ -132,6 +586,7 @@ class GraphWriteReceipt:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@attr_define(slots=True)
 @pydantic_dataclass(config=ConfigDict(validate_assignment=True))
 class StageContext:
     """Immutable context shared across stage boundaries."""
@@ -199,14 +654,7 @@ class StageResultSnapshot:
     error: str | None = attrs_field(default=None)
 
     def as_dict(self) -> dict[str, Any]:
-        return {
-            "stage": self.stage,
-            "stage_type": self.stage_type,
-            "attempts": self.attempts,
-            "duration_ms": self.duration_ms,
-            "output_count": self.output_count,
-            "error": self.error,
-        }
+        return attr_asdict(self)
 
 
 @define(slots=True, frozen=True)
@@ -266,6 +714,7 @@ class PipelineStateSnapshot:
     metadata: dict[str, Any]
     stage_results: dict[str, StageResultSnapshot]
     job_id: str | None
+    pdf_tracker: PDFStateTracker
     pdf_gate: PdfGateState
 
 
@@ -277,6 +726,38 @@ class PipelineStateValidationError(ValueError):
         self.rule = rule
 
 
+if PYDANTIC_AVAILABLE:
+
+    class PipelineStateEnvelope(BaseModel):
+        """Pydantic schema enforcing PipelineState invariants."""
+
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+
+        context: StageContext
+        adapter_request: AdapterRequest
+        payload: dict[str, Any] = Field(default_factory=dict)
+        payloads: tuple[RawPayload, ...] = ()
+        document: Document | None = None
+        chunks: tuple[Chunk, ...] = ()
+        embedding_batch: EmbeddingBatch | None = None
+        entities: tuple[Entity, ...] = ()
+        claims: tuple[Claim, ...] = ()
+        index_receipt: IndexReceipt | None = None
+        graph_receipt: GraphWriteReceipt | None = None
+        metadata: dict[str, Any] = Field(default_factory=dict)
+        stage_results: dict[str, StageResultSnapshot] = Field(default_factory=dict)
+        schema_version: str = "v1"
+        job_id: str | None = None
+        pdf_tracker: PDFStateTracker = Field(default_factory=PDFStateTracker)
+
+else:
+
+    class PipelineStateEnvelope:
+        """Fallback schema shim when Pydantic is not installed."""
+
+        @staticmethod
+        def model_validate(payload: Mapping[str, Any]) -> Mapping[str, Any]:  # pragma: no cover - trivial
+            return payload
 class PipelineGateNotReady(RuntimeError):
     """Raised when a gate stage determines processing must pause."""
 
@@ -308,6 +789,7 @@ class PipelineState:
     gate_status: dict[str, bool] = field(default_factory=dict)
     schema_version: str = "v1"
     job_id: str | None = None
+    pdf_tracker: PDFStateTracker = field(default_factory=PDFStateTracker)
     pdf_gate: PdfGateState = field(default_factory=PdfGateState)
     _dirty: bool = field(default=True, init=False, repr=False)
     _cache: _StateCache = field(default_factory=_StateCache, init=False, repr=False)
@@ -315,9 +797,44 @@ class PipelineState:
     _checkpoints: dict[str, PipelineStateSnapshot] = field(default_factory=dict, init=False, repr=False)
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
+    _DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
+        "parse": ("ingest",),
+        "ir-validation": ("ingest", "parse"),
+        "chunk": ("parse",),
+        "embed": ("chunk",),
+        "index": ("embed",),
+        "extract": ("parse",),
+        "knowledge-graph": ("extract",),
+        "pdf-download": ("ingest",),
+        "pdf-gate": ("pdf-download",),
+    }
     _SERIALISATION_CACHE: ClassVar[PipelineStateCache] = PipelineStateCache(ttl_seconds=120.0)
 
     def __post_init__(self) -> None:
+        if PYDANTIC_AVAILABLE:
+            try:
+                PipelineStateEnvelope.model_validate(
+                    {
+                        "context": self.context,
+                        "adapter_request": self.adapter_request,
+                        "payload": self.payload,
+                        "payloads": self.payloads,
+                        "document": self.document,
+                        "chunks": self.chunks,
+                        "embedding_batch": self.embedding_batch,
+                        "entities": self.entities,
+                        "claims": self.claims,
+                        "index_receipt": self.index_receipt,
+                        "graph_receipt": self.graph_receipt,
+                        "metadata": self.metadata,
+                        "stage_results": self.stage_results,
+                        "schema_version": self.schema_version,
+                        "job_id": self.job_id,
+                        "pdf_tracker": self.pdf_tracker,
+                    }
+                )
+            except ValidationError as exc:  # pragma: no cover - defensive guard
+                raise PipelineStateValidationError(str(exc)) from exc
         self._tenant_id = self.context.tenant_id
 
     @classmethod
@@ -342,6 +859,8 @@ class PipelineState:
     # ------------------------------------------------------------------
     def _mark_dirty(self) -> None:
         self._dirty = True
+        self._serialised_cache = None
+        _STATE_MUTATIONS.labels(operation="mutate").inc()
         self._cache = _StateCache()
 
     def is_dirty(self) -> bool:
@@ -377,6 +896,10 @@ class PipelineState:
         }
         clone.schema_version = self.schema_version
         clone.job_id = self.job_id
+        clone.pdf_tracker = copy.deepcopy(self.pdf_tracker)
+        clone._dirty = self._dirty
+        clone._serialised_cache = (
+            copy.deepcopy(self._serialised_cache) if self._serialised_cache is not None else None
         clone.pdf_gate = PdfGateState(
             downloaded=self.pdf_gate.downloaded,
             ir_ready=self.pdf_gate.ir_ready,
@@ -614,6 +1137,9 @@ class PipelineState:
             # state must contain the tuple marker.
             if self.entities is None or self.claims is None:
                 raise ValueError("PipelineState requires extraction outputs before KG stage")
+        elif stage_type == "pdf-gate":
+            if not self.pdf_tracker.downloads:
+                raise ValueError("PDF gate cannot run before any downloads are recorded")
         elif stage_type == "gate":
             self.require_downloads()
         elif stage_type == "download":
@@ -683,6 +1209,24 @@ class PipelineState:
             if not isinstance(output, GraphWriteReceipt):
                 raise TypeError("Knowledge graph stage must return a GraphWriteReceipt")
             self.set_graph_receipt(output)
+        elif stage_type == "pdf-download":
+            assets = output or ()
+            if isinstance(assets, Sequence) and not isinstance(assets, (str, bytes)):
+                for asset in assets:
+                    self.pdf_tracker.record_download(str(asset))
+            else:
+                self.pdf_tracker.record_download(str(assets))
+            self._mark_dirty()
+        elif stage_type == "pdf-gate":
+            decision = getattr(output, "allowed", None)
+            if decision is None:
+                decision = bool(output)
+            reason = getattr(output, "reason", None)
+            self.pdf_tracker.mark_gate(opened=bool(decision), reason=reason)
+            reference = getattr(output, "ledger_reference", None)
+            if reference is not None:
+                self.pdf_tracker.set_ledger_reference(str(reference))
+            self._mark_dirty()
         elif stage_type == "download":
             if not isinstance(output, Sequence) or not all(
                 isinstance(item, DownloadArtifact) for item in output
@@ -712,6 +1256,8 @@ class PipelineState:
 
         self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
         self._mark_dirty()
+        _state_logger.debug(
+            "pipeline_state.stage_applied",
         logger.debug(
             "pipeline_state.stage_output_applied",
             stage=stage_name,
@@ -737,6 +1283,8 @@ class PipelineState:
             return entity_count + claim_count
         if stage_type == "knowledge-graph" and isinstance(output, GraphWriteReceipt):
             return output.nodes_written
+        if stage_type == "pdf-download" and isinstance(output, Sequence):
+            return len(tuple(output))
         if stage_type == "download" and isinstance(output, Sequence):
             return len(output)
         if stage_type == "gate" and isinstance(output, GateDecision):
@@ -774,6 +1322,15 @@ class PipelineState:
             error=error,
         )
         self._mark_dirty()
+        _state_logger.debug(
+            "pipeline_state.stage_metrics_recorded",
+            stage=stage_name,
+            stage_type=snapshot.stage_type,
+            attempts=attempts,
+            duration_ms=duration_ms,
+            output_count=output_count,
+            error=error,
+        )
 
     def mark_stage_failed(
         self,
@@ -895,6 +1452,7 @@ class PipelineState:
             metadata=copy.deepcopy(self.metadata),
             stage_results=stage_payload,
             job_id=self.job_id,
+            pdf_tracker=copy.deepcopy(self.pdf_tracker),
             pdf_gate=PdfGateState(
                 downloaded=self.pdf_gate.downloaded,
                 ir_ready=self.pdf_gate.ir_ready,
@@ -930,6 +1488,7 @@ class PipelineState:
                 name: copy.deepcopy(result) for name, result in snapshot.stage_results.items()
             }
         self.job_id = snapshot.job_id
+        self.pdf_tracker = copy.deepcopy(snapshot.pdf_tracker)
         self.pdf_gate = PdfGateState(
             downloaded=snapshot.pdf_gate.downloaded,
             ir_ready=snapshot.pdf_gate.ir_ready,
@@ -953,9 +1512,13 @@ class PipelineState:
     ) -> dict[str, Any]:
         """Return a metadata snapshot suitable for logging or Kafka payloads."""
 
+        if use_cache and not self._dirty and self._serialised_cache is not None:
+            _STATE_SERIALISATION_LATENCY.labels(format="dict").observe(0.0)
+            return copy.deepcopy(self._serialised_cache)
         if use_cache and not self._dirty and self._cache.payload is not None:
             return copy.deepcopy(self._cache.payload)
 
+        start = time.perf_counter()
         snapshot: dict[str, Any] = {
             "version": self.schema_version,
             "job_id": self.job_id,
@@ -973,6 +1536,7 @@ class PipelineState:
             "metadata": copy.deepcopy(self.metadata),
             "index_receipt": self.index_receipt.metadata if self.index_receipt else None,
             "graph_receipt": self.graph_receipt.metadata if self.graph_receipt else None,
+            "pdf": self.pdf_tracker.as_dict(),
             "download_count": len(self.downloads),
             "gate_status": {name: decision.ready for name, decision in self.gate_decisions.items()},
             "gate_status": dict(self.gate_status),
@@ -991,6 +1555,8 @@ class PipelineState:
             snapshot["stage_results"] = {
                 name: result.as_dict() for name, result in self.stage_results.items()
             }
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="dict").observe(elapsed)
         if self.pdf_gate:
             snapshot["pdf_gate"] = self.pdf_gate.as_dict()
 
@@ -1055,6 +1621,7 @@ class PipelineState:
             payload["index_receipt"] = asdict(self.index_receipt)
         if self.graph_receipt is not None:
             payload["graph_receipt"] = asdict(self.graph_receipt)
+        payload["pdf"] = self.pdf_tracker.as_dict()
         payload["pdf_gate"] = self.pdf_gate.as_dict()
         if self.pdf_assets:
             payload["pdf_assets"] = [attr_asdict(asset) for asset in self.pdf_assets]
@@ -1070,6 +1637,12 @@ class PipelineState:
             or f"state-{id(self)}"
         )
 
+        start = time.perf_counter()
+        payload = self.serialise()
+        encoded = orjson.dumps(payload).decode("utf-8")
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="json").observe(elapsed)
+        return encoded
         return orjson.dumps(self.serialise()).decode("utf-8")
     def to_model(self) -> PipelineStateModel:
         """Return the Pydantic representation for the current state."""
@@ -1102,6 +1675,45 @@ class PipelineState:
 
     def serialise_compressed(self, *, use_cache: bool = True) -> bytes:
         """Compress the JSON snapshot for efficient transport."""
+
+        start = time.perf_counter()
+        encoded = self.serialise_json().encode("utf-8")
+        compressed = zlib.compress(encoded)
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="compressed").observe(elapsed)
+        return compressed
+
+    def serialise_base64(self) -> str:
+        """Return a base64 encoded compressed snapshot."""
+
+        start = time.perf_counter()
+        compressed = self.serialise_compressed()
+        encoded = base64.b64encode(compressed).decode("ascii")
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="base64").observe(elapsed)
+        return encoded
+
+    def persist_with_retry(self, persist: Callable[[dict[str, Any]], None]) -> None:
+        """Persist the current snapshot using tenacity-backed retries."""
+
+        snapshot = self.serialise()
+
+        @retry(
+            reraise=True,
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=0.1, min=0.1, max=1.0),
+            retry=retry_if_exception_type(Exception),
+        )
+        def _attempt(payload: dict[str, Any]) -> None:
+            persist(payload)
+
+        _attempt(snapshot)
+        _STATE_MUTATIONS.labels(operation="persist").inc()
+        _state_logger.debug(
+            "pipeline_state.persisted",
+            tenant_id=self._tenant_id,
+            job_id=self.job_id,
+        )
         if not self._dirty and self._cache.compressed is not None:
             return self._cache.compressed
         json_bytes = self._cache.json_bytes
@@ -1224,6 +1836,7 @@ class PipelineState:
         """Best-effort recovery for pipeline state snapshots."""
 
         if isinstance(payload, (bytes, bytearray)):
+            decoded = zlib.decompress(bytes(payload)).decode("utf-8")
             decoded = zlib.decompress(bytes(payload))
             recovered = orjson.loads(decoded)
         elif isinstance(payload, str):
@@ -1232,6 +1845,7 @@ class PipelineState:
             except (ValueError, TypeError):
                 recovered = orjson.loads(payload)
             else:
+                decoded = zlib.decompress(compressed).decode("utf-8")
                 decoded = zlib.decompress(compressed)
                 recovered = orjson.loads(decoded)
         else:
@@ -1248,6 +1862,13 @@ class PipelineState:
         state.schema_version = str(recovered.get("version", "v1"))
         state.job_id = recovered.get("job_id") or context.job_id
         state.metadata.update(dict(recovered.get("metadata", {})))
+        pdf_payload = recovered.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            state.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            state.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
+            state.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
+            state.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
+            state.pdf_tracker.ledger_reference = pdf_payload.get("ledger_reference")
         stage_payload = recovered.get("stage_results")
         if isinstance(stage_payload, Mapping):
             for name, payload_data in stage_payload.items():
@@ -1390,6 +2011,13 @@ class PipelineState:
                     )
         self.job_id = payload.get("job_id") or self.context.job_id
         self.schema_version = str(payload.get("version", self.schema_version))
+        pdf_payload = payload.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            self.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            self.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
+            self.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
+            self.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
+            self.pdf_tracker.ledger_reference = pdf_payload.get("ledger_reference")
         self._dirty = True
         self._cache = _StateCache()
         self.clear_checkpoints()
@@ -1450,12 +2078,41 @@ class PipelineState:
     def validate_transition(self, stage_type: str) -> None:
         """Ensure the state is ready for the requested stage transition."""
 
+        for dependency, satisfied in self._dependency_status(stage_type).items():
+            if not satisfied:
+                _STATE_DEPENDENCY_FAILURES.labels(stage_type=stage_type).inc()
+                raise PipelineStateValidationError(
+                    f"Stage '{stage_type}' requires '{dependency}' to complete before execution"
+                )
         try:
             self.ensure_ready_for(stage_type)
         except ValueError as exc:
             raise PipelineStateValidationError(
                 f"State missing prerequisites for stage '{stage_type}': {exc}"
             ) from exc
+
+    def _dependency_status(self, stage_type: str) -> dict[str, bool]:
+        requirements = self._DEPENDENCIES.get(stage_type, ())
+        if not requirements:
+            return {}
+        statuses: dict[str, bool] = {}
+        known_stage_types = {result.stage_type for result in self.stage_results.values()}
+        for requirement in requirements:
+            if requirement == "ingest":
+                statuses[requirement] = bool(self.payloads)
+            elif requirement == "parse":
+                statuses[requirement] = self.document is not None
+            elif requirement == "chunk":
+                statuses[requirement] = bool(self.chunks)
+            elif requirement == "embed":
+                statuses[requirement] = self.embedding_batch is not None
+            elif requirement == "extract":
+                statuses[requirement] = bool(self.entities or self.claims)
+            elif requirement == "pdf-download":
+                statuses[requirement] = bool(self.pdf_tracker.downloads)
+            else:
+                statuses[requirement] = requirement in known_stage_types
+        return statuses
 
 
 @runtime_checkable

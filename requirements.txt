@@ -195,9 +195,9 @@ conllu>=6.0.0
 coverage>=7.10.7
 cymem>=2.0.11
 cython>=3.1.4
-dagster==1.5.14
-dagster-pipes==1.5.14
-dagster-postgres==0.21.14
+dagster>=1.11.13
+dagster-pipes>=1.11.13
+dagster-postgres>=0.29.13
 dagster-shared==1.5.14
 dash>=3.2.0
 dash-bootstrap-components>=2.0.4

@@ -1458,6 +1458,18 @@ def get_gateway_service() -> GatewayService:
             cache_limit=embedding_cfg.persister.cache_limit,
             hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
         _service = GatewayService(
             events=events,
             orchestrator=_orchestrator,

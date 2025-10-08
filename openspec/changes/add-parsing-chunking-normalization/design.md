@@ -13,7 +13,7 @@ The existing chunking/parsing architecture has evolved organically, resulting in
 This creates technical debt and quality issues: chunks split mid-sentence, tables fractured, clinical boundaries ignored, provenance incomplete. The system needs a **unified architecture** that:
 
 1. Respects clinical document structure via **profiles**
-2. Delegates to proven libraries (LangChain, LlamaIndex, scispaCy)
+2. Delegates to proven libraries (LangChain, LlamaIndex, HuggingFace)
 3. Enforces **MinerU two-phase gate** for PDFs (no CPU fallbacks)
 4. Produces **span-grounded chunks** with complete provenance
 
@@ -23,7 +23,7 @@ This creates technical debt and quality issues: chunks split mid-sentence, table
 
 - **Single Chunking Interface**: `ChunkerPort` protocol for all strategies
 - **Profile-Based Chunking**: Declarative clinical domain rules (IMRaD, Registry, SPL, Guideline)
-- **Library Delegation**: Replace 8 custom chunkers with LangChain/LlamaIndex/scispaCy wrappers
+- **Library Delegation**: Replace 8 custom chunkers with LangChain/LlamaIndex/HuggingFace wrappers
 - **MinerU Gate Enforcement**: Explicit two-phase PDF workflow (`pdf_downloaded` → `pdf_ir_ready` → `postpdf-start`)
 - **Span Provenance**: Every chunk has `doc_id`, `char_offsets`, `section_label`, `intent_hint`, `page_bbox`
 - **Table Fidelity**: Preserve HTML when rectangularization uncertain
@@ -111,7 +111,7 @@ respect_boundaries:
   - heading  # Never split across IMRaD section boundaries
   - figure_caption
   - table
-sentence_splitter: scispacy  # or "syntok"
+sentence_splitter: huggingface  # or "syntok"
 preserve_tables_as_html: true
 filters:
   - drop_boilerplate
@@ -155,7 +155,7 @@ metadata:
 |---------|----------|----------|
 | **langchain-text-splitters** | Default recursive character/token splitting | `CustomSplitter`, `RecursiveSplitter` |
 | **LlamaIndex node parsers** | Sentence/semantic-window chunking for coherence | `SemanticSplitter`, `CoherenceSplitter` |
-| **scispaCy** | Biomedical-aware sentence segmentation | `BiomedicalSentenceSplitter` |
+| **HuggingFace** | Biomedical-aware sentence segmentation | `BiomedicalSentenceSplitter` |
 | **syntok** | Fast, robust sentence splitting (non-biomedical) | `SimpleSentenceSplitter` |
 | **transformers / tiktoken** | Token counting aligned with Qwen3 | Custom tokenizers |
 | **unstructured** | XML/HTML parsing (non-PDF) | `XMLParser`, `HTMLParser` |
@@ -446,16 +446,16 @@ class Chunk(BaseModel):
 - Iterate profiles based on quantitative feedback
 - Version profiles in Git (e.g., `pmc-imrad-v2.yaml`) for reproducibility
 
-### Risk 2: scispaCy Performance Overhead
+### Risk 2: Hugging Face Tokenizer Availability
 
-**Risk**: scispaCy is 5-10x slower than syntok, may bottleneck high-volume ingestion
+**Risk**: Environments without the configured Hugging Face tokenizer may fall back to heuristic splitting, degrading accuracy
 
 **Mitigation**:
 
-- Use syntok for high-throughput batches (e.g., bulk PMC ingestion)
-- Use scispaCy only when biomedical sentence boundaries are critical (e.g., Methods→Results transitions)
-- Profile-level flag: `sentence_splitter: syntok` vs `sentence_splitter: scispacy`
-- Benchmark both on representative corpus, choose based on quality/speed trade-off
+- Document the `MEDICAL_KG_SENTENCE_MODEL` requirement in deployment guides
+- Bundle tokenizer download in `scripts/install_chunking_dependencies.sh`
+- Validate availability via `scripts/check_chunking_dependencies.py` before release
+- Provide syntok as a high-throughput fallback for less sensitive domains
 
 ### Risk 3: MinerU Gate Requires Workflow Changes
 
@@ -470,7 +470,7 @@ class Chunk(BaseModel):
 
 ### Risk 4: Library Version Management
 
-**Risk**: LangChain/LlamaIndex/scispaCy may introduce breaking changes in future versions
+**Risk**: LangChain/LlamaIndex/Hugging Face may introduce breaking changes in future versions
 
 **Mitigation**:
 
@@ -487,7 +487,7 @@ class Chunk(BaseModel):
 
 **Day 1-3**: Foundation
 
-- [ ] Install dependencies (langchain-text-splitters, llama-index-core, scispacy, syntok, unstructured)
+- [ ] Install dependencies (langchain-text-splitters, llama-index-core, transformers, syntok, unstructured, pydantic)
 - [ ] Create `ChunkerPort` interface + runtime registry
 - [ ] Define `Chunk` Pydantic model with provenance fields
 
@@ -495,7 +495,7 @@ class Chunk(BaseModel):
 
 - [ ] Implement `LangChainChunker` (recursive character/token splitting)
 - [ ] Implement `LlamaIndexChunker` (sentence window)
-- [ ] Implement `SciSpaCySentenceSegmenter`
+- [ ] Implement `HuggingFaceSentenceSegmenter`
 - [ ] Implement `SyntokSentenceSegmenter`
 - [ ] Implement `UnstructuredParser` (XML/HTML)
 
@@ -509,7 +509,7 @@ class Chunk(BaseModel):
 
 - [ ] **Commit 1**: Add ChunkerPort + delete `custom_splitters.py` (8 custom chunkers)
 - [ ] **Commit 2**: Add LangChain wrapper + delete `semantic_splitter.py`, `sliding_window.py`
-- [ ] **Commit 3**: Add scispaCy/syntok wrappers + delete `sentence_splitters.py`
+- [ ] **Commit 3**: Add Hugging Face/syntok wrappers + delete `sentence_splitters.py`
 - [ ] **Commit 4**: Add unstructured wrapper + delete `xml_parser.py`
 - [ ] **Commit 5**: Harden MinerU gate + delete `pdf_parser.py`
 - [ ] **Commit 6**: Add profiles + delete adapter `.split_document()` methods
@@ -576,7 +576,7 @@ chunker_type: str  # "langchain_recursive", "llamaindex_sentence_window"
 target_tokens: int  # Target chunk size in tokens (e.g., 450)
 overlap_tokens: int  # Overlap between chunks (e.g., 50)
 respect_boundaries: list[str]  # ["heading", "table", "figure_caption", "section"]
-sentence_splitter: str  # "scispacy" or "syntok"
+sentence_splitter: str  # "huggingface" or "syntok"
 preserve_tables_as_html: bool  # true to keep HTML when uncertain
 filters: list[str]  # ["drop_boilerplate", "exclude_references", "deduplicate_page_furniture"]
 metadata:
@@ -747,7 +747,7 @@ POSTPDF_START_TRIGGERED_TOTAL = Counter(
 
 - LangChain recursive splitter (4 tests: boundary respect, overlap, offset accuracy, token budget)
 - LlamaIndex sentence window (3 tests: window size, coherence, offset accuracy)
-- scispaCy segmenter (3 tests: biomedical abbreviations, sentence boundaries, offset accuracy)
+- HuggingFace segmenter (3 tests: biomedical abbreviations, sentence boundaries, offset accuracy)
 - syntok segmenter (2 tests: fast throughput, messy punctuation)
 - Unstructured parser (3 tests: JATS XML, SPL XML, HTML)
 
@@ -802,7 +802,7 @@ POSTPDF_START_TRIGGERED_TOTAL = Counter(
 **Performance Benchmarks**:
 
 - Chunking throughput ≥100 docs/sec for non-PDF sources
-- scispaCy vs syntok throughput ratio ~1:10 (syntok 10x faster)
+- HuggingFace vs syntok throughput ratio ~1:10 (syntok 10x faster)
 - Memory usage <500MB for batches of 100 documents
 
 **Regression Tests**:
@@ -861,8 +861,8 @@ git push origin rollback-chunking-normalization
 1. **Profile Tuning**: What's the optimal `target_tokens` for IMRaD vs Registry profiles?
    - **Answer**: Start with 450 for literature, 300 for registry; tune based on retrieval Recall@10
 
-2. **scispaCy vs syntok**: When is biomedical-aware sentence segmentation worth the 10x performance cost?
-   - **Answer**: Use scispaCy for Methods→Results transitions, syntok for bulk ingestion
+2. **HuggingFace vs syntok**: When is biomedical-aware sentence segmentation worth the 10x performance cost?
+   - **Answer**: Use HuggingFace models for Methods→Results transitions, syntok for bulk ingestion
 
 3. **Auto `postpdf-start`**: Should Dagster sensor auto-trigger after fixed delay or require manual approval?
    - **Answer**: Configurable delay (default 5 min), with manual override for quality-critical sources
@@ -880,7 +880,7 @@ git push origin rollback-chunking-normalization
 This design replaces fragmented, bespoke chunking/parsing with a **unified, library-based architecture** that:
 
 - **Respects clinical structure** via profiles (IMRaD, LOINC, registry, guideline)
-- **Delegates to proven libraries** (LangChain, LlamaIndex, scispaCy) reducing code by 43%
+- **Delegates to proven libraries** (LangChain, LlamaIndex, HuggingFace) reducing code by 43%
 - **Enforces GPU-only policy** for MinerU with explicit two-phase gate
 - **Produces span-grounded chunks** with complete provenance (offsets, section labels, intent hints)
 - **Preserves table fidelity** (HTML when uncertainty high)

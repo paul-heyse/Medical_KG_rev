@@ -9,6 +9,13 @@ from .configuration import (
     ResiliencePolicyConfig,
     ResiliencePolicyLoader,
 )
+from .runtime import (
+    DagsterOrchestrator,
+    DagsterRunResult,
+    StageFactory,
+    StageResolutionError,
+    submit_to_dagster,
+)
 
 __all__ = [
     "GateCondition",
@@ -18,4 +25,9 @@ __all__ = [
     "ResiliencePolicy",
     "ResiliencePolicyConfig",
     "ResiliencePolicyLoader",
+    "DagsterOrchestrator",
+    "DagsterRunResult",
+    "StageFactory",
+    "StageResolutionError",
+    "submit_to_dagster",
 ]

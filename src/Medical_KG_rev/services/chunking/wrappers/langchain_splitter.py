@@ -46,7 +46,7 @@ class LangChainChunker(BaseProfileChunker):
         return len(self._tokenizer.encode(text))
 
     def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
-        groups = self._prepare_groups(document)
+        filtered_document, groups = self._prepare_groups(document)
         chunk_texts: List[str] = []
         chunk_to_group: List[int] = []
         for index, group in enumerate(groups):
@@ -57,7 +57,7 @@ class LangChainChunker(BaseProfileChunker):
             chunk_texts.extend(splits)
             chunk_to_group.extend([index] * len(splits))
         return self._assemble(
-            document=document,
+            document=filtered_document,
             groups=groups,
             chunk_texts=chunk_texts,
             chunk_to_group_index=chunk_to_group,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Sequence
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
@@ -87,14 +88,27 @@ def build_chunk(
     else:
         start = doc_offsets[0]
         end = doc_offsets[-1] + 1
+    section_label = ""
+    if section and section.title:
+        section_label = section.title.strip()
+    resolved_metadata: dict[str, Any] = {"chunking_profile": profile_name}
+    if metadata:
+        resolved_metadata.update(metadata)
+    resolved_metadata.setdefault("source_system", document.source)
+    resolved_metadata.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+    resolved_metadata.setdefault("chunker_version", "unknown")
+    intent_value = intent_hint or ""
+    section_metadata = getattr(section, "metadata", None)
+    if isinstance(section_metadata, dict):
+        resolved_metadata.setdefault("section_metadata", section_metadata)
     return Chunk(
         chunk_id=f"{document.id}:{uuid.uuid4().hex}",
         doc_id=document.id,
         text=text,
         char_offsets=(start, end),
-        section_label=section.title if section else None,
-        intent_hint=intent_hint,
-        metadata=metadata or {"profile": profile_name},
+        section_label=section_label,
+        intent_hint=intent_value,
+        metadata=resolved_metadata,
     )
 
 
@@ -106,6 +120,7 @@ def assemble_chunks(
     chunk_texts: Sequence[str],
     chunk_to_group_index: Sequence[int],
     intent_hint_provider: Callable[[Section | None], str | None],
+    metadata_provider: Callable[[Sequence[_BlockContext]], dict[str, Any]] | None = None,
 ) -> list[Chunk]:
     """Materialize chunks based on generated text pieces."""
 
@@ -130,6 +145,7 @@ def assemble_chunks(
         end_index = start_index + len(text)
         mapping_slice = mapping[start_index:end_index]
         section = contexts[0].section if contexts else None
+        metadata = metadata_provider(contexts) if metadata_provider else None
         chunks.append(
             build_chunk(
                 document=document,
@@ -138,16 +154,25 @@ def assemble_chunks(
                 mapping=mapping_slice,
                 section=section,
                 intent_hint=intent_hint_provider(section),
+                metadata=metadata,
             )
         )
     return chunks
 
 
 def identity_intent_provider(section: Section | None) -> str | None:
-    return None if section is None else section.metadata.get("intent")  # type: ignore[return-value]
+    if section is None:
+        return None
+    metadata = getattr(section, "metadata", None)
+    if isinstance(metadata, dict):
+        return metadata.get("intent")
+    return None
 
 
 def default_intent_provider(section: Section | None) -> str | None:
     if section is None:
         return None
-    return section.metadata.get("intent_hint") if isinstance(section.metadata, dict) else None
+    metadata = getattr(section, "metadata", None)
+    if isinstance(metadata, dict):
+        return metadata.get("intent_hint")
+    return None

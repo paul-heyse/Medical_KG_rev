@@ -2,15 +2,39 @@
 
 from .kafka import KafkaClient, KafkaMessage
 from .ledger import JobLedger, JobLedgerEntry, JobTransition
-from .config_manager import PipelineConfigManager
-from .orchestrator import OrchestrationError, Orchestrator
-from .pipeline import (
-    ParallelExecutor,
-    PipelineConfig,
-    PipelineContext,
-    PipelineDefinition,
-    PipelineExecutor,
-    ProfileDefinition,
+from .dagster import (
+    DagsterOrchestrator,
+    DagsterRunResult,
+    PipelineConfigLoader,
+    PipelineTopologyConfig,
+    ResiliencePolicy,
+    ResiliencePolicyConfig,
+    ResiliencePolicyLoader,
+    StageFactory,
+    StageResolutionError,
+    submit_to_dagster,
+)
+from .haystack import (
+    HaystackChunker,
+    HaystackEmbedder,
+    HaystackIndexWriter,
+    HaystackRetriever,
+    HaystackSparseExpander,
+)
+from .stages import StageFailure, StageRegistry
+from .stages.contracts import (
+    ChunkStage,
+    EmbedStage,
+    EmbeddingBatch,
+    EmbeddingVector,
+    ExtractStage,
+    GraphWriteReceipt,
+    IngestStage,
+    IndexReceipt,
+    IndexStage,
+    KGStage,
+    ParseStage,
+    StageContext,
 )
 from .profiles import PipelineProfile, ProfileDetector, ProfileManager
 from .stages import StageRegistry
@@ -33,6 +57,7 @@ __all__ = [
     "JobLedger",
     "JobLedgerEntry",
     "JobTransition",
+    "KGStage",
     "KafkaClient",
     "KafkaMessage",
     "MappingWorker",

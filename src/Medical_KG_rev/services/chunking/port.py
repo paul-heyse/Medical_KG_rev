@@ -14,10 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Protocol
 
 from Medical_KG_rev.models.ir import Document
-
-if False:  # pragma: no cover - imported for typing only
-    from typing import Type
-
+from .validation import ensure_valid_chunks
 
 @dataclass(slots=True)
 class Chunk:
@@ -27,8 +24,8 @@ class Chunk:
     doc_id: str
     text: str
     char_offsets: tuple[int, int]
-    section_label: str | None = None
-    intent_hint: str | None = None
+    section_label: str
+    intent_hint: str
     page_bbox: dict[str, Any] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -40,7 +37,10 @@ class ChunkerPort(Protocol):
         """Split *document* according to the configuration for *profile*."""
 
 
-CHUNKER_REGISTRY: Dict[str, Callable[..., ChunkerPort]] = {}
+ChunkerFactory = Callable[..., ChunkerPort]
+
+
+CHUNKER_REGISTRY: Dict[str, ChunkerFactory] = {}
 
 
 class UnknownChunkerError(RuntimeError):
@@ -51,7 +51,13 @@ class ChunkerRegistrationError(RuntimeError):
     """Raised when attempting to register a duplicate chunker name."""
 
 
-def register_chunker(name: str, factory: Callable[..., ChunkerPort]) -> None:
+def _coerce_factory(factory: ChunkerFactory | type[ChunkerPort]) -> ChunkerFactory:
+    if isinstance(factory, type):
+        return lambda **kwargs: factory(**kwargs)  # type: ignore[misc]
+    return factory
+
+
+def register_chunker(name: str, factory: ChunkerFactory | type[ChunkerPort]) -> None:
     """Register *factory* for *name*.
 
     The registry is intentionally simple: it stores callables that return
@@ -59,9 +65,10 @@ def register_chunker(name: str, factory: Callable[..., ChunkerPort]) -> None:
     heavy imports until they are actually required.
     """
 
+    coerced = _coerce_factory(factory)
     if name in CHUNKER_REGISTRY:
         raise ChunkerRegistrationError(f"Chunker '{name}' already registered")
-    CHUNKER_REGISTRY[name] = factory
+    CHUNKER_REGISTRY[name] = coerced
 
 
 def get_chunker(name: str, **factory_kwargs: Any) -> ChunkerPort:
@@ -93,7 +100,9 @@ def chunk_document(
     profile = profile_loader(profile_name)
     chunker_type = profile["chunker_type"]
     chunker = get_chunker(chunker_type, profile=profile)
-    return chunker.chunk(document, profile=profile_name)
+    chunks = chunker.chunk(document, profile=profile_name)
+    ensure_valid_chunks(chunks)
+    return chunks
 
 
 def reset_registry() -> None:

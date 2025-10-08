@@ -1,12 +1,12 @@
 name: spl-label
 domain: label
-chunker_type: simple
+chunker_type: spl_label
 target_tokens: 400
 overlap_tokens: 30
 respect_boundaries:
   - section
   - table
-sentence_splitter: scispacy
+sentence_splitter: huggingface
 preserve_tables_as_html: true
 filters:
   - drop_boilerplate
@@ -17,3 +17,8 @@ metadata:
     LOINC:42348-3 Dosage: dose
     LOINC:39245-5 Warnings: safety
     LOINC:43995-0 Adverse Reactions: ae
+  loinc_map:
+    Indications: "34089-3"
+    Dosage: "42348-3"
+    Warnings: "39245-5"
+    Adverse Reactions: "43995-0"

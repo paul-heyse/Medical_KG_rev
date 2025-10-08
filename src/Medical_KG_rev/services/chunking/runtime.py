@@ -87,14 +87,24 @@ def build_chunk(
     else:
         start = doc_offsets[0]
         end = doc_offsets[-1] + 1
+    section_label = ""
+    if section and section.title:
+        section_label = section.title.strip()
+    resolved_metadata: dict[str, Any] = {"chunking_profile": profile_name}
+    if metadata:
+        resolved_metadata.update(metadata)
+    intent_value = intent_hint or ""
+    section_metadata = getattr(section, "metadata", None)
+    if isinstance(section_metadata, dict):
+        resolved_metadata.setdefault("section_metadata", section_metadata)
     return Chunk(
         chunk_id=f"{document.id}:{uuid.uuid4().hex}",
         doc_id=document.id,
         text=text,
         char_offsets=(start, end),
-        section_label=section.title if section else None,
-        intent_hint=intent_hint,
-        metadata=metadata or {"profile": profile_name},
+        section_label=section_label,
+        intent_hint=intent_value,
+        metadata=resolved_metadata,
     )
 
 
@@ -144,10 +154,18 @@ def assemble_chunks(
 
 
 def identity_intent_provider(section: Section | None) -> str | None:
-    return None if section is None else section.metadata.get("intent")  # type: ignore[return-value]
+    if section is None:
+        return None
+    metadata = getattr(section, "metadata", None)
+    if isinstance(metadata, dict):
+        return metadata.get("intent")
+    return None
 
 
 def default_intent_provider(section: Section | None) -> str | None:
     if section is None:
         return None
-    return section.metadata.get("intent_hint") if isinstance(section.metadata, dict) else None
+    metadata = getattr(section, "metadata", None)
+    if isinstance(metadata, dict):
+        return metadata.get("intent_hint")
+    return None

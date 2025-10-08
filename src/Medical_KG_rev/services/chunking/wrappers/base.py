@@ -48,7 +48,7 @@ class BaseProfileChunker(ChunkerPort):
             return intent_map[section.title]
         return default_intent_provider(section)
 
-    def _sentence_separator(self) -> Callable[[str], list[str]]:
+    def _sentence_separator(self) -> Callable[[str], list[tuple[int, int, str]]]:
         from ..sentence_splitters import get_sentence_splitter
 
         splitter_name = self.profile.get("sentence_splitter", "syntok")

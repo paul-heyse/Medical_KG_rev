@@ -29,7 +29,8 @@ class SimpleChunker(BaseProfileChunker):
             sentences: list[str] = []
             for ctx in group:
                 if ctx.text:
-                    sentences.extend(self._sentence_split(ctx.text))
+                    for _, _, sentence in self._sentence_split(ctx.text):
+                        sentences.append(sentence)
             if not sentences:
                 continue
             current: list[str] = []

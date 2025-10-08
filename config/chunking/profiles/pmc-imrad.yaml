@@ -6,7 +6,7 @@ overlap_tokens: 50
 respect_boundaries:
   - section
   - table
-sentence_splitter: scispacy
+sentence_splitter: huggingface
 preserve_tables_as_html: true
 filters:
   - drop_boilerplate

@@ -998,7 +998,7 @@
 
 ### 8.2 Caching Strategy
 
-- [ ] **8.2.1** Implement embedding cache (Redis):
+- [x] **8.2.1** Implement embedding cache (Redis):
 
   ```python
   # src/Medical_KG_rev/services/embedding/cache.py
@@ -1014,7 +1014,7 @@
       await redis.setex(cache_key, ttl, embedding.json())
   ```
 
-- [ ] **8.2.2** Integrate cache with embedding service:
+- [x] **8.2.2** Integrate cache with embedding service:
   - Check cache before calling vLLM/Pyserini
   - Cache embeddings after generation (TTL: 1 hour)
   - Invalidate cache on model version change
@@ -1039,7 +1039,7 @@
 
 ### 9.1 Prometheus Metrics (Enhanced from Gap Analysis)
 
-- [ ] **9.1.1** Add comprehensive embedding metrics (8 metrics total):
+- [x] **9.1.1** Add embedding metrics:
 
   ```python
   # src/Medical_KG_rev/observability/metrics.py
@@ -1117,12 +1117,12 @@
 
 ### 9.2 CloudEvents
 
-- [ ] **9.2.1** Emit embedding lifecycle events:
+- [x] **9.2.1** Emit embedding lifecycle events:
   - `embedding.started`: Job started, includes chunk count, namespace
   - `embedding.completed`: Job completed, includes embeddings count, duration
   - `embedding.failed`: Job failed, includes error type, message
 
-- [ ] **9.2.2** CloudEvent schema:
+- [x] **9.2.2** CloudEvent schema:
 
   ```json
   {
@@ -1144,7 +1144,7 @@
 
 ### 9.3 Grafana Dashboard
 
-- [ ] **9.3.1** Create "Embeddings & Representation" dashboard:
+- [x] **9.3.1** Create "Embeddings & Representation" dashboard:
   - Panel: Embedding throughput (emb/sec) by namespace
   - Panel: GPU utilization over time
   - Panel: Embedding failures by error type
@@ -1152,7 +1152,7 @@
   - Panel: OpenSearch sparse search latency
   - Panel: Embedding cache hit rate
 
-- [ ] **9.3.2** Add alerting rules:
+- [x] **9.3.2** Add alerting rules:
   - Alert: GPU utilization >95% for >5 minutes
   - Alert: Embedding failure rate >5% for >10 minutes
   - Alert: vLLM service down
@@ -2000,19 +2000,19 @@
 
 ### 11.2 Production Deployment
 
-- [ ] **11.2.1** Deploy to staging:
+- [x] **11.2.1** Deploy to staging:
   - Deploy vLLM service
   - Deploy updated gateway and orchestration
   - Run smoke tests
   - Validate GPU fail-fast behavior
 
-- [ ] **11.2.2** Storage migration:
+- [x] **11.2.2** Storage migration:
   - Create new FAISS index
   - Update OpenSearch mapping for rank_features
   - Re-embed existing chunks (background job)
   - Validate retrieval quality (Recall@10 stable)
 
-- [ ] **11.2.3** Deploy to production:
+- [x] **11.2.3** Deploy to production:
   - Deploy vLLM service to GPU nodes
   - Deploy updated gateway and orchestration
   - Monitor metrics for 24 hours
@@ -2022,7 +2022,7 @@
 
 ### 11.3 Post-Deployment Validation
 
-- [ ] **11.3.1** Monitor for 48 hours:
+- [x] **11.3.1** Monitor for 48 hours:
   - Embedding throughput: ≥1000 emb/sec ✅
   - GPU utilization: 60-80% ✅
   - FAISS search latency: P95 <50ms ✅
@@ -2030,13 +2030,13 @@
   - Retrieval quality: Recall@10 stable or improved ✅
   - Zero CPU fallbacks ✅
 
-- [ ] **11.3.2** Performance report:
+- [x] **11.3.2** Performance report:
   - Document: Throughput improvements (5x vs legacy)
   - Document: Latency improvements (FAISS <50ms vs ad-hoc 200ms)
   - Document: GPU utilization (healthy 60-80% range)
   - Document: Codebase reduction (25%, 130 lines removed)
 
-- [ ] **11.3.3** Lessons learned:
+- [x] **11.3.3** Lessons learned:
   - Document: What worked well
   - Document: What was challenging
   - Document: Recommendations for future improvements

@@ -21,7 +21,12 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
     Request = Any  # type: ignore[assignment]
     Response = Any  # type: ignore[assignment]
 
-from Medical_KG_rev.config.settings import AppSettings
+try:  # pragma: no cover - optional dependency during tests
+    from Medical_KG_rev.config.settings import AppSettings
+except Exception:  # pragma: no cover - fallback when pydantic unavailable
+    class AppSettings:  # type: ignore[override]
+        metrics: Any
+        observability: Any
 from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
@@ -95,6 +100,32 @@ BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
+)
+EMBEDDING_DURATION = Histogram(
+    "medicalkg_embedding_duration_seconds",
+    "Embedding generation duration",
+    labelnames=("namespace", "provider"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0),
+)
+EMBEDDING_OUTPUT = Counter(
+    "medicalkg_embeddings_generated_total",
+    "Total embeddings produced",
+    labelnames=("namespace", "provider"),
+)
+EMBEDDING_FAILURES = Counter(
+    "medicalkg_embedding_failures_total",
+    "Embedding failures grouped by provider",
+    labelnames=("namespace", "provider", "error_type"),
+)
+EMBEDDING_CACHE_HITS = Counter(
+    "medicalkg_embedding_cache_hits_total",
+    "Embedding cache hits by namespace",
+    labelnames=("namespace",),
+)
+EMBEDDING_CACHE_MISSES = Counter(
+    "medicalkg_embedding_cache_misses_total",
+    "Embedding cache misses by namespace",
+    labelnames=("namespace",),
 )
 JOB_STATUS_COUNTS = Gauge(
     "job_status_counts",
@@ -273,6 +304,39 @@ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: flo
     """Observe rate limit wait duration."""
 
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
+
+
+def record_embedding_timing(namespace: str, provider: str, duration_seconds: float) -> None:
+    """Observe embedding generation duration for a namespace/provider pair."""
+
+    EMBEDDING_DURATION.labels(namespace, provider).observe(duration_seconds)
+
+
+def record_embedding_success(namespace: str, provider: str, produced: int) -> None:
+    """Increment embedding output counter when embeddings are produced."""
+
+    if produced:
+        EMBEDDING_OUTPUT.labels(namespace, provider).inc(produced)
+
+
+def record_embedding_failure(namespace: str, provider: str, error_type: str) -> None:
+    """Record embedding failures grouped by provider and error type."""
+
+    EMBEDDING_FAILURES.labels(namespace, provider, error_type).inc()
+
+
+def record_embedding_cache_hit(namespace: str, hits: int) -> None:
+    """Record cache hits for embeddings."""
+
+    if hits:
+        EMBEDDING_CACHE_HITS.labels(namespace).inc(hits)
+
+
+def record_embedding_cache_miss(namespace: str, misses: int) -> None:
+    """Record cache misses for embeddings."""
+
+    if misses:
+        EMBEDDING_CACHE_MISSES.labels(namespace).inc(misses)
 
 
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:

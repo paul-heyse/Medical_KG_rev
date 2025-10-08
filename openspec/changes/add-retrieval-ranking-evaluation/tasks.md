@@ -34,28 +34,28 @@
 
 ### 1.1 Inventory Existing Retrieval Code (3 tasks)
 
-- [ ] 1.1.1 List all retrieval services
+- [x] 1.1.1 List all retrieval services
   - **Files**: `src/Medical_KG_rev/services/retrieval/*.py`
   - **Expected**: `search.py`, `opensearch.py`, `faiss_query.py`, `fusion.py` (basic)
   - **Action**: Document for enhancement (no removal)
 
-- [ ] 1.1.2 Identify retrieval API endpoints
+- [x] 1.1.2 Identify retrieval API endpoints
   - **Files**: `src/Medical_KG_rev/gateway/rest/routes/retrieval.py`
   - **Expected**: `/v1/search`, `/v1/retrieve`
   - **Action**: Enhance with hybrid parameters (no removal)
 
-- [ ] 1.1.3 Document existing fusion logic (if any)
+- [x] 1.1.3 Document existing fusion logic (if any)
   - **Files**: `src/Medical_KG_rev/services/retrieval/fusion.py`
   - **Expected**: Basic RRF implementation or none
   - **Action**: Enhance with weighted normalization, per-component scores
 
 ### 1.2 Validate No Conflicting Implementations (2 tasks)
 
-- [ ] 1.2.1 Check for duplicate BM25 implementations
+- [x] 1.2.1 Check for duplicate BM25 implementations
   - **Action**: Confirm only one OpenSearch BM25 path exists
   - **Expected**: Single `opensearch.py` implementation
 
-- [ ] 1.2.2 Check for ad-hoc fusion code
+- [x] 1.2.2 Check for ad-hoc fusion code
   - **Action**: Identify any ad-hoc result merging in gateway or orchestration
   - **Expected**: Either centralized fusion or none (ad-hoc to be replaced)
 

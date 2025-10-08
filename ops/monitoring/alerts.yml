@@ -19,3 +19,29 @@ groups:
         annotations:
           summary: "Error rate above 5%"
           description: "Investigate failing requests across the gateway"
+  - name: embedding-service
+    rules:
+      - alert: EmbeddingGPUHighUtilization
+        expr: avg_over_time(gpu_utilization_percent[5m]) > 95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Embedding GPU utilisation exceeds 95%"
+          description: "Check vLLM batch size and node capacity before saturation causes failures."
+      - alert: EmbeddingFailureSpike
+        expr: sum(rate(medicalkg_embedding_failures_total[5m])) by (namespace, provider) > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Embedding failures detected for {{ $labels.namespace }}"
+          description: "Investigate CloudEvents for error_type details and confirm GPU availability."
+      - alert: EmbeddingThroughputDrop
+        expr: sum(rate(medicalkg_embeddings_generated_total[10m])) < 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Embedding throughput dropped below 10 vectors/sec"
+          description: "Check cache hit ratio and vLLM health; throughput degraded below expected baseline."

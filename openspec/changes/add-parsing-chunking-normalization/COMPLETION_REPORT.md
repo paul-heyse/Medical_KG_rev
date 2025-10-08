@@ -297,7 +297,7 @@ openspec validate add-parsing-chunking-normalization --strict
 - **Net Reduction**: 495 lines (51% reduction)
 - **Files**: 10 → 9 (1 fewer file)
 - **Maintenance**: 43% less custom code to maintain
-- **Community Support**: Leverages 5 proven libraries (LangChain, LlamaIndex, scispaCy, syntok, unstructured)
+- **Community Support**: Leverages 5 proven libraries (LangChain, LlamaIndex, Hugging Face tokenizers, syntok, unstructured)
 
 ---
 
@@ -308,12 +308,11 @@ openspec validate add-parsing-chunking-normalization --strict
 ```txt
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4
-en-core-sci-sm @ https://s3-us-west-2.amazonaws.com/ai2-s3-scispacy/releases/en_core_sci_sm-0.5.4/en_core_sci_sm-0.5.4.tar.gz
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0
 transformers>=4.38.0
+pydantic>=2.6.0
 ```
 
 ### Removed

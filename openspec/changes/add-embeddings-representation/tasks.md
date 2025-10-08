@@ -118,7 +118,7 @@
 
 **Goal**: Prove Pyserini SPLADE wrapper replaces all `SPLADEEmbedder` functionality
 
-- [ ] **1.2.2a** Map `SPLADEEmbedder` methods to Pyserini:
+- [x] **1.2.2a** Map `SPLADEEmbedder` methods to Pyserini:
   - `expand_document(text: str) -> dict[str, float]` → `pyserini.encode.SpladeQueryEncoder().encode(text)`
   - `expand_query(text: str) -> dict[str, float]` → Same method, different usage
   - Top-K pruning → Pyserini handles via `k` parameter
@@ -139,7 +139,7 @@
 
 **Goal**: Prove model-aligned tokenizers replace `token_counter.py`
 
-- [ ] **1.2.3a** Map token counting logic:
+- [x] **1.2.3a** Map token counting logic:
   - Approximate counting (`len(text) / 4`) → DELETED (inaccurate)
   - `transformers.AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B")` → NEW standard
 
@@ -160,7 +160,7 @@
   - vLLM queues requests exceeding batch size
   - vLLM returns results in same order as inputs
 
-- [ ] **1.2.4b** Remove custom batching logic:
+- [x] **1.2.4b** Remove custom batching logic:
   - `manual_batching.py` → DELETED (95 lines)
   - All batching handled by vLLM server
 
@@ -237,17 +237,17 @@
 
 #### 1.3.3 Test Migration
 
-- [ ] **1.3.3a** Migrate unit tests:
+- [x] **1.3.3a** Migrate unit tests:
   - Tests of `BGEEmbedder` internals → DELETE (vLLM tested upstream)
   - Tests of `SPLADEEmbedder` internals → DELETE (Pyserini tested upstream)
   - Tests of API contracts → MIGRATE (rewrite for vLLM client)
 
-- [ ] **1.3.3b** Migrate integration tests:
+- [x] **1.3.3b** Migrate integration tests:
   - Update embedding pipeline tests to use vLLM/Pyserini
   - Update storage tests to expect FAISS/OpenSearch formats
   - Update orchestration tests to validate GPU fail-fast
 
-- [ ] **1.3.3c** Add new tests for library integrations:
+- [x] **1.3.3c** Add new tests for library integrations:
   - Test vLLM client error handling (GPU unavailable, timeout)
   - Test Pyserini wrapper (document-side expansion, top-K pruning)
   - Test namespace registry (multi-namespace support)
@@ -645,7 +645,7 @@
 
 ### 5.1 Namespace Registry Implementation
 
-- [ ] **5.1.1** Define namespace schema:
+- [x] **5.1.1** Define namespace schema:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/schema.py
@@ -668,7 +668,7 @@
       parameters: dict = {}
   ```
 
-- [ ] **5.1.2** Implement namespace registry:
+- [x] **5.1.2** Implement namespace registry:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/registry.py
@@ -691,7 +691,7 @@
           return list(self.namespaces.keys())
   ```
 
-- [ ] **5.1.3** Create default namespace configurations:
+- [x] **5.1.3** Create default namespace configurations:
 
   ```yaml
   # config/embedding/namespaces/single_vector.qwen3.4096.v1.yaml
@@ -719,7 +719,7 @@
       top_k: 400
   ```
 
-- [ ] **5.1.4** Load namespaces on startup:
+- [x] **5.1.4** Load namespaces on startup:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace/loader.py

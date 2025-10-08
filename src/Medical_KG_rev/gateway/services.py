@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
@@ -10,20 +9,15 @@ from time import perf_counter
 from typing import Any
 
 import structlog
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from aiolimiter import AsyncLimiter
+from pybreaker import CircuitBreaker
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..auth.scopes import Scopes
+from ..observability.events import record_business_event
 from ..observability.metrics import observe_job_duration
 from ..config.settings import get_settings
 from ..orchestration import (
@@ -57,13 +51,20 @@ from ..services.embedding.persister import (
 )
 from ..services.embedding.registry import EmbeddingModelRegistry
 from ..services.embedding.telemetry import EmbeddingTelemetry, StandardEmbeddingTelemetry
-from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
+from ..services.retrieval.chunking import ChunkingService
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
-from Medical_KG_rev.embeddings.ports import (
-    EmbeddingRecord,
-    EmbeddingRequest as AdapterEmbeddingRequest,
+from .coordinators import (
+    ChunkingCoordinator,
+    ChunkingRequest as CoordinatorChunkingRequest,
+    ChunkingResult,
+    CoordinatorConfig,
+    CoordinatorError,
+    EmbeddingCoordinator,
+    EmbeddingRequest as CoordinatorEmbeddingRequest,
+    EmbeddingResult,
+    JobLifecycleManager,
 )
 from .models import (
     AdapterConfigSchemaView,
@@ -160,14 +161,15 @@ class GatewayService:
     embedding_persister: EmbeddingPersister | None = None
     embedding_persister_settings: PersisterRuntimeSettings | None = None
     embedding_telemetry: EmbeddingTelemetry | None = None
+    job_lifecycle: JobLifecycleManager | None = None
+    chunking_coordinator: ChunkingCoordinator | None = None
+    embedding_coordinator: EmbeddingCoordinator | None = None
 
     def __post_init__(self) -> None:
+        self.job_lifecycle = JobLifecycleManager(self.ledger, self.events)
         if self.stage_factory is None:
             self.stage_factory = _build_stage_factory(self.adapter_manager, self.ledger)
-            self.stage_factory = _build_stage_factory(
-                self.adapter_manager,
-                job_ledger=self.ledger,
-            )
+            
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.namespace_registry is None:
@@ -190,6 +192,28 @@ class GatewayService:
                 settings=settings,
             )
             self.embedding_persister_settings = settings
+        if self.chunking_coordinator is None:
+            self.chunking_coordinator = ChunkingCoordinator(
+                lifecycle=self.job_lifecycle,
+                chunker=self.chunker,
+                config=self._build_coordinator_config("chunking"),
+            )
+        if self.embedding_coordinator is None:
+            if self.namespace_registry is None:
+                raise RuntimeError("Namespace registry not initialised")
+            if self.embedding_persister is None:
+                raise RuntimeError("Embedding persister not initialised")
+            if self.namespace_policy is None:
+                raise RuntimeError("Namespace policy not initialised")
+            self.embedding_coordinator = EmbeddingCoordinator(
+                lifecycle=self.job_lifecycle,
+                registry=self.embedding_registry,
+                namespace_registry=self.namespace_registry,
+                policy=self.namespace_policy,
+                persister=self.embedding_persister,
+                telemetry=self.embedding_telemetry,
+                config=self._build_coordinator_config("embedding", retry_attempts=4),
+            )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -212,6 +236,16 @@ class GatewayService:
             dry_run=settings.dry_run,
         )
         return policy
+
+    def _build_coordinator_config(self, name: str, *, retry_attempts: int = 3) -> CoordinatorConfig:
+        return CoordinatorConfig(
+            name=name,
+            retry_attempts=retry_attempts,
+            retry_wait_base=0.2,
+            retry_wait_max=2.0,
+            breaker=CircuitBreaker(f"{name}-coordinator"),
+            limiter=AsyncLimiter(10, 1),
+        )
 
     def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
         payload = problem.to_response()
@@ -478,185 +512,32 @@ class GatewayService:
         return result
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
-        job_id = self._new_job(request.tenant_id, "chunk")
-        options_payload = request.options if isinstance(request.options, dict) else {}
-        raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
-        if not isinstance(raw_text, str) or not raw_text.strip():
-            detail = ProblemDetail(
-                title="Invalid document payload",
-                status=400,
-                type="https://httpstatuses.com/400",
-                detail="Chunking requests must include a non-empty 'text' field in options",
-                instance=f"/v1/chunk/{request.document_id}",
-            )
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail)
-        metadata = {
-            key: value
-            for key, value in options_payload.items()
-            if key != "text"
-        }
-        profile_hint: str | None = None
-        raw_profile = metadata.get("profile") if isinstance(metadata, dict) else None
-        if isinstance(raw_profile, str) and raw_profile:
-            profile_hint = raw_profile
-        options = ChunkingOptions(
+        if self.chunking_coordinator is None:
+            raise RuntimeError("Chunking coordinator not initialised")
+
+        coordinator_request = CoordinatorChunkingRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=None,
+            metadata={"document_id": request.document_id},
+            document_id=request.document_id,
             strategy=request.strategy,
-            max_tokens=request.chunk_size,
+            chunk_size=request.chunk_size,
             overlap=request.overlap,
-            metadata=metadata,
+            options=request.options,
         )
-        chunker = self.chunker or ChunkingService(stage_factory=self.stage_factory)
         try:
-            raw_chunks = chunker.chunk(
-                request.tenant_id,
-                request.document_id,
-                raw_text,
-                options,
-            )
-        except ProfileNotFoundError as exc:
-            detail = ProblemDetail(
-                title="Chunking profile not found",
-                status=400,
-                type="https://medical-kg/errors/chunking-profile-not-found",
-                detail=str(exc),
-                extensions={"available_profiles": list(getattr(exc, "available", []))},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ProfileNotFoundError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except TokenizerMismatchError as exc:
-            detail = ProblemDetail(
-                title="Tokenizer mismatch",
-                status=500,
-                type="https://medical-kg/errors/tokenizer-mismatch",
-                detail=str(exc),
-            )
-            record_chunking_failure(profile_hint or "unknown", "TokenizerMismatchError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkingFailedError as exc:
-            message = exc.detail or str(exc) or "Chunking process failed"
-            detail = ProblemDetail(
-                title="Chunking failed",
-                status=500,
-                type="https://medical-kg/errors/chunking-failed",
-                detail=message,
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkingFailedError")
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except InvalidDocumentError as exc:
-            detail = ProblemDetail(
-                title="Invalid document payload",
-                status=400,
-                type="https://httpstatuses.com/400",
-                detail=str(exc),
-                instance=f"/v1/chunk/{request.document_id}",
-            )
-            record_chunking_failure(profile_hint or "unknown", "InvalidDocumentError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkerConfigurationError as exc:
-            detail = ProblemDetail(
-                title="Chunker configuration invalid",
-                status=422,
-                type="https://httpstatuses.com/422",
-                detail=str(exc),
-                extensions={"valid_strategies": chunker.available_strategies()},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkerConfigurationError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkingUnavailableError as exc:
-            retry_after = max(1, int(round(exc.retry_after)))
-            detail = ProblemDetail(
-                title="Chunking temporarily unavailable",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=str(exc),
-                extensions={"retry_after": retry_after},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkingUnavailableError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MineruOutOfMemoryError as exc:
-            detail = ProblemDetail(
-                title="MinerU out of memory",
-                status=503,
-                type="https://medical-kg/errors/mineru-oom",
-                detail=str(exc),
-                extensions={"reason": "gpu_out_of_memory"},
-            )
-            record_chunking_failure(profile_hint or "unknown", "MineruOutOfMemoryError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MineruGpuUnavailableError as exc:
-            detail = ProblemDetail(
-                title="MinerU GPU unavailable",
-                status=503,
-                type="https://medical-kg/errors/mineru-gpu-unavailable",
-                detail=str(exc),
-                extensions={"reason": "gpu_unavailable"},
-            )
-            record_chunking_failure(profile_hint or "unknown", "MineruGpuUnavailableError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MemoryError as exc:
-            message = str(exc) or "Chunking operation exhausted available memory"
-            detail = ProblemDetail(
-                title="Chunking resources exhausted",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=message,
-                extensions={"retry_after": 60},
-            )
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except TimeoutError as exc:
-            message = str(exc) or "Chunking operation timed out"
-            detail = ProblemDetail(
-                title="Chunking resources exhausted",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=message,
-                extensions={"retry_after": 30},
-            )
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except RuntimeError as exc:
-            message = str(exc)
-            if "GPU semantic checks" in message:
-                detail = ProblemDetail(
-                    title="GPU unavailable for semantic chunking",
-                    status=503,
-                    type="https://httpstatuses.com/503",
-                    detail=message,
-                    extensions={"reason": "gpu_unavailable"},
-                )
-                self._fail_job(job_id, message)
+            result: ChunkingResult = self.chunking_coordinator(coordinator_request)
+        except CoordinatorError as exc:
+            detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
+            if isinstance(detail, ProblemDetail):
                 raise GatewayError(detail) from exc
-            self._fail_job(job_id, message or "Runtime error during chunking")
             raise
-        chunks: list[DocumentChunk] = []
-        for index, chunk in enumerate(raw_chunks):
-            metadata = dict(chunk.meta)
-            metadata.setdefault("granularity", chunk.granularity)
-            metadata.setdefault("chunker", chunk.chunker)
-            chunks.append(
-                DocumentChunk(
-                    document_id=request.document_id,
-                    chunk_index=index,
-                    content=chunk.body,
-                    metadata=metadata,
-                    token_count=metadata.get("token_count", 0),
-                )
-            )
-        self.ledger.update_metadata(job_id, {"chunks": len(chunks)})
-        self._complete_job(job_id, payload={"chunks": len(chunks)})
-        return chunks
+        observe_job_duration("chunk", result.duration_s)
+        return list(result.chunks)
 
     def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.embedding_coordinator is None:
+            raise RuntimeError("Embedding coordinator not initialised")
         if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
             raise RuntimeError("Embedding components not initialised")
 
@@ -739,17 +620,25 @@ class GatewayService:
             )
             return EmbeddingResponse(namespace=namespace, embeddings=(), metadata=metadata)
 
-        embedder = self.embedding_registry.get(namespace)
-        adapter_request = AdapterEmbeddingRequest(
+        coordinator_request = CoordinatorEmbeddingRequest(
             tenant_id=request.tenant_id,
-            namespace=namespace,
-            texts=texts,
-            ids=ids,
-            correlation_id=correlation_id,
-            metadata=metadata_payload,
+            correlation_id=None,
+            metadata={"namespace": request.namespace},
+            namespace=request.namespace,
+            texts=request.texts,
+            options=request.options,
         )
-
         try:
+            result: EmbeddingResult = self.embedding_coordinator(coordinator_request)
+        except CoordinatorError as exc:
+            detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
+            if isinstance(detail, ProblemDetail):
+                raise GatewayError(detail) from exc
+            raise
+        observe_job_duration("embed", result.duration_s)
+        if result.response is None:
+            raise RuntimeError("Embedding coordinator returned no response")
+        return result.response
             records = embedder.embed_documents(adapter_request)
         except Exception as exc:  # pragma: no cover - network/library error
             detail = ProblemDetail(
@@ -1433,6 +1322,18 @@ def get_gateway_service() -> GatewayService:
             plugin_manager=adapter_manager,
             job_ledger=_ledger,
             pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

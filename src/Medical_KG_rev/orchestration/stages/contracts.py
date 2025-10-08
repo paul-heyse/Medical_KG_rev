@@ -1283,6 +1283,8 @@ class PipelineState:
             return entity_count + claim_count
         if stage_type == "knowledge-graph" and isinstance(output, GraphWriteReceipt):
             return output.nodes_written
+        if stage_type == "download" and isinstance(output, Sequence):
+            return len(output)
         if stage_type == "pdf-download" and isinstance(output, Sequence):
             return len(tuple(output))
         if stage_type == "download" and isinstance(output, Sequence):
@@ -1564,6 +1566,7 @@ class PipelineState:
         payload = model.model_dump(mode="json")
 
         if use_cache:
+            self._cache.payload = copy.deepcopy(snapshot)
             self._serialised_cache = copy.deepcopy(payload)
             self._dirty = False
         serialised = copy.deepcopy(snapshot)
@@ -1676,6 +1679,18 @@ class PipelineState:
     def serialise_compressed(self, *, use_cache: bool = True) -> bytes:
         """Compress the JSON snapshot for efficient transport."""
 
+        if not self._dirty and self._cache.compressed is not None:
+            return self._cache.compressed
+        json_bytes = self._cache.json_bytes
+        if json_bytes is None or self._dirty:
+            json_bytes = orjson.dumps(self.serialise())
+            self._cache.json_bytes = json_bytes
+        start = time.perf_counter()
+        compressed = zlib.compress(json_bytes)
+        duration = time.perf_counter() - start
+        _STATE_SERIALISE_COUNTER.labels(format="compressed").inc()
+        _STATE_SERIALISE_LATENCY.labels(format="compressed").observe(duration)
+        self._cache.compressed = compressed
         start = time.perf_counter()
         encoded = self.serialise_json().encode("utf-8")
         compressed = zlib.compress(encoded)

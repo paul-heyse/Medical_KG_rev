@@ -16,7 +16,7 @@ namespaces:
     batch_size: 64
     requires_gpu: true
     parameters:
-      endpoint: http://vllm-embeddings:8001/v1
+      endpoint: http://vllm-qwen3:8001/v1
       timeout: 60
       max_tokens: 8192
       candidate_batch_sizes:

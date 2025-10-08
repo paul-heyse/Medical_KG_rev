@@ -261,7 +261,7 @@ redis[hiredis]>=5.0.0  # Embedding cache backend
 ```
 
 > vLLM is distributed as the Docker image
-> `ghcr.io/example/vllm-embedding:latest`; it is not installed as a Python
+> `ghcr.io/example/vllm-qwen3-embedding:latest`; it is not installed as a Python
 > dependency.
 
 ### Updated Libraries

@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vllm-embedding
+  name: vllm-qwen3
   labels:
     app: embeddings
 spec:
@@ -21,8 +21,8 @@ spec:
           operator: "Exists"
           effect: "NoSchedule"
       containers:
-        - name: vllm
-          image: registry.example.com/medical-kg/vllm-embedding:latest
+        - name: vllm-qwen3
+          image: registry.example.com/medical-kg/vllm-qwen3:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: MODEL_PATH

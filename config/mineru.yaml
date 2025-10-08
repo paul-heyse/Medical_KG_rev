@@ -1,0 +1,29 @@
+mineru:
+  deployment_mode: "split-container"
+
+  vllm_server:
+    enabled: true
+    base_url: "http://vllm-server:8000"
+    model: "Qwen/Qwen2.5-VL-7B-Instruct"
+    health_check_interval_seconds: 30
+    connection_timeout_seconds: 300
+
+  workers:
+    count: 8
+    backend: "vlm-http-client"
+    cpu_per_worker: 2
+    memory_per_worker_gb: 4
+    batch_size: 4
+    timeout_seconds: 300
+
+  http_client:
+    connection_pool_size: 10
+    keepalive_connections: 5
+    timeout_seconds: 300
+    retry_attempts: 3
+    retry_backoff_multiplier: 1
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      recovery_timeout_seconds: 60
+      success_threshold: 2

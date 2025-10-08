@@ -44,21 +44,21 @@
 
 #### 1.1.2 Dependency Graph Analysis
 
- - [x] **1.1.2a** Map dependencies of legacy embedding code:
-  - Which orchestration stages depend on `BGEEmbedder`?
-  - Which API endpoints expose embedding functionality?
-  - Which storage layers expect legacy embedding formats?
+- [x] **1.1.2a** Map dependencies of legacy embedding code:
+- Which orchestration stages depend on `BGEEmbedder`?
+- Which API endpoints expose embedding functionality?
+- Which storage layers expect legacy embedding formats?
 
- - [x] **1.1.2b** Identify circular dependencies or tight coupling:
+- [x] **1.1.2b** Identify circular dependencies or tight coupling:
 
   ```bash
   pydeps src/Medical_KG_rev/services/embedding/ --show-deps
   ```
 
- - [x] **1.1.2c** Document external library usage by legacy code:
-  - `sentence-transformers` (used by `bge_embedder.py`)
-  - `transformers` (used by `splade_embedder.py`)
-  - Custom batching logic (used by `manual_batching.py`)
+- [x] **1.1.2c** Document external library usage by legacy code:
+- `sentence-transformers` (used by `bge_embedder.py`)
+- `transformers` (used by `splade_embedder.py`)
+- Custom batching logic (used by `manual_batching.py`)
 
 #### 1.1.3 Test Coverage Audit
 
@@ -1038,34 +1038,67 @@
 
 ## Work Stream #9: Monitoring & Observability (Week 3)
 
-### 9.1 Prometheus Metrics
+**Gap Analysis Findings**: Added 8 Prometheus metrics (was 4), CloudEvents schema with GPU metrics, 7 Grafana dashboard panels, token overflow tracking
 
 - [x] **9.1.1** Add embedding metrics:
 
   ```python
   # src/Medical_KG_rev/observability/metrics.py
+  from prometheus_client import Histogram, Counter, Gauge
+
+  # Performance metrics
   EMBEDDING_DURATION = Histogram(
       "medicalkg_embedding_duration_seconds",
       "Embedding generation duration",
-      ["namespace", "provider"]
+      ["namespace", "provider", "tenant_id"],  # ADDED: tenant_id for multi-tenancy
+      buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0]  # ADDED: explicit buckets
   )
 
-  EMBEDDING_THROUGHPUT = Counter(
-      "medicalkg_embeddings_generated_total",
-      "Total embeddings generated",
-      ["namespace", "provider"]
+  EMBEDDING_BATCH_SIZE = Histogram(
+      "medicalkg_embedding_batch_size",
+      "Number of texts per embedding batch",
+      ["namespace"],
+      buckets=[1, 8, 16, 32, 64, 128]
   )
 
+  EMBEDDING_TOKEN_COUNT = Histogram(
+      "medicalkg_embedding_tokens_per_text",
+      "Token count per embedded text",
+      ["namespace"],
+      buckets=[50, 100, 200, 400, 512, 1024]
+  )
+
+  # GPU metrics
   GPU_UTILIZATION = Gauge(
-      "medicalkg_gpu_utilization_percent",
-      "GPU utilization percentage",
-      ["device"]
+      "medicalkg_embedding_gpu_utilization_percent",
+      "GPU utilization during embedding",
+      ["gpu_id", "service"]  # ADDED: service label (vllm, splade)
   )
 
+  GPU_MEMORY_USED = Gauge(
+      "medicalkg_embedding_gpu_memory_bytes",
+      "GPU memory used by embedding service",
+      ["gpu_id", "service"]
+  )
+
+  # Failure metrics
   EMBEDDING_FAILURES = Counter(
       "medicalkg_embedding_failures_total",
-      "Total embedding failures",
-      ["namespace", "error_type"]
+      "Embedding failures by type",
+      ["namespace", "error_type"]  # error_type: gpu_unavailable, token_overflow, timeout
+  )
+
+  TOKEN_OVERFLOW_RATE = Gauge(
+      "medicalkg_embedding_token_overflow_rate",
+      "Percentage of texts exceeding token budget",
+      ["namespace"]
+  )
+
+  # Namespace metrics
+  NAMESPACE_USAGE = Counter(
+      "medicalkg_embedding_namespace_requests_total",
+      "Requests per namespace",
+      ["namespace", "operation"]  # operation: embed, validate
   )
   ```
 
@@ -1119,6 +1152,784 @@
   - Alert: Embedding failure rate >5% for >10 minutes
   - Alert: vLLM service down
   - Alert: FAISS search P95 latency >100ms
+
+---
+
+## Work Stream #9A: API Integration (NEW from Gap Analysis) (Week 3)
+
+**Gap Analysis Finding**: Missing REST/GraphQL/gRPC API specifications for namespace management
+
+### 9A.1 REST API Enhancements (10 tasks)
+
+- [ ] **9A.1.1** Update `/v1/embed` endpoint to require `namespace` parameter:
+
+  ```python
+  # src/Medical_KG_rev/gateway/rest/embedding.py
+  from pydantic import BaseModel, Field
+
+  class EmbeddingRequest(BaseModel):
+      texts: list[str] = Field(..., description="Texts to embed")
+      namespace: str = Field(..., description="Embedding namespace (e.g., single_vector.qwen3.4096.v1)")
+      options: Optional[EmbeddingOptions] = None
+
+  @router.post("/v1/embed", response_model=EmbeddingResponse)
+  async def embed_texts(
+      request: EmbeddingRequest,
+      tenant_id: str = Depends(get_tenant_id)  # From JWT
+  ):
+      """
+      **LIBRARY**: Uses vLLM OpenAI-compatible client (openai>=1.0.0)
+      **BREAKING CHANGE**: namespace parameter now required (was optional)
+      """
+      # Validate namespace exists
+      if not namespace_registry.exists(request.namespace):
+          raise HTTPException(404, f"Namespace {request.namespace} not found")
+
+      # Embed with tenant_id for audit logging
+      embeddings = await embedding_service.embed(
+          texts=request.texts,
+          namespace=request.namespace,
+          tenant_id=tenant_id  # Track for multi-tenancy
+      )
+
+      return EmbeddingResponse(
+          namespace=request.namespace,
+          embeddings=embeddings,
+          metadata={
+              "provider": namespace_registry.get_provider(request.namespace),
+              "dimension": namespace_registry.get_dimension(request.namespace),
+              "duration_ms": ...
+          }
+      )
+  ```
+
+- [ ] **9A.1.2** Add `GET /v1/namespaces` endpoint:
+
+  ```python
+  @router.get("/v1/namespaces", response_model=list[NamespaceInfo])
+  async def list_namespaces(
+      tenant_id: str = Depends(get_tenant_id)
+  ):
+      """
+      **PURPOSE**: List available embedding namespaces for client discovery
+      **LIBRARY**: Uses namespace_registry.list_enabled()
+      """
+      namespaces = namespace_registry.list_enabled(tenant_id=tenant_id)
+      return [
+          NamespaceInfo(
+              id=ns.id,
+              provider=ns.provider,
+              dimension=ns.dimension,
+              max_tokens=ns.max_tokens,
+              enabled=ns.enabled,
+              allowed_tenants=ns.allowed_tenants
+          )
+          for ns in namespaces
+      ]
+  ```
+
+- [ ] **9A.1.3** Add `POST /v1/namespaces/{namespace}/validate` endpoint:
+
+  ```python
+  @router.post("/v1/namespaces/{namespace}/validate")
+  async def validate_texts_for_namespace(
+      namespace: str,
+      texts: list[str],
+      tenant_id: str = Depends(get_tenant_id)
+  ):
+      """
+      **PURPOSE**: Pre-validate texts before embedding (check token budgets)
+      **LIBRARY**: Uses transformers.AutoTokenizer for Qwen3
+      """
+      tokenizer = namespace_registry.get_tokenizer(namespace)
+      max_tokens = namespace_registry.get_max_tokens(namespace)
+
+      results = []
+      for text in texts:
+          token_count = len(tokenizer.encode(text))
+          results.append({
+              "text_index": len(results),
+              "token_count": token_count,
+              "exceeds_budget": token_count > max_tokens,
+              "warning": f"Exceeds {max_tokens} tokens" if token_count > max_tokens else None
+          })
+
+      return {
+          "namespace": namespace,
+          "valid": all(not r["exceeds_budget"] for r in results),
+          "results": results
+      }
+  ```
+
+- [ ] **9A.1.4** Update OpenAPI spec (`docs/openapi.yaml`):
+  - Add `/v1/embed` with namespace parameter (required)
+  - Add `/v1/namespaces` (list endpoint)
+  - Add `/v1/namespaces/{namespace}/validate` (validation endpoint)
+  - Mark old `/v1/embed` without namespace as deprecated
+
+- [ ] **9A.1.5** Write contract tests for new endpoints:
+
+  ```bash
+  # Using Schemathesis
+  schemathesis run docs/openapi.yaml --base-url http://localhost:8000
+  ```
+
+### 9A.2 GraphQL API Enhancements (5 tasks)
+
+- [ ] **9A.2.1** Update `embed` mutation to require `namespace`:
+
+  ```graphql
+  # docs/schema.graphql
+  type Mutation {
+      embed(input: EmbeddingInput!): EmbeddingResult!
+  }
+
+  input EmbeddingInput {
+      texts: [String!]!
+      namespace: String!  # REQUIRED (was optional)
+      options: EmbeddingOptions
+  }
+
+  type EmbeddingResult {
+      namespace: String!
+      embeddings: [Embedding!]!
+      metadata: EmbeddingMetadata!
+  }
+
+  type EmbeddingMetadata {
+      provider: String!
+      dimension: Int!
+      durationMs: Int!
+      gpuUtilization: Float
+  }
+  ```
+
+- [ ] **9A.2.2** Add `namespaces` query:
+
+  ```graphql
+  type Query {
+      namespaces: [NamespaceInfo!]!
+      namespace(id: String!): NamespaceInfo
+  }
+
+  type NamespaceInfo {
+      id: String!
+      provider: String!
+      dimension: Int!
+      maxTokens: Int!
+      enabled: Boolean!
+      allowedTenants: [String!]!
+  }
+  ```
+
+- [ ] **9A.2.3** Update GraphQL resolver to use vLLM client:
+
+  ```python
+  # src/Medical_KG_rev/gateway/graphql/resolvers/embedding.py
+  async def resolve_embed(parent, info, input: EmbeddingInput):
+      """
+      **LIBRARY**: Uses openai.Embedding.create() for vLLM
+      """
+      tenant_id = info.context["tenant_id"]
+
+      # Call vLLM via OpenAI-compatible API
+      import openai
+      openai.api_base = namespace_registry.get_endpoint(input.namespace)
+
+      response = await openai.Embedding.acreate(
+          input=input.texts,
+          model=namespace_registry.get_model_name(input.namespace)
+      )
+
+      return EmbeddingResult(
+          namespace=input.namespace,
+          embeddings=[e.embedding for e in response.data],
+          metadata=...
+      )
+  ```
+
+- [ ] **9A.2.4** Write GraphQL contract tests:
+
+  ```bash
+  # Using GraphQL Inspector
+  graphql-inspector diff docs/schema.graphql docs/schema.graphql.old
+  ```
+
+- [ ] **9A.2.5** Update GraphQL documentation with namespace usage examples
+
+### 9A.3 gRPC API Enhancements (5 tasks)
+
+- [ ] **9A.3.1** Update `embedding.proto` to require `namespace`:
+
+  ```protobuf
+  // src/Medical_KG_rev/proto/embedding.proto
+  syntax = "proto3";
+
+  service EmbeddingService {
+      rpc Embed(EmbedRequest) returns (EmbedResponse);
+      rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse);
+      rpc ValidateTexts(ValidateTextsRequest) returns (ValidateTextsResponse);
+  }
+
+  message EmbedRequest {
+      repeated string texts = 1;
+      string namespace = 2;  // REQUIRED
+      string tenant_id = 3;  // From JWT
+  }
+
+  message EmbedResponse {
+      string namespace = 1;
+      repeated Embedding embeddings = 2;
+      EmbeddingMetadata metadata = 3;
+  }
+
+  message ListNamespacesRequest {
+      string tenant_id = 1;
+  }
+
+  message ListNamespacesResponse {
+      repeated NamespaceInfo namespaces = 1;
+  }
+  ```
+
+- [ ] **9A.3.2** Regenerate gRPC code:
+
+  ```bash
+  buf generate
+  ```
+
+- [ ] **9A.3.3** Update gRPC server implementation to use vLLM
+
+- [ ] **9A.3.4** Write gRPC contract tests:
+
+  ```bash
+  buf breaking --against .git#branch=main
+  ```
+
+- [ ] **9A.3.5** Update gRPC documentation
+
+---
+
+## Work Stream #9B: Security & Multi-Tenancy (NEW from Gap Analysis) (Week 3)
+
+**Gap Analysis Finding**: Missing tenant isolation validation, namespace access control
+
+### 9B.1 Tenant Isolation (8 tasks)
+
+- [ ] **9B.1.1** Add tenant_id to all embedding requests:
+
+  ```python
+  # src/Medical_KG_rev/services/embedding/service.py
+  async def embed(
+      self,
+      texts: list[str],
+      namespace: str,
+      tenant_id: str  # REQUIRED for audit and isolation
+  ) -> list[Embedding]:
+      """
+      **SECURITY**: tenant_id extracted from JWT, never from query params
+      **AUDIT**: All embedding requests logged with tenant_id
+      """
+      # Audit log
+      logger.info(
+          "Embedding request",
+          extra={
+              "tenant_id": tenant_id,
+              "namespace": namespace,
+              "text_count": len(texts),
+              "correlation_id": get_correlation_id()
+          }
+      )
+
+      # Call vLLM (provider-agnostic)
+      embeddings = await self.vllm_client.embed(texts, namespace)
+
+      # Tag embeddings with tenant_id for storage isolation
+      for emb in embeddings:
+          emb.tenant_id = tenant_id
+
+      return embeddings
+  ```
+
+- [ ] **9B.1.2** Implement storage-level tenant isolation:
+
+  **FAISS Indices**:
+
+  ```python
+  # Separate FAISS index per tenant
+  faiss_index_path = f"/data/faiss/{tenant_id}/chunks.index"
+  index = faiss.read_index(faiss_index_path)
+  ```
+
+  **OpenSearch Sparse Signals**:
+
+  ```python
+  # Include tenant_id field in all documents
+  opensearch.index(
+      index="chunks",
+      body={
+          "text": "...",
+          "splade_terms": {...},
+          "tenant_id": tenant_id  # REQUIRED for filtering
+      }
+  )
+
+  # All queries MUST filter by tenant_id
+  query = {
+      "bool": {
+          "must": [...],
+          "filter": [{"term": {"tenant_id": tenant_id}}]  # ENFORCE isolation
+      }
+  }
+  ```
+
+  **Neo4j Embedding Metadata**:
+
+  ```cypher
+  CREATE (e:Embedding {
+      chunk_id: $chunk_id,
+      namespace: $namespace,
+      tenant_id: $tenant_id,  // REQUIRED
+      model: $model,
+      timestamp: timestamp()
+  })
+  ```
+
+- [ ] **9B.1.3** Write integration tests for tenant isolation:
+  - Test: Tenant A cannot retrieve Tenant B's embeddings from FAISS
+  - Test: Tenant A cannot query Tenant B's sparse signals in OpenSearch
+  - Test: Cross-tenant queries return empty results (not errors)
+
+- [ ] **9B.1.4** Add tenant_id validation middleware:
+
+  ```python
+  # Ensure tenant_id from JWT matches request context
+  @app.middleware("http")
+  async def validate_tenant_id(request: Request, call_next):
+      jwt_tenant = request.state.tenant_id  # From JWT
+      if not jwt_tenant:
+          raise HTTPException(403, "Missing tenant_id in JWT")
+      # Attach to request for downstream use
+      request.state.validated_tenant_id = jwt_tenant
+      return await call_next(request)
+  ```
+
+- [ ] **9B.1.5** Document tenant isolation architecture in runbook
+
+- [ ] **9B.1.6** Add Prometheus metric for cross-tenant access attempts:
+
+  ```python
+  CROSS_TENANT_ACCESS_ATTEMPTS = Counter(
+      "medicalkg_cross_tenant_access_attempts_total",
+      "Attempted cross-tenant accesses (blocked)",
+      ["source_tenant", "target_tenant"]
+  )
+  ```
+
+- [ ] **9B.1.7** Write security audit script to verify tenant isolation
+
+- [ ] **9B.1.8** Perform penetration testing for tenant isolation
+
+### 9B.2 Namespace Access Control (6 tasks)
+
+- [ ] **9B.2.1** Implement namespace access control rules:
+
+  ```yaml
+  # config/embedding/namespaces.yaml
+  namespaces:
+      single_vector.qwen3.4096.v1:
+          provider: vllm
+          dimension: 4096
+          enabled: true
+          allowed_scopes: ["embed:read", "embed:write"]
+          allowed_tenants: ["all"]  # Public namespace
+
+      single_vector.custom_model.2048.v1:
+          provider: vllm
+          dimension: 2048
+          enabled: true
+          allowed_scopes: ["embed:admin"]
+          allowed_tenants: ["tenant-123"]  # Private namespace for specific tenant
+  ```
+
+- [ ] **9B.2.2** Add namespace access validation:
+
+  ```python
+  def validate_namespace_access(
+      namespace: str,
+      tenant_id: str,
+      required_scope: str
+  ) -> bool:
+      """
+      **SECURITY**: Check if tenant has permission to use namespace
+      """
+      ns_config = namespace_registry.get(namespace)
+
+      # Check scope
+      if required_scope not in ns_config.allowed_scopes:
+          return False
+
+      # Check tenant
+      if "all" not in ns_config.allowed_tenants and tenant_id not in ns_config.allowed_tenants:
+          return False
+
+      return True
+  ```
+
+- [ ] **9B.2.3** Enforce namespace access control in embedding endpoint:
+
+  ```python
+  if not validate_namespace_access(namespace, tenant_id, "embed:write"):
+      raise HTTPException(403, f"Tenant {tenant_id} not authorized for namespace {namespace}")
+  ```
+
+- [ ] **9B.2.4** Write integration tests for namespace access control:
+  - Test: Public namespace accessible by all tenants
+  - Test: Private namespace only accessible by specified tenant
+  - Test: Invalid scope returns 403
+
+- [ ] **9B.2.5** Add audit logging for namespace access:
+
+  ```python
+  logger.info(
+      "Namespace access",
+      extra={
+          "tenant_id": tenant_id,
+          "namespace": namespace,
+          "access_granted": granted,
+          "required_scope": required_scope
+      }
+  )
+  ```
+
+- [ ] **9B.2.6** Document namespace access control in API docs
+
+---
+
+## Work Stream #9C: Configuration Management (NEW from Gap Analysis) (Week 3)
+
+**Gap Analysis Finding**: Missing vLLM, namespace registry, Pyserini configuration specifications
+
+### 9C.1 vLLM Configuration (6 tasks)
+
+- [ ] **9C.1.1** Create vLLM configuration file:
+
+  ```yaml
+  # config/embedding/vllm.yaml
+  service:
+      host: 0.0.0.0
+      port: 8001
+      gpu_memory_utilization: 0.8  # Reserve 80% of GPU memory
+      max_model_len: 512  # Max sequence length
+      dtype: float16  # Use FP16 for efficiency
+      tensor_parallel_size: 1  # Single GPU
+
+  model:
+      name: "Qwen/Qwen2.5-Coder-1.5B"
+      trust_remote_code: true
+      download_dir: "/models/qwen3-embedding"
+      revision: "main"  # Git revision
+
+  batching:
+      max_batch_size: 64
+      max_wait_time_ms: 50  # Wait up to 50ms to fill batch
+      preferred_batch_size: 32
+
+  health_check:
+      enabled: true
+      gpu_check_interval_seconds: 30
+      fail_fast_on_gpu_unavailable: true
+
+  logging:
+      level: INFO
+      format: json
+  ```
+
+- [ ] **9C.1.2** Add Pydantic model for vLLM config:
+
+  ```python
+  # src/Medical_KG_rev/config/vllm_config.py
+  from pydantic_settings import BaseSettings
+
+  class VLLMServiceConfig(BaseSettings):
+      host: str = "0.0.0.0"
+      port: int = 8001
+      gpu_memory_utilization: float = 0.8
+      max_model_len: int = 512
+      dtype: str = "float16"
+
+      class Config:
+          env_prefix = "VLLM_"
+
+  class VLLMModelConfig(BaseSettings):
+      name: str = "Qwen/Qwen2.5-Coder-1.5B"
+      trust_remote_code: bool = True
+      download_dir: str = "/models/qwen3-embedding"
+
+  class VLLMConfig(BaseSettings):
+      service: VLLMServiceConfig = VLLMServiceConfig()
+      model: VLLMModelConfig = VLLMModelConfig()
+
+      @classmethod
+      def from_yaml(cls, path: str) -> "VLLMConfig":
+          with open(path) as f:
+              data = yaml.safe_load(f)
+          return cls(**data)
+  ```
+
+- [ ] **9C.1.3** Load vLLM config in Docker entrypoint:
+
+  ```bash
+  # ops/Dockerfile.vllm
+  CMD python -m vllm.entrypoints.openai.api_server \
+      --config /config/vllm.yaml
+  ```
+
+- [ ] **9C.1.4** Write config validation tests:
+
+  ```python
+  def test_vllm_config_valid():
+      config = VLLMConfig.from_yaml("config/embedding/vllm.yaml")
+      assert config.service.gpu_memory_utilization <= 1.0
+      assert config.service.max_model_len > 0
+  ```
+
+- [ ] **9C.1.5** Document vLLM configuration options in runbook
+
+- [ ] **9C.1.6** Add vLLM config to version control (with secrets redacted)
+
+### 9C.2 Namespace Registry Configuration (6 tasks)
+
+- [ ] **9C.2.1** Create namespace registry configuration file:
+
+  ```yaml
+  # config/embedding/namespaces.yaml
+  namespaces:
+      single_vector.qwen3.4096.v1:
+          provider: vllm
+          endpoint: "http://vllm-service:8001"
+          model_name: "Qwen/Qwen2.5-Coder-1.5B"
+          dimension: 4096
+          max_tokens: 512
+          tokenizer: "Qwen/Qwen2.5-Coder-1.5B"
+          enabled: true
+          allowed_scopes: ["embed:read", "embed:write"]
+          allowed_tenants: ["all"]
+
+      sparse.splade_v3.400.v1:
+          provider: pyserini
+          endpoint: "http://pyserini-service:8002"
+          model_name: "naver/splade-cocondenser-ensembledistil"
+          max_tokens: 512
+          doc_side_expansion: true
+          query_side_expansion: false
+          top_k_terms: 400
+          enabled: true
+          allowed_scopes: ["embed:read", "embed:write"]
+          allowed_tenants: ["all"]
+
+      multi_vector.colbert_v2.128.v1:
+          provider: colbert
+          endpoint: "http://colbert-service:8003"
+          model_name: "colbert-ir/colbertv2.0"
+          dimension: 128
+          max_tokens: 512
+          enabled: false  # Optional, not enabled by default
+          allowed_scopes: ["embed:admin"]
+          allowed_tenants: ["tenant-admin"]
+  ```
+
+- [ ] **9C.2.2** Add Pydantic model for namespace config:
+
+  ```python
+  # src/Medical_KG_rev/services/embedding/namespace_registry.py
+  from pydantic import BaseModel
+  from enum import Enum
+
+  class Provider(str, Enum):
+      VLLM = "vllm"
+      PYSERINI = "pyserini"
+      COLBERT = "colbert"
+
+  class NamespaceConfig(BaseModel):
+      id: str  # e.g., "single_vector.qwen3.4096.v1"
+      provider: Provider
+      endpoint: str
+      model_name: str
+      dimension: Optional[int] = None  # For dense models
+      max_tokens: int = 512
+      tokenizer: Optional[str] = None
+      enabled: bool = True
+      allowed_scopes: list[str] = ["embed:read", "embed:write"]
+      allowed_tenants: list[str] = ["all"]
+      doc_side_expansion: bool = False  # For SPLADE
+      query_side_expansion: bool = False
+      top_k_terms: Optional[int] = None  # For SPLADE
+
+  class NamespaceRegistry:
+      def __init__(self, config_path: str):
+          """
+          **LIBRARY**: Uses pydantic-settings for config validation
+          """
+          with open(config_path) as f:
+              data = yaml.safe_load(f)
+          self.namespaces = {
+              ns_id: NamespaceConfig(id=ns_id, **ns_config)
+              for ns_id, ns_config in data["namespaces"].items()
+          }
+
+      def get(self, namespace_id: str) -> NamespaceConfig:
+          if namespace_id not in self.namespaces:
+              raise ValueError(f"Namespace {namespace_id} not found")
+          return self.namespaces[namespace_id]
+
+      def list_enabled(self, tenant_id: str) -> list[NamespaceConfig]:
+          return [
+              ns for ns in self.namespaces.values()
+              if ns.enabled and ("all" in ns.allowed_tenants or tenant_id in ns.allowed_tenants)
+          ]
+  ```
+
+- [ ] **9C.2.3** Load namespace registry at service startup:
+
+  ```python
+  # src/Medical_KG_rev/services/embedding/service.py
+  namespace_registry = NamespaceRegistry("config/embedding/namespaces.yaml")
+  ```
+
+- [ ] **9C.2.4** Write namespace config validation tests
+
+- [ ] **9C.2.5** Document namespace registry in API docs
+
+- [ ] **9C.2.6** Add namespace config to version control
+
+### 9C.3 Pyserini SPLADE Configuration (4 tasks)
+
+- [ ] **9C.3.1** Create Pyserini configuration file:
+
+  ```yaml
+  # config/embedding/pyserini.yaml
+  service:
+      host: 0.0.0.0
+      port: 8002
+      gpu_memory_utilization: 0.6
+
+  model:
+      name: "naver/splade-cocondenser-ensembledistil"
+      cache_dir: "/models/splade"
+
+  expansion:
+      doc_side:
+          enabled: true
+          top_k_terms: 400
+          normalize_weights: true
+      query_side:
+          enabled: false  # Opt-in only
+          top_k_terms: 200
+
+  opensearch:
+      rank_features_field: "splade_terms"
+      max_weight: 10.0
+  ```
+
+- [ ] **9C.3.2** Add Pydantic model for Pyserini config
+
+- [ ] **9C.3.3** Load Pyserini config in service
+
+- [ ] **9C.3.4** Write Pyserini config validation tests
+
+---
+
+## Work Stream #9D: Rollback Procedures (NEW from Gap Analysis) (Week 3)
+
+**Gap Analysis Finding**: Missing detailed rollback procedures, trigger conditions, RTO specifications
+
+### 9D.1 Rollback Trigger Conditions (4 tasks)
+
+- [ ] **9D.1.1** Define automated rollback triggers:
+
+  ```yaml
+  # config/monitoring/rollback_triggers.yaml
+  automated_triggers:
+      - name: "Embedding Latency Degradation"
+        condition: "embedding_duration_p95 > 2s for 10 minutes"
+        severity: critical
+        action: rollback
+
+      - name: "GPU Failure Rate"
+        condition: "gpu_failure_rate > 20% for 5 minutes"
+        severity: critical
+        action: rollback
+
+      - name: "Token Overflow Rate"
+        condition: "token_overflow_rate > 15% for 15 minutes"
+        severity: warning
+        action: alert
+
+      - name: "vLLM Service Down"
+        condition: "vllm_service_up == 0 for 5 minutes"
+        severity: critical
+        action: rollback
+  ```
+
+- [ ] **9D.1.2** Implement automated rollback script:
+
+  ```bash
+  # scripts/rollback_embeddings.sh
+  #!/bin/bash
+  set -e
+
+  echo "=== ROLLBACK: Standardized Embeddings ==="
+
+  # Phase 1: Scale down new services
+  kubectl scale deployment/vllm-embedding --replicas=0
+  kubectl scale deployment/pyserini-splade --replicas=0
+
+  # Phase 2: Re-enable legacy (if available)
+  kubectl scale deployment/legacy-embedding --replicas=3
+
+  # Phase 3: Full rollback
+  git revert <embedding-standardization-commit-sha>
+  kubectl rollout undo deployment/embedding-service
+
+  # Phase 4: Revert OpenSearch mapping
+  curl -X PUT "opensearch:9200/chunks/_mapping" -d @legacy-mapping.json
+
+  echo "=== ROLLBACK COMPLETE ==="
+  echo "RTO: 15 minutes (target)"
+  ```
+
+- [ ] **9D.1.3** Define manual rollback triggers:
+  - Embedding quality degradation (Recall@10 drop)
+  - GPU memory leaks causing OOM
+  - vLLM startup failures
+  - Incorrect vector dimensions or sparse term weights
+
+- [ ] **9D.1.4** Document rollback procedures in runbook
+
+### 9D.2 Recovery Time Objective (RTO) (3 tasks)
+
+- [ ] **9D.2.1** Define RTO targets:
+  - **Canary rollback**: 5 minutes (scale down new, scale up legacy)
+  - **Full rollback**: 15 minutes (revert + redeploy + mapping)
+  - **Maximum RTO**: 20 minutes
+
+- [ ] **9D.2.2** Test rollback procedures in staging
+
+- [ ] **9D.2.3** Validate RTO targets in production drill
+
+### 9D.3 Post-Rollback Analysis (3 tasks)
+
+- [ ] **9D.3.1** Create rollback incident template:
+  - Root cause analysis
+  - Timeline of events
+  - Metrics at rollback trigger
+  - GPU traces
+  - Logs from vLLM/Pyserini
+
+- [ ] **9D.3.2** Schedule post-incident review (2 hours after rollback)
+
+- [ ] **9D.3.3** Document lessons learned and update rollback procedures
 
 ---
 
@@ -1229,28 +2040,49 @@
 
 ## Summary
 
-**Total Tasks**: 240+ tasks across 11 work streams
+**Total Tasks**: 300+ tasks across 15 work streams (UPDATED from Gap Analysis)
 
-| Work Stream | Tasks | Duration |
-|-------------|-------|----------|
-| 1. Legacy Decommissioning | 56 | Week 1-2 |
-| 2. Foundation | 10 | Week 1 |
-| 3. vLLM Dense Embedding | 15 | Week 1-2 |
-| 4. Pyserini Sparse Embedding | 12 | Week 1-2 |
-| 5. Multi-Namespace Registry | 15 | Week 2 |
-| 6. FAISS Storage Integration | 12 | Week 2-3 |
-| 7. Testing | 81 | Week 3-4 |
-| 8. Performance Optimization | 10 | Week 3 |
-| 9. Monitoring & Observability | 10 | Week 3 |
-| 10. Documentation | 10 | Week 4 |
-| 11. Production Deployment | 15 | Week 5-6 |
+| Work Stream | Tasks | Duration | Status |
+|-------------|-------|----------|--------|
+| 1. Legacy Decommissioning | 56 | Week 1-2 | Core requirement |
+| 2. Foundation | 10 | Week 1 | Core requirement |
+| 3. vLLM Dense Embedding | 15 | Week 1-2 | **LIBRARY**: vllm>=0.3.0, openai>=1.0.0 |
+| 4. Pyserini Sparse Embedding | 12 | Week 1-2 | **LIBRARY**: pyserini>=0.22.0 |
+| 5. Multi-Namespace Registry | 15 | Week 2 | **LIBRARY**: pydantic-settings |
+| 6. FAISS Storage Integration | 12 | Week 2-3 | **LIBRARY**: faiss-gpu>=1.7.4 |
+| 7. Testing | 81 | Week 3-4 | Core requirement |
+| 8. Performance Optimization | 10 | Week 3 | Core requirement |
+| 9. Monitoring & Observability | 10 | Week 3 | **Enhanced from Gap Analysis** |
+| 9A. API Integration | 20 | Week 3 | **NEW from Gap Analysis** |
+| 9B. Security & Multi-Tenancy | 14 | Week 3 | **NEW from Gap Analysis** |
+| 9C. Configuration Management | 16 | Week 3 | **NEW from Gap Analysis** |
+| 9D. Rollback Procedures | 10 | Week 3 | **NEW from Gap Analysis** |
+| 10. Documentation | 10 | Week 4 | Core requirement |
+| 11. Production Deployment | 15 | Week 5-6 | Core requirement |
+
+**Key Libraries** (Explicit Emphasis):
+
+- **vllm>=0.3.0** - OpenAI-compatible serving for Qwen3-Embedding-8B
+- **pyserini>=0.22.0** - SPLADE-v3 wrapper with document-side expansion
+- **faiss-gpu>=1.7.4** - GPU-accelerated dense vector search (HNSW index)
+- **openai>=1.0.0** - Client library for vLLM OpenAI-compatible API
+- **transformers>=4.38.0** - Qwen3 tokenizer for token budget validation
+- **pydantic-settings** - Configuration management (vLLM, namespace registry, Pyserini)
 
 **Timeline**: 6 weeks total
 
-- **Week 1-2**: Build new architecture + atomic deletions
-- **Week 3-4**: Integration testing + quality validation
+- **Week 1-2**: Build new architecture + atomic deletions (vLLM, Pyserini, namespace registry)
+- **Week 3-4**: Integration testing + gap analysis items (API, security, config, rollback)
 - **Week 5-6**: Production deployment + monitoring
+
+**Gap Analysis Additions** (+60 tasks):
+
+- 20 tasks: API Integration (REST/GraphQL/gRPC namespace management)
+- 14 tasks: Security & Multi-Tenancy (tenant isolation, namespace access control)
+- 16 tasks: Configuration Management (vLLM, namespace registry, Pyserini YAML configs)
+- 10 tasks: Rollback Procedures (automated triggers, RTO 5-20 min, post-incident analysis)
 
 **Breaking Changes**: 4 (API signature, GPU fail-fast, FAISS primary, rank_features)
 **Code Reduction**: 25% (530 → 400 lines)
 **GPU-Only Enforcement**: 100% (zero CPU fallbacks)
+**Legacy Decommissioning**: Comprehensive (56 tasks, atomic deletions, delegation validation)

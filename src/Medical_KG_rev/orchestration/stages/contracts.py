@@ -9,8 +9,12 @@ remains framework agnostic.
 
 from __future__ import annotations
 
+import base64
+import copy
+import json
+import zlib
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
+from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
@@ -136,6 +140,14 @@ class StageResultSnapshot:
         }
 
 
+class PipelineStateValidationError(ValueError):
+    """Raised when the pipeline state fails validation."""
+
+    def __init__(self, message: str, *, rule: str | None = None) -> None:
+        super().__init__(message)
+        self.rule = rule
+
+
 @dataclass(slots=True)
 class PipelineState:
     """Strongly-typed representation of the orchestration pipeline state."""
@@ -155,6 +167,10 @@ class PipelineState:
     stage_results: dict[str, StageResultSnapshot] = field(default_factory=dict)
     schema_version: str = "v1"
     job_id: str | None = None
+    _dirty: bool = field(default=True, init=False, repr=False)
+    _serialised_cache: dict[str, Any] | None = field(default=None, init=False, repr=False)
+
+    _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
 
     @classmethod
     def initialise(
@@ -176,11 +192,21 @@ class PipelineState:
     # ------------------------------------------------------------------
     # Accessors
     # ------------------------------------------------------------------
+    def _mark_dirty(self) -> None:
+        self._dirty = True
+        self._serialised_cache = None
+
+    def is_dirty(self) -> bool:
+        """Return whether the state has pending changes since last snapshot."""
+
+        return self._dirty
+
     def get_payloads(self) -> tuple[RawPayload, ...]:
         return self.payloads
 
     def set_payloads(self, payloads: Sequence[RawPayload]) -> None:
         self.payloads = tuple(payloads)
+        self._mark_dirty()
 
     def require_payloads(self) -> tuple[RawPayload, ...]:
         if not self.payloads:
@@ -192,6 +218,7 @@ class PipelineState:
 
     def set_document(self, document: Document) -> None:
         self.document = document
+        self._mark_dirty()
 
     def require_document(self) -> Document:
         if self.document is None:
@@ -203,6 +230,7 @@ class PipelineState:
 
     def set_chunks(self, chunks: Sequence[Chunk]) -> None:
         self.chunks = tuple(chunks)
+        self._mark_dirty()
 
     def require_chunks(self) -> tuple[Chunk, ...]:
         if not self.chunks:
@@ -214,6 +242,7 @@ class PipelineState:
 
     def set_embedding_batch(self, batch: EmbeddingBatch) -> None:
         self.embedding_batch = batch
+        self._mark_dirty()
 
     def require_embedding_batch(self) -> EmbeddingBatch:
         if self.embedding_batch is None:
@@ -227,6 +256,7 @@ class PipelineState:
     ) -> None:
         self.entities = tuple(entities)
         self.claims = tuple(claims)
+        self._mark_dirty()
 
     def has_entities(self) -> bool:
         return bool(self.entities)
@@ -246,9 +276,11 @@ class PipelineState:
 
     def set_index_receipt(self, receipt: IndexReceipt) -> None:
         self.index_receipt = receipt
+        self._mark_dirty()
 
     def set_graph_receipt(self, receipt: GraphWriteReceipt) -> None:
         self.graph_receipt = receipt
+        self._mark_dirty()
 
     def ensure_ready_for(self, stage_type: str) -> None:
         """Validate preconditions required by the requested stage type."""
@@ -328,6 +360,7 @@ class PipelineState:
             self.metadata[key] = output
 
         self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
+        self._mark_dirty()
 
     def infer_output_count(self, stage_type: str, output: Any) -> int:
         if output is None:
@@ -369,14 +402,64 @@ class PipelineState:
         snapshot.duration_ms = duration_ms
         snapshot.output_count = output_count
         snapshot.error = error
+        self._mark_dirty()
+
+    def mark_stage_failed(
+        self,
+        stage_name: str,
+        *,
+        error: str,
+        stage_type: str | None = None,
+    ) -> None:
+        """Record failure metadata for a stage."""
+
+        self.record_stage_metrics(
+            stage_name,
+            stage_type=stage_type,
+            attempts=None,
+            duration_ms=None,
+            output_count=None,
+            error=error,
+        )
+
+    def cleanup_stage(self, stage_type: str) -> None:
+        """Drop large stage outputs to allow garbage collection."""
+
+        key = self._stage_state_key(stage_type)
+        if key == "payloads":
+            self.payloads = ()
+        elif key == "document":
+            self.document = None
+        elif key == "chunks":
+            self.chunks = ()
+        elif key == "embedding_batch":
+            self.embedding_batch = None
+        elif key == "index_receipt":
+            self.index_receipt = None
+        elif key == "extraction":
+            self.entities = ()
+            self.claims = ()
+        elif key == "graph_receipt":
+            self.graph_receipt = None
+        else:
+            self.metadata.pop(key, None)
+        self._mark_dirty()
 
     # ------------------------------------------------------------------
     # Serialisation helpers
     # ------------------------------------------------------------------
-    def serialise(self) -> dict[str, Any]:
+    def serialise(
+        self,
+        *,
+        include_stage_results: bool = True,
+        use_cache: bool = True,
+    ) -> dict[str, Any]:
         """Return a metadata snapshot suitable for logging or Kafka payloads."""
 
-        return {
+        if use_cache and not self._dirty and self._serialised_cache is not None:
+            return copy.deepcopy(self._serialised_cache)
+
+        snapshot: dict[str, Any] = {
             "version": self.schema_version,
             "job_id": self.job_id,
             "context": self.context.to_dict(),
@@ -392,24 +475,152 @@ class PipelineState:
             "claim_count": len(self.claims),
             "index_receipt": self.index_receipt.metadata if self.index_receipt else None,
             "graph_receipt": self.graph_receipt.metadata if self.graph_receipt else None,
-            "stage_results": {name: result.as_dict() for name, result in self.stage_results.items()},
         }
+        if include_stage_results:
+            snapshot["stage_results"] = {
+                name: result.as_dict() for name, result in self.stage_results.items()
+            }
+        if use_cache:
+            self._serialised_cache = snapshot
+            self._dirty = False
+        return copy.deepcopy(snapshot)
+
+    def serialise_json(self) -> str:
+        """Return a JSON encoded snapshot of the state."""
+
+        return json.dumps(self.serialise())
+
+    def serialise_compressed(self) -> bytes:
+        """Compress the JSON snapshot for efficient transport."""
+
+        return zlib.compress(self.serialise_json().encode("utf-8"))
+
+    def serialise_base64(self) -> str:
+        """Return a base64 encoded compressed snapshot."""
+
+        return base64.b64encode(self.serialise_compressed()).decode("ascii")
+
+    def diff(self, other: PipelineState) -> dict[str, tuple[Any, Any]]:
+        """Produce a minimal diff between two states."""
+
+        entries: dict[str, tuple[Any, Any]] = {}
+        if len(self.payloads) != len(other.payloads):
+            entries["payload_count"] = (len(self.payloads), len(other.payloads))
+        if len(self.chunks) != len(other.chunks):
+            entries["chunk_count"] = (len(self.chunks), len(other.chunks))
+        self_embeddings = (
+            len(self.embedding_batch.vectors) if self.embedding_batch else 0
+        )
+        other_embeddings = (
+            len(other.embedding_batch.vectors) if other.embedding_batch else 0
+        )
+        if self_embeddings != other_embeddings:
+            entries["embedding_count"] = (self_embeddings, other_embeddings)
+        if len(self.entities) != len(other.entities):
+            entries["entity_count"] = (len(self.entities), len(other.entities))
+        if len(self.claims) != len(other.claims):
+            entries["claim_count"] = (len(self.claims), len(other.claims))
+        if self.context.pipeline_version != other.context.pipeline_version:
+            entries["pipeline_version"] = (
+                self.context.pipeline_version,
+                other.context.pipeline_version,
+            )
+        if self.job_id != other.job_id:
+            entries["job_id"] = (self.job_id, other.job_id)
+        return entries
 
     @classmethod
     def recover(
         cls,
-        payload: Mapping[str, Any],
+        payload: Mapping[str, Any] | bytes | str,
         *,
         context: StageContext,
         adapter_request: AdapterRequest,
     ) -> PipelineState:
         """Best-effort recovery for pipeline state snapshots."""
 
-        state = cls.initialise(context=context, adapter_request=adapter_request, payload=payload.get("payload"))
-        state.schema_version = str(payload.get("version", "v1"))
-        state.job_id = payload.get("job_id") or context.job_id
-        state.metadata.update(dict(payload.get("metadata", {})))
+        if isinstance(payload, (bytes, bytearray)):
+            decoded = zlib.decompress(bytes(payload)).decode("utf-8")
+            recovered = json.loads(decoded)
+        elif isinstance(payload, str):
+            try:
+                compressed = base64.b64decode(payload)
+            except (ValueError, TypeError):
+                recovered = json.loads(payload)
+            else:
+                decoded = zlib.decompress(compressed).decode("utf-8")
+                recovered = json.loads(decoded)
+        else:
+            recovered = payload
+
+        state = cls.initialise(
+            context=context,
+            adapter_request=adapter_request,
+            payload=recovered.get("payload"),
+        )
+        state.schema_version = str(recovered.get("version", "v1"))
+        state.job_id = recovered.get("job_id") or context.job_id
+        state.metadata.update(dict(recovered.get("metadata", {})))
+        stage_payload = recovered.get("stage_results")
+        if isinstance(stage_payload, Mapping):
+            for name, payload_data in stage_payload.items():
+                if isinstance(payload_data, Mapping):
+                    state.stage_results[name] = StageResultSnapshot(
+                        stage=str(payload_data.get("stage", name)),
+                        stage_type=str(payload_data.get("stage_type", "unknown")),
+                        attempts=payload_data.get("attempts"),
+                        duration_ms=payload_data.get("duration_ms"),
+                        output_count=payload_data.get("output_count"),
+                        error=payload_data.get("error"),
+                    )
+        state._dirty = False
+        state._serialised_cache = copy.deepcopy(dict(recovered))
         return state
+
+    # ------------------------------------------------------------------
+    # Validation helpers
+    # ------------------------------------------------------------------
+    @classmethod
+    def register_validator(
+        cls,
+        validator: Callable[["PipelineState"], None],
+        *,
+        name: str | None = None,
+    ) -> None:
+        cls._VALIDATORS.append((name, validator))
+
+    @classmethod
+    def clear_validators(cls) -> None:
+        cls._VALIDATORS.clear()
+
+    def validate(
+        self,
+        *,
+        extra_rules: Sequence[Callable[["PipelineState"], None]] | None = None,
+    ) -> None:
+        """Run registered validators against the state."""
+
+        for name, validator in self._VALIDATORS:
+            try:
+                validator(self)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                raise PipelineStateValidationError(str(exc), rule=name) from exc
+        if extra_rules:
+            for rule in extra_rules:
+                try:
+                    rule(self)
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    raise PipelineStateValidationError(str(exc)) from exc
+
+    def validate_transition(self, stage_type: str) -> None:
+        """Ensure the state is ready for the requested stage transition."""
+
+        try:
+            self.ensure_ready_for(stage_type)
+        except ValueError as exc:
+            raise PipelineStateValidationError(
+                f"State missing prerequisites for stage '{stage_type}': {exc}"
+            ) from exc
 
 
 @runtime_checkable
@@ -472,6 +683,7 @@ __all__ = [
     "IndexReceipt",
     "IndexStage",
     "PipelineState",
+    "PipelineStateValidationError",
     "KGStage",
     "StageResultSnapshot",
     "ParseStage",

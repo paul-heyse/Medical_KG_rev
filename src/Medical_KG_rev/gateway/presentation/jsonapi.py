@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from .errors import ErrorDetail
 from .interface import ResponsePresenter
 
 JSONAPI_CONTENT_TYPE = "application/vnd.api+json"
@@ -40,12 +41,14 @@ class JSONAPIPresenter(ResponsePresenter):
 
     def error(
         self,
-        detail: Mapping[str, Any] | str,
+        detail: Any,
         *,
         status_code: int = 400,
     ) -> JSONResponse:
-        if isinstance(detail, Mapping):
+        if isinstance(detail, ErrorDetail):
+            payload = {"errors": [detail.as_json()]}
+        elif isinstance(detail, Mapping):
             payload = {"errors": [_normalise_payload(detail)]}
         else:
-            payload = {"errors": [{"detail": detail}]}
+            payload = {"errors": [{"detail": str(detail)}]}
         return JSONResponse(payload, status_code=status_code, media_type=self.media_type)

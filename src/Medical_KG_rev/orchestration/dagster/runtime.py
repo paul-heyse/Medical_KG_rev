@@ -193,7 +193,7 @@ def _make_stage_op(
         start_time = time.perf_counter()
 
         try:
-            state.ensure_ready_for(stage_type)
+            state.validate_transition(stage_type)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1

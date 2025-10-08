@@ -21,7 +21,7 @@ class ResponsePresenter(Protocol):
 
     def error(
         self,
-        detail: Mapping[str, Any] | str,
+        detail: Any,
         *,
         status_code: int = 400,
     ) -> Response:

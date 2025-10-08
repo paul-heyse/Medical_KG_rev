@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+import base64
+import json
+import zlib
+from typing import Iterable
+
 import pytest
 
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
@@ -9,6 +16,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     GraphWriteReceipt,
     IndexReceipt,
     PipelineState,
+    PipelineStateValidationError,
     StageContext,
 )
 
@@ -19,7 +27,7 @@ def _build_document() -> Document:
     return Document(id="doc-1", source="test", sections=(section,), metadata={})
 
 
-def _sample_state() -> PipelineState:
+def _sample_state(payload: dict[str, object] | None = None) -> PipelineState:
     ctx = StageContext(tenant_id="tenant", correlation_id="corr", pipeline_name="unit")
     request = AdapterRequest(
         tenant_id="tenant",
@@ -27,13 +35,20 @@ def _sample_state() -> PipelineState:
         domain=AdapterDomain.BIOMEDICAL,
         parameters={},
     )
-    return PipelineState.initialise(context=ctx, adapter_request=request, payload={"foo": "bar"})
+    return PipelineState.initialise(context=ctx, adapter_request=request, payload=payload or {})
+
+
+@pytest.fixture(autouse=True)
+def reset_validators() -> Iterable[None]:
+    PipelineState.clear_validators()
+    yield
+    PipelineState.clear_validators()
 
 
 def test_pipeline_state_stage_flow_serialises() -> None:
     state = _sample_state()
-    with pytest.raises(ValueError):
-        state.ensure_ready_for("parse")
+    with pytest.raises(PipelineStateValidationError):
+        state.validate_transition("parse")
 
     payloads = [{"id": "p1"}]
     state.apply_stage_output("ingest", "ingest", payloads)
@@ -42,7 +57,7 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     document = _build_document()
     state.apply_stage_output("parse", "parse", document)
     assert state.has_document()
-    state.ensure_ready_for("chunk")
+    state.validate_transition("chunk")
 
     chunk = Chunk(
         chunk_id="c1",
@@ -89,12 +104,79 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     assert snapshot["stage_results"]["index"]["output_count"] == 1
 
 
-def test_pipeline_state_recover_handles_partial_payload() -> None:
+def test_serialise_caches_until_mutation() -> None:
     state = _sample_state()
+    assert state.is_dirty() is True
+    first = state.serialise()
+    assert first["payload_count"] == 0
+    assert state.is_dirty() is False
+    second = state.serialise()
+    assert second == first
+    state.set_payloads([{"id": "p1"}])
+    assert state.is_dirty() is True
+
+
+def test_pipeline_state_recover_handles_compressed_payload() -> None:
+    state = _sample_state({"foo": "bar"})
+    state.apply_stage_output("ingest", "ingest", [{"foo": 1}])
+    state.record_stage_metrics("ingest", stage_type="ingest", attempts=1)
+    payload = state.serialise()
+    encoded = base64.b64encode(zlib.compress(json.dumps(payload).encode("utf-8"))).decode("ascii")
+
     recovered = PipelineState.recover(
-        {"version": "v2", "metadata": {"note": "ok"}},
+        encoded,
         context=state.context,
         adapter_request=state.adapter_request,
     )
-    assert recovered.schema_version == "v2"
-    assert recovered.metadata["note"] == "ok"
+    assert recovered.schema_version == payload["version"]
+    assert recovered.metadata == state.metadata
+    assert "ingest" in recovered.stage_results
+
+
+def test_diff_reports_changes_between_states() -> None:
+    baseline = _sample_state()
+    mutated = _sample_state()
+    mutated.apply_stage_output("ingest", "ingest", [{"id": 1}])
+    mutated.apply_stage_output(
+        "chunk",
+        "chunk",
+        [
+            Chunk(
+                chunk_id="c1",
+                doc_id="d1",
+                tenant_id="tenant",
+                body="text",
+                title_path=("t",),
+                section="s",
+                start_char=0,
+                end_char=1,
+                granularity="sentence",
+                chunker="stub",
+                chunker_version="1",
+            )
+        ],
+    )
+    diff = mutated.diff(baseline)
+    assert diff["payload_count"] == (1, 0)
+    assert diff["chunk_count"] == (1, 0)
+    assert "pipeline_version" not in diff
+
+
+def test_custom_validation_rules_raise_errors() -> None:
+    state = _sample_state()
+
+    def _rule(current: PipelineState) -> None:
+        if not current.payload:
+            raise ValueError("payload missing")
+
+    PipelineState.register_validator(_rule, name="payload-check")
+    with pytest.raises(PipelineStateValidationError) as excinfo:
+        state.validate()
+    assert excinfo.value.rule == "payload-check"
+
+
+def test_cleanup_stage_releases_outputs() -> None:
+    state = _sample_state()
+    state.apply_stage_output("ingest", "ingest", [{"id": 1}])
+    state.cleanup_stage("ingest")
+    assert not state.get_payloads()

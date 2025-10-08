@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, TypeVar, cast
+from typing import Annotated, Any, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
@@ -36,8 +36,10 @@ from ..models import (
     RetrieveRequest,
 )
 from ..presentation.dependencies import get_response_presenter
+from ..presentation.errors import ErrorDetail
 from ..presentation.interface import ResponsePresenter
 from ..presentation.odata import ODataParams
+from ..presentation.requests import apply_tenant_context
 from ..services import GatewayService, get_gateway_service
 from ..services.retrieval.routing import QueryIntent
 
@@ -57,7 +59,14 @@ async def list_adapters(
     try:
         adapters = service.list_adapters(domain)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return presenter.error(
+            ErrorDetail(
+                status=400,
+                code="invalid-adapter-domain",
+                title="Invalid adapter domain",
+                detail=str(exc),
+            )
+        )
     return presenter.success(adapters, meta={"total": len(adapters)})
 
 
@@ -72,7 +81,15 @@ async def get_adapter_metadata(
 ) -> JSONResponse:
     metadata = service.get_adapter_metadata(name)
     if metadata is None:
-        raise HTTPException(status_code=404, detail="Adapter not found")
+        return presenter.error(
+            ErrorDetail(
+                status=404,
+                code="adapter-not-found",
+                title="Adapter not found",
+                detail=f"Adapter '{name}' was not registered",
+            ),
+            status_code=404,
+        )
     return presenter.success(metadata)
 
 
@@ -87,7 +104,15 @@ async def get_adapter_health(
 ) -> JSONResponse:
     health = service.get_adapter_health(name)
     if health is None:
-        raise HTTPException(status_code=404, detail="Adapter not found")
+        return presenter.error(
+            ErrorDetail(
+                status=404,
+                code="adapter-not-found",
+                title="Adapter not found",
+                detail=f"Adapter '{name}' was not registered",
+            ),
+            status_code=404,
+        )
     return presenter.success(health)
 
 
@@ -104,7 +129,15 @@ async def get_adapter_config_schema(
 ) -> JSONResponse:
     schema = service.get_adapter_config_schema(name)
     if schema is None:
-        raise HTTPException(status_code=404, detail="Adapter not found")
+        return presenter.error(
+            ErrorDetail(
+                status=404,
+                code="adapter-not-found",
+                title="Adapter not found",
+                detail=f"Adapter '{name}' was not registered",
+            ),
+            status_code=404,
+        )
     return presenter.success(schema)
 
 
@@ -124,18 +157,15 @@ TModel = TypeVar("TModel", bound=BaseModel)
 PresenterDep = Annotated[ResponsePresenter, Depends(get_response_presenter)]
 
 
-def _ensure_tenant(
+def _apply_tenant(
     request_model: TModel,
     security: SecurityContext,
     http_request: Request | None = None,
 ) -> TModel:
-    tenant_id = getattr(request_model, "tenant_id", None)
-    if tenant_id and tenant_id != security.tenant_id:
-        raise HTTPException(status_code=403, detail="Tenant mismatch")
-    updated = cast(TModel, request_model.model_copy(update={"tenant_id": security.tenant_id}))
-    if http_request is not None:
-        http_request.state.requested_tenant_id = getattr(updated, "tenant_id", security.tenant_id)
-    return updated
+    try:
+        return apply_tenant_context(request_model, security, http_request)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.post("/ingest/{dataset}", status_code=207, response_model=None)
@@ -149,7 +179,7 @@ async def ingest_dataset(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: BatchOperationResult = service.ingest(dataset, request)
     meta = {"total": result.total, "dataset": dataset}
     get_audit_trail().record(
@@ -171,7 +201,7 @@ async def ingest_pipeline(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     ingest_request = IngestionRequest.model_validate(
         request.model_dump(exclude={"dataset"})
     )
@@ -333,7 +363,7 @@ async def chunk_document(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     chunks = service.chunk_document(request)
     meta = {"total": len(chunks), "document_id": request.document_id}
     get_audit_trail().record(
@@ -355,7 +385,7 @@ async def embed_text(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     response = service.embed(request)
     meta = {
         "total": len(response.embeddings),
@@ -387,7 +417,7 @@ async def retrieve(
     presenter: PresenterDep,
 ) -> JSONResponse:
     odata = ODataParams.from_request(http_request)
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
     meta = {
         "total": result.total,
@@ -428,7 +458,7 @@ async def validate_namespace(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.validate_namespace_texts(
         tenant_id=request.tenant_id,
         namespace=namespace,
@@ -447,7 +477,7 @@ async def evaluate(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     try:
         result = service.evaluate_retrieval(request)
     except ValueError as exc:
@@ -468,7 +498,7 @@ async def query_pipeline(
     presenter: PresenterDep,
 ) -> JSONResponse:
     odata = ODataParams.from_request(http_request)
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: RetrievalResult = service.retrieve(request)
     meta = {
         "total": result.total,
@@ -537,7 +567,7 @@ async def entity_link(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     results = service.entity_link(request)
     meta = {"total": len(results)}
     get_audit_trail().record(
@@ -561,7 +591,7 @@ async def extract(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     extraction = service.extract(kind, request)
     get_audit_trail().record(
         context=security,
@@ -582,7 +612,7 @@ async def kg_write(
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep,
 ) -> JSONResponse:
-    request = _ensure_tenant(request, security, http_request)  # type: ignore[assignment]
+    request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.write_kg(request)
     get_audit_trail().record(
         context=security,

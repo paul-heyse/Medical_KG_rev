@@ -12,8 +12,11 @@ from typing import Any
 import structlog
 from Medical_KG_rev.chunking.exceptions import (
     ChunkerConfigurationError,
+    ChunkingFailedError,
     ChunkingUnavailableError,
     InvalidDocumentError,
+    ProfileNotFoundError,
+    TokenizerMismatchError,
 )
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
@@ -21,7 +24,11 @@ from ..adapters.plugins.models import AdapterRequest
 
 from ..chunking.models import Chunk
 from ..kg import ShaclValidator, ValidationError
-from ..observability.metrics import observe_job_duration, record_business_event
+from ..observability.metrics import (
+    observe_job_duration,
+    record_business_event,
+    record_chunking_failure,
+)
 from ..orchestration import (
     HaystackRetriever,
     JobLedger,
@@ -359,6 +366,8 @@ class GatewayService:
             metadata = dict(request.metadata)
             if request.profile:
                 metadata.setdefault("profile", request.profile)
+            if request.chunking_options:
+                metadata.setdefault("chunking_options", dict(request.chunking_options))
             status = self._submit_dagster_job(
                 dataset=dataset,
                 request=request,
@@ -392,6 +401,10 @@ class GatewayService:
             for key, value in options_payload.items()
             if key != "text"
         }
+        profile_hint: str | None = None
+        raw_profile = metadata.get("profile") if isinstance(metadata, dict) else None
+        if isinstance(raw_profile, str) and raw_profile:
+            profile_hint = raw_profile
         options = ChunkingOptions(
             strategy=request.strategy,
             max_tokens=request.chunk_size,
@@ -406,6 +419,38 @@ class GatewayService:
                 raw_text,
                 options,
             )
+        except ProfileNotFoundError as exc:
+            detail = ProblemDetail(
+                title="Chunking profile not found",
+                status=400,
+                type="https://medical-kg/errors/chunking-profile-not-found",
+                detail=str(exc),
+                extensions={"available_profiles": list(getattr(exc, "available", []))},
+            )
+            record_chunking_failure(profile_hint or "unknown", "ProfileNotFoundError")
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except TokenizerMismatchError as exc:
+            detail = ProblemDetail(
+                title="Tokenizer mismatch",
+                status=500,
+                type="https://medical-kg/errors/tokenizer-mismatch",
+                detail=str(exc),
+            )
+            record_chunking_failure(profile_hint or "unknown", "TokenizerMismatchError")
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except ChunkingFailedError as exc:
+            message = exc.detail or str(exc) or "Chunking process failed"
+            detail = ProblemDetail(
+                title="Chunking failed",
+                status=500,
+                type="https://medical-kg/errors/chunking-failed",
+                detail=message,
+            )
+            record_chunking_failure(profile_hint or "unknown", "ChunkingFailedError")
+            self._fail_job(job_id, message)
+            raise GatewayError(detail) from exc
         except InvalidDocumentError as exc:
             detail = ProblemDetail(
                 title="Invalid document payload",
@@ -414,6 +459,7 @@ class GatewayService:
                 detail=str(exc),
                 instance=f"/v1/chunk/{request.document_id}",
             )
+            record_chunking_failure(profile_hint or "unknown", "InvalidDocumentError")
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
         except ChunkerConfigurationError as exc:
@@ -424,6 +470,7 @@ class GatewayService:
                 detail=str(exc),
                 extensions={"valid_strategies": chunker.available_strategies()},
             )
+            record_chunking_failure(profile_hint or "unknown", "ChunkerConfigurationError")
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
         except ChunkingUnavailableError as exc:
@@ -435,6 +482,29 @@ class GatewayService:
                 detail=str(exc),
                 extensions={"retry_after": retry_after},
             )
+            record_chunking_failure(profile_hint or "unknown", "ChunkingUnavailableError")
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except MineruOutOfMemoryError as exc:
+            detail = ProblemDetail(
+                title="MinerU out of memory",
+                status=503,
+                type="https://medical-kg/errors/mineru-oom",
+                detail=str(exc),
+                extensions={"reason": "gpu_out_of_memory"},
+            )
+            record_chunking_failure(profile_hint or "unknown", "MineruOutOfMemoryError")
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        except MineruGpuUnavailableError as exc:
+            detail = ProblemDetail(
+                title="MinerU GPU unavailable",
+                status=503,
+                type="https://medical-kg/errors/mineru-gpu-unavailable",
+                detail=str(exc),
+                extensions={"reason": "gpu_unavailable"},
+            )
+            record_chunking_failure(profile_hint or "unknown", "MineruGpuUnavailableError")
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
         except MemoryError as exc:
@@ -966,3 +1036,4 @@ def get_gateway_service() -> GatewayService:
             adapter_manager=adapter_manager,
         )
     return _service
+from ..services.mineru import MineruGpuUnavailableError, MineruOutOfMemoryError

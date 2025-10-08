@@ -146,7 +146,7 @@ transformers>=4.57.0
 accelerate>=1.10.1
 safetensors>=0.6.2
 gguf>=0.17.1
-torch==2.8.0+cu128+cu128
+torch==2.8.0+cu128
 sentence-transformers>=5.1.1
 langchain>=0.3.27
 langchain-core>=0.3.78
@@ -469,8 +469,8 @@ tinycss2>=1.4.0
 tokenizers>=0.22.1
 tomlkit>=0.13.3
 toposort>=1.10
-torchaudio==2.8.0+cu128+cu128
-torchvision==0.23.0+cu128+cu128
+torchaudio==2.8.0+cu128
+torchvision==0.23.0+cu128
 tornado>=6.5.2
 tqdm>=4.67.1
 traitlets>=5.14.3

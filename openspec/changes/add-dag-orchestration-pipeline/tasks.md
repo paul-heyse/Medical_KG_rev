@@ -22,11 +22,11 @@
 - [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
 - [x] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
 - [x] `worker.py` (lines 62-110) - Replace with Dagster ops
-  - [x] `pipeline.py` - Replace with YAML topology configs
-  - [x] `profiles.py` - Replace with per-pipeline YAML configs
+  - [ ] `pipeline.py` - Replace with YAML topology configs
+  - [ ] `profiles.py` - Replace with per-pipeline YAML configs
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
   - [x] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
-  - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
+  - [x] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
   - [x] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
 - [x] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
   - File paths to delete
@@ -49,11 +49,11 @@
   - [x] Decision: Keep profile detection, delegate splitting to Haystack
   - [x] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
   - [x] Verify: All chunking tests pass with Haystack backend
-- [ ] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
-  - [ ] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
-  - [ ] Decision: Keep namespace management, delegate embedding to Haystack
-  - [ ] Delete: Custom embedding loops, batch processing logic (Haystack handles)
-  - [ ] Verify: GPU fail-fast preserved in Haystack wrapper
+- [x] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
+  - [x] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
+  - [x] Decision: Keep namespace management, delegate embedding to Haystack
+  - [x] Delete: Custom embedding loops, batch processing logic (Haystack handles)
+  - [x] Verify: GPU fail-fast preserved in Haystack wrapper
 - [ ] 1.3.3 **Retry Logic**: Verify all retries use tenacity decorators
   - [ ] Audit: Search for `for attempt in range(max_retries)` patterns
   - [ ] Decision: Delete all custom retry loops
@@ -110,18 +110,18 @@
 
 ### 1.7 Documentation Updates (Reflect Deletions)
 
-- [ ] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
-  - [ ] Remove: Section 6.2 "Legacy Pipeline Stages"
-  - [ ] Add: Section 6.2 "Dagster Job Definitions"
-  - [ ] Remove: All references to `Orchestrator.execute_pipeline`
-  - [ ] Add: All references to `submit_to_dagster`
-- [ ] 1.7.2 Update `docs/guides/orchestration-pipelines.md`:
-  - [ ] Remove: Legacy examples with hardcoded stages
-  - [ ] Add: YAML topology examples with Dagster
-- [ ] 1.7.3 Update `README.md`:
+- [x] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+  - [x] Remove: Section 6.2 "Legacy Pipeline Stages"
+  - [x] Add: Section 6.2 "Dagster Job Definitions"
+  - [x] Remove: All references to `Orchestrator.execute_pipeline`
+  - [x] Add: All references to `submit_to_dagster`
+- [x] 1.7.2 Update `docs/guides/orchestration-pipelines.md`:
+  - [x] Remove: Legacy examples with hardcoded stages
+  - [x] Add: YAML topology examples with Dagster
+- [x] 1.7.3 Update `README.md`:
   - [x] Remove: "Start background workers" (no longer needed)
   - [x] Add: "Start Dagster daemon" command
-- [ ] 1.7.4 Create `DELETED_CODE.md` documenting what was removed and why
+- [x] 1.7.4 Create `DELETED_CODE.md` documenting what was removed and why
 
 ### 1.8 Codebase Size Validation
 
@@ -132,9 +132,9 @@
   - [ ] Run `cloc` on same paths (post-deletion)
   - [ ] Record: Lines removed, files deleted, net reduction
 - [ ] 1.8.3 Validate codebase shrinkage:
-  - [ ] Assert: Total lines reduced by ≥30% (bespoke → library delegation)
+  - [ ] Assert: Total lines reduced by ≥30% (bespoke → library delegation) *(current: 19.97% reduction)*
   - [ ] Assert: Number of files reduced by ≥20% (consolidation)
-  - [ ] Document: Actual numbers in `CODEBASE_REDUCTION_REPORT.md`
+  - [x] Document: Actual numbers in `CODEBASE_REDUCTION_REPORT.md`
 
 ---
 

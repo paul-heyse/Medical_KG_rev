@@ -1,40 +1,80 @@
 # Orchestration Pipelines Guide
 
-## Pipeline Architecture and Flow
+This guide describes the Dagster-based orchestration stack that replaced the
+legacy worker pipeline. The gateway and CLI interact with Dagster definitions
+under `Medical_KG_rev.orchestration.dagster` and Haystack components under
+`Medical_KG_rev.orchestration.haystack`.
 
-- **Ingestion**: Documents enter via `/v1/ingest` or `/v1/pipelines/ingest`, are queued in Kafka (`ingest.requests.v1`), processed by chunking → embedding → indexing workers, and complete on `ingest.results.v1`. Server-sent events broadcast `jobs.started`, `jobs.progress`, and `jobs.completed` notifications to `/v1/jobs/{job_id}/events`.
-- **Query**: Requests reach `/v1/retrieve`, `/v1/pipelines/query`, or the GraphQL `retrieve` mutation. The gateway now delegates directly to `Medical_KG_rev.services.retrieval.RetrievalService`, which fans out to BM25/SPLADE/dense components, fuses their responses, applies reranking, and returns final selections annotated with `RETRIEVAL_PIPELINE_VERSION` metadata and optional explain traces.
-- **State & Observability**: All stages update the in-memory ledger, emit Prometheus metrics, trace spans, and structured logs keyed by correlation IDs. SSE consumers receive updates with stage names, statuses, and timestamps for live monitoring.
+## Dagster Architecture
 
-## Configuration Guide
+- **Stage contracts** – `StageContext`, `ChunkStage`, `EmbedStage`, and other
+  protocols live in `Medical_KG_rev.orchestration.stages.contracts`. Dagster ops
+  call these protocols so stage implementations remain framework-agnostic.
+- **StageFactory** – `StageFactory` resolves stage definitions from topology
+  YAML files. The default factory wires Haystack chunking, embedding, and
+  indexing components while falling back to lightweight stubs for unit tests.
+- **Runtime module** – `Medical_KG_rev.orchestration.dagster.runtime` defines
+  jobs, resources, and helper utilities (`DagsterOrchestrator`,
+  `submit_to_dagster`). Jobs call the appropriate stage implementation and
+  update the job ledger after each op.
+- **Haystack wrappers** – `Medical_KG_rev.orchestration.haystack.components`
+  adapts Haystack classes to the stage protocols. The chunker converts IR
+  documents into Haystack documents, the embedder produces dense vectors (with
+  optional sparse expansion), and the index writer dual writes to OpenSearch and
+  FAISS.
 
-- Pipeline definitions live in `config/orchestration/pipelines.yaml`. Each stage declares `name`, `kind`, `timeout_ms`, and stage-specific `options` (e.g., enabled retrieval strategies or rerank candidate counts).
-- `PipelineConfigManager` hot-reloads the YAML and snapshots versions under `config/orchestration/versions/` for auditability.
-- Per-stage overrides are supplied through the `config` map injected into the pipeline context. Overrides can tweak timeouts, strategy fan-out, or fusion algorithms without modifying code.
-- Validation ensures referenced services exist; breaking changes should create new pipeline entries to preserve backwards compatibility while existing jobs drain on the original version.
+## Pipeline Configuration
 
-## Profile Creation and Customisation
+- **Topology YAML** – Pipelines are described in
+  `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
+  optional `policy`, dependencies, and a free-form `config` block. Gates define
+  resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
+- **Resilience policies** – `config/orchestration/resilience.yaml` contains
+  shared retry, circuit breaker, and rate limiting definitions. The runtime
+  loads these into Tenacity, PyBreaker, and aiolimiter objects.
+- **Version manifest** – `config/orchestration/versions/*` tracks pipeline
+  revisions. `PipelineConfigLoader` loads and caches versions to provide
+  deterministic orchestration.
 
-- Profiles aggregate ingestion and query pipeline selections. Define new profiles in `pipelines.yaml` under `profiles`, optionally inheriting from a base profile via `extends`.
-- Use the `overrides` map to specialise stage behaviour (e.g., enable BM25 and dense retrieval for PMC while favouring SPLADE for DailyMed).
-- The `ProfileDetector` supports explicit profile requests (`profile` field on API calls) and metadata-driven detection (e.g., `metadata.source = "clinicaltrials"`). Unknown profiles trigger RFC 7807 errors before execution.
+## Execution Flow
+
+1. **Job submission** – The gateway builds a `StageContext` and calls
+   `submit_to_dagster`. The Dagster run stores the initial state using the job
+   ledger resource.
+2. **Stage execution** – Each op resolves the stage implementation via
+   `StageFactory`. Resilience policies wrap the execution and emit metrics on
+   retries, circuit breaker state changes, and rate limiting delays.
+3. **Ledger updates** – Ops record progress to the job ledger (`current_stage`,
+   attempt counts, gate metadata). Sensors poll the ledger for gate conditions
+   (e.g., `pdf_ir_ready=true`) and resume downstream stages.
+4. **Outputs** – Stage results are added to the Dagster run state and surfaced
+   to the gateway through the ledger/SSE stream. Haystack components persist
+   embeddings and metadata in downstream storage systems.
 
 ## Troubleshooting
 
-- **Unknown profile**: Ensure the requested profile exists in `pipelines.yaml`; the API returns `400` with `type=https://httpstatuses.com/400`.
-- **Stage timeout**: Check stage timings in response metadata; timeouts surface as `partial=true` with detailed `errors` including the offending stage.
-- **No SSE events**: Verify the job ID and tenant when subscribing to `/v1/jobs/{job_id}/events`; historical events are retained per job even if no subscribers were connected when emitted.
-- **Partial ingestion**: Batch responses include per-item HTTP status and error payloads; downstream workers continue processing successfully queued jobs.
+- **Stage resolution errors** – Verify the stage `type` in the topology YAML
+  matches the keys registered in `build_default_stage_factory`. Unknown stage
+  types raise `StageResolutionError` during job execution.
+- **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
+  for required fields (attempts, backoff, circuit breaker thresholds). Invalid
+  policies raise validation errors at load time.
+- **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
+  set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
+  and record trigger counts in the ledger metadata.
+- **Missing embeddings** – Ensure the embed stage resolved the Haystack
+  embedder; stubs return deterministic values for test runs but do not persist
+  to OpenSearch/FAISS.
 
-## Evaluation Harness Usage
+## Operational Notes
 
-- The evaluation tooling under `src/Medical_KG_rev/eval/` loads ground-truth datasets, computes retrieval metrics (nDCG, Recall, MRR, MAP), and compares pipeline variants.
-- Use `EvalHarness` to execute nightly evaluations across profiles and strategies, capturing per-stage metrics and regression alerts.
-- Ground-truth datasets are stored as versioned JSONL files; the harness supports annotation templates and experiment definitions for A/B testing.
+- Run Dagster locally with
+  `dagster dev -m Medical_KG_rev.orchestration.dagster.runtime` to access the UI
+  and sensors.
+- The gateway uses `StageFactory` directly for synchronous operations (chunking
+  and embedding APIs) to avoid spinning up full Dagster runs.
+- Dagster daemon processes handle sensors and schedules. Ensure the daemon has
+  access to the same configuration volume as the webserver and gateway.
+- CloudEvents and OpenLineage emission hooks live alongside the Dagster jobs
+  and reuse the resilience policy loader for consistent telemetry metadata.
 
-## Operational Runbook
-
-- Deploy workers alongside the API gateway; ensure Kafka, Redis/Postgres ledger backends, and vector stores are reachable.
-- Monitor Prometheus metrics for ingestion throughput, query latency percentiles, circuit breaker states, and DLQ accumulation. Alerts should route to PagerDuty and Slack using the observability helpers.
-- Use SSE streams and `/v1/jobs/{job_id}` for real-time debugging, and correlate with tracing spans (Jaeger) using the propagated correlation IDs.
-- Apply configuration updates via the YAML file; safe changes hot-reload automatically, while major revisions should be versioned and rolled out with blue/green deploys.

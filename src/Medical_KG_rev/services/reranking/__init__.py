@@ -5,6 +5,7 @@ from .factory import RerankerFactory
 from .model_registry import (
     DEFAULT_CACHE_DIR as RERANKER_CACHE_DIR,
     DEFAULT_CONFIG_PATH as RERANKER_CONFIG_PATH,
+    ModelDownloadError,
     ModelDownloader,
     ModelHandle,
     RerankerModel,
@@ -67,6 +68,7 @@ __all__ = [
     "RerankerEvaluator",
     "RERANKER_CACHE_DIR",
     "RERANKER_CONFIG_PATH",
+    "ModelDownloadError",
     "ModelDownloader",
     "ModelHandle",
     "RerankerModel",

@@ -70,6 +70,7 @@ class StageContext:
     metadata: dict[str, Any] = field(default_factory=dict)
     pipeline_name: str | None = None
     pipeline_version: str | None = None
+    phase: str | None = None
 
     def with_metadata(self, **values: Any) -> StageContext:
         """Return a new context instance with additional metadata."""
@@ -84,6 +85,21 @@ class StageContext:
             metadata=updated,
             pipeline_name=self.pipeline_name,
             pipeline_version=self.pipeline_version,
+            phase=self.phase,
+        )
+
+    def with_phase(self, phase: str | None) -> StageContext:
+        """Return a new context instance with an updated execution phase."""
+
+        return StageContext(
+            tenant_id=self.tenant_id,
+            job_id=self.job_id,
+            doc_id=self.doc_id,
+            correlation_id=self.correlation_id,
+            metadata=dict(self.metadata),
+            pipeline_name=self.pipeline_name,
+            pipeline_version=self.pipeline_version,
+            phase=phase,
         )
 
 

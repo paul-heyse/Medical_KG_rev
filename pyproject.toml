@@ -668,6 +668,10 @@ reranking = [
 [project.entry-points."medical_kg.adapters"]
 example = "Medical_KG_rev.adapters.plugins.example:ExampleAdapterPlugin"
 
+[project.entry-points."medical_kg.orchestration.stages"]
+download = "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
+gate = "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
+
 [project.urls]
 Homepage = "https://github.com/your-org/Medical_KG_rev"
 Documentation = "https://your-org.github.io/Medical_KG_rev"

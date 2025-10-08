@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 from uuid import uuid4
 
 from dagster import (
@@ -33,6 +33,11 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     ResiliencePolicyLoader,
     StageDefinition,
 )
+from Medical_KG_rev.orchestration.dagster.stage_registry import (
+    StageMetadata,
+    StageRegistry,
+    StageRegistryError,
+)
 from Medical_KG_rev.orchestration.dagster.stages import (
     HaystackPipelineResource,
     build_default_stage_factory,
@@ -57,23 +62,40 @@ class StageResolutionError(RuntimeError):
 class StageFactory:
     """Resolve orchestration stages by topology stage type."""
 
-    registry: Mapping[str, Callable[[StageDefinition], object]]
+    registry: StageRegistry = field(default_factory=StageRegistry)
 
     def resolve(self, pipeline: str, stage: StageDefinition) -> object:
         try:
-            factory = self.registry[stage.stage_type]
-        except KeyError as exc:  # pragma: no cover - defensive guard
+            builder = self.registry.get_builder(stage.stage_type)
+            metadata = self.registry.get_metadata(stage.stage_type)
+        except StageRegistryError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
-        instance = factory(stage)
+        instance = builder(stage)
         logger.debug(
             "dagster.stage.resolved",
             pipeline=pipeline,
             stage=stage.name,
             stage_type=stage.stage_type,
+            description=metadata.description,
         )
         return instance
+
+    def get_metadata(self, stage_type: str) -> StageMetadata:
+        return self.registry.get_metadata(stage_type)
+
+    def register_stage(
+        self,
+        *,
+        metadata: StageMetadata,
+        builder: Callable[[StageDefinition], object],
+        replace: bool = False,
+    ) -> None:
+        self.registry.register_stage(metadata=metadata, builder=builder, replace=replace)
+
+    def load_plugins(self) -> list[str]:
+        return self.registry.load_plugins()
 
 
 @op(
@@ -118,75 +140,62 @@ def bootstrap_op(context) -> dict[str, Any]:
     return state
 
 
-def _stage_state_key(stage_type: str) -> str:
-    return {
-        "ingest": "payloads",
-        "parse": "document",
-        "ir-validation": "document",
-        "chunk": "chunks",
-        "embed": "embedding_batch",
-        "index": "index_receipt",
-        "extract": "extraction",
-        "knowledge-graph": "graph_receipt",
-    }.get(stage_type, stage_type)
-
-
 def _apply_stage_output(
-    stage_type: str,
+    metadata: StageMetadata,
     stage_name: str,
     state: dict[str, Any],
     output: Any,
 ) -> dict[str, Any]:
-    if stage_type == "ingest":
-        state["payloads"] = output
-    elif stage_type in {"parse", "ir-validation"}:
-        state["document"] = output
-    elif stage_type == "chunk":
-        state["chunks"] = output
-    elif stage_type == "embed":
-        state["embedding_batch"] = output
-    elif stage_type == "index":
-        state["index_receipt"] = output
-    elif stage_type == "extract":
-        entities, claims = output
-        state["entities"] = entities
-        state["claims"] = claims
-    elif stage_type == "knowledge-graph":
-        state["graph_receipt"] = output
-    else:  # pragma: no cover - guard for future expansion
-        state[_stage_state_key(stage_type)] = output
+    metadata.output_handler(state, stage_name, output)
+    snapshot = metadata.result_snapshot(state, output)
     state.setdefault("results", {})[stage_name] = {
-        "type": stage_type,
-        "output": state.get(_stage_state_key(stage_type)),
+        "type": metadata.stage_type,
+        "output": snapshot,
     }
     return state
 
 
-def _infer_output_count(stage_type: str, output: Any) -> int:
-    if output is None:
+def _infer_output_count(metadata: StageMetadata, output: Any) -> int:
+    try:
+        count = metadata.output_counter(output)
+    except Exception:  # pragma: no cover - defensive guard
         return 0
-    if stage_type in {"ingest", "chunk"} and isinstance(output, Sequence):
-        return len(output)
-    if stage_type in {"parse", "ir-validation"}:
-        return 1
-    if stage_type == "embed" and hasattr(output, "vectors"):
-        vectors = getattr(output, "vectors")
-        if isinstance(vectors, Sequence):
-            return len(vectors)
-    if stage_type == "index" and hasattr(output, "chunks_indexed"):
-        indexed = getattr(output, "chunks_indexed")
-        if isinstance(indexed, int):
-            return indexed
-    if stage_type == "extract" and isinstance(output, tuple) and len(output) == 2:
-        entities, claims = output
-        entity_count = len(entities) if isinstance(entities, Sequence) else 0
-        claim_count = len(claims) if isinstance(claims, Sequence) else 0
-        return entity_count + claim_count
-    if stage_type == "knowledge-graph" and hasattr(output, "nodes_written"):
-        nodes = getattr(output, "nodes_written", 0)
-        if isinstance(nodes, int):
-            return nodes
-    return 1
+    if not isinstance(count, int):  # pragma: no cover - defensive guard
+        try:
+            count = int(count)
+        except Exception:
+            return 0
+    return max(count, 0)
+
+
+def _resolve_upstream_value(
+    state: Mapping[str, Any], metadata: StageMetadata, stage_factory: StageFactory
+) -> Any:
+    if metadata.dependencies:
+        aggregated: dict[str, Any] = {}
+        for dependency in metadata.dependencies:
+            try:
+                dep_metadata = stage_factory.get_metadata(dependency)
+            except StageRegistryError:  # pragma: no cover - defensive guard
+                continue
+            dep_keys = dep_metadata.state_keys
+            if not dep_keys:
+                continue
+            if len(dep_keys) == 1:
+                key = dep_keys[0]
+                aggregated[key] = state.get(key)
+            else:
+                aggregated[dependency] = {key: state.get(key) for key in dep_keys}
+        if aggregated:
+            if len(aggregated) == 1:
+                return next(iter(aggregated.values()))
+            return aggregated
+    keys = metadata.state_keys
+    if keys is None or not keys:
+        return state.get(metadata.stage_type)
+    if len(keys) == 1:
+        return state.get(keys[0])
+    return {key: state.get(key) for key in keys}
 
 
 def _make_stage_op(
@@ -210,7 +219,9 @@ def _make_stage_op(
         },
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
-        stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
+        stage_factory: StageFactory = context.resources.stage_factory
+        stage = stage_factory.resolve(topology.name, stage_definition)
+        metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
         state_manager: LedgerStateManager = context.resources.job_state_manager
 
@@ -288,7 +299,7 @@ def _make_stage_op(
                 claims = state.get("claims", [])
                 result = wrapped(stage_ctx, entities, claims)
             else:  # pragma: no cover - guard for future expansion
-                upstream = state.get(_stage_state_key(stage_type))
+                upstream = _resolve_upstream_value(state, metadata, stage_factory)
                 result = wrapped(stage_ctx, upstream)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
@@ -297,12 +308,11 @@ def _make_stage_op(
             raise
 
         updated = dict(state)
-        _apply_stage_output(stage_type, stage_name, updated, result)
-        output = updated.get(_stage_state_key(stage_type))
+        _apply_stage_output(metadata, stage_name, updated, result)
         attempts = execution_state.get("attempts") or 1
         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
         duration_ms = int(duration_seconds * 1000)
-        output_count = _infer_output_count(stage_type, output)
+        output_count = _infer_output_count(metadata, result)
 
         state_manager.stage_succeeded(
             job_id,
@@ -362,6 +372,7 @@ class BuiltPipelineJob:
     job_definition: Any
     final_node: str
     version: str
+    total_phases: int
 
 
 def _normalise_name(name: str) -> str:
@@ -407,11 +418,14 @@ def _build_pipeline_job(
         },
     )
 
+    total_phases = max((stage.phase_index for stage in topology.stages), default=1)
+
     return BuiltPipelineJob(
         job_name=job.name,
         job_definition=job,
         final_node=order[-1] if order else "bootstrap",
         version=topology.version,
+        total_phases=total_phases,
     )
 
 
@@ -587,7 +601,6 @@ class DagsterOrchestrator:
             duration_ms=duration_ms,
         )
 
-        final_state = result.output_for_node(job.final_node)
         return DagsterRunResult(
             pipeline=pipeline,
             success=result.success,
@@ -623,15 +636,25 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
             continue
         if not entry.pdf_ir_ready or entry.status != "processing":
             continue
-        run_key = f"{entry.job_id}-resume"
+        phase_label = entry.phase or entry.metadata.get("phase") or "phase-1"
+        try:
+            current_phase_index = int(str(phase_label).split("-", maxsplit=1)[1])
+        except Exception:
+            current_phase_index = 1
+        resume_phase_index = max(current_phase_index + 1, 2)
+        resume_phase = f"phase-{resume_phase_index}"
+        run_key = f"{entry.job_id}-resume-{resume_phase_index}"
+        resume_stage = entry.metadata.get("resume_stage", "chunk")
         context_payload = {
             "tenant_id": entry.tenant_id,
             "job_id": entry.job_id,
             "doc_id": entry.doc_key,
             "correlation_id": entry.metadata.get("correlation_id"),
-            "metadata": dict(entry.metadata),
+            "metadata": {**dict(entry.metadata), "resume_stage": resume_stage},
             "pipeline_name": entry.pipeline_name,
             "pipeline_version": entry.metadata.get("pipeline_version", entry.pipeline_name or ""),
+            "phase": resume_phase,
+            "phase_ready": True,
         }
         adapter_payload = entry.metadata.get("adapter_request", {})
         payload = entry.metadata.get("payload", {})
@@ -652,7 +675,8 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                 run_config=run_config,
                 tags={
                     "medical_kg.pipeline": entry.pipeline_name or "",
-                    "medical_kg.resume_stage": "chunk",
+                    "medical_kg.resume_stage": resume_stage,
+                    "medical_kg.resume_phase": resume_phase,
                 },
             )
         )

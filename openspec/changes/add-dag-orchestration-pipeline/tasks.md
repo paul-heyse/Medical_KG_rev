@@ -19,16 +19,16 @@
 
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
-- [ ] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
+- [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
   - [ ] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
   - [ ] `worker.py` (lines 62-110) - Replace with Dagster ops
   - [ ] `pipeline.py` - Replace with YAML topology configs
   - [ ] `profiles.py` - Replace with per-pipeline YAML configs
-- [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
+- [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
   - [ ] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
   - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
   - [ ] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
-- [ ] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
+- [x] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
   - File paths to delete
   - Imports to update
   - Tests to delete/replace
@@ -36,11 +36,11 @@
 
 ### 1.2 Dependency Analysis (Pre-Delete Validation)
 
-- [ ] 1.2.1 Run `grep -r "from.*orchestrator import" src/` to find all imports of legacy orchestrator
-- [ ] 1.2.2 Run `grep -r "Orchestrator\(" src/` to find all instantiations
-- [ ] 1.2.3 Run `grep -r "execute_pipeline" src/` to find all calls to legacy API
-- [ ] 1.2.4 Run `grep -r "IngestWorker\|MappingWorker" src/` to find worker usage
-- [ ] 1.2.5 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
+- [x] 1.2.1 Run `grep -r "from.*orchestrator import" src/` to find all imports of legacy orchestrator
+- [x] 1.2.2 Run `grep -r "Orchestrator\(" src/` to find all instantiations
+- [x] 1.2.3 Run `grep -r "execute_pipeline" src/` to find all calls to legacy API
+- [x] 1.2.4 Run `grep -r "IngestWorker\|MappingWorker" src/` to find worker usage
+- [x] 1.2.5 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
@@ -97,10 +97,10 @@
 
 ### 1.6 Test Migration (Delete and Replace)
 
-- [ ] 1.6.1 Delete legacy orchestration tests:
-  - [ ] `tests/orchestration/test_orchestrator.py` (legacy API tests)
-  - [ ] `tests/orchestration/test_workers.py` (worker-specific tests)
-  - [ ] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
+- [x] 1.6.1 Delete legacy orchestration tests:
+  - [x] `tests/orchestration/test_orchestrator.py` (legacy API tests)
+  - [x] `tests/orchestration/test_workers.py` (worker-specific tests)
+  - [x] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
 - [ ] 1.6.2 Create new Dagster tests:
   - [ ] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
   - [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
@@ -140,95 +140,95 @@
 
 ## 2. Foundation & Dependencies
 
-- [ ] 1.1 Add **dagster>=1.5.0** to `requirements.txt` and `pyproject.toml`
-- [ ] 1.2 Add **haystack-ai>=2.0.0** with OpenSearch and FAISS extras
-- [ ] 1.3 Add **tenacity>=8.2.0** for retry decorators
-- [ ] 1.4 Add **pybreaker>=1.0.0** for circuit breaker pattern
-- [ ] 1.5 Add **aiolimiter>=1.1.0** for async rate limiting
-- [ ] 1.6 Add **cloudevents>=1.9.0** for event envelope format
-- [ ] 1.7 Add **openlineage-python>=1.0.0** for lineage tracking (optional)
-- [ ] 1.8 Add **respx>=0.20.0** to `requirements-dev.txt` for HTTP mocking in tests
+- [x] 1.1 Add **dagster>=1.5.0** to `requirements.txt` and `pyproject.toml`
+- [x] 1.2 Add **haystack-ai>=2.0.0** with OpenSearch and FAISS extras
+- [x] 1.3 Add **tenacity>=8.2.0** for retry decorators
+- [x] 1.4 Add **pybreaker>=1.0.0** for circuit breaker pattern
+- [x] 1.5 Add **aiolimiter>=1.1.0** for async rate limiting
+- [x] 1.6 Add **cloudevents>=1.9.0** for event envelope format
+- [x] 1.7 Add **openlineage-python>=1.0.0** for lineage tracking (optional)
+- [x] 1.8 Add **respx>=0.20.0** to `requirements-dev.txt` for HTTP mocking in tests
 
 ## 2. Stage Contracts (Python Protocols)
 
-- [ ] 2.1 Define `StageContext` dataclass with tenant_id, doc_id, correlation_id, metadata
-- [ ] 2.2 Define `IngestStage` Protocol: `execute(ctx: StageContext, request: AdapterRequest) -> list[RawPayload]`
-- [ ] 2.3 Define `ParseStage` Protocol: `execute(ctx: StageContext, payloads: list[RawPayload]) -> Document`
-- [ ] 2.4 Define `ChunkStage` Protocol: `execute(ctx: StageContext, document: Document) -> list[Chunk]`
-- [ ] 2.5 Define `EmbedStage` Protocol: `execute(ctx: StageContext, chunks: list[Chunk]) -> EmbeddingBatch`
-- [ ] 2.6 Define `IndexStage` Protocol: `execute(ctx: StageContext, batch: EmbeddingBatch) -> IndexReceipt`
-- [ ] 2.7 Define `ExtractStage` Protocol: `execute(ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]`
-- [ ] 2.8 Define `KGStage` Protocol: `execute(ctx: StageContext, entities: list[Entity], claims: list[Claim]) -> GraphWriteReceipt`
-- [ ] 2.9 Create `src/Medical_KG_rev/orchestration/stages/contracts.py` with all protocols
-- [ ] 2.10 Add type hints and docstrings for each protocol method
+- [x] 2.1 Define `StageContext` dataclass with tenant_id, doc_id, correlation_id, metadata
+- [x] 2.2 Define `IngestStage` Protocol: `execute(ctx: StageContext, request: AdapterRequest) -> list[RawPayload]`
+- [x] 2.3 Define `ParseStage` Protocol: `execute(ctx: StageContext, payloads: list[RawPayload]) -> Document`
+- [x] 2.4 Define `ChunkStage` Protocol: `execute(ctx: StageContext, document: Document) -> list[Chunk]`
+- [x] 2.5 Define `EmbedStage` Protocol: `execute(ctx: StageContext, chunks: list[Chunk]) -> EmbeddingBatch`
+- [x] 2.6 Define `IndexStage` Protocol: `execute(ctx: StageContext, batch: EmbeddingBatch) -> IndexReceipt`
+- [x] 2.7 Define `ExtractStage` Protocol: `execute(ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]`
+- [x] 2.8 Define `KGStage` Protocol: `execute(ctx: StageContext, entities: list[Entity], claims: list[Claim]) -> GraphWriteReceipt`
+- [x] 2.9 Create `src/Medical_KG_rev/orchestration/stages/contracts.py` with all protocols
+- [x] 2.10 Add type hints and docstrings for each protocol method
 
 ## 3. Pipeline Configuration Schema
 
-- [ ] 3.1 Define `PipelineTopologyConfig` Pydantic model for YAML parsing
-- [ ] 3.2 Define `StageDefinition` with name, stage_type, policy_ref, dependencies
-- [ ] 3.3 Define `GateDefinition` with condition (ledger field predicates), resume_stage
-- [ ] 3.4 Define `ResiliencePolicyConfig` with max_attempts, backoff_strategy, timeout_seconds, circuit_breaker_config, rate_limit_config
-- [ ] 3.5 Create schema validation for pipeline YAML files
-- [ ] 3.6 Add JSON Schema export for documentation (`docs/guides/pipeline-schema.json`)
-- [ ] 3.7 Write comprehensive config validation tests
+- [x] 3.1 Define `PipelineTopologyConfig` Pydantic model for YAML parsing
+- [x] 3.2 Define `StageDefinition` with name, stage_type, policy_ref, dependencies
+- [x] 3.3 Define `GateDefinition` with condition (ledger field predicates), resume_stage
+- [x] 3.4 Define `ResiliencePolicyConfig` with max_attempts, backoff_strategy, timeout_seconds, circuit_breaker_config, rate_limit_config
+- [x] 3.5 Create schema validation for pipeline YAML files
+- [x] 3.6 Add JSON Schema export for documentation (`docs/guides/pipeline-schema.json`)
+- [x] 3.7 Write comprehensive config validation tests
 
 ## 4. Resilience Configuration
 
-- [ ] 4.1 Create `config/orchestration/resilience.yaml` with named policies:
-  - [ ] 4.1.1 `default`: 3 retries, exponential backoff with jitter, 30s timeout
-  - [ ] 4.1.2 `gpu-bound`: 1 retry, no backoff, 60s timeout, circuit breaker (5 failures, 60s reset)
-  - [ ] 4.1.3 `polite-api`: 10 retries, linear backoff, 10s timeout, 5 req/s rate limit
-- [ ] 4.2 Implement `ResiliencePolicyLoader` to load and validate policies from config
-- [ ] 4.3 Create `tenacity.retry` decorator factory from policy config
-- [ ] 4.4 Create `pybreaker.CircuitBreaker` factory from policy config
-- [ ] 4.5 Create `aiolimiter.AsyncLimiter` factory from policy config
-- [ ] 4.6 Implement policy application at stage execution boundary
-- [ ] 4.7 Add Prometheus metrics for retry attempts, circuit breaker state changes, rate limit waits
-- [ ] 4.8 Write resilience policy unit tests with respx mocks
+- [x] 4.1 Create `config/orchestration/resilience.yaml` with named policies:
+  - [x] 4.1.1 `default`: 3 retries, exponential backoff with jitter, 30s timeout
+  - [x] 4.1.2 `gpu-bound`: 1 retry, no backoff, 60s timeout, circuit breaker (5 failures, 60s reset)
+  - [x] 4.1.3 `polite-api`: 10 retries, linear backoff, 10s timeout, 5 req/s rate limit
+- [x] 4.2 Implement `ResiliencePolicyLoader` to load and validate policies from config
+- [x] 4.3 Create `tenacity.retry` decorator factory from policy config
+- [x] 4.4 Create `pybreaker.CircuitBreaker` factory from policy config
+- [x] 4.5 Create `aiolimiter.AsyncLimiter` factory from policy config
+- [x] 4.6 Implement policy application at stage execution boundary
+- [x] 4.7 Add Prometheus metrics for retry attempts, circuit breaker state changes, rate limit waits
+- [x] 4.8 Write resilience policy unit tests with respx mocks
 
 ## 5. Pipeline Topology Definitions
 
-- [ ] 5.1 Create `config/orchestration/pipelines/auto.yaml`:
-  - [ ] 5.1.1 Define stages: ingest, parse, ir_validation, chunk, embed, index, extract, kg
-  - [ ] 5.1.2 Set resilience policies per stage
-  - [ ] 5.1.3 Add metadata (version, description, applicable_sources)
-- [ ] 5.2 Create `config/orchestration/pipelines/pdf-two-phase.yaml`:
-  - [ ] 5.2.1 Define pre-PDF stages: ingest, download
-  - [ ] 5.2.2 Add GATE(pdf_ir_ready) with ledger condition
-  - [ ] 5.2.3 Define post-PDF stages: chunk, embed, index, extract, kg
-  - [ ] 5.2.4 Set gpu-bound policy for chunk (uses SPLADE), embed (uses Qwen), extract (uses LLM)
-- [ ] 5.3 Create `config/orchestration/pipelines/clinical-trials.yaml` (auto pipeline variant)
-- [ ] 5.4 Create `config/orchestration/pipelines/pmc-fulltext.yaml` (PDF pipeline variant)
-- [ ] 5.5 Add pipeline versioning: copy to `config/orchestration/versions/YYYY-MM-DD/`
-- [ ] 5.6 Implement `PipelineLoader` to load and cache topology configs
-- [ ] 5.7 Write pipeline config validation tests
+- [x] 5.1 Create `config/orchestration/pipelines/auto.yaml`:
+  - [x] 5.1.1 Define stages: ingest, parse, ir_validation, chunk, embed, index, extract, kg
+  - [x] 5.1.2 Set resilience policies per stage
+  - [x] 5.1.3 Add metadata (version, description, applicable_sources)
+- [x] 5.2 Create `config/orchestration/pipelines/pdf-two-phase.yaml`:
+  - [x] 5.2.1 Define pre-PDF stages: ingest, download
+  - [x] 5.2.2 Add GATE(pdf_ir_ready) with ledger condition
+  - [x] 5.2.3 Define post-PDF stages: chunk, embed, index, extract, kg
+  - [x] 5.2.4 Set gpu-bound policy for chunk (uses SPLADE), embed (uses Qwen), extract (uses LLM)
+- [x] 5.3 Create `config/orchestration/pipelines/clinical-trials.yaml` (auto pipeline variant)
+- [x] 5.4 Create `config/orchestration/pipelines/pmc-fulltext.yaml` (PDF pipeline variant)
+- [x] 5.5 Add pipeline versioning: copy to `config/orchestration/versions/YYYY-MM-DD/`
+- [x] 5.6 Implement `PipelineLoader` to load and cache topology configs
+- [x] 5.7 Write pipeline config validation tests
 
 ## 6. Haystack Component Wrappers
 
-- [ ] 6.1 Implement `HaystackChunker` wrapping `DocumentSplitter`:
-  - [ ] 6.1.1 Satisfy `ChunkStage` protocol
-  - [ ] 6.1.2 Convert IR `Document` to Haystack `Document` format
-  - [ ] 6.1.3 Apply semantic chunking with coherence scoring
-  - [ ] 6.1.4 Convert back to IR `Chunk[]` with provenance
-- [ ] 6.2 Implement `HaystackEmbedder` wrapping `OpenAIDocumentEmbedder`:
-  - [ ] 6.2.1 Satisfy `EmbedStage` protocol
-  - [ ] 6.2.2 Point to local vLLM endpoint (Qwen-3 via OpenAI-compatible API)
-  - [ ] 6.2.3 Batch processing with GPU utilization tracking
-  - [ ] 6.2.4 Fail-fast if GPU unavailable
-- [ ] 6.3 Implement `HaystackSparseExpander` for SPLADE:
-  - [ ] 6.3.1 Custom Haystack component for sparse vector generation
-  - [ ] 6.3.2 GPU-backed expansion term generation
-  - [ ] 6.3.3 Fail-fast GPU requirement
-- [ ] 6.4 Implement `HaystackIndexWriter` wrapping `OpenSearchDocumentWriter` + `FAISSDocumentWriter`:
-  - [ ] 6.4.1 Satisfy `IndexStage` protocol
-  - [ ] 6.4.2 Dual write to OpenSearch (BM25 + SPLADE) and FAISS (dense)
-  - [ ] 6.4.3 Tenant-aware index naming
-  - [ ] 6.4.4 Transactional semantics (both succeed or both fail)
-- [ ] 6.5 Implement `HaystackRetriever` for hybrid search:
-  - [ ] 6.5.1 Wrap `OpenSearchBM25Retriever`, `FAISSEmbeddingRetriever`
-  - [ ] 6.5.2 Integrate `RRFFusionRanker` for result merging
-  - [ ] 6.5.3 Maintain existing retrieval API compatibility
-- [ ] 6.6 Write comprehensive Haystack wrapper unit tests with mocks
+- [x] 6.1 Implement `HaystackChunker` wrapping `DocumentSplitter`:
+  - [x] 6.1.1 Satisfy `ChunkStage` protocol
+  - [x] 6.1.2 Convert IR `Document` to Haystack `Document` format
+  - [x] 6.1.3 Apply semantic chunking with coherence scoring
+  - [x] 6.1.4 Convert back to IR `Chunk[]` with provenance
+- [x] 6.2 Implement `HaystackEmbedder` wrapping `OpenAIDocumentEmbedder`:
+  - [x] 6.2.1 Satisfy `EmbedStage` protocol
+  - [x] 6.2.2 Point to local vLLM endpoint (Qwen-3 via OpenAI-compatible API)
+  - [x] 6.2.3 Batch processing with GPU utilization tracking
+  - [x] 6.2.4 Fail-fast if GPU unavailable
+- [x] 6.3 Implement `HaystackSparseExpander` for SPLADE:
+  - [x] 6.3.1 Custom Haystack component for sparse vector generation
+  - [x] 6.3.2 GPU-backed expansion term generation
+  - [x] 6.3.3 Fail-fast GPU requirement
+- [x] 6.4 Implement `HaystackIndexWriter` wrapping `OpenSearchDocumentWriter` + `FAISSDocumentWriter`:
+  - [x] 6.4.1 Satisfy `IndexStage` protocol
+  - [x] 6.4.2 Dual write to OpenSearch (BM25 + SPLADE) and FAISS (dense)
+  - [x] 6.4.3 Tenant-aware index naming
+  - [x] 6.4.4 Transactional semantics (both succeed or both fail)
+- [x] 6.5 Implement `HaystackRetriever` for hybrid search:
+  - [x] 6.5.1 Wrap `OpenSearchBM25Retriever`, `FAISSEmbeddingRetriever`
+  - [x] 6.5.2 Integrate `RRFFusionRanker` for result merging
+  - [x] 6.5.3 Maintain existing retrieval API compatibility
+- [x] 6.6 Write comprehensive Haystack wrapper unit tests with mocks
 - [ ] 6.7 Write integration tests with real OpenSearch + FAISS instances
 
 ## 7. Dagster Job Definitions

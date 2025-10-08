@@ -1,0 +1,49 @@
+name: clinical-trials
+version: "2025-01-01"
+applicable_sources:
+  - clinical-trials
+metadata:
+  owner: adapters-team
+  description: Ingestion pipeline tailored for ClinicalTrials.gov adapter.
+stages:
+  - name: ingest
+    type: ingest
+    policy: default
+    config:
+      adapter: clinicaltrials
+  - name: parse
+    type: parse
+    policy: default
+    depends_on:
+      - ingest
+  - name: ir_validation
+    type: ir-validation
+    policy: default
+    depends_on:
+      - parse
+  - name: chunk
+    type: chunk
+    policy: default
+    depends_on:
+      - ir_validation
+  - name: embed
+    type: embed
+    policy: default
+    depends_on:
+      - chunk
+  - name: index
+    type: index
+    policy: default
+    depends_on:
+      - embed
+  - name: extract
+    type: extract
+    policy: default
+    depends_on:
+      - ir_validation
+  - name: kg
+    type: knowledge-graph
+    policy: default
+    depends_on:
+      - extract
+      - index

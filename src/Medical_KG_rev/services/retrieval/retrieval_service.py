@@ -1,11 +1,11 @@
-"""Hybrid retrieval orchestration combining lexical, sparse, and dense signals."""
+"""Hybrid retrieval service coordinating lexical, sparse, and dense signals."""
 
 from __future__ import annotations
 
-from collections import OrderedDict
-from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Callable, Mapping, Sequence
 
 import structlog
 from Medical_KG_rev.auth.context import SecurityContext
@@ -23,6 +23,7 @@ from Medical_KG_rev.services.reranking import (
     RerankingEngine,
     ScoredDocument,
 )
+from Medical_KG_rev.services.reranking.errors import RerankingError
 from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
@@ -30,10 +31,13 @@ from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 from .faiss_index import FAISSIndex
 from .opensearch_client import OpenSearchClient
+from .rerank_policy import TenantRerankPolicy
 from .reranker import CrossEncoderReranker
-from .router import RetrievalRouter
+from .router import RetrievalRouter, RouterMatch
 
 logger = structlog.get_logger(__name__)
+
+DEFAULT_POLICY_PATH = Path("config/retrieval/reranking.yaml")
 
 
 @dataclass(slots=True)
@@ -44,17 +48,17 @@ class RetrievalResult:
     rerank_score: float | None
     highlights: Sequence[Mapping[str, object]]
     metadata: Mapping[str, object]
-    granularity: str
+    granularity: str = "chunk"
 
 
 class RetrievalService:
-    """Coordinates hybrid retrieval across lexical, sparse, and dense namespaces."""
+    """Coordinates fan-out to retrieval components, fusion and reranking."""
 
     def __init__(
         self,
         opensearch: OpenSearchClient,
         faiss: FAISSIndex | None = None,
-        reranker: Callable[..., Any] | None = None,
+        reranker: Callable[..., object] | None = None,
         *,
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
@@ -63,6 +67,9 @@ class RetrievalService:
         pipeline_settings: PipelineSettings | None = None,
         reranking_engine: RerankingEngine | None = None,
         reranking_settings: RerankingSettings | None = None,
+        router: RetrievalRouter | None = None,
+        namespace_map: Mapping[str, str] | None = None,
+        rerank_policy: TenantRerankPolicy | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -71,6 +78,9 @@ class RetrievalService:
         self._context_factory = context_factory
         self.router = router or RetrievalRouter()
         self._namespace_map = dict(namespace_map or {})
+        self._rerank_policy = rerank_policy or TenantRerankPolicy.from_file(
+            DEFAULT_POLICY_PATH
+        )
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
@@ -93,9 +103,7 @@ class RetrievalService:
         reset_timeout = (
             reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
         )
-        batch_size = (
-            reranking_settings.model.batch_size if reranking_settings else 64
-        )
+        batch_size = reranking_settings.model.batch_size if reranking_settings else 64
         self._reranking_engine = reranking_engine or RerankingEngine(
             factory=RerankerFactory(),
             cache=RerankCacheManager(ttl_seconds=ttl),
@@ -115,7 +123,7 @@ class RetrievalService:
             reranking=self._reranking_engine,
             settings=pipeline_settings,
         )
-        # Backwards compatible attribute
+        self._candidate_pool = max(100, pipeline_settings.retrieve_candidates)
         self.reranker = reranker or CrossEncoderReranker()
         self._default_reranker = (
             reranking_settings.model.reranker_id
@@ -129,7 +137,7 @@ class RetrievalService:
         query: str,
         filters: Mapping[str, object] | None = None,
         k: int = 10,
-        rerank: bool = False,
+        rerank: bool | None = None,
         embedding_kind: str | None = None,
         *,
         reranker_id: str | None = None,
@@ -142,61 +150,195 @@ class RetrievalService:
             else SecurityContext(subject="system", tenant_id="system", scopes={"*"})
         )
         namespace = self._resolve_namespace(embedding_kind)
-        request = RoutingRequest(
+        component_k = max(k, self._candidate_pool)
+        component_results, component_errors = self._execute_components(
+            index=index,
             query=query,
-            top_k=k,
             filters=filters or {},
             namespace=namespace,
+            top_k=component_k,
             context=security_context,
         )
-        dense_results = self._dense_search(query, k, security_context)
-
-        default_reranker = reranker_id or self._default_reranker
         candidate_lists = {
-            "bm25": self._materialise_documents(
-                bm25_results, security_context, strategy="bm25"
+            component: self._materialise_documents(results, security_context, strategy=component)
+            for component, results in component_results.items()
+        }
+
+        decision = self._rerank_policy.decide(
+            security_context.tenant_id, query, rerank
+        )
+        reranker_key = reranker_id or self._default_reranker
+        metrics: dict[str, object]
+        rerank_applied = decision.enabled
+        try:
+            documents, metrics = self._pipeline.execute(
+                security_context,
+                query,
+                candidate_lists,
+                reranker_id=reranker_key,
+                top_k=k,
+                rerank=decision.enabled,
+                explain=explain,
+            )
+        except RerankingError as exc:
+            logger.warning(
+                "retrieval.rerank_failed",
+                tenant=security_context.tenant_id,
+                reranker=reranker_key,
+                error=str(exc),
+            )
+            rerank_applied = False
+            documents, metrics = self._pipeline.execute(
+                security_context,
+                query,
+                candidate_lists,
+                reranker_id=reranker_key,
+                top_k=k,
+                rerank=False,
+                explain=explain,
+            )
+            metrics = dict(metrics)
+            rerank_metrics = dict(metrics.get("reranking", {}))
+            rerank_metrics.update(
+                {
+                    "error": exc.__class__.__name__,
+                    "message": str(exc),
+                    "fallback": "fusion",
+                }
+            )
+            metrics["reranking"] = rerank_metrics
+        else:
+            metrics = dict(metrics)
+
+        metrics.setdefault("components", {})
+        metrics["components"]["errors"] = list(component_errors)
+        rerank_metadata = dict(metrics.get("reranking", {}))
+        rerank_metadata.update(decision.as_metadata())
+        rerank_metadata.setdefault("requested", rerank)
+        rerank_metadata["applied"] = rerank_applied
+        metrics["reranking"] = rerank_metadata
+
+        results: list[RetrievalResult] = []
+        for document in documents:
+            metadata = dict(document.metadata)
+            metadata.setdefault("component_scores", dict(document.strategy_scores))
+            metadata.setdefault("components", {})
+            metadata["components"].setdefault("errors", list(component_errors))
+            if rerank_metadata:
+                metadata.setdefault("reranking", rerank_metadata)
+            result = RetrievalResult(
+                id=document.doc_id,
+                text=document.content,
+                retrieval_score=float(metadata.get("retrieval_score", document.score)),
+                rerank_score=document.score if rerank_applied else None,
+                highlights=list(document.highlights),
+                metadata=metadata,
+                granularity=str(metadata.get("granularity", "chunk")),
+            )
+            if explain:
+                metadata.setdefault("pipeline_metrics", metrics)
+            results.append(result)
+        return results
+
+    # ------------------------------------------------------------------
+    def _execute_components(
+        self,
+        *,
+        index: str,
+        query: str,
+        filters: Mapping[str, object],
+        namespace: str,
+        top_k: int,
+        context: SecurityContext,
+    ) -> tuple[dict[str, Sequence[Mapping[str, object]]], list[str]]:
+        tasks: dict[str, Callable[[], Sequence[Mapping[str, object]]]] = {
+            "bm25": lambda: self.opensearch.search(
+                index,
+                query,
+                strategy="bm25",
+                filters=filters,
+                size=top_k,
             ),
-            "splade": self._materialise_documents(
-                splade_results, security_context, strategy="splade"
-            ),
-            "dense": self._materialise_documents(
-                dense_results, security_context, strategy="dense"
+            "splade": lambda: self.opensearch.search(
+                index,
+                query,
+                strategy="splade",
+                filters=filters,
+                size=top_k,
             ),
         }
-        fused, metrics = self._pipeline.execute(
-            security_context,
-            query,
-            candidate_lists,
-            reranker_id=default_reranker,
-            top_k=k,
-            rerank=rerank,
-            explain=explain,
-        )
-        results: list[RetrievalResult] = []
-        for rank, document in enumerate(fused, start=1):
-            retrieval_score = float(document.metadata.get("retrieval_score", document.score))
-            results.append(
-                RetrievalResult(
-                    id=document.doc_id,
-                    text=document.content,
-                    retrieval_score=retrieval_score,
-                    rerank_score=document.score if rerank else None,
-                    highlights=list(document.highlights),
-                    metadata=dict(document.metadata),
-                )
+        if self.faiss or self.vector_store:
+            tasks["dense"] = lambda: self._dense_search(query, top_k, context)
+
+        results: dict[str, Sequence[Mapping[str, object]]] = {}
+        errors: list[str] = []
+        with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+            future_map = {executor.submit(func): name for name, func in tasks.items()}
+            for future in as_completed(future_map):
+                component = future_map[future]
+                try:
+                    results[component] = list(future.result())
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning(
+                        "retrieval.component_failed",
+                        component=component,
+                        error=str(exc),
+                    )
+                    errors.append(f"{component}:{exc.__class__.__name__}")
+                    results[component] = []
+        for component in tasks:
+            results.setdefault(component, [])
+        return results, errors
+
+    def _materialise_documents(
+        self,
+        results: Sequence[Mapping[str, object]],
+        context: SecurityContext,
+        *,
+        strategy: str,
+    ) -> list[ScoredDocument]:
+        documents: list[ScoredDocument] = []
+        for result in results:
+            doc_id = str(result.get("_id"))
+            source = result.get("_source", {})
+            if not isinstance(source, Mapping):
+                source = {}
+            metadata = dict(source)
+            metadata.setdefault("strategy", strategy)
+            score = float(result.get("_score", 0.0))
+            metadata.setdefault("retrieval_score", score)
+            tenant = str(metadata.get("tenant_id", context.tenant_id))
+            text = str(metadata.get("text", ""))
+            highlights = list(result.get("highlight", []))
+            document = ScoredDocument(
+                doc_id=doc_id,
+                content=text,
+                tenant_id=tenant,
+                source=str(metadata.get("source", strategy)),
+                strategy_scores={strategy: score},
+                metadata=metadata,
+                highlights=highlights,
+                score=score,
             )
-        if rerank:
-            for result in results:
-                result.metadata.setdefault("reranking", metrics.get("reranking", {}))
-        if explain:
-            for result, document in zip(results, fused, strict=False):
-                result.metadata.setdefault("pipeline_metrics", metrics)
-                result.metadata.setdefault("fusion", metrics.get("fusion", {}))
-                result.metadata.setdefault("timing", metrics.get("timing", {}))
-                result.metadata.setdefault(
-                    "strategy_scores",
-                    dict(document.strategy_scores),
-                )
+            documents.append(document)
+        return documents
+
+    def _dense_search(
+        self, query: str, k: int, context: SecurityContext
+    ) -> list[Mapping[str, object]]:
+        matches = self._dense_strategy(self.vector_namespace, query, k, context)
+        results: list[Mapping[str, object]] = []
+        for match in matches:
+            metadata = dict(match.metadata)
+            metadata.setdefault("text", metadata.get("text", ""))
+            results.append(
+                {
+                    "_id": match.id,
+                    "_score": match.score,
+                    "_source": metadata,
+                    "highlight": metadata.get("highlights", []),
+                }
+            )
         return results
 
     def _dense_strategy(
@@ -219,13 +361,6 @@ class RetrievalService:
                     query=VectorQuery(values=pseudo_query, top_k=k),
                 )
             except VectorStoreError as exc:
-                logger.warning(
-                    "retrieval.vector_search.failed",
-                    namespace=namespace,
-                    error=str(exc),
-                )
-                return []
-            except Exception as exc:  # pragma: no cover - defensive logging
                 logger.warning(
                     "retrieval.vector_search.failed",
                     namespace=namespace,
@@ -263,103 +398,11 @@ class RetrievalService:
             )
         return results
 
-    def _build_strategies(
-        self, index: str, context: SecurityContext, namespace: str
-    ) -> list[RetrievalStrategy]:
-        def bm25_handler(request: RoutingRequest) -> list[RouterMatch]:
-            hits = self.opensearch.search(
-                index, request.query, strategy="bm25", filters=request.filters, size=request.top_k
-            )
-            return [self._opensearch_to_match(hit, "bm25") for hit in hits]
-
-    def _materialise_documents(
-        self,
-        results: Sequence[Mapping[str, object]],
-        context: SecurityContext,
-        *,
-        strategy: str,
-    ) -> list[ScoredDocument]:
-        documents: list[ScoredDocument] = []
-        for result in results:
-            doc_id = str(result.get("_id"))
-            source = result.get("_source", {})
-            if not isinstance(source, Mapping):
-                source = {}
-            metadata = dict(source)
-            metadata.setdefault("strategy", strategy)
-            tenant = str(metadata.get("tenant_id", context.tenant_id))
-            text = str(metadata.get("text", ""))
-            score = float(result.get("_score", 0.0))
-            document = ScoredDocument(
-                doc_id=doc_id,
-                content=text,
-                tenant_id=tenant,
-                source=str(metadata.get("source", strategy)),
-                strategy_scores={strategy: score},
-                metadata=metadata,
-                highlights=list(result.get("highlight", [])),
-                score=score,
-            )
-            documents.append(document)
-        return documents
-
-    def _apply_rerank(
-        self, query: str, results: Iterable[RetrievalResult]
-    ) -> list[RetrievalResult]:
-        materialised = list(results)
-        candidates = [
-            {"id": result.id, "text": result.text, **result.metadata} for result in materialised
-        ]
-        return strategies
-
     def _resolve_namespace(self, embedding_kind: str | None) -> str:
         if embedding_kind and embedding_kind in self._namespace_map:
             return self._namespace_map[embedding_kind]
         return self.vector_namespace
 
-    def _opensearch_to_match(self, hit: Mapping[str, object], source: str) -> RouterMatch:
-        metadata = dict(hit.get("_source", {}))
-        metadata.setdefault("highlights", hit.get("highlight", []))
-        metadata.setdefault("text", metadata.get("text", ""))
-        return RouterMatch(
-            id=str(hit.get("_id")),
-            score=float(hit.get("_score", 0.0)),
-            metadata=metadata,
-            source=source,
-        )
 
-    def _apply_rerank_stub(
-        self, results: Sequence[RetrievalResult], reranker_id: str | None
-    ) -> list[RetrievalResult]:
-        reranked: list[RetrievalResult] = []
-        model_name = reranker_id or "cross-encoder:stub"
-        for result in results:
-            metadata = dict(result.metadata)
-            metadata.setdefault("reranking", {"model": model_name, "source": "stub"})
-            reranked.append(
-                RetrievalResult(
-                    id=result.id,
-                    text=result.text,
-                    retrieval_score=result.retrieval_score,
-                    rerank_score=result.retrieval_score * 1.1,
-                    highlights=result.highlights,
-                    metadata=result.metadata,
-                    granularity=result.granularity,
-                )
-            )
-        return reranked
+__all__ = ["RetrievalResult", "RetrievalService"]
 
-    # ------------------------------------------------------------------
-    def _query_cache_get(self, query: str) -> list[Mapping[str, object]] | None:
-        key = (query, tuple(sorted(self.active_namespaces)))
-        if key in self._query_cache:
-            value = self._query_cache.pop(key)
-            self._query_cache[key] = value
-            return value
-        return None
-
-    def _query_cache_set(self, query: str, results: list[Mapping[str, object]]) -> None:
-        key = (query, tuple(sorted(self.active_namespaces)))
-        self._query_cache[key] = results
-        if len(self._query_cache) > self._cache_size:
-            self._query_cache.popitem(last=False)

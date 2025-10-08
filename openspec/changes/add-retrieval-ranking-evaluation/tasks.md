@@ -448,19 +448,19 @@
   - **Config**: Only rerank if hybrid score > threshold (avoid reranking low-quality results)
   - **Default**: Rerank all top-100
 
-- [ ] 4.2.5 Add per-tenant reranking settings
+- [x] 4.2.5 Add per-tenant reranking settings
   - **Config**: Some tenants enable reranking by default
   - **Override**: API parameter overrides tenant default
 
-- [ ] 4.2.6 Implement reranking fallback
+- [x] 4.2.6 Implement reranking fallback
   - **Strategy**: If reranker fails, return fusion ranking
   - **Logging**: Emit warning, CloudEvent
 
-- [ ] 4.2.7 Add reranking A/B testing support
+- [x] 4.2.7 Add reranking A/B testing support
   - **Traffic Split**: 10% reranked, 90% fusion-only
   - **Metrics**: Compare nDCG@10 across groups
 
-- [ ] 4.2.8 Write reranking integration tests
+- [x] 4.2.8 Write reranking integration tests
   - **Cases**: Enabled, disabled, fallback
 
 - [ ] 4.2.9 Performance benchmark: Reranking latency

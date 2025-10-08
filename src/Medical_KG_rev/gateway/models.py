@@ -177,7 +177,7 @@ class RetrieveRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
     filters: dict[str, Any] = Field(default_factory=dict)
-    rerank: bool = True
+    rerank: bool | None = None
     rerank_top_k: int = Field(default=10, ge=1, le=200)
     rerank_overflow: bool = False
     profile: str | None = None

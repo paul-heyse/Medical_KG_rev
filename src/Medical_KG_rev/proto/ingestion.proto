@@ -4,10 +4,19 @@ package medicalkg.gateway.v1;
 
 option go_package = "github.com/your-org/medicalkg/gateway/v1";
 
+message ChunkingOptions {
+  bool preserve_tables_html = 1;
+  string sentence_splitter = 2;
+  uint32 custom_token_budget = 3;
+  map<string, string> metadata = 4;
+}
+
 message IngestionJobRequest {
   string tenant_id = 1;
   string dataset = 2;
   repeated string item_ids = 3;
+  string chunking_profile = 4;
+  ChunkingOptions options = 5;
 }
 
 message OperationStatus {
@@ -18,6 +27,8 @@ message OperationStatus {
 
 message IngestionJobResponse {
   repeated OperationStatus operations = 1;
+  uint32 estimated_chunks = 2;
+  string profile_used = 3;
 }
 
 service IngestionService {

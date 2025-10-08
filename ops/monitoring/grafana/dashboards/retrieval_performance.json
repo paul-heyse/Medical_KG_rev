@@ -1,0 +1,153 @@
+{
+  "title": "Retrieval Performance",
+  "uid": "retrieval-performance",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Hybrid Retrieval Latency (P95)",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket{path=\"/v1/retrieve\"}[5m])) by (le))",
+          "legendFormat": "P95 /v1/retrieve"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(retrieval_pipeline_stage_duration_seconds_bucket{stage=\"rerank\"}[5m])) by (le)) * 1000",
+          "legendFormat": "Rerank stage P95 (ms)"
+        }
+      ],
+      "yaxes": [
+        { "format": "ms", "label": "Latency", "logBase": 1 },
+        { "format": "short", "logBase": 1 }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Recall@10 (Nightly)",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "medicalkg_retrieval_recall_at_k{dataset=\"test_set_v1\",k=\"10\"}",
+          "legendFormat": "Recall@10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 0.75, "color": "orange" },
+              { "value": 0.82, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "nDCG@10 (Nightly)",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "medicalkg_retrieval_ndcg_at_k{dataset=\"test_set_v1\",k=\"10\"}",
+          "legendFormat": "nDCG@10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 0.7, "color": "orange" },
+              { "value": 0.79, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Reranking Cache Hit Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "avg_over_time(reranking_cache_hit_rate[15m])",
+          "legendFormat": "Cache hit"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 0.4, "color": "orange" },
+              { "value": 0.6, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Pipeline Stage Latency (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(retrieval_pipeline_stage_duration_seconds_bucket[5m])) by (le, stage)) * 1000",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields" },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "le": true },
+            "indexByName": {
+              "Value": 2,
+              "stage": 1
+            },
+            "renameByName": {
+              "Value": "P95 (ms)",
+              "stage": "Stage"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Reranking GPU Utilisation",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "expr": "max(reranking_gpu_utilization_percent)",
+          "legendFormat": "GPU utilisation"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 80, "color": "orange" },
+              { "value": 90, "color": "red" }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

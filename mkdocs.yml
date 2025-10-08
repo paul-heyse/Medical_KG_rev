@@ -15,6 +15,10 @@ nav:
       - Local Environments: devops/local-environments.md
       - Observability: devops/observability.md
       - Kubernetes: devops/kubernetes.md
+      - Retrieval Rollout Runbook: operations/retrieval-rollout.md
+  - Retrieval:
+      - User Guide: guides/retrieval/user-guide.md
+      - Developer Guide: guides/retrieval/developer-guide.md
   - API Contracts:
       - REST OpenAPI: openapi.yaml
       - GraphQL SDL: schema.graphql

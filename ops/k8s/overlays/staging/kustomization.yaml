@@ -25,3 +25,44 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/nvidia.com~1gpu
+        value: "1"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/nvidia.com~1gpu
+        value: "1"
+  - target:
+      kind: ConfigMap
+      name: gateway-config
+    patch: |
+      - op: replace
+        path: /data/MK_ENV
+        value: staging
+      - op: add
+        path: /data/MK_RERANKING__ENABLED
+        value: "true"
+      - op: add
+        path: /data/MK_RERANKING__MODEL__MODEL
+        value: bge-reranker-base
+      - op: add
+        path: /data/MK_RERANKING__EXPERIMENT__RERANK_RATIO
+        value: "0.2"
+      - op: add
+        path: /data/MK_FEATURE_FLAGS__FLAGS__TABLE_ROUTING
+        value: "true"
+      - op: add
+        path: /data/MK_FEATURE_FLAGS__FLAGS__CLINICAL_BOOSTING
+        value: "true"
+  - target:
+      kind: CronJob
+      name: retrieval-evaluation
+    patch: |
+      - op: replace
+        path: /spec/schedule
+        value: "15 * * * *"
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/args/1
+        value: http://staging-gateway.medical-kg:8000
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/args/3
+        value: staging-eval

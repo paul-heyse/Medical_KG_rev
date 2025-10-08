@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 from datetime import datetime, timezone
+from typing import Any, Mapping
 
 import grpc
 
@@ -42,8 +43,15 @@ else:  # pragma: no cover - fallback when grpc-health not installed
     health_pb2 = _StubHealthPb2()
     health_pb2_grpc = _StubHealthGrpc()
 
-from ..models import ChunkRequest, EmbedRequest, ExtractionRequest, IngestionRequest
+from ..models import (
+    ChunkRequest,
+    EmbedRequest,
+    EmbeddingOptions,
+    ExtractionRequest,
+    IngestionRequest,
+)
 from ..services import GatewayService, get_gateway_service
+from ..auth.scopes import Scopes
 
 try:  # pragma: no cover - generated modules may be missing in CI
     from Medical_KG_rev.proto.gen import (
@@ -117,25 +125,76 @@ class EmbeddingService(
     async def Embed(self, request, context):  # type: ignore[override]
         embed_request = EmbedRequest(
             tenant_id=request.tenant_id,
-            inputs=list(request.inputs),
-            model=request.model,
-            namespace=getattr(request, "namespace", request.model or ""),
-            normalize=request.normalize,
+            texts=list(request.inputs),
+            namespace=request.namespace,
+            options=EmbeddingOptions(normalize=request.normalize),
         )
-        vectors = self.service.embed(embed_request)
+        result = self.service.embed(embed_request)
         if embedding_pb2 is None:
             return None
         response = embedding_pb2.EmbedResponse()
-        for vector in vectors:
-            resp_vector = response.embeddings.add(id=vector.id)
+        response.namespace = result.namespace
+        if result.metadata:
+            response.metadata.provider = result.metadata.provider
+            if result.metadata.dimension is not None:
+                response.metadata.dimension = int(result.metadata.dimension)
+            response.metadata.duration_ms = float(result.metadata.duration_ms)
+            response.metadata.model = result.metadata.model
+        for vector in result.embeddings:
+            message = response.embeddings.add()
+            message.id = vector.id
+            message.model = vector.model
+            message.namespace = vector.namespace
+            message.kind = vector.kind
+            message.dimension = int(vector.dimension)
             if vector.vector:
-                resp_vector.values.extend(vector.vector)
-            if hasattr(resp_vector, "model"):
-                resp_vector.model = vector.model
-            if hasattr(resp_vector, "namespace"):
-                resp_vector.namespace = vector.namespace
-            if hasattr(resp_vector, "dimension"):
-                resp_vector.dimension = vector.dimension
+                message.values.extend(vector.vector)
+            if vector.terms:
+                message.terms.update(vector.terms)
+            for key, value in vector.metadata.items():
+                message.metadata[key] = str(value)
+        return response
+
+    async def ListNamespaces(self, request, context):  # type: ignore[override]
+        if embedding_pb2 is None:
+            return None
+        namespaces = self.service.list_namespaces(
+            tenant_id=request.tenant_id,
+            scope=Scopes.EMBED_READ,
+        )
+        response = embedding_pb2.ListNamespacesResponse()
+        for item in namespaces:
+            proto = response.namespaces.add()
+            proto.id = item.id
+            proto.provider = item.provider
+            proto.kind = item.kind
+            if item.dimension is not None:
+                proto.dimension = int(item.dimension)
+            if item.max_tokens is not None:
+                proto.max_tokens = int(item.max_tokens)
+            proto.enabled = bool(item.enabled)
+            proto.allowed_tenants.extend(item.allowed_tenants)
+            proto.allowed_scopes.extend(item.allowed_scopes)
+        return response
+
+    async def ValidateTexts(self, request, context):  # type: ignore[override]
+        if embedding_pb2 is None:
+            return None
+        result = self.service.validate_namespace_texts(
+            tenant_id=request.tenant_id,
+            namespace=request.namespace,
+            texts=list(request.texts),
+        )
+        response = embedding_pb2.ValidateTextsResponse()
+        response.namespace = result.namespace
+        response.valid = result.valid
+        for entry in result.results:
+            proto = response.results.add()
+            proto.text_index = entry.text_index
+            proto.token_count = entry.token_count
+            proto.exceeds_budget = entry.exceeds_budget
+            if entry.warning:
+                proto.warning = entry.warning
         return response
 
 
@@ -169,11 +228,24 @@ class IngestionService(
         self.service = service
 
     async def Submit(self, request, context):  # type: ignore[override]
+        options_payload: dict[str, Any] | None = None
+        if hasattr(request, "options") and request.HasField("options"):
+            opts = request.options
+            options_payload = {
+                "preserve_tables_html": opts.preserve_tables_html,
+                "sentence_splitter": opts.sentence_splitter,
+                "custom_token_budget": int(opts.custom_token_budget),
+                **dict(opts.metadata),
+            }
         ingestion_request = IngestionRequest(
             tenant_id=request.tenant_id,
             items=[{"id": item_id} for item_id in request.item_ids],
             metadata={"dataset": request.dataset},
+            profile=request.chunking_profile or None,
+            chunking_options=options_payload,
         )
+        if options_payload:
+            ingestion_request.metadata.setdefault("chunking_options", options_payload)
         result = self.service.ingest(request.dataset, ingestion_request)
         if ingestion_pb2 is None:
             return None
@@ -182,6 +254,13 @@ class IngestionService(
             response.operations.add(
                 job_id=status.job_id, status=status.status, message=status.message or ""
             )
+        estimated_chunks = 0
+        for status in result.operations:
+            count = status.metadata.get("chunks") if isinstance(status.metadata, Mapping) else None
+            if isinstance(count, int):
+                estimated_chunks += count
+        response.estimated_chunks = max(0, estimated_chunks)
+        response.profile_used = ingestion_request.profile or ""
         return response
 
 

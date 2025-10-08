@@ -34,6 +34,11 @@ class NamespaceDefinition:
     normalize: bool = True
     batch_size: int = 32
     requires_gpu: bool = False
+    max_tokens: int | None = None
+    tokenizer: str | None = None
+    enabled: bool = True
+    allowed_scopes: list[str] = field(default_factory=lambda: ["embed:read", "embed:write"])
+    allowed_tenants: list[str] = field(default_factory=lambda: ["all"])
     prefixes: dict[str, str] = field(default_factory=dict)
     parameters: dict[str, Any] = field(default_factory=dict)
 
@@ -50,6 +55,11 @@ class NamespaceDefinition:
             normalize=bool(data.get("normalize", True)),
             batch_size=int(data.get("batch_size", 32)),
             requires_gpu=bool(data.get("requires_gpu", False)),
+            max_tokens=(int(data["max_tokens"]) if data.get("max_tokens") is not None else None),
+            tokenizer=(str(data["tokenizer"]) if data.get("tokenizer") else None),
+            enabled=bool(data.get("enabled", True)),
+            allowed_scopes=list(data.get("allowed_scopes", ["embed:read", "embed:write"])),
+            allowed_tenants=list(data.get("allowed_tenants", ["all"])),
             prefixes=dict(data.get("prefixes", {})),
             parameters=dict(data.get("parameters", {})),
         )
@@ -67,6 +77,11 @@ class NamespaceDefinition:
             normalize=self.normalize,
             batch_size=self.batch_size,
             requires_gpu=self.requires_gpu,
+            max_tokens=self.max_tokens,
+            tokenizer=self.tokenizer,
+            enabled=self.enabled,
+            allowed_scopes=list(self.allowed_scopes),
+            allowed_tenants=list(self.allowed_tenants),
             prefixes=self.prefixes,
             parameters=self.parameters,
         )

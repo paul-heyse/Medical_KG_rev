@@ -35,11 +35,11 @@ jmespath>=1.0.1
 s3transfer>=0.14.0
 attrs>=25.4.0
 aiohappyeyeballs>=2.6.1
-aiolimiter>=1.2.1
+aiolimiter==1.1.0
 typing-extensions>=4.15.0
 wrapt>=1.17.3
 pluggy>=1.6.0
-pybreaker>=1.4.1
+pybreaker==1.0.2
 jiter>=0.11.0
 hf-xet>=1.1.10
 humanfriendly>=10.0
@@ -56,7 +56,7 @@ thrift>=0.22.0
 cryptography>=46.0.2
 rsa>=4.9.1
 coloredlogs>=14.0
-cloudevents>=1.12.0
+cloudevents==1.9.0
 urllib3>=2.5.0
 langsmith>=0.4.33
 annotated-types>=0.7.0
@@ -195,10 +195,10 @@ conllu>=6.0.0
 coverage>=7.10.7
 cymem>=2.0.11
 cython>=3.1.4
-dagster>=1.11.13
-dagster-pipes>=1.11.13
-dagster-postgres>=0.27.13
-dagster-shared>=1.11.13
+dagster==1.5.14
+dagster-pipes==1.5.14
+dagster-postgres==0.21.14
+dagster-shared==1.5.14
 dash>=3.2.0
 dash-bootstrap-components>=2.0.4
 dataclasses-json>=0.6.7
@@ -238,7 +238,7 @@ grpc-stubs>=1.53.0.6
 h11>=0.16.0
 h2>=4.3.0
 harfile>=0.4.0
-haystack-ai>=2.18.1
+haystack-ai==2.0.1
 haystack-experimental>=0.13.0
 hpack>=4.1.0
 html5rdf>=1.2.1
@@ -348,7 +348,7 @@ nvidia-nvtx-cu12>=12.8.90
 onnx>=1.19.0
 onnxruntime>=1.23.0
 opencv-python-headless>=4.12.0
-openlineage-python>=1.39.0
+openlineage-python==1.1.0
 opensearch-py>=3.0.0
 owlrl>=7.1.4
 paginate>=0.5.7
@@ -459,7 +459,7 @@ striprtf>=0.0.26
 structlog>=25.4.0
 sympy>=1.14.0
 tabulate>=0.9.0
-tenacity>=9.1.2
+tenacity==8.2.3
 terminado>=0.18.1
 thinc>=8.3.4
 tifffile>=2025.10.4

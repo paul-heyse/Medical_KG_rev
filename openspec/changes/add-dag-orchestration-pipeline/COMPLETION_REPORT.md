@@ -88,6 +88,7 @@ $ openspec validate add-dag-orchestration-pipeline --strict
 - ✅ **Migration strategy**: 4-phase rollout with feature flags, validation gates, rollback procedures
 - ✅ **Risk mitigation**: Each identified risk has concrete mitigation steps
 - ✅ **Success criteria**: 8 measurable metrics for evaluating implementation success
+- ⚠️ **Tooling**: `mypy` execution blocked by missing `opentelemetry` type stubs. Logged in tasks.md with workaround to revisit once upstream publishes typings.
 
 ## 📋 Requirements Summary
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 from datetime import datetime, timezone
+from typing import Any, Mapping
 
 import grpc
 
@@ -227,11 +228,24 @@ class IngestionService(
         self.service = service
 
     async def Submit(self, request, context):  # type: ignore[override]
+        options_payload: dict[str, Any] | None = None
+        if hasattr(request, "options") and request.HasField("options"):
+            opts = request.options
+            options_payload = {
+                "preserve_tables_html": opts.preserve_tables_html,
+                "sentence_splitter": opts.sentence_splitter,
+                "custom_token_budget": int(opts.custom_token_budget),
+                **dict(opts.metadata),
+            }
         ingestion_request = IngestionRequest(
             tenant_id=request.tenant_id,
             items=[{"id": item_id} for item_id in request.item_ids],
             metadata={"dataset": request.dataset},
+            profile=request.chunking_profile or None,
+            chunking_options=options_payload,
         )
+        if options_payload:
+            ingestion_request.metadata.setdefault("chunking_options", options_payload)
         result = self.service.ingest(request.dataset, ingestion_request)
         if ingestion_pb2 is None:
             return None
@@ -240,6 +254,13 @@ class IngestionService(
             response.operations.add(
                 job_id=status.job_id, status=status.status, message=status.message or ""
             )
+        estimated_chunks = 0
+        for status in result.operations:
+            count = status.metadata.get("chunks") if isinstance(status.metadata, Mapping) else None
+            if isinstance(count, int):
+                estimated_chunks += count
+        response.estimated_chunks = max(0, estimated_chunks)
+        response.profile_used = ingestion_request.profile or ""
         return response
 
 

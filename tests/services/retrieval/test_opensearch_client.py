@@ -35,3 +35,33 @@ def test_splade_strategy_scores_unique_terms():
     results = client.search("documents", "term unique", strategy="splade")
 
     assert results[0]["_id"] == "1"
+
+
+def test_index_propagates_chunking_profile_for_filters():
+    client = OpenSearchClient()
+    client.index(
+        "chunks",
+        "chunk-1",
+        {
+            "text": "Immunotherapy improved outcomes",
+            "metadata": {"chunking_profile": "pmc-imrad"},
+        },
+    )
+    client.index(
+        "chunks",
+        "chunk-2",
+        {
+            "text": "Registry adverse events recorded",
+            "metadata": {"chunking_profile": "ctgov-registry"},
+        },
+    )
+
+    filtered = client.search(
+        "chunks",
+        "events",
+        filters={"chunking_profile": "ctgov-registry"},
+    )
+
+    assert len(filtered) == 1
+    assert filtered[0]["_id"] == "chunk-2"
+    assert filtered[0]["_source"]["chunking_profile"] == "ctgov-registry"

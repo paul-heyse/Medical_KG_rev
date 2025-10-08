@@ -15,8 +15,10 @@ from .factory import ChunkerFactory
 from .models import Chunk, Granularity
 from .exceptions import (
     ChunkerConfigurationError,
+    ChunkingFailedError,
     ChunkingUnavailableError,
     InvalidDocumentError,
+    TokenizerMismatchError,
 )
 from .runtime import ChunkingRuntime, ChunkerSession
 from Medical_KG_rev.observability.metrics import set_chunking_circuit_state
@@ -150,6 +152,15 @@ class ChunkingService:
     ) -> list[Chunk]:
         self._validate_document(document)
         profile = self.config.profile_for_source(source)
+        expected_tokenizer = str(profile.primary.params.get("tokenizer", ""))
+        requested_tokenizer = ""
+        embedding_model = str(profile.primary.params.get("embedding_model", ""))
+        if options and options.params:
+            requested_tokenizer = str(options.params.get("tokenizer", ""))
+            if not embedding_model:
+                embedding_model = str(options.params.get("embedding_model", ""))
+        if requested_tokenizer and expected_tokenizer and requested_tokenizer != expected_tokenizer:
+            raise TokenizerMismatchError(requested_tokenizer, embedding_model)
         allow_multi = (
             profile.enable_multi_granularity
             if options is None or options.enable_multi_granularity is None
@@ -181,7 +192,12 @@ class ChunkingService:
                     enable_multi_granularity=allow_multi,
                 )
                 self._session_cache[plan_key] = session
-            chunks = session.chunk(document, tenant_id=tenant_id)
+            try:
+                chunks = session.chunk(document, tenant_id=tenant_id)
+            except (ChunkerConfigurationError, InvalidDocumentError, ChunkingUnavailableError):
+                raise
+            except Exception as exc:  # pragma: no cover - defensive fallback
+                raise ChunkingFailedError("Chunking process failed", detail=str(exc)) from exc
         return chunks
 
     def chunk_text(

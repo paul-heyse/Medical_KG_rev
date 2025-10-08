@@ -3,6 +3,9 @@ from types import SimpleNamespace
 import pytest
 
 from Medical_KG_rev.services.chunking import sentence_splitters
+from Medical_KG_rev.services.chunking.benchmark_sentence_segmenters import (
+    benchmark_segmenters,
+)
 from Medical_KG_rev.services.chunking.wrappers import huggingface_segmenter as hf
 from Medical_KG_rev.services.chunking.wrappers.huggingface_segmenter import (
     HuggingFaceSentenceSegmenter,
@@ -277,3 +280,46 @@ def test_syntok_segmenter_offsets():
         (0, 13, "Sentence one."),
         (14, 27, "Sentence two."),
     ]
+
+
+def _timer(values):
+    iterator = iter(values)
+
+    def _now():
+        return next(iterator)
+
+    return _now
+
+
+def test_benchmark_segmenters_reports_throughput():
+    corpus = ["Alpha beta", "Gamma delta"]
+
+    def hf_segmenter(text: str):
+        return [(0, len(text), text)]
+
+    def syntok_segmenter(text: str):
+        midpoint = len(text) // 2
+        return [
+            (0, midpoint, text[:midpoint]),
+            (midpoint, len(text), text[midpoint:]),
+        ]
+
+    timer = _timer([0.0, 0.2, 0.2, 0.5])
+    results = benchmark_segmenters(
+        {"hf": hf_segmenter, "syntok": syntok_segmenter},
+        corpus,
+        timer=timer,
+    )
+
+    assert [result.name for result in results] == ["hf", "syntok"]
+    hf_result = next(result for result in results if result.name == "hf")
+    assert hf_result.documents == 2
+    assert hf_result.sentences == 2
+    assert hf_result.duration_seconds == pytest.approx(0.2)
+    assert hf_result.throughput_docs_per_second == pytest.approx(10.0)
+    assert hf_result.throughput_sentences_per_second == pytest.approx(10.0)
+
+
+def test_benchmark_segmenters_requires_positive_repeats():
+    with pytest.raises(ValueError):
+        benchmark_segmenters({"hf": lambda text: []}, ["text"], repeats=0)

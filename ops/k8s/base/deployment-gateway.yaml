@@ -45,3 +45,11 @@ spec:
                 name: gateway-config
             - secretRef:
                 name: gateway-sentry
+          volumeMounts:
+            - name: retrieval-config
+              mountPath: /app/config/retrieval
+              readOnly: true
+      volumes:
+        - name: retrieval-config
+          configMap:
+            name: retrieval-config

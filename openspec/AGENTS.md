@@ -699,7 +699,7 @@ buf generate
 pytest tests/contract/
 
 # Run performance tests
-k6 run tests/performance/gateway_smoke_test.js
+k6 run tests/performance/hybrid_suite.js
 
 # Run all quality checks
 pre-commit run --all-files

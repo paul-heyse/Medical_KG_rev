@@ -131,6 +131,24 @@ def test_unknown_model_falls_back_to_default():
     assert "model_fallback" in metadata["warnings"]
 
 
+def test_chunking_profile_filter_limits_results():
+    opensearch, _ = _setup_clients()
+    service = _service(opensearch, None)
+
+    results = service.search(
+        "chunks",
+        "migraine",
+        filters={"chunking_profile": "ctgov-registry"},
+        rerank=False,
+    )
+
+    assert results
+    assert all(
+        result.metadata.get("chunking_profile") == "ctgov-registry"
+        for result in results
+    )
+
+
 def test_rerank_fallback_records_error():
     opensearch, faiss = _setup_clients()
 

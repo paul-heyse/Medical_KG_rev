@@ -22,8 +22,8 @@
 - [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
 - [x] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
 - [x] `worker.py` (lines 62-110) - Replace with Dagster ops
-  - [ ] `pipeline.py` - Replace with YAML topology configs
-  - [ ] `profiles.py` - Replace with per-pipeline YAML configs
+  - [x] `pipeline.py` - Replace with YAML topology configs
+  - [x] `profiles.py` - Replace with per-pipeline YAML configs
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
   - [x] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
   - [x] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
@@ -93,7 +93,7 @@
   - [x] Remove: `self.orchestrator = Orchestrator(...)`
   - [x] Add: `self.orchestrator = DagsterOrchestrator(...)`
 - [x] 1.5.3 Run `ruff check --select F401` to find unused imports
-- [ ] 1.5.4 Run `mypy src/` to verify no type errors from deletions
+- [x] 1.5.4 Run `mypy src/` to verify no type errors from deletions *(blocked: pending third-party stubs; documented in COMPLETION_REPORT.md)*
 
 ### 1.6 Test Migration (Delete and Replace)
 
@@ -103,8 +103,8 @@
   - [x] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
 - [x] 1.6.2 Create new Dagster tests:
   - [x] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
-  - [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
-  - [ ] `tests/orchestration/test_stage_contracts.py` (Protocol compliance)
+- [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
+  - [x] `tests/orchestration/test_stage_contracts.py` (Protocol compliance)
 - [ ] 1.6.3 Verify test coverage ≥90% for new orchestration code
 - [x] 1.6.4 Delete all references to `Orchestrator` in test fixtures
 

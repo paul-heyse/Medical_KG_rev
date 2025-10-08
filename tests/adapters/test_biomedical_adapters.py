@@ -36,12 +36,14 @@ from Medical_KG_rev.adapters.plugins.domains.biomedical import (
 )
 from Medical_KG_rev.adapters.plugins.models import AdapterResponse
 from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
-from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
+from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 
 def _client(base_url: str, handler: httpx.MockTransport) -> HttpClient:
     return HttpClient(
-        base_url=base_url, retry=RetryConfig(attempts=2, backoff_factor=0), transport=handler
+        base_url=base_url,
+        retry=RetryConfig(attempts=2, backoff_strategy=BackoffStrategy.NONE, jitter=False),
+        transport=handler,
     )
 
 

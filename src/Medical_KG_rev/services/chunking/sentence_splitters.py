@@ -38,13 +38,13 @@ def _syntok_segmenter():  # pragma: no cover - heavy dependency path
     return SyntokSentenceSegmenter()
 
 
-def _syntok_split(text: str) -> list[Segment]:
+def _syntok_split(text: str) -> List[Segment]:
     segmenter = _syntok_segmenter()
     return segmenter.segment(text)
 
 
-def _simple_split(text: str) -> list[Segment]:
-    sentences: list[Segment] = []
+def _simple_split(text: str) -> List[Segment]:
+    sentences: List[Segment] = []
     cursor = 0
     for part in [segment.strip() for segment in text.split(". ") if segment.strip()]:
         idx = text.find(part, cursor)

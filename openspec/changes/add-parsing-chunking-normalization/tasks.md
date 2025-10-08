@@ -17,17 +17,17 @@
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
 - [x] 1.1.1 Identify all files in `src/Medical_KG_rev/services/chunking/` to delete:
-  - [ ] `custom_splitters.py` (8 custom chunkers, 420 lines) - Replace with ChunkerPort + library wrappers
-  - [ ] `semantic_splitter.py` (75 lines) - Replace with LlamaIndex node parsers
-  - [ ] `sliding_window.py` (62 lines) - Replace with langchain RecursiveCharacterTextSplitter
-  - [ ] `section_aware_splitter.py` (110 lines) - Replace with profile-based chunking
+  - [x] `custom_splitters.py` (8 custom chunkers, 420 lines) - Replace with ChunkerPort + library wrappers
+  - [x] `semantic_splitter.py` (75 lines) - Replace with LlamaIndex node parsers
+  - [x] `sliding_window.py` (62 lines) - Replace with langchain RecursiveCharacterTextSplitter
+  - [x] `section_aware_splitter.py` (110 lines) - Replace with profile-based chunking
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
-  - [ ] `pdf_parser.py` (bespoke PDF logic, 180 lines) - MinerU is the only PDF path
-  - [ ] `xml_parser.py` (custom XML parsing, 95 lines) - Replace with unstructured
-  - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with scispaCy/syntok
+  - [x] `pdf_parser.py` (bespoke PDF logic, 180 lines) - MinerU is the only PDF path
+  - [x] `xml_parser.py` (custom XML parsing, 95 lines) - Replace with unstructured
+  - [x] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with scispaCy/syntok
 - [x] 1.1.3 Identify adapter methods to delete:
-  - [ ] Search for `def split_document\|\.chunk\(` in adapters/ (15 occurrences)
-  - [ ] All adapter-specific chunking logic → delegate to ChunkerPort
+  - [x] Search for `def split_document\|\.chunk\(` in adapters/ (15 occurrences)
+  - [x] All adapter-specific chunking logic → delegate to ChunkerPort
 - [x] 1.1.4 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md`
 
 ### 1.2 Dependency Analysis (Pre-Delete Validation)
@@ -54,30 +54,30 @@
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
-- [ ] 1.3.1 **Chunking**: Verify delegation to langchain-text-splitters + LlamaIndex
-  - [ ] Audit: Which custom splitters are semantic vs recursive vs sliding window?
-  - [ ] Decision: Map to `RecursiveCharacterTextSplitter` (default) or `SentenceWindowNodeParser` (coherence-sensitive)
-  - [ ] Delete: All 8 custom chunker implementations
-  - [ ] Verify: Chunk quality (offsets, section labels) preserved
-- [ ] 1.3.2 **Sentence Segmentation**: Verify delegation to HuggingFace/syntok
-  - [ ] Audit: Where are custom sentence splitters used?
-  - [ ] Decision: HuggingFace biomedical models for domain-aware splitting, syntok for speed
-  - [ ] Delete: All 3 custom sentence splitter implementations
-  - [ ] Verify: Sentence boundaries match expected behavior
-- [ ] 1.3.3 **Tokenization**: Verify delegation to transformers/tiktoken
-  - [ ] Audit: Where are custom tokenizers used?
-  - [ ] Decision: Use `transformers.AutoTokenizer` for Qwen3 alignment
-  - [ ] Delete: All custom tokenizer logic
-  - [ ] Verify: Token budgets honored before embedding
-- [ ] 1.3.4 **XML Parsing**: Verify delegation to unstructured
-  - [ ] Audit: What XML parsing logic exists?
-  - [ ] Decision: Replace with `unstructured.partition_xml`
-  - [ ] Delete: Custom XML parsing implementations
-  - [ ] Verify: JATS XML, SPL XML parsed correctly
-- [ ] 1.3.5 **PDF Parsing**: Verify MinerU-only path (no Docling in prod)
-  - [ ] Audit: Where is Docling used?
-  - [ ] Decision: Keep Docling for non-OCR contexts (HTML/text), not PDFs
-  - [ ] Verify: MinerU is the **only** PDF path, with explicit GPU gate
+- [x] 1.3.1 **Chunking**: Verify delegation to langchain-text-splitters + LlamaIndex
+  - [x] Audit: Which custom splitters are semantic vs recursive vs sliding window?
+  - [x] Decision: Map to `RecursiveCharacterTextSplitter` (default) or `SentenceWindowNodeParser` (coherence-sensitive)
+  - [x] Delete: All 8 custom chunker implementations
+  - [x] Verify: Chunk quality (offsets, section labels) preserved
+- [x] 1.3.2 **Sentence Segmentation**: Verify delegation to scispaCy/syntok
+  - [x] Audit: Where are custom sentence splitters used?
+  - [x] Decision: scispaCy for biomedical-aware splitting, syntok for speed
+  - [x] Delete: All 3 custom sentence splitter implementations
+  - [x] Verify: Sentence boundaries match expected behavior
+- [x] 1.3.3 **Tokenization**: Verify delegation to transformers/tiktoken
+  - [x] Audit: Where are custom tokenizers used?
+  - [x] Decision: Use `transformers.AutoTokenizer` for Qwen3 alignment
+  - [x] Delete: All custom tokenizer logic
+  - [x] Verify: Token budgets honored before embedding
+- [x] 1.3.4 **XML Parsing**: Verify delegation to unstructured
+  - [x] Audit: What XML parsing logic exists?
+  - [x] Decision: Replace with `unstructured.partition_xml`
+  - [x] Delete: Custom XML parsing implementations
+  - [x] Verify: JATS XML, SPL XML parsed correctly
+- [x] 1.3.5 **PDF Parsing**: Verify MinerU-only path (no Docling in prod)
+  - [x] Audit: Where is Docling used?
+  - [x] Decision: Keep Docling for non-OCR contexts (HTML/text), not PDFs
+  - [x] Verify: MinerU is the **only** PDF path, with explicit GPU gate
 
 ### 1.4 Atomic Deletion (Commit Strategy)
 
@@ -95,12 +95,12 @@
 
 ### 1.5 Import Cleanup (Post-Delete)
 
-- [ ] 1.5.1 Update `src/Medical_KG_rev/services/chunking/__init__.py`:
-  - [ ] Remove: `from .custom_splitters import SemanticSplitter, SlidingWindow, ...`
-  - [ ] Add: `from .port import ChunkerPort, chunk_document`
-- [ ] 1.5.2 Update adapter imports:
-  - [ ] Remove: `from ..services.chunking.custom_splitters import ...`
-  - [ ] Add: `from ..services.chunking.port import chunk_document`
+- [x] 1.5.1 Update `src/Medical_KG_rev/services/chunking/__init__.py`:
+  - [x] Remove: `from .custom_splitters import SemanticSplitter, SlidingWindow, ...`
+  - [x] Add: `from .port import ChunkerPort, chunk_document`
+- [x] 1.5.2 Update adapter imports:
+  - [x] Remove: `from ..services.chunking.custom_splitters import ...`
+  - [x] Add: `from ..services.chunking.port import chunk_document`
 - [ ] 1.5.3 Run `ruff check --select F401` to find unused imports
 - [ ] 1.5.4 Run `mypy src/` to verify no type errors
 
@@ -110,12 +110,12 @@
   - [x] `tests/chunking/test_custom_splitters.py` (8 chunker tests)
   - [x] `tests/chunking/test_semantic_splitter.py`
   - [x] `tests/chunking/test_sliding_window.py`
-- [ ] 1.6.2 Create new ChunkerPort tests:
-  - [ ] `tests/chunking/test_chunker_port.py` (interface compliance)
-  - [ ] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
-  - [ ] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, HuggingFace)
+- [x] 1.6.2 Create new ChunkerPort tests:
+  - [x] `tests/chunking/test_chunker_port.py` (interface compliance)
+  - [x] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
+  - [x] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, scispaCy)
 - [ ] 1.6.3 Verify test coverage ≥90% for new chunking code
-- [ ] 1.6.4 Delete all references to custom chunkers in test fixtures
+- [x] 1.6.4 Delete all references to custom chunkers in test fixtures
 
 ### 1.7 Documentation Updates
 
@@ -156,6 +156,7 @@
 - [ ] 2.8 Test dependency installation in clean venv
 - [ ] 2.9 Download biomedical sentence model if needed (HuggingFace will auto-download)
 - [ ] 2.10 Verify all libraries import without errors
+  - [x] Added `scripts/check_chunking_dependencies.py` CLI to validate imports during deployment checks.
 
 ---
 
@@ -330,9 +331,9 @@
           # Implementation
   ```
 
-- [ ] 5.1.3 Add boundary detection (heading, table, section)
-- [ ] 5.1.4 Preserve char offsets for each chunk
-- [ ] 5.1.5 Write unit tests with 5 test documents
+- [x] 5.1.3 Add boundary detection (heading, table, section)
+- [x] 5.1.4 Preserve char offsets for each chunk
+- [x] 5.1.5 Write unit tests with 5 test documents
 
 ### 5.2 LlamaIndex Node Parsers Wrapper
 
@@ -367,7 +368,7 @@
       return [(sent.start_char, sent.end_char, sent.text) for sent in doc.sents]
   ```
 
-- [ ] 5.3.3 Handle biomedical abbreviations (e.g., "Fig.", "et al.")
+- [x] 5.3.3 Handle biomedical abbreviations (e.g., "Fig.", "et al.")
 - [x] 5.3.4 Preserve char offsets
 - [x] 5.3.5 Write unit tests with biomedical text samples
 
@@ -525,10 +526,10 @@
 ### 8.2 Provenance Tracking
 
 - [x] 8.2.1 Attach to every chunk:
-  - [ ] `source_system: str` (e.g., "pmc", "ctgov", "dailymed")
-  - [ ] `chunking_profile: str` (e.g., "pmc-imrad")
-  - [ ] `chunker_version: str` (e.g., "langchain-v0.2.0")
-  - [ ] `created_at: datetime`
+  - [x] `source_system: str` (e.g., "pmc", "ctgov", "dailymed")
+  - [x] `chunking_profile: str` (e.g., "pmc-imrad")
+  - [x] `chunker_version: str` (e.g., "langchain-v0.2.0")
+  - [x] `created_at: datetime`
 - [x] 8.2.2 Store in chunk metadata
 - [ ] 8.2.3 Index in OpenSearch for retrieval filters
 

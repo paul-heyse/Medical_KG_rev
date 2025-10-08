@@ -7,8 +7,8 @@ resources:
   - secret-sentry.yaml
   - deployment-gateway.yaml
   - deployment-ingest-worker.yaml
-  - deployment-vllm-embedding.yaml
+  - deployment-vllm-qwen3.yaml
   - service-gateway.yaml
-  - service-vllm-embedding.yaml
+  - service-vllm-qwen3.yaml
   - ingress.yaml
   - hpa-gateway.yaml

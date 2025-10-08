@@ -8,7 +8,7 @@ operates the GPU-only embedding stack.
 
 1. Build the image:
    ```bash
-   docker compose build vllm-embedding
+   docker compose build vllm-qwen3
    ```
 2. Deploy via Kubernetes (see manifests under `ops/k8s`):
    ```bash
@@ -62,7 +62,7 @@ operates the GPU-only embedding stack.
 
 1. **Rollback** – Scale down vLLM deployment and scale up the legacy
    `sentence-transformers` worker (available in `ops/k8s/overlays/rollback`).
-2. **Restart** – `kubectl rollout restart deployment vllm-embedding`.
+2. **Restart** – `kubectl rollout restart deployment vllm-qwen3`.
 3. **Purge cache** – Delete `.vllm_cache` PVC to flush stale KV cache.
 
 ## 7. Pre-Deployment Checklist (Task 11.1.3)

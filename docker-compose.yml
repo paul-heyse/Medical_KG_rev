@@ -65,10 +65,10 @@ services:
       timeout: 10s
       retries: 5
 
-  vllm-embedding:
+  vllm-qwen3:
     build:
       context: .
-      dockerfile: ops/Dockerfile.vllm
+      dockerfile: ops/vllm/Dockerfile.qwen3-embedding-8b
     ports:
       - "8001:8001"
     environment:

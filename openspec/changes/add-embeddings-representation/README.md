@@ -29,16 +29,16 @@ This proposal replaces fragmented embedding architecture (3+ models, scattered s
 
 ```bash
 # Docker Compose (development)
-docker-compose up -d vllm-embedding
+docker-compose up -d vllm-qwen3
 
 # Kubernetes (production)
-kubectl apply -f ops/k8s/deployments/vllm-service.yaml
+kubectl apply -f ops/k8s/base/deployment-vllm-qwen3.yaml
 ```
 
 **Verify Health**:
 
 ```bash
-curl http://vllm-service:8001/health
+curl http://vllm-qwen3:8001/health
 # Expected: {"status": "healthy", "gpu": "available"}
 ```
 
@@ -50,7 +50,7 @@ curl http://vllm-service:8001/health
 from Medical_KG_rev.services.embedding.vllm import VLLMClient
 
 # Initialize client
-client = VLLMClient(base_url="http://vllm-service:8001")
+client = VLLMClient(base_url="http://vllm-qwen3:8001")
 
 # Embed texts (batch size up to 64)
 texts = [
@@ -122,7 +122,7 @@ except GpuNotAvailableError as e:
 **Health Check**:
 
 ```bash
-curl http://vllm-service:8001/health
+curl http://vllm-qwen3:8001/health
 
 # GPU available:
 # {"status": "healthy", "gpu": "available"}
@@ -281,7 +281,7 @@ model_id: Qwen/Qwen2.5-Coder-1.5B
 model_version: v1
 dim: 4096
 provider: vllm
-endpoint: http://vllm-service:8001/v1/embeddings
+endpoint: http://vllm-qwen3:8001/v1/embeddings
 parameters:
   batch_size: 64
   normalize: true
@@ -326,7 +326,7 @@ print(namespaces)
 # Get namespace config
 config = registry.get("single_vector.qwen3.4096.v1")
 print(f"Provider: {config.provider}")  # Output: Provider: vllm
-print(f"Endpoint: {config.endpoint}")  # Output: Endpoint: http://vllm-service:8001/v1/embeddings
+print(f"Endpoint: {config.endpoint}")  # Output: Endpoint: http://vllm-qwen3:8001/v1/embeddings
 ```
 
 **Embed with Namespace**:
@@ -621,10 +621,10 @@ histogram_quantile(0.95, rate(medicalkg_faiss_search_duration_seconds_bucket[5m]
 
 ```bash
 # Kubernetes
-kubectl apply -f ops/k8s/deployments/vllm-service.yaml
+kubectl apply -f ops/k8s/base/deployment-vllm-qwen3.yaml
 
 # Verify health
-curl http://vllm-service:8001/health
+curl http://vllm-qwen3:8001/health
 ```
 
 **Step 2: Update Gateway + Orchestration**:
@@ -731,7 +731,7 @@ python scripts/embedding/update_opensearch_mapping.py
 # 1. Reduce vLLM GPU memory utilization via container env override
 docker compose run --rm \
   -e GPU_MEMORY_UTILIZATION=0.8 \
-  vllm-embedding --help  # Compose will respect override on next up
+  vllm-qwen3 --help  # Compose will respect override on next up
 
 # 2. Reduce batch size
 # In namespace config: batch_size: 32  # Reduce from 64 to 32
@@ -753,7 +753,7 @@ redis[hiredis]>=5.0.0  # Embedding cache backend
 ```
 
 vLLM itself ships exclusively as the Docker image
-`ghcr.io/example/vllm-embedding:latest`; no Python package is imported by the
+`ghcr.io/example/vllm-qwen3-embedding:latest`; no Python package is imported by the
 application code.
 
 ### Updated Libraries

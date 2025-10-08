@@ -303,7 +303,7 @@
   redis[hiredis]>=5.0.0
   ```
 
-  > vLLM ships as the Docker image `ghcr.io/example/vllm-embedding:latest` and
+  > vLLM ships as the Docker image `ghcr.io/example/vllm-qwen3-embedding:latest` and
   > is no longer installed via `pip`.
 
 - [x] **2.1.2** Update existing libraries:
@@ -322,7 +322,7 @@
 - [x] **2.1.4** Validate installations:
 
   ```bash
-  docker compose build vllm-embedding
+  docker compose build vllm-qwen3
   python -c "import pyserini; print(pyserini.__version__)"
   python -c "import faiss; print(faiss.get_num_gpus())"
   ```
@@ -377,11 +377,12 @@
 - [x] **3.1.1** Create vLLM Docker image:
 
   ```dockerfile
-  # ops/Dockerfile.vllm
+  # ops/vllm/Dockerfile.qwen3-embedding-8b
   FROM vllm/vllm-openai:latest
 
   COPY models/qwen3-embedding-8b /models/qwen3-embedding-8b
 
+  ENV MODEL_ID="Qwen/Qwen2.5-Coder-1.5B"
   ENV MODEL_PATH=/models/qwen3-embedding-8b
   ENV GPU_MEMORY_UTILIZATION=0.9
   ENV MAX_MODEL_LEN=8192
@@ -389,16 +390,18 @@
   CMD ["vllm", "serve", "${MODEL_PATH}", \
        "--host", "0.0.0.0", \
        "--port", "8001", \
-       "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}"]
+       "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}", \
+       "--max-model-len", "${MAX_MODEL_LEN}", \
+       "--served-model-name", "${MODEL_ID}"]
   ```
 
 - [x] **3.1.2** Add vLLM service to `docker-compose.yml`:
 
   ```yaml
-  vllm-embedding:
+  vllm-qwen3:
     build:
       context: .
-      dockerfile: ops/Dockerfile.vllm
+      dockerfile: ops/vllm/Dockerfile.qwen3-embedding-8b
     ports:
       - "8001:8001"
     environment:
@@ -420,7 +423,7 @@
 - [x] **3.1.3** Start vLLM service:
 
   ```bash
-  docker-compose up -d vllm-embedding
+  docker-compose up -d vllm-qwen3
   ```
 
 - [x] **3.1.4** Validate vLLM health:

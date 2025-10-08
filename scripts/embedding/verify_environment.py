@@ -9,10 +9,9 @@ import subprocess
 from pathlib import Path
 
 REQUIRED_MODULES = ["torch", "pyserini", "faiss"]
-DOCKER_COMPOSE_SERVICE = "vllm-embedding"
+DOCKER_COMPOSE_SERVICE = "vllm-qwen3"
 DOCKER_COMPOSE_FILE = Path("docker-compose.yml")
-VLLM_DOCKERFILE = Path("ops/Dockerfile.vllm")
-VLLM_IMAGE = "ghcr.io/example/vllm-embedding:latest"
+VLLM_CATALOG = Path("ops/vllm/catalog.json")
 
 
 def _check_gpu() -> dict[str, str | bool]:
@@ -31,7 +30,59 @@ def _check_docker() -> dict[str, object]:
         return info
 
     info["path"] = docker_path
-    info["dockerfile"] = str(VLLM_DOCKERFILE.resolve()) if VLLM_DOCKERFILE.exists() else None
+    if VLLM_CATALOG.exists():
+        info["catalog_path"] = str(VLLM_CATALOG.resolve())
+        try:
+            catalog_data = json.loads(VLLM_CATALOG.read_text())
+        except json.JSONDecodeError:
+            catalog_data = {"models": []}
+            info["catalog_error"] = "invalid JSON in catalog"
+    else:
+        catalog_data = {"models": []}
+        info["catalog_path"] = None
+
+    dockerfiles: dict[str, str | None] = {}
+    images: dict[str, bool] = {}
+    catalog_entries: list[dict[str, object]] = []
+    for model in catalog_data.get("models", []):
+        name = model.get("name", "unknown")
+        dockerfile_name = model.get("dockerfile")
+        image_tag = model.get("image")
+        dockerfile_path = (
+            VLLM_CATALOG.parent / dockerfile_name
+            if dockerfile_name
+            else None
+        )
+        exists = dockerfile_path.exists() if dockerfile_path else False
+        dockerfiles[name] = str(dockerfile_path.resolve()) if exists else None
+
+        image_present = False
+        if image_tag and docker_path:
+            try:
+                result = subprocess.run(
+                    [docker_path, "image", "inspect", image_tag],
+                    check=False,
+                    capture_output=True,
+                )
+                image_present = result.returncode == 0
+            except FileNotFoundError:
+                image_present = False
+            except Exception:
+                image_present = False
+        images[image_tag or name] = image_present
+        catalog_entries.append(
+            {
+                "name": name,
+                "dockerfile": dockerfiles[name],
+                "dockerfile_exists": exists,
+                "image": image_tag,
+                "image_present": image_present,
+            }
+        )
+
+    info["dockerfiles"] = dockerfiles
+    info["images"] = images
+    info["catalog_models"] = catalog_entries
     if DOCKER_COMPOSE_FILE.exists():
         info["compose_file"] = str(DOCKER_COMPOSE_FILE.resolve())
         try:
@@ -61,18 +112,6 @@ def _check_docker() -> dict[str, object]:
             info["compose_service"] = False
     else:
         info["compose_file"] = None
-
-    try:
-        result = subprocess.run(
-            [docker_path, "image", "inspect", VLLM_IMAGE],
-            check=False,
-            capture_output=True,
-        )
-        info["image_present"] = result.returncode == 0
-    except FileNotFoundError:
-        info["image_present"] = False
-    except Exception:  # pragma: no cover - best effort detection
-        info["image_present"] = False
 
     return info
 

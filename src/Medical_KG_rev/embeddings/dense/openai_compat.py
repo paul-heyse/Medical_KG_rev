@@ -22,6 +22,8 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environme
 
 from Medical_KG_rev.services import GpuNotAvailableError
 
+from Medical_KG_rev.services import GpuNotAvailableError
+
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.normalization import normalize_batch

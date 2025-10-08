@@ -146,13 +146,13 @@
 
 ## 2. Foundation & Dependencies
 
-- [ ] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
-- [ ] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [ ] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
-- [ ] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
-- [ ] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
-- [ ] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
-- [ ] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
+- [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
+- [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
+- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
+- [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
+- [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
+- [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
+- [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
 - [ ] 2.8 Test dependency installation in clean venv
 - [ ] 2.9 Download scispaCy model: `python -m spacy download en_core_sci_sm`
 - [ ] 2.10 Verify all libraries import without errors
@@ -161,14 +161,14 @@
 
 ## 3. ChunkerPort Interface & Runtime Registry
 
-- [ ] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
+- [x] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
 
   ```python
   class ChunkerPort(Protocol):
       def chunk(self, document: Document, profile: str) -> list[Chunk]: ...
   ```
 
-- [ ] 3.2 Define `Chunk` dataclass with required fields:
+- [x] 3.2 Define `Chunk` dataclass with required fields:
   - [ ] `chunk_id: str`
   - [ ] `doc_id: str`
   - [ ] `text: str`
@@ -177,11 +177,11 @@
   - [ ] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
   - [ ] `page_bbox: dict | None` (for PDFs)
   - [ ] `metadata: dict[str, Any]`
-- [ ] 3.3 Implement chunker registry:
+- [x] 3.3 Implement chunker registry:
   - [ ] `register_chunker(name: str, implementation: Type[ChunkerPort])`
   - [ ] `get_chunker(name: str) -> ChunkerPort`
-- [ ] 3.4 Add validation: raise if profile not registered
-- [ ] 3.5 Write unit tests for ChunkerPort protocol compliance
+- [x] 3.4 Add validation: raise if profile not registered
+- [x] 3.5 Write unit tests for ChunkerPort protocol compliance
 
 ---
 
@@ -189,7 +189,7 @@
 
 ### 4.1 Profile Data Model
 
-- [ ] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
+- [x] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
 
   ```python
   class Profile(BaseModel):
@@ -203,12 +203,12 @@
       filters: list[str] = ["drop_boilerplate", "exclude_references"]
   ```
 
-- [ ] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
-- [ ] 4.1.3 Validate profiles on startup (Pydantic validation)
+- [x] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
+- [x] 4.1.3 Validate profiles on startup (Pydantic validation)
 
 ### 4.2 IMRaD Profile (PMC JATS)
 
-- [ ] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
+- [x] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
 
   ```yaml
   name: pmc-imrad
@@ -227,13 +227,13 @@
     - deduplicate_page_furniture
   ```
 
-- [ ] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
+- [x] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
 - [ ] 4.2.3 Test on 10 PMC articles, verify heading alignment
 - [ ] 4.2.4 Validate section labels: "Abstract", "Introduction", "Methods", "Results", "Discussion"
 
 ### 4.3 Registry Profile (CT.gov)
 
-- [ ] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
+- [x] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
 
   ```yaml
   name: ctgov-registry
@@ -260,7 +260,7 @@
 
 ### 4.4 SPL Profile (DailyMed)
 
-- [ ] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
+- [x] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
 
   ```yaml
   name: spl-label
@@ -285,7 +285,7 @@
 
 ### 4.5 Guideline Profile
 
-- [ ] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
+- [x] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
 
   ```yaml
   name: guideline
@@ -313,8 +313,8 @@
 
 ### 5.1 LangChain Text Splitters Wrapper
 
-- [ ] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
-- [ ] 5.1.2 Implement `LangChainChunker` class:
+- [x] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
+- [x] 5.1.2 Implement `LangChainChunker` class:
 
   ```python
   class LangChainChunker:
@@ -620,9 +620,165 @@
 - [ ] 10.4.2 Compare chunk quality before/after for 10 CT.gov studies
 - [ ] 10.4.3 Verify downstream retrieval quality unchanged (P95 latency, Recall@10)
 
+### 10.5 Performance Tests (New)
+
+- [ ] 10.5.1 **Chunking Latency Benchmarks** (per profile):
+  - [ ] pmc-imrad: P95 <2s per document (target: 30 docs/min)
+  - [ ] ctgov-registry: P95 <1s per document (target: 60 docs/min)
+  - [ ] spl-loinc: P95 <1.5s per document (target: 40 docs/min)
+  - [ ] guideline: P95 <1s per document (target: 60 docs/min)
+
+- [ ] 10.5.2 **MinerU Performance Benchmarks**:
+  - [ ] Latency: P95 <30s per PDF (20-30 pages)
+  - [ ] Throughput: 2-3 PDFs/second (GPU-accelerated)
+  - [ ] Success Rate: >95% (excluding malformed PDFs)
+  - [ ] GPU Utilization: 60-80% during processing
+
+- [ ] 10.5.3 **Token Overflow Rate**:
+  - [ ] Measure token overflows per profile
+  - [ ] Target: <1% across all profiles
+  - [ ] If >1%, tune token budgets in profiles
+
+- [ ] 10.5.4 **Load Testing** (k6):
+  - [ ] 100 concurrent ingestion jobs, 5-minute duration
+  - [ ] Validate chunking service stability
+  - [ ] Monitor memory usage (no leaks)
+  - [ ] Check error rate <1%
+
+- [ ] 10.5.5 **Soak Test** (24-hour):
+  - [ ] Continuous chunking load (10 docs/sec)
+  - [ ] Monitor memory growth
+  - [ ] Validate no performance degradation
+
+### 10.6 Contract Tests (New)
+
+- [ ] 10.6.1 **REST API Contract**:
+  - [ ] Schemathesis tests for `/v1/ingest/{source}` with `chunking_profile` parameter
+  - [ ] Validate response includes chunk count, profile used
+  - [ ] Test invalid profile name (expect 400 Bad Request)
+
+- [ ] 10.6.2 **GraphQL API Contract**:
+  - [ ] GraphQL Inspector for schema changes
+  - [ ] Test `IngestClinicalTrial` mutation with chunking options
+  - [ ] Validate response types match schema
+
+- [ ] 10.6.3 **gRPC API Contract**:
+  - [ ] Buf breaking change detection on proto files
+  - [ ] Test `SubmitIngestionJob` RPC with chunking config
+  - [ ] Validate proto message compatibility
+
+### 10.7 Table Preservation Tests (New)
+
+- [ ] 10.7.1 **HTML Preservation**:
+  - [ ] Test 10 tables with high rectangularization uncertainty
+  - [ ] Verify HTML preserved verbatim
+  - [ ] Validate `is_unparsed_table=true` flag set
+
+- [ ] 10.7.2 **Rectangularization Decision**:
+  - [ ] Test 10 tables with high confidence
+  - [ ] Verify rectangularization applied
+  - [ ] Validate cell structure preserved
+
+- [ ] 10.7.3 **Table Chunk Metadata**:
+  - [ ] Verify `table_html` field populated
+  - [ ] Verify `intent_hint="ae"` for adverse event tables
+  - [ ] Verify `section_label` includes table context
+
 ---
 
-## 11. Performance Optimization
+## 11. API Integration (New)
+
+### 11.1 REST API Updates
+
+- [ ] 11.1.1 Update `/v1/ingest/{source}` endpoint:
+  - [ ] Add `chunking_profile` parameter (optional, default="default")
+  - [ ] Add `chunking_options` object (preserve_tables_html, sentence_splitter, custom_token_budget)
+  - [ ] Update OpenAPI schema
+
+- [ ] 11.1.2 Add `/v1/chunking/profiles` endpoint:
+  - [ ] GET: List available chunking profiles
+  - [ ] Response includes profile name, description, domain, target tokens
+
+- [ ] 11.1.3 Add `/v1/chunking/validate` endpoint:
+  - [ ] POST: Validate chunk quality for a document
+  - [ ] Returns metrics: chunk count, token overflow rate, section label coverage
+
+### 11.2 GraphQL API Updates
+
+- [ ] 11.2.1 Update `IngestionInput` type:
+  - [ ] Add `chunkingProfile: String = "default"` field
+  - [ ] Add `options: ChunkingOptions` field
+
+- [ ] 11.2.2 Add `ChunkingOptions` input type:
+  - [ ] preserveTablesHtml: Boolean = true
+  - [ ] sentenceSplitter: String = "syntok"
+  - [ ] customTokenBudget: Int
+
+- [ ] 11.2.3 Add `chunkingProfiles` query:
+  - [ ] Returns list of available profiles
+  - [ ] Includes profile metadata (name, domain, target tokens)
+
+### 11.3 gRPC API Updates
+
+- [ ] 11.3.1 Update `IngestionJobRequest` proto:
+  - [ ] Add `chunking_profile` field
+  - [ ] Add `ChunkingOptions` message type
+
+- [ ] 11.3.2 Update `IngestionJobResponse` proto:
+  - [ ] Add `estimated_chunks` field
+  - [ ] Add `profile_used` field
+
+- [ ] 11.3.3 Compile proto files:
+  - [ ] Run `buf generate`
+  - [ ] Run `buf breaking` to check for breaking changes
+
+---
+
+## 12. Error Handling & Taxonomy (New)
+
+### 12.1 Define Error Types
+
+- [ ] 12.1.1 **ProfileNotFoundError**:
+  - [ ] Raised when requested profile doesn't exist
+  - [ ] HTTP 400 Bad Request
+  - [ ] Message: "Chunking profile '{profile}' not found. Available: {profiles}"
+
+- [ ] 12.1.2 **TokenizerMismatchError**:
+  - [ ] Raised when tokenizer doesn't align with embedding model
+  - [ ] HTTP 500 Internal Server Error
+  - [ ] Message: "Tokenizer '{tokenizer}' incompatible with embedding model '{model}'"
+
+- [ ] 12.1.3 **ChunkingFailedError**:
+  - [ ] Raised when chunking process fails
+  - [ ] HTTP 500 Internal Server Error
+  - [ ] Includes detailed error message and stack trace
+
+- [ ] 12.1.4 **MineruOutOfMemoryError**:
+  - [ ] Raised when GPU runs out of memory during PDF processing
+  - [ ] HTTP 503 Service Unavailable
+  - [ ] Message: "GPU out of memory. Retry later or reduce PDF size."
+
+- [ ] 12.1.5 **MineruGpuUnavailableError**:
+  - [ ] Raised when GPU not available for MinerU
+  - [ ] HTTP 503 Service Unavailable
+  - [ ] Message: "GPU required for PDF processing. Check GPU availability."
+
+### 12.2 Error Handling Implementation
+
+- [ ] 12.2.1 Add error handlers to gateway:
+  - [ ] Map custom exceptions to HTTP status codes
+  - [ ] Return RFC 7807 Problem Details format
+
+- [ ] 12.2.2 Add error logging:
+  - [ ] Log all errors with correlation ID
+  - [ ] Include context (profile, document ID, stage)
+
+- [ ] 12.2.3 Add error metrics:
+  - [ ] Count errors by type: `medicalkg_chunking_errors_total{error_type}`
+
+---
+
+## 13. Performance Optimization
 
 - [ ] 11.1 Batch sentence segmentation (process 10 documents at once)
 - [ ] 11.2 Cache scispaCy model loading (singleton pattern)

@@ -13,7 +13,7 @@ from time import perf_counter
 
 from prometheus_client import Gauge  # type: ignore
 
-from .metrics import evaluate_ranking
+from .metrics import evaluate_ranking, mean_metric as _metrics_mean_metric
 from .test_sets import QueryJudgment, QueryType, TestSet
 
 
@@ -133,7 +133,9 @@ class EvaluationRunner:
         metrics_summary = self._summarise_metrics(per_query.values())
         latency_summary = self._summarise_latencies(latencies)
         per_query_type_summary = {
-            key.value: {metric: mean_metric(values, metric) for metric in metrics_summary}
+            key.value: {
+                metric: _metrics_mean_metric(values, metric) for metric in metrics_summary
+            }
             for key, values in per_query_type_values.items()
         }
 
@@ -215,17 +217,16 @@ def _mean(values: Sequence[float]) -> float:
 
 def _std(values: Sequence[float]) -> float:
     return stdev(values) if len(values) > 1 else 0.0
-+
-+
-+def mean_metric(values: Sequence[Mapping[str, float]], metric: str) -> float:
-+    collected = [payload.get(metric, 0.0) for payload in values]
-+    return mean(collected) if collected else 0.0
-+
-+
-+__all__ = [
-+    "EvaluationConfig",
-+    "EvaluationResult",
-+    "EvaluationRunner",
-+    "MetricSummary",
-+    "mean_metric",
-+]
+
+
+__all__ = [
+    "EvaluationConfig",
+    "EvaluationResult",
+    "EvaluationRunner",
+    "MetricSummary",
+]
+
+# Re-export for backwards compatibility with earlier helper location.
+mean_metric = _metrics_mean_metric
+
+__all__.append("mean_metric")

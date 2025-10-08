@@ -45,3 +45,37 @@ groups:
         annotations:
           summary: "Embedding throughput dropped below 10 vectors/sec"
           description: "Check cache hit ratio and vLLM health; throughput degraded below expected baseline."
+  - name: retrieval-performance
+    rules:
+      - alert: RetrievalLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket{path="/v1/retrieve"}[5m])) by (le)) > 0.6
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hybrid retrieval latency exceeds 600ms"
+          description: "Investigate component failures or saturated rerankers."
+      - alert: RetrievalRecallRegression
+        expr: medicalkg_retrieval_recall_at_k{dataset="test_set_v1",k="10"} < 0.75
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Recall@10 fell below 75%"
+          description: "Nightly evaluation indicates a quality regression. Review recent deployments and reranker changes."
+      - alert: RetrievalCacheHitDrop
+        expr: avg_over_time(reranking_cache_hit_rate[15m]) < 0.4
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reranking cache hit rate below 40%"
+          description: "Warm cache or adjust candidate counts to avoid GPU overload."
+      - alert: RetrievalGpuSaturation
+        expr: max_over_time(reranking_gpu_utilization_percent[10m]) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reranking GPU utilisation over 90%"
+          description: "Consider scaling gateway replicas or reducing rerank_candidates to restore headroom."

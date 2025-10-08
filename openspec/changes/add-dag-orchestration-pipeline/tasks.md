@@ -101,12 +101,12 @@
   - [x] `tests/orchestration/test_orchestrator.py` (legacy API tests)
   - [x] `tests/orchestration/test_workers.py` (worker-specific tests)
   - [x] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
-- [ ] 1.6.2 Create new Dagster tests:
-  - [ ] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
+- [x] 1.6.2 Create new Dagster tests:
+  - [x] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
   - [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
   - [ ] `tests/orchestration/test_stage_contracts.py` (Protocol compliance)
 - [ ] 1.6.3 Verify test coverage ≥90% for new orchestration code
-- [ ] 1.6.4 Delete all references to `Orchestrator` in test fixtures
+- [x] 1.6.4 Delete all references to `Orchestrator` in test fixtures
 
 ### 1.7 Documentation Updates (Reflect Deletions)
 

@@ -12,14 +12,14 @@
 
 Medical_KG_rev is a sophisticated multi-protocol API gateway and orchestration system that unifies fragmented biomedical data from 10+ diverse sources into a coherent knowledge graph with advanced retrieval capabilities. The system addresses the critical challenge faced by healthcare researchers, pharmaceutical companies, and medical informaticists: **data fragmentation across incompatible APIs, formats, and standards**.
 
-**Recent Updates**: The system is currently implementing a coordinator pattern architecture to decompose monolithic services and resolve PDF processing pipeline barriers for end-to-end testing capabilities.
+**Recent Updates**: The system has successfully implemented coordinator pattern architecture with ChunkingCoordinator and EmbeddingCoordinator, decomposed biomedical adapters into modular structure with shared mixins, and enhanced error handling with domain-specific translation. Active development continues on PDF processing pipeline integration.
 
 ### Key Features
 
 - 🔌 **Multi-Protocol API**: Single backend accessible via REST (OpenAPI/JSON:API/OData), GraphQL, gRPC, SOAP, and AsyncAPI/SSE
-- 🏗️ **Coordinator Pattern Architecture**: Decomposed monolithic services into focused coordinators (IngestionCoordinator, EmbeddingCoordinator, etc.)
+- 🏗️ **Coordinator Pattern Architecture**: Successfully implemented ChunkingCoordinator and EmbeddingCoordinator with shared base classes
 - 📊 **Federated Data Model**: Unified Intermediate Representation with domain-specific overlays (medical/FHIR, financial/XBRL, legal/LegalDocML)
-- 🔌 **Plug-in Adapters**: YAML-based connector SDK for 11+ biomedical data sources with PDF processing capabilities
+- 🔌 **Modular Biomedical Adapters**: Decomposed 13+ adapters into individual modules with shared mixins (HTTP, DOI, pagination, OA metadata)
 - 🚀 **GPU-Accelerated AI**: PDF parsing (MinerU), embeddings (SPLADE + Qwen-3), and LLM extraction
 - 🔍 **Multi-Strategy Retrieval**: Hybrid search combining BM25, SPLADE, and dense vectors with fusion ranking
 - 🔐 **Enterprise Security**: OAuth 2.0 with JWT, multi-tenant isolation, scope-based authorization, rate limiting

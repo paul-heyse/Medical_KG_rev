@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping
 
 import yaml
 from pydantic import (
@@ -43,15 +43,29 @@ class BackoffStrategy(str, Enum):
     NONE = "none"
 
 
-class GateCondition(BaseModel):
-    """Predicate evaluated against Job Ledger entries to resume a pipeline."""
+class GateOperator(str, Enum):
+    EXISTS = "exists"
+    EQUALS = "equals"
+    CHANGED = "changed"
+
+
+class GateConditionClause(BaseModel):
+    """Single predicate evaluated against the Job Ledger."""
 
     model_config = ConfigDict(extra="forbid")
 
     field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
-    equals: Any
-    timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
-    poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
+    operator: GateOperator = Field(default=GateOperator.EQUALS)
+    value: Any | None = None
+
+
+class GateCondition(BaseModel):
+    """Group of predicates combined with AND/OR semantics."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    clauses: list[GateConditionClause] = Field(default_factory=list, min_length=1)
+    mode: Literal["all", "any"] = Field(default="all")
 
 
 class GateDefinition(BaseModel):
@@ -62,6 +76,9 @@ class GateDefinition(BaseModel):
     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
     condition: GateCondition
     resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    timeout_seconds: int = Field(default=300, ge=1, le=86400)
+    poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=300.0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class StageDefinition(BaseModel):
@@ -74,6 +91,7 @@ class StageDefinition(BaseModel):
     policy: str | None = Field(default=None, alias="policy")
     depends_on: list[str] = Field(default_factory=list, alias="depends_on")
     config: dict[str, Any] = Field(default_factory=dict)
+    gate: str | None = Field(default=None, alias="gate", pattern=r"^[A-Za-z0-9_-]+$")
 
     @field_validator("depends_on")
     @classmethod
@@ -86,6 +104,60 @@ class StageDefinition(BaseModel):
             seen.add(item)
             result.append(item)
         return result
+
+    _phase: str = PrivateAttr(default="phase-1")
+    _phase_index: int = PrivateAttr(default=1)
+
+    @property
+    def is_gate(self) -> bool:
+        return self.stage_type == "gate"
+
+    @property
+    def execution_phase(self) -> str:
+        return self._phase
+
+    def assign_phase(self, phase: str) -> None:
+        self._phase = phase
+        try:
+            _, index = phase.split("-")
+            self._phase_index = int(index)
+        except Exception:
+            self._phase_index = 1
+
+    @property
+    def phase_index(self) -> int:
+        return self._phase_index
+
+    @model_validator(mode="after")
+    def _validate_gate_reference(self) -> StageDefinition:
+        if self.is_gate and not self.gate:
+            raise ValueError(f"gate stage '{self.name}' must reference a gate definition")
+        if not self.is_gate and self.gate:
+            raise ValueError(
+                f"non-gate stage '{self.name}' cannot reference gate '{self.gate}'"
+            )
+        return self
+
+
+def _validate_gate_condition(condition: GateCondition) -> None:
+    allowed_roots = {
+        "metadata",
+        "status",
+        "stage",
+        "current_stage",
+        "pdf_downloaded",
+        "pdf_ir_ready",
+    }
+    for clause in condition.clauses:
+        root = clause.field.split(".")[0]
+        if root not in allowed_roots:
+            raise ValueError(
+                f"gate condition references unsupported field '{clause.field}'"
+            )
+        if clause.operator == GateOperator.EQUALS and clause.value is None:
+            raise ValueError(
+                f"gate condition on field '{clause.field}' requires a comparison value"
+            )
 
 
 class PipelineMetadata(BaseModel):
@@ -127,12 +199,60 @@ class PipelineTopologyConfig(BaseModel):
         if order is None:
             raise ValueError("cycle detected in pipeline dependencies")
 
-        gate_stage_set = {stage.name for stage in self.stages}
+        gate_map = {gate.name: gate for gate in self.gates}
+        for stage in self.stages:
+            if stage.is_gate:
+                if not stage.gate or stage.gate not in gate_map:
+                    raise ValueError(
+                        f"gate stage '{stage.name}' references unknown gate '{stage.gate}'"
+                    )
+
+        name_to_stage = {stage.name: stage for stage in self.stages}
+        phase_index_map: dict[str, int] = {}
+        phase_counter = 1
+        for stage_name in order:
+            stage = name_to_stage[stage_name]
+            phase_index_map[stage_name] = phase_counter
+            stage.assign_phase(f"phase-{phase_counter}")
+            if stage.is_gate:
+                phase_counter += 1
+
         for gate in self.gates:
-            if gate.resume_stage not in gate_stage_set:
+            if gate.resume_stage not in name_to_stage:
                 raise ValueError(
                     f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
                 )
+            stage = next((s for s in self.stages if s.gate == gate.name), None)
+            if stage is None:
+                raise ValueError(
+                    f"gate definition '{gate.name}' is not referenced by any stage"
+                )
+            _validate_gate_condition(gate.condition)
+            resume_stage = name_to_stage[gate.resume_stage]
+            if phase_index_map[resume_stage.name] <= phase_index_map[stage.name]:
+                raise ValueError(
+                    f"gate '{gate.name}' resume_stage '{resume_stage.name}' must execute after the gate"
+                )
+            if stage.name not in resume_stage.depends_on:
+                raise ValueError(
+                    f"resume stage '{resume_stage.name}' must depend on gate stage '{stage.name}'"
+                )
+
+        for stage in self.stages:
+            stage_phase = phase_index_map[stage.name]
+            for dep in stage.depends_on:
+                dep_phase = phase_index_map[dep]
+                if dep_phase > stage_phase:
+                    raise ValueError(
+                        f"stage '{stage.name}' cannot depend on future stage '{dep}'"
+                    )
+            if stage.is_gate:
+                for dep in stage.depends_on:
+                    dep_phase = phase_index_map[dep]
+                    if dep_phase > stage_phase:
+                        raise ValueError(
+                            f"gate stage '{stage.name}' cannot depend on post-gate stage '{dep}'"
+                        )
         return self
 
 
@@ -562,7 +682,9 @@ def export_pipeline_schema(path: str | Path) -> None:
 
 __all__ = [
     "BackoffStrategy",
+    "GateConditionClause",
     "GateCondition",
+    "GateOperator",
     "GateDefinition",
     "PipelineConfigLoader",
     "PipelineTopologyConfig",

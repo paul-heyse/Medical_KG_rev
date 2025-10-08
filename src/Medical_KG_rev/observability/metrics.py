@@ -117,6 +117,21 @@ MINERU_GATE_TRIGGERED = Counter(
     "mineru_gate_triggered_total",
     "Number of times the MinerU two-phase gate halted processing",
 )
+GATE_EVALUATION_COUNTER = Counter(
+    "orchestration_gate_evaluation_total",
+    "Gate evaluation outcomes by gate and status",
+    labelnames=("gate", "status"),
+)
+GATE_TIMEOUT_COUNTER = Counter(
+    "orchestration_gate_timeout_total",
+    "Gate evaluation timeouts",
+    labelnames=("gate",),
+)
+PHASE_TRANSITION_COUNTER = Counter(
+    "orchestration_phase_transition_total",
+    "Execution phase transitions for gated pipelines",
+    labelnames=("pipeline", "from_phase", "to_phase"),
+)
 POSTPDF_START_TRIGGERED = Counter(
     "postpdf_start_triggered_total",
     "Number of times post-PDF resume was triggered",
@@ -355,6 +370,20 @@ def record_resilience_retry(policy: str, stage: str) -> None:
     """Increment retry counter for the supplied policy and stage."""
 
     RESILIENCE_RETRY_ATTEMPTS.labels(policy, stage).inc()
+
+
+def record_gate_evaluation(gate: str, status: str) -> None:
+    """Record a gate evaluation outcome."""
+
+    GATE_EVALUATION_COUNTER.labels(gate, status).inc()
+    if status == "timeout":
+        GATE_TIMEOUT_COUNTER.labels(gate).inc()
+
+
+def record_phase_transition(pipeline: str, from_phase: str, to_phase: str) -> None:
+    """Record a phase transition for a gated pipeline."""
+
+    PHASE_TRANSITION_COUNTER.labels(pipeline, from_phase, to_phase).inc()
 
 
 def record_resilience_circuit_state(policy: str, stage: str, state: str) -> None:

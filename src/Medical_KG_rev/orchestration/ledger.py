@@ -250,6 +250,9 @@ class JobLedger:
         entry.retry_count_per_stage.setdefault(stage, entry.retry_count_per_stage.get(stage, 0))
         return entry
 
+    def assign_pipeline(self, job_id: str, pipeline_name: str | None) -> JobLedgerEntry:
+        return self._update(job_id, pipeline_name=pipeline_name)
+
     def mark_stage_started(self, job_id: str, stage: str) -> JobLedgerEntry:
         entry = self.mark_processing(job_id, stage)
         entry.retry_count_per_stage.setdefault(stage, 0)
@@ -354,6 +357,38 @@ class JobLedger:
         error: str,
     ) -> JobLedgerEntry:
         return self._update(job_id, pdf_downloaded=False, pdf_error=error)
+
+    def set_phase(self, job_id: str, phase: str) -> JobLedgerEntry:
+        return self._update(job_id, phase=phase)
+
+    def record_gate_state(
+        self,
+        job_id: str,
+        gate_name: str,
+        *,
+        status: str,
+        reason: str | None = None,
+        attempts: int | None = None,
+        elapsed_seconds: float | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> JobLedgerEntry:
+        state: dict[str, object] = {"status": status, "updated_at": datetime.utcnow().isoformat()}
+        if reason:
+            state["reason"] = reason
+        if attempts is not None:
+            state["attempts"] = attempts
+        if elapsed_seconds is not None:
+            state["elapsed_seconds"] = elapsed_seconds
+        if extra:
+            state.update(extra)
+        return self._update(job_id, gate_state={gate_name: state})
+
+    def get_gate_state(self, job_id: str, gate_name: str) -> dict[str, object] | None:
+        entry = self._entries.get(job_id)
+        if not entry:
+            return None
+        state = entry.gate_state.get(gate_name)
+        return dict(state) if state else None
 
     def record_attempt(self, job_id: str) -> int:
         if job_id not in self._entries:

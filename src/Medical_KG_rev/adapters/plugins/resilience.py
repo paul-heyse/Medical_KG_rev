@@ -6,10 +6,6 @@ import time
 from collections import deque
 from enum import Enum
 from functools import wraps
-import time
-from collections import deque
-from enum import Enum
-from functools import wraps
 from typing import Any, Awaitable, Callable, TypeVar, cast
 
 import httpx
@@ -38,6 +34,32 @@ class BackoffStrategy(str, Enum):
     EXPONENTIAL = "exponential"
     LINEAR = "linear"
     JITTER = "jitter"
+
+
+class CircuitState(str, Enum):
+    """Normalised circuit breaker states exposed to adapter callers."""
+
+    CLOSED = "closed"
+    HALF_OPEN = "half-open"
+    OPEN = "open"
+
+    @classmethod
+    def from_pybreaker(cls, state: Any) -> "CircuitState":
+        """Coerce pybreaker state objects/strings into a ``CircuitState``."""
+
+        if isinstance(state, CircuitState):
+            return state
+        name = getattr(state, "name", None) or str(state)
+        normalised = name.replace("_", "-").lower()
+        if normalised in {"closed"}:
+            return cls.CLOSED
+        if normalised in {"half-open", "halfopen"}:
+            return cls.HALF_OPEN
+        return cls.OPEN
+
+    @property
+    def is_open(self) -> bool:
+        return self is CircuitState.OPEN
 
 
 class ResilienceConfig(BaseModel):
@@ -174,7 +196,7 @@ def circuit_breaker(config: ResilienceConfig) -> Callable[[AsyncFuncT], AsyncFun
                     CIRCUIT_STATE.labels(adapter=adapter).set(1)
                 raise
             except Exception:
-                if Gauge is not None and str(breaker.current_state).lower() == "open":
+                if Gauge is not None and CircuitState.from_pybreaker(breaker.current_state).is_open:
                     CIRCUIT_STATE.labels(adapter=adapter).set(1)
                 raise
             else:
@@ -206,6 +228,12 @@ class ResilientHTTPClient:
             reset_timeout=self.config.circuit_breaker_reset_timeout,
         )
 
+    @property
+    def circuit_state(self) -> CircuitState:
+        """Return the current state of the internal circuit breaker."""
+
+        return CircuitState.from_pybreaker(self._breaker.current_state)
+
     async def get(self, url: str, *, adapter_name: str = "http", **kwargs: Any) -> httpx.Response:
         async def _request() -> httpx.Response:
             response = await self._client.get(url, **kwargs)
@@ -234,7 +262,7 @@ class ResilientHTTPClient:
                     CIRCUIT_STATE.labels(adapter=adapter_name).set(1)
                 raise
             except Exception:
-                if Gauge is not None and str(self._breaker.current_state).lower() == "open":
+                if Gauge is not None and self.circuit_state.is_open:
                     CIRCUIT_STATE.labels(adapter=adapter_name).set(1)
                 raise
             else:

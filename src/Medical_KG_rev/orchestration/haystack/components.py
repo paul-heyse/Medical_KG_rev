@@ -13,6 +13,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingVector,
     IndexReceipt,
     IndexStage,
+    PipelineState,
     StageContext,
 )
 
@@ -110,12 +111,8 @@ class HaystackChunker(ChunkStage):
         self._chunker_version = chunker_version
         self._granularity = granularity
 
-    def execute(self, ctx: StageContext, document) -> list[Chunk]:
-        from Medical_KG_rev.models.ir import Document as IRDocument
-
-        if not isinstance(document, IRDocument):
-            raise TypeError("HaystackChunker requires an IR Document instance")
-
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[Chunk]:
+        document = state.require_document()
         haystack_documents: list[HaystackDocument] = []
         full_text: list[str] = []
         offsets: list[tuple[int, dict[str, Any]]] = []
@@ -251,7 +248,8 @@ class HaystackEmbedder(EmbedStage):
         self._model = model
         self._sparse_expander = sparse_expander
 
-    def execute(self, ctx: StageContext, chunks: list[Chunk]) -> EmbeddingBatch:
+    def execute(self, ctx: StageContext, state: PipelineState) -> EmbeddingBatch:
+        chunks = list(state.require_chunks())
         documents = [
             HaystackDocument(
                 id=chunk.chunk_id,
@@ -327,7 +325,8 @@ class HaystackIndexWriter(IndexStage):
         self._opensearch_index = opensearch_index
         self._faiss_index = faiss_index
 
-    def execute(self, ctx: StageContext, batch: EmbeddingBatch) -> IndexReceipt:
+    def execute(self, ctx: StageContext, state: PipelineState) -> IndexReceipt:
+        batch = state.require_embedding_batch()
         if not batch.vectors:
             return IndexReceipt(chunks_indexed=0, opensearch_ok=True, faiss_ok=True)
 

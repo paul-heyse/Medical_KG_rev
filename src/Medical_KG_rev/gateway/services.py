@@ -286,7 +286,7 @@ class GatewayService:
                 adapter_request=adapter_request,
                 payload=payload,
             )
-            result_metadata = {"state": run_result.state}
+            result_metadata = {"state": run_result.state.serialise()}
             if run_result.success:
                 self.ledger.mark_completed(job_id, metadata=result_metadata)
                 self.events.publish(

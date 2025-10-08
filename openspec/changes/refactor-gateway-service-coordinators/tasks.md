@@ -1,7 +1,7 @@
 ## 1. Design & Analysis Phase
 
-- [ ] 1.1 Analyze current `GatewayService` class structure and identify responsibility boundaries using dependency analysis tools
-- [ ] 1.2 Map existing methods to proposed coordinator responsibilities (ingestion, embedding, retrieval, chunking, entity linking, extraction)
+- [ ] 1.1 Analyze current `GatewayService` class structure and identify responsibility boundaries using dependency analysis tools (e.g., `pyan3` for call graphs, `objgraph` for object relationships)
+- [ ] 1.2 Map existing methods to proposed coordinator responsibilities (ingestion, embedding, retrieval, chunking, entity linking, extraction) with specific method signatures and dependencies
 - [ ] 1.3 Identify shared patterns in job lifecycle management (`_new_job`, `_complete_job`, `_fail_job`) for extraction into `JobLifecycleManager`
 - [ ] 1.4 Design narrow interface contracts for each coordinator (e.g., `IngestionCoordinator.ingest(...) -> IngestionResult`)
 - [ ] 1.5 Plan dependency injection strategy for coordinator composition and service locator replacement
@@ -13,8 +13,8 @@
 
 ## 2. Core Infrastructure Implementation
 
-- [ ] 2.1 Create `JobLifecycleManager` class to encapsulate job creation, state transitions, and ledger operations
-- [ ] 2.2 Implement job state machine with validation rules (queued → processing → completed/failed/cancelled)
+- [ ] 2.1 Create `JobLifecycleManager` class to encapsulate job creation, state transitions, and ledger operations with specific methods: `create_job()`, `start_job()`, `complete_job()`, `fail_job()`, `cancel_job()` in `src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py`
+- [ ] 2.2 Implement job state machine with validation rules (queued → processing → completed/failed/cancelled) including state transition validation, business rule enforcement, and rollback capabilities
 - [ ] 2.3 Add event streaming integration for real-time job progress updates via SSE
 - [ ] 2.4 Create job metadata enrichment utilities for tenant, correlation, and timing information
 - [ ] 2.5 Implement job deduplication logic for idempotent operations

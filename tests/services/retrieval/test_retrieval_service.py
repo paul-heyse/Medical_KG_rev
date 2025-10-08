@@ -11,35 +11,11 @@ from Medical_KG_rev.services.reranking.errors import RerankingError
 
 def _setup_clients():
     opensearch = OpenSearchClient()
-    opensearch.index(
-        "chunks",
-        "1",
-        {
-            "text": "headache nausea",
-            "document_id": "doc-1",
-            "metadata": {"chunking_profile": "pmc-imrad"},
-        },
-    )
-    opensearch.index(
-        "chunks",
-        "2",
-        {
-            "text": "migraine treatment",
-            "document_id": "doc-2",
-            "metadata": {"chunking_profile": "ctgov-registry"},
-        },
-    )
-    faiss = FAISSIndex(dimension=4)
-    faiss.add(
-        "1",
-        [1.0, 0.0, 0.0, 0.0],
-        {"text": "headache nausea", "document_id": "doc-1", "chunking_profile": "pmc-imrad"},
-    )
-    faiss.add(
-        "2",
-        [0.0, 1.0, 0.0, 0.0],
-        {"text": "migraine treatment", "document_id": "doc-2", "chunking_profile": "ctgov-registry"},
-    )
+    opensearch.index("chunks", "1", {"text": "headache nausea", "document_id": "doc-1"})
+    opensearch.index("chunks", "2", {"text": "migraine treatment", "document_id": "doc-2"})
+    faiss = FAISSIndex(dimension=4, use_gpu=False)
+    faiss.add("1", [1.0, 0.0, 0.0, 0.0], {"text": "headache nausea", "document_id": "doc-1"})
+    faiss.add("2", [0.0, 1.0, 0.0, 0.0], {"text": "migraine treatment", "document_id": "doc-2"})
     return opensearch, faiss
 
 

@@ -305,7 +305,7 @@ The {SERVICE_NAME} SHALL include comprehensive test coverage with contract, perf
 - Size limit: 50MB (batch upsert)
 - Upstream: `add-universal-embedding-system`
 - Downstream: `add-reranking-fusion-system`, `add-retrieval-pipeline-orchestration`
-- Packages: `qdrant-client`, `faiss-cpu` or `faiss-gpu`, `pymilvus`, `opensearch-py`
+- Packages: `qdrant-client`, `faiss-gpu`, `pymilvus`, `opensearch-py`
 
 #### Reranking
 

@@ -402,7 +402,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 2.1 VLLMClient Core Implementation
 
-- [ ] **2.1.1** Create VLLMClient class
+- [x] **2.1.1** Create VLLMClient class
   - **File**: `src/Medical_KG_rev/services/mineru/vllm_client.py`
   - **Specification**:
 
@@ -563,7 +563,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `python -m pytest tests/services/mineru/test_vllm_client.py -v`
 
-- [ ] **2.1.2** Create Prometheus metrics for VLLMClient
+- [x] **2.1.2** Create Prometheus metrics for VLLMClient
   - **File**: `src/Medical_KG_rev/observability/metrics.py`
   - **Action**: Add these metrics to existing metrics module:
 
@@ -598,7 +598,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 2.2 Circuit Breaker Implementation
 
-- [ ] **2.2.1** Create CircuitBreaker class
+- [x] **2.2.1** Create CircuitBreaker class
   - **File**: `src/Medical_KG_rev/services/mineru/circuit_breaker.py`
   - **Specification**:
 
@@ -745,7 +745,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `python -m pytest tests/services/mineru/test_circuit_breaker.py -v`
 
-- [ ] **2.2.2** Integrate CircuitBreaker with VLLMClient
+- [x] **2.2.2** Integrate CircuitBreaker with VLLMClient
   - **File**: `src/Medical_KG_rev/services/mineru/vllm_client.py`
   - **Action**: Add circuit breaker to VLLMClient:
 
@@ -1049,7 +1049,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 4.1 Unit Tests
 
-- [ ] **4.1.1** Create VLLMClient unit tests
+- [x] **4.1.1** Create VLLMClient unit tests
   - **File**: `tests/services/mineru/test_vllm_client.py`
   - **Specification**:
 
@@ -1139,7 +1139,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: `pytest tests/services/mineru/test_vllm_client.py -v`
 
-- [ ] **4.1.2** Create CircuitBreaker unit tests
+- [x] **4.1.2** Create CircuitBreaker unit tests
   - **File**: `tests/services/mineru/test_circuit_breaker.py`
   - **Specification**: Tests for all state transitions (CLOSED→OPEN, OPEN→HALF_OPEN, HALF_OPEN→CLOSED, HALF_OPEN→OPEN)
   - **Validation**: `pytest tests/services/mineru/test_circuit_breaker.py -v`

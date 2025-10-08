@@ -2,6 +2,8 @@
 
 The current Dagster runtime relies on a static `StageFactory` whose registry is built once inside `build_default_stage_factory`. Adding a new stage type requires editing this central map, updating `_apply_stage_output`, `_infer_output_count`, and any callers that expect a particular key structure. This creates tight coupling between stage definitions and the runtime, making it difficult to extend the system with new stage types like `download` and `gate` without surgery on core runtime code.
 
+**Critical Barrier**: The PDF pipeline (`pdf-two-phase.yaml`) expects `download` and `gate` stages, but the default stage factory only knows about `ingest/parse/chunk/embed/index/extract/kg`. This prevents Dagster from instantiating the PDF pipeline at runtime, blocking end-to-end testing of PDF processing workflows.
+
 ## What Changes
 
 - **Introduce `StagePluginManager`**: Create a plugin manager similar to the adapter Pluggy integration that dynamically discovers and registers stage implementations via entry points

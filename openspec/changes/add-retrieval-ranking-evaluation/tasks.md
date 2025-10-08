@@ -448,19 +448,19 @@
   - **Config**: Only rerank if hybrid score > threshold (avoid reranking low-quality results)
   - **Default**: Rerank all top-100
 
-- [ ] 4.2.5 Add per-tenant reranking settings
+- [x] 4.2.5 Add per-tenant reranking settings
   - **Config**: Some tenants enable reranking by default
   - **Override**: API parameter overrides tenant default
 
-- [ ] 4.2.6 Implement reranking fallback
+- [x] 4.2.6 Implement reranking fallback
   - **Strategy**: If reranker fails, return fusion ranking
   - **Logging**: Emit warning, CloudEvent
 
-- [ ] 4.2.7 Add reranking A/B testing support
+- [x] 4.2.7 Add reranking A/B testing support
   - **Traffic Split**: 10% reranked, 90% fusion-only
   - **Metrics**: Compare nDCG@10 across groups
 
-- [ ] 4.2.8 Write reranking integration tests
+- [x] 4.2.8 Write reranking integration tests
   - **Cases**: Enabled, disabled, fallback
 
 - [ ] 4.2.9 Performance benchmark: Reranking latency
@@ -703,46 +703,46 @@
 
 ### 7.1 Metrics Implementation (15 tasks)
 
-- [ ] 7.1.1 Create metrics module
+- [x] 7.1.1 Create metrics module
   - **File**: `src/Medical_KG_rev/services/evaluation/metrics.py`
   - **Functions**: `recall_at_k`, `ndcg_at_k`, `mrr`
 
-- [ ] 7.1.2 Implement Recall@K
+- [x] 7.1.2 Implement Recall@K
   - **Formula**: `Recall@K = |relevant ∩ retrieved_top_K| / |relevant|`
   - **K Values**: 5, 10, 20
 
-- [ ] 7.1.3 Implement nDCG@K
+- [x] 7.1.3 Implement nDCG@K
   - **Formula**: Normalized Discounted Cumulative Gain
   - **Library**: Use scikit-learn `ndcg_score`
 
-- [ ] 7.1.4 Implement MRR
+- [x] 7.1.4 Implement MRR
   - **Formula**: Mean Reciprocal Rank = (1/N) Σ(1/rank_i)
   - **Use Case**: Position of first relevant result
 
-- [ ] 7.1.5 Add graded relevance support for nDCG
+- [x] 7.1.5 Add graded relevance support for nDCG
   - **Levels**: 0 (irrelevant), 1 (somewhat), 2 (relevant), 3 (highly relevant)
   - **Source**: Manual labels from domain experts
 
-- [ ] 7.1.6 Implement Precision@K (bonus)
+- [x] 7.1.6 Implement Precision@K (bonus)
   - **Formula**: `Precision@K = |relevant ∩ retrieved_top_K| / K`
 
-- [ ] 7.1.7 Implement MAP (Mean Average Precision)
+- [x] 7.1.7 Implement MAP (Mean Average Precision)
   - **Use Case**: Overall ranking quality metric
 
-- [ ] 7.1.8 Add per-query metric calculation
+- [x] 7.1.8 Add per-query metric calculation
   - **Output**: Metrics for each query in test set
 
-- [ ] 7.1.9 Implement aggregate metrics
+- [x] 7.1.9 Implement aggregate metrics
   - **Output**: Mean, median, std dev across all queries
 
-- [ ] 7.1.10 Add confidence intervals
+- [x] 7.1.10 Add confidence intervals
   - **Method**: Bootstrap confidence intervals for metrics
   - **Output**: 95% CI for Recall@10, nDCG@10
 
-- [ ] 7.1.11 Write metrics unit tests
+- [x] 7.1.11 Write metrics unit tests
   - **Cases**: Known inputs, edge cases (empty results)
 
-- [ ] 7.1.12 Validate metrics implementation
+- [x] 7.1.12 Validate metrics implementation
   - **Compare**: Against reference implementations (TREC eval)
 
 - [ ] 7.1.13 Benchmark metrics computation time
@@ -756,50 +756,50 @@
 
 ### 7.2 Test Set Management (15 tasks)
 
-- [ ] 7.2.1 Create test set storage
+- [x] 7.2.1 Create test set storage
   - **File**: `src/Medical_KG_rev/services/evaluation/test_sets.py`
   - **Format**: JSON with queries, relevant docs, graded labels
 
-- [ ] 7.2.2 Define test set schema
+- [x] 7.2.2 Define test set schema
   - **Fields**: `query_id`, `query_text`, `query_type`, `relevant_docs: list[{doc_id, grade}]`
 
 - [ ] 7.2.3 Create initial test set (50 queries)
   - **Stratification**: 20 exact term, 15 paraphrase, 15 complex clinical
   - **Labeling**: Manual labels by 2 domain experts
 
-- [ ] 7.2.4 Implement test set loader
+- [x] 7.2.4 Implement test set loader
   - **Method**: `load_test_set(name: str) -> TestSet`
   - **Validation**: Check schema, required fields
 
-- [ ] 7.2.5 Add test set versioning
+- [x] 7.2.5 Add test set versioning
   - **Format**: `test_set_v1.json`, `test_set_v2.json`
   - **Tracking**: Track which version used in evaluation
 
-- [ ] 7.2.6 Implement query type stratification
+- [x] 7.2.6 Implement query type stratification
   - **Types**: `exact_term`, `paraphrase`, `complex_clinical`
   - **Analysis**: Compare metrics per query type
 
-- [ ] 7.2.7 Add relevance judgment validation
+- [x] 7.2.7 Add relevance judgment validation
   - **Check**: All queries have ≥1 relevant doc
   - **Check**: Graded labels in valid range (0-3)
 
-- [ ] 7.2.8 Implement inter-annotator agreement
+- [x] 7.2.8 Implement inter-annotator agreement
   - **Metric**: Cohen's kappa for 2 annotators
   - **Target**: κ > 0.6 (substantial agreement)
 
-- [ ] 7.2.9 Create test set refresh process
+- [x] 7.2.9 Create test set refresh process
   - **Frequency**: Quarterly refresh with new queries
   - **Validation**: Ensure no query drift (overfitting)
 
-- [ ] 7.2.10 Add test set export/import
+- [x] 7.2.10 Add test set export/import
   - **Format**: JSON for portability
   - **Use Case**: Share with collaborators
 
-- [ ] 7.2.11 Implement test set splitting
+- [x] 7.2.11 Implement test set splitting
   - **Splits**: 80% evaluation, 20% held-out validation
   - **Use**: Prevent overfitting during tuning
 
-- [ ] 7.2.12 Write test set loading tests
+- [x] 7.2.12 Write test set loading tests
   - **Cases**: Valid test set, invalid schema, missing file
 
 - [ ] 7.2.13 Document test set creation process
@@ -814,11 +814,11 @@
 
 ### 7.3 Evaluation Harness (15 tasks)
 
-- [ ] 7.3.1 Create evaluation runner
+- [x] 7.3.1 Create evaluation runner
   - **File**: `src/Medical_KG_rev/services/evaluation/runner.py`
   - **Method**: `evaluate(retrieval_fn, test_set) -> EvaluationResult`
 
-- [ ] 7.3.2 Implement batch evaluation
+- [x] 7.3.2 Implement batch evaluation
   - **Process**: Run all test set queries, collect results
   - **Metrics**: Calculate Recall@K, nDCG@K, MRR
 
@@ -826,11 +826,11 @@
   - **Analysis**: Evaluate BM25-only, SPLADE-only, Dense-only
   - **Comparison**: vs hybrid fusion
 
-- [ ] 7.3.4 Implement A/B testing framework
+- [x] 7.3.4 Implement A/B testing framework
   - **Setup**: Compare two retrieval configurations
   - **Output**: Statistical significance test (t-test)
 
-- [ ] 7.3.5 Add evaluation caching
+- [x] 7.3.5 Add evaluation caching
   - **Key**: `hash(retrieval_config + test_set_version)`
   - **Use Case**: Avoid re-running expensive evaluations
 
@@ -842,7 +842,7 @@
   - **Output**: Log all queries, results, metrics
   - **Use Case**: Debug low-performing queries
 
-- [ ] 7.3.8 Implement CI integration
+- [x] 7.3.8 Implement CI integration
   - **Trigger**: Run evaluation on every PR
   - **Check**: Fail if Recall@10 drops >5%
 
@@ -854,7 +854,7 @@
   - **Alert**: If metrics drop below baseline
   - **Action**: Notify team, block deployment
 
-- [ ] 7.3.11 Write evaluation harness tests
+- [x] 7.3.11 Write evaluation harness tests
   - **Cases**: Small test set, A/B comparison
 
 - [ ] 7.3.12 Benchmark evaluation time
@@ -863,7 +863,7 @@
 - [ ] 7.3.13 Document evaluation workflow
   - **Guide**: How to run, interpret results, add queries
 
-- [ ] 7.3.14 Add evaluation REST endpoint
+- [x] 7.3.14 Add evaluation REST endpoint
   - **Endpoint**: `POST /v1/evaluate` with test set upload
   - **Output**: Evaluation report JSON
 

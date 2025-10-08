@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
+from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.config import RerankingSettings
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
-from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalRouter, RetrievalService
+from Medical_KG_rev.services.retrieval.rerank_policy import TenantRerankPolicy
+from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
+from Medical_KG_rev.services.reranking.errors import RerankingError
 
 
 def _setup_clients():
@@ -17,9 +19,22 @@ def _setup_clients():
     return opensearch, faiss
 
 
+def _policy(**overrides: bool) -> TenantRerankPolicy:
+    return TenantRerankPolicy(default_enabled=False, tenant_defaults=overrides, experiment_ratio=0.0)
+
+
+def _service(opensearch: OpenSearchClient, faiss: FAISSIndex, **policy_overrides: bool) -> RetrievalService:
+    return RetrievalService(
+        opensearch,
+        faiss,
+        reranking_settings=RerankingSettings(),
+        rerank_policy=_policy(**policy_overrides),
+    )
+
+
 def test_rrf_fusion_combines_results():
     opensearch, faiss = _setup_clients()
-    service = RetrievalService(opensearch, faiss)
+    service = _service(opensearch, faiss)
 
     results = service.search("chunks", "headache treatment", k=2)
 
@@ -30,7 +45,7 @@ def test_rrf_fusion_combines_results():
 
 def test_rerank_adds_scores():
     opensearch, faiss = _setup_clients()
-    service = RetrievalService(opensearch, faiss)
+    service = _service(opensearch, faiss)
 
     results = service.search("chunks", "headache", rerank=True)
 
@@ -40,9 +55,65 @@ def test_rerank_adds_scores():
 
 def test_explain_mode_includes_stage_metrics():
     opensearch, faiss = _setup_clients()
-    service = RetrievalService(opensearch, faiss)
+    service = _service(opensearch, faiss)
 
     results = service.search("chunks", "headache", rerank=True, explain=True)
 
     assert results[0].metadata.get("pipeline_metrics")
     assert results[0].metadata.get("timing")
+
+
+def test_tenant_default_enables_reranking():
+    opensearch, faiss = _setup_clients()
+    service = _service(opensearch, faiss, oncology=True)
+
+    results = service.search(
+        "chunks",
+        "headache",
+        context=SecurityContext(subject="user", tenant_id="oncology", scopes={"*"}),
+    )
+
+    assert any(result.rerank_score is not None for result in results)
+    metadata = results[0].metadata.get("reranking")
+    assert metadata and metadata["applied"] is True
+    assert metadata["cohort"].startswith("tenant:oncology")
+
+
+def test_explicit_override_disables_reranking():
+    opensearch, faiss = _setup_clients()
+    service = _service(opensearch, faiss, oncology=True)
+
+    results = service.search(
+        "chunks",
+        "headache",
+        rerank=False,
+        context=SecurityContext(subject="user", tenant_id="oncology", scopes={"*"}),
+    )
+
+    assert all(result.rerank_score is None for result in results)
+    metadata = results[0].metadata.get("reranking")
+    assert metadata and metadata["applied"] is False
+    assert metadata["reason"] == "request"
+
+
+def test_rerank_fallback_records_error():
+    opensearch, faiss = _setup_clients()
+
+    class FailingEngine:
+        def rerank(self, *args, **kwargs):  # noqa: D401 - signature proxy
+            raise RerankingError("boom", status=500)
+
+    service = RetrievalService(
+        opensearch,
+        faiss,
+        reranking_engine=FailingEngine(),
+        reranking_settings=RerankingSettings(),
+        rerank_policy=_policy(),
+    )
+
+    results = service.search("chunks", "headache", rerank=True)
+
+    assert all(result.rerank_score is None for result in results)
+    metadata = results[0].metadata.get("reranking")
+    assert metadata["fallback"] == "fusion"
+    assert metadata["error"] == "RerankingError"

@@ -62,8 +62,12 @@ type RetrievalResult {
 
 type EmbeddingVector {
   id: ID!
-  vector: [Float!]!
   model: String!
+  namespace: String!
+  kind: String!
+  dimension: Int!
+  vector: [Float!]!
+  terms: JSON
   metadata: JSON
 }
 
@@ -117,6 +121,7 @@ input EmbedInput {
   tenant_id: ID!
   inputs: [String!]!
   model: String!
+  namespace: String!
   normalize: Boolean = true
 }
 

@@ -17,7 +17,10 @@ from dagster import (
     op,
 )
 
+<<<<<<< HEAD
 from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
+=======
+>>>>>>> main
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
@@ -25,7 +28,10 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     ResiliencePolicyLoader,
     StageDefinition,
 )
+<<<<<<< HEAD
 from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+=======
+>>>>>>> main
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 from Medical_KG_rev.utils.logging import get_logger
 
@@ -401,6 +407,7 @@ def submit_to_dagster(
     )
 
 
+<<<<<<< HEAD
 def build_default_orchestrator() -> DagsterOrchestrator:
     """Construct a Dagster orchestrator with default stage builders."""
 
@@ -417,6 +424,8 @@ except Exception:  # pragma: no cover - avoid hard failure when optional deps mi
     defs = None
 
 
+=======
+>>>>>>> main
 __all__ = [
     "DagsterOrchestrator",
     "DagsterRunResult",

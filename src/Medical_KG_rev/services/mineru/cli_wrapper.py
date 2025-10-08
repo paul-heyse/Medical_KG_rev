@@ -18,6 +18,20 @@ from Medical_KG_rev.config.settings import MineruSettings
 logger = structlog.get_logger(__name__)
 
 
+def _cuda_available() -> bool:
+    """Best-effort probe to confirm CUDA support via PyTorch."""
+
+    try:  # pragma: no cover - torch optional in CI
+        import torch
+    except Exception:
+        return False
+
+    try:
+        return bool(torch.cuda.is_available())
+    except Exception:  # pragma: no cover - torch runtime guard
+        return False
+
+
 class MineruCliError(RuntimeError):
     """Raised when the MinerU CLI invocation fails."""
 
@@ -255,6 +269,13 @@ class SimulatedMineruCli(MineruCliBase):
 
 def create_cli(settings: MineruSettings) -> MineruCliBase:
     """Factory that resolves the appropriate CLI implementation."""
+
+    if not _cuda_available():
+        message = "CUDA runtime support unavailable for MinerU CLI execution"
+        if settings.simulate_if_unavailable:
+            logger.bind(reason="cuda-unavailable").warning("mineru.cli.fallback")
+            return SimulatedMineruCli(settings)
+        raise MineruCliError(message)
 
     try:
         cli = SubprocessMineruCli(settings)

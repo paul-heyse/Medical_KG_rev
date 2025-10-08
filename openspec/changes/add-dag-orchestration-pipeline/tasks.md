@@ -20,8 +20,13 @@
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
 - [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
+<<<<<<< HEAD
 - [x] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
 - [x] `worker.py` (lines 62-110) - Replace with Dagster ops
+=======
+  - [ ] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
+  - [ ] `worker.py` (lines 62-110) - Replace with Dagster ops
+>>>>>>> main
   - [ ] `pipeline.py` - Replace with YAML topology configs
   - [ ] `profiles.py` - Replace with per-pipeline YAML configs
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:

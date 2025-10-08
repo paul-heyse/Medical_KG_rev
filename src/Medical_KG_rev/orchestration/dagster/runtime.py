@@ -45,7 +45,8 @@ from Medical_KG_rev.orchestration.dagster.stages import (
 )
 from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
-from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
+from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.state_manager import LedgerStateManager
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 from Medical_KG_rev.utils.logging import get_logger
@@ -213,6 +214,7 @@ def _make_stage_op(
             "stage_factory",
             "resilience_policies",
             "job_ledger",
+            "job_state_manager",
             "event_emitter",
         },
     )
@@ -221,6 +223,7 @@ def _make_stage_op(
         stage = stage_factory.resolve(topology.name, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
+        state_manager: LedgerStateManager = context.resources.job_state_manager
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -233,7 +236,7 @@ def _make_stage_op(
         def _on_retry(retry_state: Any) -> None:
             job_identifier = state.get("job_id")
             if job_identifier:
-                ledger.increment_retry(job_identifier, stage_name)
+                state_manager.record_retry(job_identifier, stage_name)
             sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
             attempt_number = getattr(retry_state, "attempt_number", 0) + 1
             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
@@ -266,10 +269,8 @@ def _make_stage_op(
         stage_ctx: StageContext = state["context"]
         job_id = stage_ctx.job_id or state.get("job_id")
 
-        initial_attempt = 1
-        if job_id:
-            entry = ledger.mark_stage_started(job_id, stage_name)
-            initial_attempt = entry.retry_count_per_stage.get(stage_name, 0) + 1
+        attempt = state_manager.stage_started(job_id, stage_name)
+        initial_attempt = attempt.attempt
         emitter.emit_started(stage_ctx, stage_name, attempt=initial_attempt)
 
         start_time = time.perf_counter()
@@ -303,8 +304,7 @@ def _make_stage_op(
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
-            if job_id:
-                ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
+            state_manager.stage_failed(job_id, stage_name, reason=str(exc))
             raise
 
         updated = dict(state)
@@ -314,15 +314,13 @@ def _make_stage_op(
         duration_ms = int(duration_seconds * 1000)
         output_count = _infer_output_count(metadata, result)
 
-        if job_id:
-            ledger.update_metadata(
-                job_id,
-                {
-                    f"stage.{stage_name}.attempts": attempts,
-                    f"stage.{stage_name}.output_count": output_count,
-                    f"stage.{stage_name}.duration_ms": duration_ms,
-                },
-            )
+        state_manager.stage_succeeded(
+            job_id,
+            stage_name,
+            attempts=attempts,
+            output_count=output_count,
+            duration_ms=duration_ms,
+        )
         emitter.emit_completed(
             stage_ctx,
             stage_name,
@@ -464,6 +462,7 @@ class DagsterOrchestrator:
         self.plugin_manager = plugin_manager or get_plugin_manager()
         self.base_path = Path(base_path or pipeline_loader.base_path)
         self.job_ledger = job_ledger or JobLedger()
+        self.state_manager = LedgerStateManager(self.job_ledger)
         self.kafka_client = kafka_client or KafkaClient()
         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
@@ -472,6 +471,7 @@ class DagsterOrchestrator:
             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
             "job_ledger": ResourceDefinition.hardcoded_resource(self.job_ledger),
+            "job_state_manager": ResourceDefinition.hardcoded_resource(self.state_manager),
             "event_emitter": ResourceDefinition.hardcoded_resource(self.event_emitter),
             "haystack_pipeline": ResourceDefinition.hardcoded_resource(self.pipeline_resource),
             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
@@ -508,13 +508,7 @@ class DagsterOrchestrator:
         self._definitions = None
 
     def _record_job_attempt(self, job_id: str | None) -> int:
-        if not job_id:
-            return 1
-        try:
-            return self.job_ledger.record_attempt(job_id)
-        except JobLedgerError:
-            logger.debug("dagster.ledger.missing_job", job_id=job_id)
-            return 1
+        return self.state_manager.record_job_attempt(job_id)
 
     def submit(
         self,
@@ -559,23 +553,15 @@ class DagsterOrchestrator:
         job_attempt = self._record_job_attempt(context.job_id)
         run_identifier = context.job_id or context.correlation_id or uuid4().hex
 
-        if context.job_id:
-            try:
-                self.job_ledger.update_metadata(
-                    context.job_id,
-                    {
-                        "pipeline_version": job.version,
-                        "correlation_id": context.correlation_id,
-                        "adapter_request": adapter_request.model_dump(),
-                        "payload": dict(payload),
-                    },
-                )
-            except JobLedgerError:
-                logger.debug(
-                    "dagster.ledger.metadata_update_failed",
-                    job_id=context.job_id,
-                    pipeline=pipeline,
-                )
+        context_metadata = dict(context.metadata) if isinstance(context.metadata, Mapping) else {}
+        self.state_manager.prepare_run(
+            context_metadata=context_metadata,
+            job_id=context.job_id,
+            pipeline=pipeline,
+            pipeline_version=job.version,
+            adapter_request=adapter_request,
+            payload=payload,
+        )
 
         self.openlineage.emit_run_started(
             pipeline,
@@ -589,7 +575,7 @@ class DagsterOrchestrator:
         try:
             result = job.job_definition.execute_in_process(run_config=run_config)
         except Exception as exc:
-            ledger_entry = self.job_ledger.get(context.job_id) if context.job_id else None
+            ledger_entry = self.state_manager.fetch_entry(context.job_id)
             self.openlineage.emit_run_failed(
                 pipeline,
                 run_id=run_identifier,
@@ -603,32 +589,7 @@ class DagsterOrchestrator:
 
         duration_ms = int((time.perf_counter() - start_time) * 1000)
 
-        final_state = result.output_for_node(job.final_node)
-        phase_index = job.total_phases
-        phase_ready = True
-        if isinstance(final_state, Mapping):
-            phase_index = int(final_state.get("phase_index", phase_index))
-            phase_ready = bool(final_state.get("phase_ready", True))
-
-        ledger_entry = None
-        if context.job_id:
-            try:
-                if phase_index >= job.total_phases and phase_ready:
-                    ledger_entry = self.job_ledger.mark_completed(context.job_id)
-                else:
-                    ledger_entry = self.job_ledger.set_phase(
-                        context.job_id,
-                        f"phase-{phase_index}",
-                    )
-                    self.job_ledger.update_metadata(
-                        context.job_id,
-                        {
-                            "phase_ready": phase_ready,
-                            "phase_index": phase_index,
-                        },
-                    )
-            except JobLedgerError:
-                ledger_entry = self.job_ledger.get(context.job_id)
+        ledger_entry = self.state_manager.complete_run(context.job_id)
 
         self.openlineage.emit_run_completed(
             pipeline,

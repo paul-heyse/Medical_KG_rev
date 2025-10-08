@@ -14,6 +14,7 @@ from .dagster import (
     StageResolutionError,
     submit_to_dagster,
 )
+from .state_manager import LedgerStateManager
 from .haystack import (
     HaystackChunker,
     HaystackEmbedder,
@@ -55,6 +56,7 @@ __all__ = [
     "JobLedger",
     "JobLedgerEntry",
     "JobTransition",
+    "LedgerStateManager",
     "KGStage",
     "KafkaClient",
     "KafkaMessage",

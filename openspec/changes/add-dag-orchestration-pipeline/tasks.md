@@ -27,7 +27,7 @@
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
   - [ ] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
   - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
-  - [ ] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
+  - [x] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
 - [x] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
   - File paths to delete
   - Imports to update
@@ -44,11 +44,11 @@
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
-- [ ] 1.3.1 **Chunking**: Verify all chunking logic moved to Haystack `DocumentSplitter`
-  - [ ] Audit: `src/Medical_KG_rev/services/retrieval/chunking.py` - which methods stay?
-  - [ ] Decision: Keep profile detection, delegate splitting to Haystack
-  - [ ] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
-  - [ ] Verify: All chunking tests pass with Haystack backend
+- [x] 1.3.1 **Chunking**: Verify all chunking logic moved to Haystack `DocumentSplitter`
+  - [x] Audit: `src/Medical_KG_rev/services/retrieval/chunking.py` - which methods stay?
+  - [x] Decision: Keep profile detection, delegate splitting to Haystack
+  - [x] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
+  - [x] Verify: All chunking tests pass with Haystack backend
 - [ ] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
   - [ ] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
   - [ ] Decision: Keep namespace management, delegate embedding to Haystack

@@ -16,7 +16,7 @@
 ### Services Layer Adapters
 - `src/Medical_KG_rev/services/retrieval/indexing_service.py`
 - `src/Medical_KG_rev/services/embedding/service.py`
-- `src/Medical_KG_rev/services/retrieval/chunking.py`
+- ~~`src/Medical_KG_rev/services/retrieval/chunking.py`~~ (replaced with Haystack stage wrapper)
 
 ### Legacy Tests
 - ~~`tests/orchestration/test_orchestrator.py`~~ (removed)

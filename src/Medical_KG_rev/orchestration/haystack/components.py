@@ -100,8 +100,11 @@ class HaystackChunker(ChunkStage):
         chunker_version: str = "1.0.0",
         granularity: str = "paragraph",
     ) -> None:
-        if splitter is None:  # pragma: no cover - requires haystack runtime
-            splitter = DocumentSplitter(split_by="sentence", split_length=10, split_overlap=2)
+        if splitter is None:
+            try:  # pragma: no cover - requires haystack runtime
+                splitter = DocumentSplitter(split_by="sentence", split_length=10, split_overlap=2)
+            except Exception:  # pragma: no cover - fallback when haystack is unavailable
+                splitter = SimpleDocumentSplitter(sentence_length=3)
         self._splitter = splitter
         self._chunker_name = chunker_name
         self._chunker_version = chunker_version

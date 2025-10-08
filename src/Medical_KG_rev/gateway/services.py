@@ -19,6 +19,7 @@ from Medical_KG_rev.chunking.exceptions import (
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
+from ..chunking.models import Chunk
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
@@ -34,7 +35,8 @@ from ..orchestration.dagster import (
     build_default_stage_factory,
     submit_to_dagster,
 )
-from ..orchestration.stages.contracts import StageContext
+from ..orchestration.dagster.configuration import StageDefinition
+from ..orchestration.stages.contracts import EmbeddingBatch, StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
@@ -81,19 +83,34 @@ class GatewayError(RuntimeError):
         self.detail = detail
 
 
+def _build_stage_factory(manager: AdapterPluginManager | None = None) -> StageFactory:
+    registry = build_default_stage_factory(manager or get_plugin_manager())
+    return StageFactory(registry)
+
+
 @dataclass
 class GatewayService:
     """Coordinates business logic shared across protocols."""
+
+    _PIPELINE_NAME = "gateway-direct"
+    _PIPELINE_VERSION = "v1"
 
     events: EventStreamManager
     orchestrator: DagsterOrchestrator
     ledger: JobLedger
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
-    chunker: ChunkingService = field(default_factory=ChunkingService)
+    stage_factory: StageFactory | None = None
+    chunker: ChunkingService | None = None
     retriever: HaystackRetriever = field(default_factory=HaystackRetriever)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
+
+    def __post_init__(self) -> None:
+        if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(self.adapter_manager)
+        if self.chunker is None:
+            self.chunker = ChunkingService(stage_factory=self.stage_factory)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -155,6 +172,12 @@ class GatewayService:
         logger.warning("gateway.job.failed", job_id=job_id, reason=reason)
         self.ledger.mark_failed(job_id, stage="error", reason=reason)
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
+
+    def _resolve_stage(self, stage_type: str) -> object:
+        if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(self.adapter_manager)
+        definition = StageDefinition(name=f"gateway-{stage_type}", type=stage_type)
+        return self.stage_factory.resolve(self._PIPELINE_NAME, definition)
 
     def _submit_dagster_job(
         self,
@@ -354,28 +377,34 @@ class GatewayService:
         job_id = self._new_job(request.tenant_id, "chunk")
         options_payload = request.options if isinstance(request.options, dict) else {}
         raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
-        if raw_text is not None and not raw_text.strip():
+        if not isinstance(raw_text, str) or not raw_text.strip():
             detail = ProblemDetail(
                 title="Invalid document payload",
                 status=400,
                 type="https://httpstatuses.com/400",
-                detail="Text payload must be a non-empty string",
+                detail="Chunking requests must include a non-empty 'text' field in options",
                 instance=f"/v1/chunk/{request.document_id}",
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail)
-        sample_text = raw_text or (
-            "Population: Adults with hypertension. Intervention: ACE inhibitor administered daily. "
-            "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
-        )
+        metadata = {
+            key: value
+            for key, value in options_payload.items()
+            if key != "text"
+        }
         options = ChunkingOptions(
             strategy=request.strategy,
             max_tokens=request.chunk_size,
             overlap=request.overlap,
+            metadata=metadata,
         )
+        chunker = self.chunker or ChunkingService(stage_factory=self.stage_factory)
         try:
-            raw_chunks = self.chunker.chunk(
-                request.tenant_id, request.document_id, sample_text, options
+            raw_chunks = chunker.chunk(
+                request.tenant_id,
+                request.document_id,
+                raw_text,
+                options,
             )
         except InvalidDocumentError as exc:
             detail = ProblemDetail(
@@ -393,7 +422,7 @@ class GatewayService:
                 status=422,
                 type="https://httpstatuses.com/422",
                 detail=str(exc),
-                extensions={"valid_strategies": self.chunker.available_strategies()},
+                extensions={"valid_strategies": chunker.available_strategies()},
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
@@ -464,19 +493,78 @@ class GatewayService:
 
     def embed(self, request: EmbedRequest) -> Sequence[EmbeddingVector]:
         job_id = self._new_job(request.tenant_id, "embed")
-        embeddings: list[EmbeddingVector] = []
+        stage = self._resolve_stage("embed")
+        context = StageContext(
+            tenant_id=request.tenant_id,
+            correlation_id=uuid.uuid4().hex,
+            metadata={"model": request.model, "normalize": request.normalize},
+            pipeline_name=self._PIPELINE_NAME,
+            pipeline_version=self._PIPELINE_VERSION,
+        )
+        chunks: list[Chunk] = []
         for index, text in enumerate(request.inputs):
-            vector = [round(math.sin(i + len(text)) % 1, 4) for i in range(8)]
-            embeddings.append(
-                EmbeddingVector(
-                    id=f"emb-{index}",
-                    vector=vector,
-                    model=request.model,
-                    metadata={"length": len(text), "normalized": request.normalize},
+            if not isinstance(text, str) or not text.strip():
+                detail = ProblemDetail(
+                    title="Invalid embedding input",
+                    status=400,
+                    type="https://httpstatuses.com/400",
+                    detail="Embedding inputs must be non-empty strings",
+                )
+                self._fail_job(job_id, detail.detail or detail.title)
+                raise GatewayError(detail)
+            body = text.strip()
+            chunk_id = f"{job_id}:chunk:{index}"
+            doc_id = f"{job_id}:doc"
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    doc_id=doc_id,
+                    tenant_id=request.tenant_id,
+                    body=body,
+                    title_path=(),
+                    section=None,
+                    start_char=0,
+                    end_char=len(body),
+                    granularity="document",
+                    chunker="gateway.manual",
+                    chunker_version="1.0.0",
+                    meta={"input_index": index, "job_id": job_id},
                 )
             )
-        self.ledger.update_metadata(job_id, {"embeddings": len(embeddings)})
-        self._complete_job(job_id, payload={"embeddings": len(embeddings)})
+        try:
+            batch: EmbeddingBatch = stage.execute(context, chunks)
+        except Exception as exc:
+            detail = ProblemDetail(
+                title="Embedding failed",
+                status=502,
+                type="https://httpstatuses.com/502",
+                detail=str(exc),
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
+        embeddings: list[EmbeddingVector] = []
+        for vector in batch.vectors:
+            values = list(vector.values)
+            if request.normalize and values:
+                magnitude = math.sqrt(sum(value * value for value in values))
+                if magnitude > 0:
+                    values = [value / magnitude for value in values]
+            metadata = dict(vector.metadata)
+            metadata.setdefault("model", batch.model)
+            metadata.setdefault("pipeline", f"{self._PIPELINE_NAME}:{self._PIPELINE_VERSION}")
+            embeddings.append(
+                EmbeddingVector(
+                    id=vector.id,
+                    vector=values,
+                    model=batch.model,
+                    metadata=metadata,
+                )
+            )
+        payload = {"embeddings": len(embeddings), "model": batch.model}
+        self.ledger.update_metadata(job_id, payload)
+        self._complete_job(job_id, payload=payload)
+        if embeddings:
+            record_business_event("embeddings_generated", request.tenant_id)
         return embeddings
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:

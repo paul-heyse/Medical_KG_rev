@@ -300,39 +300,6 @@ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: flo
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
 
 
-def record_embedding_timing(namespace: str, provider: str, duration_seconds: float) -> None:
-    """Observe embedding generation duration for a namespace/provider pair."""
-
-    EMBEDDING_DURATION.labels(namespace, provider).observe(duration_seconds)
-
-
-def record_embedding_success(namespace: str, provider: str, produced: int) -> None:
-    """Increment embedding output counter when embeddings are produced."""
-
-    if produced:
-        EMBEDDING_OUTPUT.labels(namespace, provider).inc(produced)
-
-
-def record_embedding_failure(namespace: str, provider: str, error_type: str) -> None:
-    """Record embedding failures grouped by provider and error type."""
-
-    EMBEDDING_FAILURES.labels(namespace, provider, error_type).inc()
-
-
-def record_embedding_cache_hit(namespace: str, hits: int) -> None:
-    """Record cache hits for embeddings."""
-
-    if hits:
-        EMBEDDING_CACHE_HITS.labels(namespace).inc(hits)
-
-
-def record_embedding_cache_miss(namespace: str, misses: int) -> None:
-    """Record cache misses for embeddings."""
-
-    if misses:
-        EMBEDDING_CACHE_MISSES.labels(namespace).inc(misses)
-
-
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
     labelled = metric.labels(*labels)
     correlation_id = get_correlation_id()

@@ -551,8 +551,8 @@ python -m Medical_KG_rev.kg.migrate
 # Start API gateway
 python -m Medical_KG_rev.gateway.main
 
-# Start background workers (in separate terminal)
-python -m Medical_KG_rev.orchestration.workers
+# Start Dagster services (webserver + daemon)
+dagster dev -m Medical_KG_rev.orchestration.dagster.runtime
 
 # API available at http://localhost:8000
 # Swagger UI: http://localhost:8000/docs/openapi

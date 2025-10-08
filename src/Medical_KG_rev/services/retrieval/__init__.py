@@ -15,7 +15,6 @@ __all__ = [
     "HybridSearchCoordinator",
     "HybridSearchResult",
     "FAISSIndex",
-    "IndexingService",
     "OpenSearchClient",
     "QueryDSL",
     "QueryValidationError",
@@ -48,10 +47,6 @@ _RETRIEVAL_MAP = {
         "HybridSearchResult",
     ),
     "FAISSIndex": ("Medical_KG_rev.services.retrieval.faiss_index", "FAISSIndex"),
-    "IndexingService": (
-        "Medical_KG_rev.services.retrieval.indexing_service",
-        "IndexingService",
-    ),
     "OpenSearchClient": (
         "Medical_KG_rev.services.retrieval.opensearch_client",
         "OpenSearchClient",

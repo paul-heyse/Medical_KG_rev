@@ -677,7 +677,6 @@ Issues = "https://github.com/your-org/Medical_KG_rev/issues"
 [project.scripts]
 medkg = "Medical_KG_rev.cli:main"
 medkg-gateway = "Medical_KG_rev.gateway.main:main"
-medkg-worker = "Medical_KG_rev.orchestration.workers:main"
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]

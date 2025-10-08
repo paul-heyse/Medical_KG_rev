@@ -16,6 +16,7 @@ from .runtime import (
     StageResolutionError,
     submit_to_dagster,
 )
+from .stages import build_default_stage_factory
 
 __all__ = [
     "GateCondition",
@@ -30,4 +31,5 @@ __all__ = [
     "StageFactory",
     "StageResolutionError",
     "submit_to_dagster",
+    "build_default_stage_factory",
 ]

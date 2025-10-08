@@ -663,8 +663,8 @@ docker-compose up -d
 # Start API gateway
 python -m Medical_KG_rev.gateway.main
 
-# Start background workers
-python -m Medical_KG_rev.orchestration.workers
+# Start Dagster services
+dagster dev -m Medical_KG_rev.orchestration.dagster.runtime
 
 # Run adapter with sample data (via API)
 curl -X POST http://localhost:8000/v1/ingest/clinicaltrials \

@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from Medical_KG_rev.orchestration.pipeline import StageFailure
+from Medical_KG_rev.orchestration.stages import StageFailure
 from Medical_KG_rev.orchestration.resilience import CircuitBreaker, CircuitState, TimeoutManager
 
 

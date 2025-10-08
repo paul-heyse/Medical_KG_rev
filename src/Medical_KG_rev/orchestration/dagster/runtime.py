@@ -17,6 +17,7 @@ from dagster import (
     op,
 )
 
+from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
@@ -24,6 +25,7 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     ResiliencePolicyLoader,
     StageDefinition,
 )
+from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 from Medical_KG_rev.utils.logging import get_logger
 
@@ -399,6 +401,22 @@ def submit_to_dagster(
     )
 
 
+def build_default_orchestrator() -> DagsterOrchestrator:
+    """Construct a Dagster orchestrator with default stage builders."""
+
+    pipeline_loader = PipelineConfigLoader()
+    resilience_loader = ResiliencePolicyLoader()
+    stage_builders = build_default_stage_factory(get_plugin_manager())
+    stage_factory = StageFactory(stage_builders)
+    return DagsterOrchestrator(pipeline_loader, resilience_loader, stage_factory)
+
+
+try:  # pragma: no cover - import side effect for CLI usage
+    defs = build_default_orchestrator().definitions
+except Exception:  # pragma: no cover - avoid hard failure when optional deps missing
+    defs = None
+
+
 __all__ = [
     "DagsterOrchestrator",
     "DagsterRunResult",
@@ -406,4 +424,3 @@ __all__ = [
     "StageResolutionError",
     "submit_to_dagster",
 ]
-

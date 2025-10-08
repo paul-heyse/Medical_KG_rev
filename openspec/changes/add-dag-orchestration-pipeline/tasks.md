@@ -20,14 +20,14 @@
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
 - [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
-  - [ ] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
-  - [ ] `worker.py` (lines 62-110) - Replace with Dagster ops
+- [x] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
+- [x] `worker.py` (lines 62-110) - Replace with Dagster ops
   - [ ] `pipeline.py` - Replace with YAML topology configs
   - [ ] `profiles.py` - Replace with per-pipeline YAML configs
 - [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
-  - [ ] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
-  - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
-  - [ ] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
+  - [x] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
+  - [x] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
+  - [x] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
 - [x] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
   - File paths to delete
   - Imports to update
@@ -44,16 +44,16 @@
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
-- [ ] 1.3.1 **Chunking**: Verify all chunking logic moved to Haystack `DocumentSplitter`
-  - [ ] Audit: `src/Medical_KG_rev/services/retrieval/chunking.py` - which methods stay?
-  - [ ] Decision: Keep profile detection, delegate splitting to Haystack
-  - [ ] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
-  - [ ] Verify: All chunking tests pass with Haystack backend
-- [ ] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
-  - [ ] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
-  - [ ] Decision: Keep namespace management, delegate embedding to Haystack
-  - [ ] Delete: Custom embedding loops, batch processing logic (Haystack handles)
-  - [ ] Verify: GPU fail-fast preserved in Haystack wrapper
+- [x] 1.3.1 **Chunking**: Verify all chunking logic moved to Haystack `DocumentSplitter`
+  - [x] Audit: `src/Medical_KG_rev/services/retrieval/chunking.py` - which methods stay?
+  - [x] Decision: Keep profile detection, delegate splitting to Haystack
+  - [x] Delete: Custom `SemanticSplitter`, `SlidingWindow` implementations
+  - [x] Verify: All chunking tests pass with Haystack backend
+- [x] 1.3.2 **Embedding**: Verify all embedding calls use Haystack `OpenAIDocumentEmbedder`
+  - [x] Audit: `src/Medical_KG_rev/services/embedding/service.py` - which methods stay?
+  - [x] Decision: Keep namespace management, delegate embedding to Haystack
+  - [x] Delete: Custom embedding loops, batch processing logic (Haystack handles)
+  - [x] Verify: GPU fail-fast preserved in Haystack wrapper
 - [ ] 1.3.3 **Retry Logic**: Verify all retries use tenacity decorators
   - [ ] Audit: Search for `for attempt in range(max_retries)` patterns
   - [ ] Decision: Delete all custom retry loops
@@ -85,13 +85,13 @@
 
 ### 1.5 Import Cleanup (Post-Delete)
 
-- [ ] 1.5.1 Update `src/Medical_KG_rev/orchestration/__init__.py`:
-  - [ ] Remove: `from .orchestrator import Orchestrator, OrchestrationError`
-  - [ ] Remove: `from .worker import IngestWorker, MappingWorker`
-  - [ ] Add: `from .dagster import DagsterOrchestrator, submit_to_dagster`
-- [ ] 1.5.2 Update `src/Medical_KG_rev/gateway/services.py`:
-  - [ ] Remove: `self.orchestrator = Orchestrator(...)`
-  - [ ] Add: `self.orchestrator = DagsterOrchestrator(...)`
+- [x] 1.5.1 Update `src/Medical_KG_rev/orchestration/__init__.py`:
+  - [x] Remove: `from .orchestrator import Orchestrator, OrchestrationError`
+  - [x] Remove: `from .worker import IngestWorker, MappingWorker`
+  - [x] Add: `from .dagster import DagsterOrchestrator, submit_to_dagster`
+- [x] 1.5.2 Update `src/Medical_KG_rev/gateway/services.py`:
+  - [x] Remove: `self.orchestrator = Orchestrator(...)`
+  - [x] Add: `self.orchestrator = DagsterOrchestrator(...)`
 - [ ] 1.5.3 Run `ruff check --select F401` to find unused imports
 - [ ] 1.5.4 Run `mypy src/` to verify no type errors from deletions
 
@@ -110,18 +110,18 @@
 
 ### 1.7 Documentation Updates (Reflect Deletions)
 
-- [ ] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
-  - [ ] Remove: Section 6.2 "Legacy Pipeline Stages"
-  - [ ] Add: Section 6.2 "Dagster Job Definitions"
-  - [ ] Remove: All references to `Orchestrator.execute_pipeline`
-  - [ ] Add: All references to `submit_to_dagster`
-- [ ] 1.7.2 Update `docs/guides/orchestration-pipelines.md`:
-  - [ ] Remove: Legacy examples with hardcoded stages
-  - [ ] Add: YAML topology examples with Dagster
-- [ ] 1.7.3 Update `README.md`:
-  - [ ] Remove: "Start background workers" (no longer needed)
-  - [ ] Add: "Start Dagster daemon" command
-- [ ] 1.7.4 Create `DELETED_CODE.md` documenting what was removed and why
+- [x] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+  - [x] Remove: Section 6.2 "Legacy Pipeline Stages"
+  - [x] Add: Section 6.2 "Dagster Job Definitions"
+  - [x] Remove: All references to `Orchestrator.execute_pipeline`
+  - [x] Add: All references to `submit_to_dagster`
+- [x] 1.7.2 Update `docs/guides/orchestration-pipelines.md`:
+  - [x] Remove: Legacy examples with hardcoded stages
+  - [x] Add: YAML topology examples with Dagster
+- [x] 1.7.3 Update `README.md`:
+  - [x] Remove: "Start background workers" (no longer needed)
+  - [x] Add: "Start Dagster daemon" command
+- [x] 1.7.4 Create `DELETED_CODE.md` documenting what was removed and why
 
 ### 1.8 Codebase Size Validation
 
@@ -132,9 +132,9 @@
   - [ ] Run `cloc` on same paths (post-deletion)
   - [ ] Record: Lines removed, files deleted, net reduction
 - [ ] 1.8.3 Validate codebase shrinkage:
-  - [ ] Assert: Total lines reduced by ≥30% (bespoke → library delegation)
+  - [ ] Assert: Total lines reduced by ≥30% (bespoke → library delegation) *(current: 19.97% reduction)*
   - [ ] Assert: Number of files reduced by ≥20% (consolidation)
-  - [ ] Document: Actual numbers in `CODEBASE_REDUCTION_REPORT.md`
+  - [x] Document: Actual numbers in `CODEBASE_REDUCTION_REPORT.md`
 
 ---
 

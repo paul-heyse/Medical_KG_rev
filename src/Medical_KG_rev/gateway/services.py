@@ -23,11 +23,10 @@ from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
-from ..auth.scopes import Scopes
 from ..observability.metrics import (
-    CROSS_TENANT_ACCESS_ATTEMPTS,
     observe_job_duration,
     record_business_event,
+    record_chunking_failure,
 )
 from ..orchestration import (
     HaystackRetriever,

@@ -2,6 +2,14 @@
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .factory import RerankerFactory
+from .model_registry import (
+    DEFAULT_CACHE_DIR as RERANKER_CACHE_DIR,
+    DEFAULT_CONFIG_PATH as RERANKER_CONFIG_PATH,
+    ModelDownloader,
+    ModelHandle,
+    RerankerModel,
+    RerankerModelRegistry,
+)
 from .fusion.service import FusionService
 from .late_interaction import ColBERTReranker, ColbertIndexReranker, QdrantColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
@@ -57,4 +65,10 @@ __all__ = [
     "RerankingEngine",
     "EvaluationResult",
     "RerankerEvaluator",
+    "RERANKER_CACHE_DIR",
+    "RERANKER_CONFIG_PATH",
+    "ModelDownloader",
+    "ModelHandle",
+    "RerankerModel",
+    "RerankerModelRegistry",
 ]

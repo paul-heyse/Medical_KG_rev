@@ -13,7 +13,7 @@ The existing chunking/parsing architecture has evolved organically, resulting in
 This creates technical debt and quality issues: chunks split mid-sentence, tables fractured, clinical boundaries ignored, provenance incomplete. The system needs a **unified architecture** that:
 
 1. Respects clinical document structure via **profiles**
-2. Delegates to proven libraries (LangChain, LlamaIndex, scispaCy)
+2. Delegates to proven libraries (LangChain, LlamaIndex, HuggingFace)
 3. Enforces **MinerU two-phase gate** for PDFs (no CPU fallbacks)
 4. Produces **span-grounded chunks** with complete provenance
 
@@ -23,7 +23,7 @@ This creates technical debt and quality issues: chunks split mid-sentence, table
 
 - **Single Chunking Interface**: `ChunkerPort` protocol for all strategies
 - **Profile-Based Chunking**: Declarative clinical domain rules (IMRaD, Registry, SPL, Guideline)
-- **Library Delegation**: Replace 8 custom chunkers with LangChain/LlamaIndex/scispaCy wrappers
+- **Library Delegation**: Replace 8 custom chunkers with LangChain/LlamaIndex/HuggingFace wrappers
 - **MinerU Gate Enforcement**: Explicit two-phase PDF workflow (`pdf_downloaded` → `pdf_ir_ready` → `postpdf-start`)
 - **Span Provenance**: Every chunk has `doc_id`, `char_offsets`, `section_label`, `intent_hint`, `page_bbox`
 - **Table Fidelity**: Preserve HTML when rectangularization uncertain
@@ -155,7 +155,7 @@ metadata:
 |---------|----------|----------|
 | **langchain-text-splitters** | Default recursive character/token splitting | `CustomSplitter`, `RecursiveSplitter` |
 | **LlamaIndex node parsers** | Sentence/semantic-window chunking for coherence | `SemanticSplitter`, `CoherenceSplitter` |
-| **scispaCy** | Biomedical-aware sentence segmentation | `BiomedicalSentenceSplitter` |
+| **HuggingFace** | Biomedical-aware sentence segmentation | `BiomedicalSentenceSplitter` |
 | **syntok** | Fast, robust sentence splitting (non-biomedical) | `SimpleSentenceSplitter` |
 | **transformers / tiktoken** | Token counting aligned with Qwen3 | Custom tokenizers |
 | **unstructured** | XML/HTML parsing (non-PDF) | `XMLParser`, `HTMLParser` |
@@ -747,7 +747,7 @@ POSTPDF_START_TRIGGERED_TOTAL = Counter(
 
 - LangChain recursive splitter (4 tests: boundary respect, overlap, offset accuracy, token budget)
 - LlamaIndex sentence window (3 tests: window size, coherence, offset accuracy)
-- scispaCy segmenter (3 tests: biomedical abbreviations, sentence boundaries, offset accuracy)
+- HuggingFace segmenter (3 tests: biomedical abbreviations, sentence boundaries, offset accuracy)
 - syntok segmenter (2 tests: fast throughput, messy punctuation)
 - Unstructured parser (3 tests: JATS XML, SPL XML, HTML)
 
@@ -802,7 +802,7 @@ POSTPDF_START_TRIGGERED_TOTAL = Counter(
 **Performance Benchmarks**:
 
 - Chunking throughput ≥100 docs/sec for non-PDF sources
-- scispaCy vs syntok throughput ratio ~1:10 (syntok 10x faster)
+- HuggingFace vs syntok throughput ratio ~1:10 (syntok 10x faster)
 - Memory usage <500MB for batches of 100 documents
 
 **Regression Tests**:
@@ -861,8 +861,8 @@ git push origin rollback-chunking-normalization
 1. **Profile Tuning**: What's the optimal `target_tokens` for IMRaD vs Registry profiles?
    - **Answer**: Start with 450 for literature, 300 for registry; tune based on retrieval Recall@10
 
-2. **scispaCy vs syntok**: When is biomedical-aware sentence segmentation worth the 10x performance cost?
-   - **Answer**: Use scispaCy for Methods→Results transitions, syntok for bulk ingestion
+2. **HuggingFace vs syntok**: When is biomedical-aware sentence segmentation worth the 10x performance cost?
+   - **Answer**: Use HuggingFace models for Methods→Results transitions, syntok for bulk ingestion
 
 3. **Auto `postpdf-start`**: Should Dagster sensor auto-trigger after fixed delay or require manual approval?
    - **Answer**: Configurable delay (default 5 min), with manual override for quality-critical sources
@@ -880,7 +880,7 @@ git push origin rollback-chunking-normalization
 This design replaces fragmented, bespoke chunking/parsing with a **unified, library-based architecture** that:
 
 - **Respects clinical structure** via profiles (IMRaD, LOINC, registry, guideline)
-- **Delegates to proven libraries** (LangChain, LlamaIndex, scispaCy) reducing code by 43%
+- **Delegates to proven libraries** (LangChain, LlamaIndex, HuggingFace) reducing code by 43%
 - **Enforces GPU-only policy** for MinerU with explicit two-phase gate
 - **Produces span-grounded chunks** with complete provenance (offsets, section labels, intent hints)
 - **Preserves table fidelity** (HTML when uncertainty high)

@@ -11,6 +11,16 @@
 - [x] 1.9 Plan state validation rules and consistency checks
 - [x] 1.10 Design state recovery and corruption handling
 
+### Critical Library Integration Requirements
+
+- [ ] 1.11 **Integrate `pydantic>=2.11.10`**: Design typed PipelineState dataclass with validation
+- [ ] 1.12 **Integrate `attrs>=25.4.0`**: Add performance optimizations for state object creation
+- [ ] 1.13 **Integrate `orjson>=3.11.3`**: Use fast JSON serialization for state persistence
+- [ ] 1.14 **Integrate `structlog`**: Add structured logging for state transitions and debugging
+- [ ] 1.15 **Integrate `dagster>=1.11.13`**: Ensure typed state works with Dagster's execution model
+- [ ] 1.16 **Integrate `tenacity>=9.1.2`**: Add retry logic for state persistence failures
+- [ ] 1.17 **Integrate `prometheus-client`**: Add metrics for state object performance
+
 ## 2. Core PipelineState Implementation
 
 - [x] 2.1 Create PipelineState dataclass with all required fields
@@ -49,6 +59,10 @@
 - [x] 4.8 Create stage error handling with state context preservation
 - [ ] 4.9 Implement stage dependency resolution with typed state
 - [x] 4.10 Add stage debugging and introspection capabilities
+- [ ] 4.11 Add PDF download state tracking with JobLedger integration
+- [ ] 4.12 Implement PDF gate state management for conditional progression
+- [ ] 4.13 Create PDF-specific state transitions for two-phase processing
+- [ ] 4.14 Add state persistence for PDF pipeline recovery and debugging
 
 ## 5. Runtime Integration
 
@@ -88,3 +102,29 @@
 - [ ] 7.8 Add state performance tuning and monitoring guide
 - [ ] 7.9 Create state debugging and troubleshooting documentation
 - [ ] 7.10 Add state schema evolution and migration strategies
+
+## 8. Legacy Code Decommissioning
+
+### Phase 1: Remove Dict-Based State (Week 1)
+
+- [ ] 8.1 **DECOMMISSION**: Remove `_apply_stage_output` dict manipulation in `runtime.py`
+- [ ] 8.2 **DECOMMISSION**: Delete `_infer_output_count` dict-based inference logic
+- [ ] 8.3 **DECOMMISSION**: Remove legacy state serialization using standard json module
+- [ ] 8.4 **DECOMMISSION**: Delete unused state utility functions and helpers
+- [ ] 8.5 **DECOMMISSION**: Remove legacy state configuration and validation code
+
+### Phase 2: Clean Up Dependencies (Week 2)
+
+- [ ] 8.6 **DECOMMISSION**: Remove unused state import statements and dependencies
+- [ ] 8.7 **DECOMMISSION**: Delete legacy state error handling and fallback mechanisms
+- [ ] 8.8 **DECOMMISSION**: Remove legacy state test fixtures and mocks
+- [ ] 8.9 **DECOMMISSION**: Clean up unused state debugging and introspection tools
+- [ ] 8.10 **DECOMMISSION**: Remove legacy state performance monitoring code
+
+### Phase 3: Documentation and Cleanup (Week 3)
+
+- [ ] 8.11 **DECOMMISSION**: Update documentation to remove references to dict-based state
+- [ ] 8.12 **DECOMMISSION**: Remove legacy state examples and configuration templates
+- [ ] 8.13 **DECOMMISSION**: Clean up unused state configuration files
+- [ ] 8.14 **DECOMMISSION**: Remove legacy state API documentation
+- [ ] 8.15 **DECOMMISSION**: Final cleanup of unused files and directories

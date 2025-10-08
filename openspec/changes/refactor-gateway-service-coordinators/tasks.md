@@ -11,6 +11,16 @@
 - [ ] 1.9 Design coordinator factory pattern for service composition and configuration
 - [ ] 1.10 Plan performance monitoring and metrics collection for individual coordinators
 
+### Critical Library Integration Requirements
+
+- [ ] 1.11 **Integrate `pydantic>=2.11.10`**: Design typed coordinator interfaces and result models
+- [ ] 1.12 **Integrate `structlog`**: Add structured logging for coordinator operations and debugging
+- [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic for coordinator operations and external calls
+- [ ] 1.14 **Integrate `pluggy>=1.6.0`**: Ensure coordinator composition works with plugin system
+- [ ] 1.15 **Integrate `aiolimiter>=1.2.1`**: Implement rate limiting for coordinator operations
+- [ ] 1.16 **Integrate `pybreaker>=1.4.1`**: Add circuit breaker patterns for coordinator resilience
+- [ ] 1.17 **Integrate `prometheus-client`**: Add metrics collection for coordinator performance
+
 ## 2. Core Infrastructure Implementation
 
 - [ ] 2.1 Create `JobLifecycleManager` class to encapsulate job creation, state transitions, and ledger operations with specific methods: `create_job()`, `start_job()`, `complete_job()`, `fail_job()`, `cancel_job()` in `src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py`
@@ -157,3 +167,29 @@
 - [ ] 12.8 Add coordinator migration documentation for existing code
 - [ ] 12.9 Create coordinator testing best practices and examples
 - [ ] 12.10 Add coordinator operational monitoring and alerting guides
+
+## 13. Legacy Code Decommissioning
+
+### Phase 1: Remove Monolithic GatewayService (Week 1)
+
+- [ ] 13.1 **DECOMMISSION**: Remove `src/Medical_KG_rev/gateway/services.py` monolithic GatewayService class
+- [ ] 13.2 **DECOMMISSION**: Delete hardcoded service locator pattern with 12+ collaborators
+- [ ] 13.3 **DECOMMISSION**: Remove legacy job lifecycle methods (`_new_job`, `_complete_job`, `_fail_job`)
+- [ ] 13.4 **DECOMMISSION**: Delete unused service utility functions and helpers
+- [ ] 13.5 **DECOMMISSION**: Remove legacy service configuration and validation code
+
+### Phase 2: Clean Up Dependencies (Week 2)
+
+- [ ] 13.6 **DECOMMISSION**: Remove unused service import statements and dependencies
+- [ ] 13.7 **DECOMMISSION**: Delete legacy service error handling and fallback mechanisms
+- [ ] 13.8 **DECOMMISSION**: Remove legacy service test fixtures and mocks
+- [ ] 13.9 **DECOMMISSION**: Clean up unused service debugging and introspection tools
+- [ ] 13.10 **DECOMMISSION**: Remove legacy service performance monitoring code
+
+### Phase 3: Documentation and Cleanup (Week 3)
+
+- [ ] 13.11 **DECOMMISSION**: Update documentation to remove references to monolithic GatewayService
+- [ ] 13.12 **DECOMMISSION**: Remove legacy service examples and configuration templates
+- [ ] 13.13 **DECOMMISSION**: Clean up unused service configuration files
+- [ ] 13.14 **DECOMMISSION**: Remove legacy service API documentation
+- [ ] 13.15 **DECOMMISSION**: Final cleanup of unused files and directories

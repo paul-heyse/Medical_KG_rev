@@ -4,6 +4,8 @@ The `_submit_dagster_job` method in `GatewayService` currently mixes pipeline re
 
 The current approach requires the gateway to have intimate knowledge of Dagster pipeline topologies, domain resolution logic, and telemetry concerns, violating separation of concerns and making the codebase brittle when orchestration requirements change.
 
+**Critical Barrier**: The PDF gate relies on JobLedger.set_pdf_downloaded/set_pdf_ir_ready, yet nothing in the runtime ever calls them, so the pdf_ir_ready sensor will never fire and the pipeline remains paused indefinitely. This prevents the PDF processing pipeline from progressing beyond the download stage.
+
 ## What Changes
 
 - **Extract `DagsterIngestionClient`**: Create a dedicated orchestration adapter that exposes a clean `submit(dataset, request, item) -> DagsterSubmissionResult` interface

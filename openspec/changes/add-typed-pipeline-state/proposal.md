@@ -2,6 +2,8 @@
 
 The current orchestration runtime uses `_apply_stage_output` and `_infer_output_count` to manipulate a shared `dict[str, Any]` for passing stage results forward. This approach makes it difficult to trace which stages populate which keys, forces consumers to perform defensive casting, and creates boilerplate conditionals throughout the runtime logic. The lack of type safety also makes it easy to introduce bugs when accessing stage outputs.
 
+**Critical Barrier**: The PDF pipeline requires specific state tracking for download and gate stages, but the current untyped dictionary approach makes it impossible to reliably track PDF-specific state transitions and ensure proper pipeline progression.
+
 ## What Changes
 
 - **Introduce `PipelineState` dataclass**: Create a strongly-typed dataclass with explicit fields for payloads, documents, embeddings, entities, claims, and other stage outputs

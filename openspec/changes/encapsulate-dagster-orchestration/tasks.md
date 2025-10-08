@@ -11,6 +11,16 @@
 - [ ] 1.9 Design performance monitoring integration for orchestration operations
 - [ ] 1.10 Plan configuration management for pipeline selection and domain mapping
 
+### Critical Library Integration Requirements
+
+- [ ] 1.11 **Integrate `dagster>=1.11.13`**: Design orchestration client using Dagster's execution model
+- [ ] 1.12 **Integrate `pydantic>=2.11.10`**: Design typed orchestration result models with validation
+- [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic for Dagster submission failures
+- [ ] 1.14 **Integrate `structlog`**: Add structured logging for orchestration operations
+- [ ] 1.15 **Integrate `pybreaker>=1.4.1`**: Add circuit breaker patterns for Dagster resilience
+- [ ] 1.16 **Integrate `prometheus-client`**: Add metrics for orchestration performance
+- [ ] 1.17 **Integrate `cloudevents>=1.12.0`**: Add event streaming for orchestration status updates
+
 ## 2. Core Interface Implementation
 
 - [ ] 2.1 Create `DagsterSubmissionResult` base class and concrete result types
@@ -131,3 +141,29 @@
 - [ ] 10.8 Add orchestration migration documentation for existing code
 - [ ] 10.9 Create orchestration testing best practices and examples
 - [ ] 10.10 Add orchestration operational monitoring and alerting guides
+
+## 11. Legacy Code Decommissioning
+
+### Phase 1: Remove Monolithic Orchestration (Week 1)
+
+- [ ] 11.1 **DECOMMISSION**: Remove `_submit_dagster_job` method from GatewayService
+- [ ] 11.2 **DECOMMISSION**: Delete hardcoded pipeline resolution logic in gateway services
+- [ ] 11.3 **DECOMMISSION**: Remove legacy domain mapping and adapter request construction
+- [ ] 11.4 **DECOMMISSION**: Delete unused orchestration utility functions and helpers
+- [ ] 11.5 **DECOMMISSION**: Remove legacy orchestration configuration and validation code
+
+### Phase 2: Clean Up Dependencies (Week 2)
+
+- [ ] 11.6 **DECOMMISSION**: Remove unused orchestration import statements and dependencies
+- [ ] 11.7 **DECOMMISSION**: Delete legacy orchestration error handling and fallback mechanisms
+- [ ] 11.8 **DECOMMISSION**: Remove legacy orchestration test fixtures and mocks
+- [ ] 11.9 **DECOMMISSION**: Clean up unused orchestration debugging and introspection tools
+- [ ] 11.10 **DECOMMISSION**: Remove legacy orchestration performance monitoring code
+
+### Phase 3: Documentation and Cleanup (Week 3)
+
+- [ ] 11.11 **DECOMMISSION**: Update documentation to remove references to monolithic orchestration
+- [ ] 11.12 **DECOMMISSION**: Remove legacy orchestration examples and configuration templates
+- [ ] 11.13 **DECOMMISSION**: Clean up unused orchestration configuration files
+- [ ] 11.14 **DECOMMISSION**: Remove legacy orchestration API documentation
+- [ ] 11.15 **DECOMMISSION**: Final cleanup of unused files and directories

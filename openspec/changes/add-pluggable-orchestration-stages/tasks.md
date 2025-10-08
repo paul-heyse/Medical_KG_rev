@@ -11,6 +11,14 @@
 - [ ] 1.9 Design plugin health monitoring and failure detection
 - [ ] 1.10 Define plugin security model and access control boundaries
 
+### Critical Library Integration Requirements
+
+- [ ] 1.11 **Integrate `pluggy>=1.6.0`**: Design plugin hook system for stage discovery and registration
+- [ ] 1.12 **Integrate `dagster>=1.11.13`**: Ensure plugin system works with Dagster's execution model
+- [ ] 1.13 **Integrate `pydantic>=2.11.10`**: Design typed plugin interfaces and configuration validation
+- [ ] 1.14 **Integrate `tenacity>=9.1.2`**: Add retry logic for plugin loading and execution failures
+- [ ] 1.15 **Integrate `structlog`**: Add structured logging for plugin lifecycle events
+
 ## 2. Plugin Infrastructure
 
 - [ ] 2.1 Create StagePluginManager class with entry point discovery
@@ -68,28 +76,54 @@
 - [ ] 5.14 Implement stage plugin performance optimizations
 - [ ] 5.15 Add stage plugin monitoring and debugging interfaces
 
-## 6. Testing & Validation
+## 6. Legacy Code Decommissioning
 
-- [ ] 6.1 Create unit tests for StagePluginManager
-- [ ] 6.2 Test plugin discovery and loading mechanisms
-- [ ] 6.3 Test stage resolution with mixed plugin/built-in stages
-- [ ] 6.4 Integration tests for complete pipeline execution
-- [ ] 6.5 Performance tests for plugin overhead
-- [ ] 6.6 Test plugin dependency resolution and loading order
-- [ ] 6.7 Test plugin isolation and resource management
-- [ ] 6.8 Test plugin version conflicts and compatibility
-- [ ] 6.9 Test plugin failure recovery and health monitoring
-- [ ] 6.10 Test plugin security boundaries and access control
+### Phase 1: Remove Static Stage Factory (Week 1)
 
-## 7. Documentation & Migration
+- [ ] 6.1 **DECOMMISSION**: Remove `build_default_stage_factory()` static implementation
+- [ ] 6.2 **DECOMMISSION**: Delete hardcoded stage registry mapping in `stages.py:255-317`
+- [ ] 6.3 **DECOMMISSION**: Remove `_apply_stage_output` and `_infer_output_count` dict manipulation
+- [ ] 6.4 **DECOMMISSION**: Delete legacy stage configuration files in `config/orchestration/stages/`
+- [ ] 6.5 **DECOMMISSION**: Remove unused stage import statements and dependencies
 
-- [ ] 7.1 Update developer documentation for creating stage plugins
-- [ ] 7.2 Add plugin development examples and templates
-- [ ] 7.3 Update pipeline configuration documentation
-- [ ] 7.4 Create migration guide for existing custom stages
-- [ ] 7.5 Add plugin troubleshooting guide
-- [ ] 7.6 Document plugin security model and best practices
-- [ ] 7.7 Create plugin performance tuning guide
-- [ ] 7.8 Add plugin debugging and monitoring documentation
-- [ ] 7.9 Create plugin distribution and packaging guide
-- [ ] 7.10 Add plugin migration and upgrade strategies
+### Phase 2: Clean Up Runtime Dependencies (Week 2)
+
+- [ ] 6.6 **DECOMMISSION**: Remove legacy stage execution paths in `runtime.py`
+- [ ] 6.7 **DECOMMISSION**: Delete unused stage utility functions and helpers
+- [ ] 6.8 **DECOMMISSION**: Remove legacy stage error handling and fallback mechanisms
+- [ ] 6.9 **DECOMMISSION**: Clean up unused imports and dependencies from stage modules
+- [ ] 6.10 **DECOMMISSION**: Remove legacy stage configuration validation code
+
+### Phase 3: Documentation and Cleanup (Week 3)
+
+- [ ] 6.11 **DECOMMISSION**: Update documentation to remove references to old stage factory
+- [ ] 6.12 **DECOMMISSION**: Remove legacy stage examples and configuration templates
+- [ ] 6.13 **DECOMMISSION**: Clean up test fixtures and mocks for old stage system
+- [ ] 6.14 **DECOMMISSION**: Remove legacy stage debugging and introspection tools
+- [ ] 6.15 **DECOMMISSION**: Final cleanup of unused files and directories
+
+## 7. Testing & Validation
+
+- [ ] 7.1 Create unit tests for StagePluginManager
+- [ ] 7.2 Test plugin discovery and loading mechanisms
+- [ ] 7.3 Test stage resolution with mixed plugin/built-in stages
+- [ ] 7.4 Integration tests for complete pipeline execution
+- [ ] 7.5 Performance tests for plugin overhead
+- [ ] 7.6 Test plugin dependency resolution and loading order
+- [ ] 7.7 Test plugin isolation and resource management
+- [ ] 7.8 Test plugin version conflicts and compatibility
+- [ ] 7.9 Test plugin failure recovery and health monitoring
+- [ ] 7.10 Test plugin security boundaries and access control
+
+## 8. Documentation & Migration
+
+- [ ] 8.1 Update developer documentation for creating stage plugins
+- [ ] 8.2 Add plugin development examples and templates
+- [ ] 8.3 Update pipeline configuration documentation
+- [ ] 8.4 Create migration guide for existing custom stages
+- [ ] 8.5 Add plugin troubleshooting guide
+- [ ] 8.6 Document plugin security model and best practices
+- [ ] 8.7 Create plugin performance tuning guide
+- [ ] 8.8 Add plugin debugging and monitoring documentation
+- [ ] 8.9 Create plugin distribution and packaging guide
+- [ ] 8.10 Add plugin migration and upgrade strategies

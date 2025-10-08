@@ -11,6 +11,16 @@
 - [ ] 1.9 Design adapter error recovery and retry strategies
 - [ ] 1.10 Plan adapter security model and access control
 
+### Critical Library Integration Requirements
+
+- [ ] 1.11 **Integrate `pyalex>=0.1.0`**: Design OpenAlex adapter using official pyalex client for PDF retrieval
+- [ ] 1.12 **Integrate `httpx>=0.28.1`**: Replace legacy HTTP clients with modern async httpx for all adapters
+- [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic with exponential backoff for external API calls
+- [ ] 1.14 **Integrate `pydantic>=2.11.10`**: Design typed adapter request/response models with validation
+- [ ] 1.15 **Integrate `pluggy>=1.6.0`**: Ensure adapter decomposition works with existing plugin system
+- [ ] 1.16 **Integrate `aiohttp>=3.12.15`**: Add async HTTP client support for high-throughput adapters
+- [ ] 1.17 **Integrate `aiolimiter>=1.2.1`**: Implement rate limiting for external API compliance
+
 ## 2. Shared Infrastructure
 
 - [ ] 2.1 Create HTTPAdapterMixin for common HTTP operations
@@ -92,3 +102,29 @@
 - [ ] 7.8 Add adapter debugging and monitoring documentation
 - [ ] 7.9 Create adapter API integration testing guide
 - [ ] 7.10 Add adapter deployment and configuration management guide
+
+## 8. Legacy Code Decommissioning
+
+### Phase 1: Remove Monolithic Adapter (Week 1)
+
+- [ ] 8.1 **DECOMMISSION**: Remove `src/Medical_KG_rev/adapters/biomedical.py` monolithic file
+- [ ] 8.2 **DECOMMISSION**: Delete hardcoded adapter implementations (OpenAlex, Unpaywall, Crossref, PMC)
+- [ ] 8.3 **DECOMMISSION**: Remove legacy HTTP client usage (requests, urllib3)
+- [ ] 8.4 **DECOMMISSION**: Delete unused adapter utility functions and helpers
+- [ ] 8.5 **DECOMMISSION**: Remove legacy adapter configuration and validation code
+
+### Phase 2: Clean Up Dependencies (Week 2)
+
+- [ ] 8.6 **DECOMMISSION**: Remove unused HTTP client dependencies (requests, urllib3)
+- [ ] 8.7 **DECOMMISSION**: Delete legacy adapter error handling and fallback mechanisms
+- [ ] 8.8 **DECOMMISSION**: Remove unused adapter import statements and dependencies
+- [ ] 8.9 **DECOMMISSION**: Clean up legacy adapter test fixtures and mocks
+- [ ] 8.10 **DECOMMISSION**: Remove legacy adapter debugging and introspection tools
+
+### Phase 3: Documentation and Cleanup (Week 3)
+
+- [ ] 8.11 **DECOMMISSION**: Update documentation to remove references to monolithic adapter
+- [ ] 8.12 **DECOMMISSION**: Remove legacy adapter examples and configuration templates
+- [ ] 8.13 **DECOMMISSION**: Clean up unused adapter configuration files
+- [ ] 8.14 **DECOMMISSION**: Remove legacy adapter performance monitoring code
+- [ ] 8.15 **DECOMMISSION**: Final cleanup of unused files and directories

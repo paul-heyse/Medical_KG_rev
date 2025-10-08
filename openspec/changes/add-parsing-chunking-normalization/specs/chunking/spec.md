@@ -65,7 +65,7 @@ The system SHALL support declarative YAML profiles that encode domain-specific c
 
 ### Requirement: Library-Delegated Chunking Strategies
 
-The system SHALL delegate chunking to proven open-source libraries (langchain-text-splitters, LlamaIndex, scispaCy, syntok) via thin wrappers, replacing all custom chunking implementations.
+The system SHALL delegate chunking to proven open-source libraries (langchain-text-splitters, LlamaIndex, HuggingFace models, syntok) via thin wrappers, replacing all custom chunking implementations.
 
 **Rationale**: Reduces maintenance burden by 43%, leverages community improvements, ensures industry-standard behavior.
 
@@ -85,17 +85,17 @@ The system SHALL delegate chunking to proven open-source libraries (langchain-te
 - **AND** each chunk includes 3 sentences (window_size=3) for coherence
 - **AND** char offsets map to the original document accurately
 
-#### Scenario: scispaCy for biomedical sentence segmentation
+#### Scenario: HuggingFace for biomedical sentence segmentation
 
-- **GIVEN** a profile with `sentence_splitter: scispacy`
+- **GIVEN** a profile with `sentence_splitter: huggingface`
 - **WHEN** a document with biomedical abbreviations ("Fig. 1", "et al.") is chunked
-- **THEN** the system uses scispaCy's `en_core_sci_sm` model for sentence boundaries
+- **THEN** the system uses HuggingFace transformer models for biomedical-aware sentence boundaries
 - **AND** biomedical abbreviations do not trigger false sentence splits
 - **AND** sentence boundaries align with clinical context transitions
 
 #### Scenario: syntok for fast sentence splitting
 
-- **GIVEN** a profile with `sentence_splitter: syntok` (10x faster than scispaCy)
+- **GIVEN** a profile with `sentence_splitter: syntok` (10x faster than HuggingFace models)
 - **WHEN** a batch of 100 non-biomedical documents is chunked
 - **THEN** the system uses `syntok.segmenter` for sentence boundaries
 - **AND** throughput is ≥100 docs/sec
@@ -254,7 +254,7 @@ Chunking error handling SHALL include profile validation, tokenizer alignment ch
 
 **Reason**: Custom chunkers created maintenance burden, duplicated proven library functionality, and lacked community support.
 
-**Migration**: All custom chunker logic has been replaced with LangChain, LlamaIndex, scispaCy, and syntok wrappers. Existing chunks remain valid; new ingestion uses library-based implementations.
+**Migration**: All custom chunker logic has been replaced with LangChain, LlamaIndex, HuggingFace, and syntok wrappers. Existing chunks remain valid; new ingestion uses library-based implementations.
 
 ---
 

@@ -4,7 +4,7 @@ import itertools
 import os
 import threading
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 
@@ -28,15 +28,9 @@ from .cli_wrapper import (
 )
 from .gpu_budget import GpuBudgetPlanner
 from .gpu_manager import MineruGpuManager
-from .metrics import (
-    MINERU_CLI_FAILURES_TOTAL,
-    MINERU_FIGURE_EXTRACTION_COUNT,
-    MINERU_GPU_MEMORY_USAGE_BYTES,
-    MINERU_PDF_PAGES_PROCESSED_TOTAL,
-    MINERU_PROCESSING_DURATION_SECONDS,
-    MINERU_TABLE_EXTRACTION_COUNT,
-)
-from .output_parser import MineruOutputParser, MineruOutputParserError, ParsedDocument
+from .metrics import MINERU_CLI_FAILURES_TOTAL, MINERU_GPU_MEMORY_USAGE_BYTES
+from .output_parser import MineruOutputParser, ParsedDocument
+from .pipeline import MineruPipeline, PipelineMetrics
 from .postprocessor import MineruPostProcessor
 from .types import (
     Document,
@@ -75,20 +69,32 @@ class MineruProcessor:
         self._settings = settings or get_settings().mineru
         self._gpu = gpu
         self._cli = cli or create_cli(self._settings)
-        self._parser = parser or MineruOutputParser()
-        self._postprocessor = postprocessor or MineruPostProcessor(
+        parser_instance = parser or MineruOutputParser()
+        postprocessor_instance = postprocessor or MineruPostProcessor(
             figure_storage=figure_storage
         )
-        self._required_memory_mb = min_memory_mb or self._settings.workers.vram_per_worker_mb
         self._worker_id = worker_id or threading.current_thread().name
+        self._parser = parser_instance
+        self._postprocessor = postprocessor_instance
+        self._pipeline = MineruPipeline(
+            parser=parser_instance,
+            postprocessor=postprocessor_instance,
+            metrics=PipelineMetrics(worker_id=self._worker_id),
+        )
+        self._required_memory_mb = min_memory_mb or self._settings.workers.vram_per_worker_mb
         self._mineru_gpu = MineruGpuManager(gpu, self._settings)
         self._mineru_version = self._ensure_mineru_version()
         self._apply_cpu_environment()
-        self._mineru_gpu.ensure_cuda_version()
+        try:
+            self._mineru_gpu.ensure_cuda_version()
+        except GpuNotAvailableError as exc:
+            if not self._settings.simulate_if_unavailable:
+                raise
+            logger.bind(error=str(exc)).warning("mineru.cuda.unavailable")
         self._gpu_budget = GpuBudgetPlanner(
             self._required_memory_mb, self._settings.workers.reservation_margin
         )
-        if fail_fast:
+        if fail_fast and not isinstance(self._cli, SimulatedMineruCli):
             try:
                 self._gpu.wait_for_gpu(timeout=max(5.0, self._settings.workers.timeout_seconds / 10))
             except GpuNotAvailableError as exc:
@@ -155,99 +161,45 @@ class MineruProcessor:
         batch_index: int,
         total_batches: int,
     ) -> MineruBatchResponse:
-        request_map = {request.document_id: request for request in requests}
-        started_at = datetime.now(timezone.utc)
-        start_monotonic = time.monotonic()
         cli_inputs = [
             MineruCliInput(document_id=request.document_id, content=request.content)
             for request in requests
         ]
 
-        gpu_label: str = "unknown"
-        planned_memory_mb = 0
+        def orchestrate(
+            executor: Callable[[Sequence[MineruCliInput]], tuple["MineruCliResult", str, int]],
+            *,
+            record_gpu_memory: Callable[[str], None] | None,
+        ) -> MineruBatchResponse:
+            return self._pipeline.execute(
+                requests=requests,
+                cli_inputs=cli_inputs,
+                execute_cli=executor,
+                metadata_builder=self._build_metadata,
+                batch_index=batch_index,
+                total_batches=total_batches,
+                record_gpu_memory=record_gpu_memory,
+            )
+
         try:
-            cli_result, gpu_label, planned_memory_mb = self._execute_cli(cli_inputs)
+            return orchestrate(
+                self._execute_cli,
+                record_gpu_memory=self._record_gpu_memory,
+            )
         except GpuNotAvailableError:
             logger.bind(reason="gpu-unavailable", batch=batch_index).error(
                 "mineru.process.failed"
             )
             if self._settings.simulate_if_unavailable:
-                cli_result, gpu_label, planned_memory_mb = self._execute_simulated_cli(cli_inputs)
-            else:
-                raise
+                return orchestrate(self._execute_simulated_cli, record_gpu_memory=None)
+            raise
         except MineruCliError as exc:
             logger.bind(
                 reason="cli-error", error=str(exc), batch=batch_index
             ).error("mineru.process.failed")
             if self._handle_cli_failure(exc):
-                cli_result, gpu_label, planned_memory_mb = self._execute_simulated_cli(cli_inputs)
-            else:
-                raise
-
-        completed_at = datetime.now(timezone.utc)
-        duration = time.monotonic() - start_monotonic
-
-        if not cli_result.outputs:
-            raise MineruCliError("MinerU CLI returned no outputs")
-
-        MINERU_PROCESSING_DURATION_SECONDS.labels(
-            worker_id=self._worker_id,
-            gpu_id=gpu_label,
-        ).observe(cli_result.duration_seconds)
-        if gpu_label.startswith("cuda:"):
-            self._record_gpu_memory(gpu_label)
-
-        documents: list[Document] = []
-        metadata_entries: list[ProcessingMetadata] = []
-        for output in cli_result.outputs:
-            request = request_map.get(output.document_id)
-            if request is None:
-                logger.bind(
-                    document_id=output.document_id, batch=batch_index
-                ).warning("mineru.process.output_without_request")
-                continue
-            try:
-                parsed = self._parser.parse_path(output.path)
-            except MineruOutputParserError as exc:
-                logger.bind(error=str(exc)).error("mineru.output.parse_failed")
-                raise
-
-            metadata = self._build_metadata(
-                request=request,
-                parsed=parsed,
-                gpu_label=gpu_label,
-                started_at=started_at,
-                completed_at=completed_at,
-                cli_result=cli_result,
-                planned_memory_mb=planned_memory_mb,
-            )
-            document = self._postprocessor.build_document(parsed, request, metadata.as_dict())
-            documents.append(document)
-            metadata_entries.append(metadata)
-            self._record_extraction_metrics(parsed)
-
-            logger.bind(
-                document_id=document.document_id,
-                blocks=len(document.blocks),
-                tables=len(document.tables),
-                figures=len(document.figures),
-                equations=len(document.equations),
-                batch=batch_index,
-                total_batches=total_batches,
-            ).info("mineru.process.completed")
-
-        return MineruBatchResponse(
-            documents=documents,
-            processed_at=completed_at,
-            duration_seconds=duration,
-            metadata=metadata_entries,
-        )
-
-    def _record_extraction_metrics(self, parsed: ParsedDocument) -> None:
-        unique_pages = {block.page for block in parsed.blocks}
-        MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(len(unique_pages))
-        MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.tables))
-        MINERU_FIGURE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.figures))
+                return orchestrate(self._execute_simulated_cli, record_gpu_memory=None)
+            raise
 
     def _plan_memory_reservation(self) -> int:
         if self._required_memory_mb <= 0:

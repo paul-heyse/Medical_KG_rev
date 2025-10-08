@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .artifact import Artifact
+from .artifact import StructuredArtifact
 
 
 class TableCell(BaseModel):
@@ -23,10 +23,10 @@ class TableCell(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
-class Table(Artifact):
+class Table(StructuredArtifact):
     """Structured table representation extracted from MinerU output."""
 
-    model_config = Artifact.model_config
+    model_config = StructuredArtifact.model_config
 
     cells: tuple[TableCell, ...] = Field(default_factory=tuple)
     headers: tuple[str, ...] = Field(default_factory=tuple)

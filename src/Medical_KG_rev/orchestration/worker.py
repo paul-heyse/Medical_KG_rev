@@ -228,6 +228,10 @@ class PipelineWorkerBase(WorkerBase):
         metrics = context.data.get("metrics", {}).get(self.stage.name)
         if metrics:
             metadata.setdefault("stage_metrics", {})[self.stage.name] = metrics
+        if self.stage.name == "embedding":
+            summary = context.data.get("embedding_summary")
+            if summary:
+                metadata.setdefault("embedding", summary)
         self.ledger.update_metadata(job_id, metadata)
         self.events.publish(
             JobEvent(
@@ -281,6 +285,8 @@ class PipelineWorkerBase(WorkerBase):
             "stage": self.stage.name,
             "error": problem.to_response(),
         }
+        if failure.problem.extra:
+            metadata.update(failure.problem.extra)
         self.ledger.mark_failed(job_id, stage=self.stage.name, reason=problem.title, metadata=metadata)
         self.kafka.publish(
             INGEST_DLQ_TOPIC,

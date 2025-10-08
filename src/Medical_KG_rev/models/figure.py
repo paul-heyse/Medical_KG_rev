@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .artifact import Artifact
+from .artifact import StructuredArtifact
 
 
-class Figure(Artifact):
+class Figure(StructuredArtifact):
     """Metadata describing a figure extracted from a PDF."""
 
-    model_config = Artifact.model_config
+    model_config = StructuredArtifact.model_config
 
     image_path: str
     caption: str | None = None

@@ -86,8 +86,12 @@ class DocumentChunk(BaseModel):
 
 class EmbeddingVector(BaseModel):
     id: str
-    vector: Sequence[float]
     model: str
+    namespace: str
+    kind: str = "single_vector"
+    dimension: int = Field(ge=0, default=0)
+    vector: Sequence[float] | None = None
+    terms: dict[str, float] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -171,6 +175,7 @@ class EmbedRequest(BaseModel):
     tenant_id: str
     inputs: Sequence[str]
     model: str
+    namespace: str
     normalize: bool = True
 
 

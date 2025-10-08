@@ -609,7 +609,7 @@
   - **Example**: "eligibility" → `ELIGIBILITY`, "side effects" → `ADVERSE_EVENTS`
 
 - [ ] 6.1.4 Add medical entity recognition (optional)
-  - **Method**: Use scispaCy NER for drugs, diseases
+  - **Method**: Use HuggingFace NER models for drugs, diseases
   - **Boost**: Drug queries → prioritize `DOSAGE`, `INDICATIONS`
 
 - [ ] 6.1.5 Implement multi-intent support

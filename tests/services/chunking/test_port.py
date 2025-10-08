@@ -79,6 +79,11 @@ def test_chunk_document(document: Document, profile_dir: Path) -> None:
     assert all(isinstance(chunk, Chunk) for chunk in chunks)
     assert all(chunk.doc_id == document.id for chunk in chunks)
     assert {chunk.intent_hint for chunk in chunks} == {"narrative"}
+    for chunk in chunks:
+        assert chunk.metadata["chunking_profile"] == "default"
+        assert chunk.metadata["source_system"] == document.source
+        assert "chunker_version" in chunk.metadata
+        assert "created_at" in chunk.metadata
 
 
 def test_unknown_chunker(document: Document, profile_dir: Path) -> None:

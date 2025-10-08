@@ -104,7 +104,61 @@ This creates technical debt and operational friction, especially as we scale to 
 
 - **Not a streaming mandate**: Describes existing Kafka topics for clarity, not introducing streaming architecture
 
-### 8. **Testing with respx**
+### 8. **GPU Services Run in Separate Docker Containers**
+
+**Architecture Decision**: GPU-bound services (vLLM embedding, LLM extraction) run as **separate microservices in Docker**, not in the Python orchestration environment.
+
+**Rationale**:
+
+- **Isolation**: GPU resource management, CUDA drivers, model loading isolated from orchestration code
+- **Scalability**: Independent scaling of GPU services vs orchestration workers
+- **Fail-fast enforcement**: Service-level GPU checks prevent silent CPU fallbacks
+- **Portability**: Same Docker image works in local dev, staging, and production
+
+**Service Endpoints**:
+
+- `vllm-embedding:8001` - Qwen3 embedding service (OpenAI-compatible API)
+- `llm-extraction:8002` - LLM-based entity/fact extraction service (gRPC)
+- `mineru-service:8003` - PDF layout analysis service (gRPC)
+
+**Docker Compose**:
+
+```yaml
+services:
+  vllm-embedding:
+    image: medical-kg/vllm-embedding:latest
+    runtime: nvidia
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
+**Client Integration**: Orchestration pipeline stages make HTTP/gRPC calls to these services. Example:
+
+```python
+# Orchestration client code
+embedder = HaystackEmbedder(
+    vllm_endpoint="http://vllm-embedding:8001",  # Docker service
+    model_name="Qwen/Qwen2.5-Coder-1.5B"
+)
+```
+
+See `add-embeddings-representation` proposal for complete vLLM Docker deployment details.
+
+### 9. **Testing with respx**
 
 - **Library**: respx 0.20.0+ (<https://lundberg.github.io/respx/>) - Mock HTTP calls in tests
 - **Usage**: Validate resilience behavior (retries, circuit breakers), adapter calls, model endpoint interactions without live external dependencies

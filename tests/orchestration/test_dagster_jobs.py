@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import json
+import zlib
 from collections.abc import Mapping
 from datetime import UTC, datetime
 import importlib.util
@@ -65,6 +68,7 @@ EmbeddingVector = _STAGES_MODULE.EmbeddingVector
 GraphWriteReceipt = _STAGES_MODULE.GraphWriteReceipt
 IndexReceipt = _STAGES_MODULE.IndexReceipt
 StageContext = _STAGES_MODULE.StageContext
+PipelineState = _STAGES_MODULE.PipelineState
 
 
 class StubAdapterRequest:
@@ -138,8 +142,10 @@ class StubIngestStage(_BaseStage):
     def __init__(self, log: list[str]) -> None:
         super().__init__("ingest", log)
 
-    def execute(self, ctx: StageContext, request: StubAdapterRequest) -> list[dict[str, object]]:
-        self.record(tenant=ctx.tenant_id, adapter=request.parameters.get("adapter"))
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[dict[str, object]]:
+        request = state.adapter_request
+        adapter = getattr(request, "parameters", {}).get("adapter")
+        self.record(tenant=ctx.tenant_id, adapter=adapter)
         doc_id = ctx.doc_id or "doc-001"
         return [
             {
@@ -154,7 +160,8 @@ class StubParseStage(_BaseStage):
     def __init__(self, log: list[str], stage_type: str = "parse") -> None:
         super().__init__(stage_type, log)
 
-    def execute(self, ctx: StageContext, payloads: list[dict[str, object]]) -> Document:
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document:
+        payloads = list(state.require_payloads())
         self.record(payload_count=len(payloads))
         payload = payloads[0]
         block = Block(
@@ -178,7 +185,8 @@ class StubChunkStage(_BaseStage):
         self.fail_once = False
         self._failures = 0
 
-    def execute(self, ctx: StageContext, document: Document) -> list[StubChunk]:
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[StubChunk]:
+        document = state.require_document()
         self.record(document=document.id)
         if self.fail_once and self._failures == 0:
             self._failures += 1
@@ -198,7 +206,8 @@ class StubEmbedStage(_BaseStage):
     def __init__(self, log: list[str]) -> None:
         super().__init__("embed", log)
 
-    def execute(self, ctx: StageContext, chunks: list[Chunk]) -> EmbeddingBatch:
+    def execute(self, ctx: StageContext, state: PipelineState) -> EmbeddingBatch:
+        chunks = list(state.require_chunks())
         self.record(chunks=len(chunks))
         vector = EmbeddingVector(id=chunks[0].chunk_id, values=(0.1, 0.2, 0.3))
         return EmbeddingBatch(vectors=(vector,), model="stub-model", tenant_id=ctx.tenant_id)
@@ -208,7 +217,8 @@ class StubIndexStage(_BaseStage):
     def __init__(self, log: list[str]) -> None:
         super().__init__("index", log)
 
-    def execute(self, ctx: StageContext, batch: EmbeddingBatch) -> IndexReceipt:
+    def execute(self, ctx: StageContext, state: PipelineState) -> IndexReceipt:
+        batch = state.require_embedding_batch()
         self.record(vectors=len(batch.vectors))
         return IndexReceipt(
             chunks_indexed=len(batch.vectors),
@@ -222,7 +232,8 @@ class StubExtractStage(_BaseStage):
     def __init__(self, log: list[str]) -> None:
         super().__init__("extract", log)
 
-    def execute(self, ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]:
+    def execute(self, ctx: StageContext, state: PipelineState) -> tuple[list[Entity], list[Claim]]:
+        document = state.require_document()
         self.record(document=document.id)
         activity = ExtractionActivity(
             id="activity-1",
@@ -255,9 +266,10 @@ class StubKGStage(_BaseStage):
     def execute(
         self,
         ctx: StageContext,
-        entities: list[Entity],
-        claims: list[Claim],
+        state: PipelineState,
     ) -> GraphWriteReceipt:
+        entities = list(state.entities)
+        claims = list(state.claims)
         self.record(entities=len(entities), claims=len(claims))
         return GraphWriteReceipt(
             nodes_written=len(entities),
@@ -375,14 +387,15 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
 
     assert result.success
     state = result.state
+    assert isinstance(state, PipelineState)
 
-    assert state["payloads"]
-    assert state["document"].id == "doc-001"
-    assert state["chunks"][0].chunk_id.endswith(":chunk:0")
-    assert state["embedding_batch"].model == "stub-model"
-    assert state["index_receipt"].chunks_indexed == 1
-    assert len(state["entities"]) == 1
-    assert state["graph_receipt"].nodes_written == 1
+    assert state.require_payloads()
+    assert state.require_document().id == "doc-001"
+    assert state.require_chunks()[0].chunk_id.endswith(":chunk:0")
+    assert state.require_embedding_batch().model == "stub-model"
+    assert state.index_receipt is not None and state.index_receipt.chunks_indexed == 1
+    assert state.require_entities()
+    assert state.graph_receipt is not None and state.graph_receipt.nodes_written == 1
 
     call_order = list(getattr(orchestrator, "_execution_log", ()))
     assert call_order[:3] == ["ingest", "parse", "ir-validation"]
@@ -402,12 +415,22 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
     assert entry.retry_count_per_stage.get("chunk", 0) == 0
     assert entry.metadata["stage.ingest.output_count"] == 1
     assert entry.metadata["stage.kg.output_count"] == 1
+    assert "state.index.snapshot" in entry.metadata
 
     messages = list(orchestrator.kafka_client.consume("orchestration.events.v1"))
     event_types = [message.value["attributes"]["type"] for message in messages]
     assert event_types.count("stage.started") == len(call_order)
     assert event_types.count("stage.completed") == len(call_order)
     assert "stage.retrying" not in event_types
+
+    completed_snapshots = [
+        message.value["data"].get("state_snapshot")
+        for message in messages
+        if message.value["attributes"]["type"] == "stage.completed"
+    ]
+    assert all(isinstance(snapshot, str) and snapshot for snapshot in completed_snapshots)
+    decoded_snapshot = json.loads(zlib.decompress(base64.b64decode(completed_snapshots[-1])).decode("utf-8"))
+    assert decoded_snapshot["version"] == state.schema_version
 
 
 def test_stage_retry_emits_events(orchestrator: DagsterOrchestrator) -> None:
@@ -448,6 +471,7 @@ def test_stage_retry_emits_events(orchestrator: DagsterOrchestrator) -> None:
     entry = orchestrator.job_ledger.get("job-retry-1")
     assert entry is not None
     assert entry.retry_count_per_stage.get("chunk") == 1
+    assert "state.chunk.snapshot" in entry.metadata
 
     messages = list(orchestrator.kafka_client.consume("orchestration.events.v1"))
     types = [message.value["attributes"]["type"] for message in messages]
@@ -455,6 +479,11 @@ def test_stage_retry_emits_events(orchestrator: DagsterOrchestrator) -> None:
     stage_count = len(orchestrator._stub_stages)
     assert types.count("stage.started") == stage_count
     assert types.count("stage.completed") == stage_count
+    failure_events = [message for message in messages if message.value["attributes"]["type"] == "stage.failed"]
+    assert failure_events, "expected failure event to include snapshot"
+    failure_snapshot = failure_events[0].value["data"].get("state_snapshot")
+    assert isinstance(failure_snapshot, str) and failure_snapshot
+    json.loads(zlib.decompress(base64.b64decode(failure_snapshot)).decode("utf-8"))
 
     chunk_stage.fail_once = False
     chunk_stage._failures = 0

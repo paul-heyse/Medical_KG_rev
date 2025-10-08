@@ -36,6 +36,7 @@ from Medical_KG_rev.adapters.plugins.domains.biomedical import (
 )
 from Medical_KG_rev.adapters.plugins.models import AdapterResponse
 from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
+from Medical_KG_rev.services.pdf import PdfMetadata
 from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 
@@ -250,6 +251,46 @@ def test_openalex_adapter_flattens_abstract():
     document = response.items[0]
     assert document.metadata["doi"] == "10.1000/example"
     assert document.sections[0].blocks[0].text == "Immune therapy"
+
+
+def test_openalex_adapter_extracts_pdf_metadata():
+    payload = {
+        "results": [
+            {
+                "id": "https://openalex.org/W999",
+                "display_name": "Structured PDF", 
+                "abstract": "Summary",
+                "best_oa_location": {"url_for_pdf": "https://example.org/paper.pdf"},
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/works"
+        return httpx.Response(200, json=payload)
+
+    class _Validator:
+        def validate(self, url: str) -> PdfMetadata:
+            return PdfMetadata(
+                url=url,
+                content_type="application/pdf",
+                size=2048,
+                last_modified=None,
+                accessible=True,
+                headers={"Accept-Ranges": "bytes"},
+            )
+
+    plugin = OpenAlexAdapterPlugin(
+        adapter=OpenAlexAdapter(
+            client=_client("https://api.openalex.org", _mock_transport(handler)),
+            pdf_validator=_Validator(),
+        )
+    )
+    response = _run_plugin(plugin, parameters={"query": "structured"})
+    document = response.items[0]
+    assert str(document.pdf_url) == "https://example.org/paper.pdf"
+    assert document.pdf_size == 2048
+    assert document.pdf_metadata["headers"]["Accept-Ranges"] == "bytes"
 
 
 def test_unpaywall_adapter_returns_metadata():

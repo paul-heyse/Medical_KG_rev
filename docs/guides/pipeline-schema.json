@@ -1,16 +1,50 @@
 {
   "$defs": {
-    "GateCondition": {
+    "GateConditionClause": {
       "additionalProperties": false,
-      "description": "Predicate evaluated against Job Ledger entries to resume a pipeline.",
+      "description": "Single ledger predicate evaluated during gate execution.",
       "properties": {
-        "equals": {
-          "title": "Equals"
-        },
         "field": {
           "pattern": "^[A-Za-z0-9_.-]+$",
           "title": "Field",
           "type": "string"
+        },
+        "operator": {
+          "default": "equals",
+          "enum": [
+            "equals",
+            "exists",
+            "changed"
+          ],
+          "title": "Operator"
+        },
+        "value": {}
+      },
+      "required": [
+        "field"
+      ],
+      "title": "GateConditionClause",
+      "type": "object"
+    },
+    "GateCondition": {
+      "additionalProperties": false,
+      "description": "Predicate evaluated against Job Ledger entries to resume a pipeline.",
+      "properties": {
+        "clauses": {
+          "items": {
+            "$ref": "#/$defs/GateConditionClause"
+          },
+          "minItems": 1,
+          "title": "Clauses",
+          "type": "array"
+        },
+        "logic": {
+          "default": "all",
+          "enum": [
+            "all",
+            "any"
+          ],
+          "title": "Logic"
         },
         "poll_interval_seconds": {
           "default": 5.0,
@@ -35,10 +69,31 @@
         }
       },
       "required": [
-        "field",
-        "equals"
+        "clauses"
       ],
       "title": "GateCondition",
+      "type": "object"
+    },
+    "GateRetryPolicy": {
+      "additionalProperties": false,
+      "description": "Retry configuration for gate polling before timing out.",
+      "properties": {
+        "backoff_seconds": {
+          "default": 0,
+          "maximum": 300,
+          "minimum": 0,
+          "title": "Backoff Seconds",
+          "type": "number"
+        },
+        "max_attempts": {
+          "default": 1,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        }
+      },
+      "title": "GateRetryPolicy",
       "type": "object"
     },
     "GateDefinition": {
@@ -57,6 +112,32 @@
           "pattern": "^[A-Za-z0-9_-]+$",
           "title": "Resume Stage",
           "type": "string"
+        },
+        "retry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GateRetryPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry"
+        },
+        "timeout_seconds": {
+          "anyOf": [
+            {
+              "maximum": 3600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Seconds"
         }
       },
       "required": [
@@ -120,6 +201,19 @@
           },
           "title": "Depends On",
           "type": "array"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gate"
         },
         "name": {
           "pattern": "^[A-Za-z0-9_-]+$",

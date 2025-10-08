@@ -14,7 +14,14 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 from .equation import Equation
 from .figure import Figure
@@ -102,6 +109,27 @@ class Document(IRBaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     version: str = Field(default="v1")
     metadata: dict[str, Any] = Field(default_factory=dict)
+    pdf_url: HttpUrl | None = Field(
+        default=None,
+        description="Canonical URL for downloading the document PDF",
+    )
+    pdf_size: int | None = Field(
+        default=None,
+        ge=0,
+        description="Size of the referenced PDF in bytes when known",
+    )
+    pdf_content_type: str | None = Field(
+        default=None,
+        description="MIME content type reported for the PDF resource",
+    )
+    pdf_checksum: str | None = Field(
+        default=None,
+        description="Checksum of the PDF payload when validated downstream",
+    )
+    pdf_metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional PDF specific metadata captured during ingestion",
+    )
 
     @field_validator("sections")
     @classmethod
@@ -110,6 +138,24 @@ class Document(IRBaseModel):
         if len(ids) != len(set(ids)):
             raise ValueError("Document sections must have unique identifiers")
         return value
+
+    @field_validator("pdf_content_type")
+    @classmethod
+    def _validate_pdf_content_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        lowered = value.lower()
+        if "pdf" not in lowered:
+            raise ValueError("PDF content type must describe PDF media")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_pdf_fields(self) -> Document:
+        if self.pdf_size_bytes is not None and self.pdf_size_bytes < 0:
+            raise ValueError("PDF size must be non-negative")
+        if (self.pdf_size_bytes is not None or self.pdf_content_type or self.pdf_checksum) and not self.pdf_url:
+            raise ValueError("PDF metadata requires a pdf_url to be present")
+        return self
 
     @model_validator(mode="after")
     def _validate_spans(self) -> Document:
@@ -125,6 +171,23 @@ class Document(IRBaseModel):
                         raise ValueError(
                             f"Span {span.start}-{span.end} exceeds bounds for block '{block.id}'"
                         )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_pdf_fields(self) -> Document:
+        if self.pdf_content_type and "pdf" not in self.pdf_content_type.lower():
+            raise ValueError(
+                "pdf_content_type must describe a PDF media type when provided"
+            )
+        if self.pdf_checksum and not self.pdf_checksum.strip():
+            raise ValueError("pdf_checksum must be a non-empty string when provided")
+        if self.pdf_metadata and not isinstance(self.pdf_metadata, dict):
+            raise ValueError("pdf_metadata must be a mapping of metadata values")
+        if self.pdf_url is None:
+            if any(value is not None for value in (self.pdf_size, self.pdf_content_type, self.pdf_checksum)):
+                raise ValueError(
+                    "pdf_size, pdf_content_type, and pdf_checksum require a pdf_url to be set"
+                )
         return self
 
     def iter_blocks(self) -> Iterable[Block]:

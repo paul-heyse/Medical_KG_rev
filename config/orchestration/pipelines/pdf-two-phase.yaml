@@ -53,6 +53,7 @@ stages:
           path: metadata.pdf_url
   - name: gate_pdf_ir_ready
     type: gate
+    gate: pdf_ir_ready
     policy: default
     depends_on:
       - download
@@ -92,6 +93,8 @@ stages:
 gates:
   - name: pdf_ir_ready
     resume_stage: chunk
+    timeout_seconds: 900
+    poll_interval_seconds: 10.0
     condition:
       field: pdf_ir_ready
       equals: true

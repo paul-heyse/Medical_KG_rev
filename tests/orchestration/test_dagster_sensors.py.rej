@@ -1,0 +1,57 @@
+diff a/tests/orchestration/test_dagster_sensors.py b/tests/orchestration/test_dagster_sensors.py	(rejected hunks)
+@@ -16,36 +16,55 @@ def test_pdf_ir_sensor_skips_when_no_jobs() -> None:
+     assert isinstance(results[0], SkipReason)
+
+
+ def test_pdf_ir_sensor_emits_run_request() -> None:
+     ledger = JobLedger()
+     job_id = "job-sensor-1"
+     ledger.create(
+         job_id=job_id,
+         doc_key="doc-sensor",
+         tenant_id="tenant-1",
+         pipeline="pdf-two-phase",
+         metadata={
+             "pipeline_version": "2025-01-01",
+             "correlation_id": "corr-sensor",
+             "adapter_request": {
+                 "tenant_id": "tenant-1",
+                 "correlation_id": "corr-sensor",
+                 "domain": "biomedical",
+                 "parameters": {"dataset": "pmc"},
+             },
+             "payload": {"dataset": "pmc", "item": {"id": "doc-sensor"}},
+         },
+     )
+     ledger.mark_processing(job_id, stage="gate_pdf_ir_ready")
+     ledger.set_pdf_ir_ready(job_id)
++    ledger.update_metadata(
++        job_id,
++        {
++            "gate.pdf_ir_ready.status": "passed",
++            "gate.pdf_ir_ready.resume_stage": "chunk",
++            "gate.pdf_ir_ready.resume_phase": 2,
++            "gate_results": {
++                "pdf_ir_ready": {
++                    "satisfied": True,
++                    "resume_stage": "chunk",
++                    "resume_phase": 2,
++                }
++            },
++        },
++    )
+
+     context = build_sensor_context(resources={"job_ledger": ledger})
+     results = list(pdf_ir_ready_sensor(context))
+
+     assert results
+     assert all(isinstance(item, RunRequest) for item in results)
+     request = results[0]
+     assert request.run_key == "job-sensor-1-resume"
+     ctx_config = request.run_config["ops"]["bootstrap"]["config"]["context"]
+     assert ctx_config["job_id"] == job_id
+     assert ctx_config["pipeline_name"] == "pdf-two-phase"
++    payload = request.run_config["ops"]["bootstrap"]["config"]["payload"]
++    assert payload["resume_stage"] == "chunk"
++    assert payload["resume_phase"] == 2
++    assert payload["gate_results"]["pdf_ir_ready"]["satisfied"] is True

@@ -117,9 +117,69 @@ MINERU_GATE_TRIGGERED = Counter(
     "mineru_gate_triggered_total",
     "Number of times the MinerU two-phase gate halted processing",
 )
+GATE_EVALUATION_COUNTER = Counter(
+    "orchestration_gate_evaluation_total",
+    "Gate evaluation outcomes by gate and status",
+    labelnames=("gate", "status"),
+)
+GATE_TIMEOUT_COUNTER = Counter(
+    "orchestration_gate_timeout_total",
+    "Gate evaluation timeouts",
+    labelnames=("gate",),
+)
+PHASE_TRANSITION_COUNTER = Counter(
+    "orchestration_phase_transition_total",
+    "Execution phase transitions for gated pipelines",
+    labelnames=("pipeline", "from_phase", "to_phase"),
+)
 POSTPDF_START_TRIGGERED = Counter(
     "postpdf_start_triggered_total",
     "Number of times post-PDF resume was triggered",
+)
+PDF_DOWNLOAD_DURATION = Histogram(
+    "pdf_download_duration_seconds",
+    "Duration of PDF download operations",
+    labelnames=("source",),
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+PDF_DOWNLOAD_SIZE = Histogram(
+    "pdf_download_size_bytes",
+    "Size of downloaded PDFs in bytes",
+    labelnames=("source",),
+    buckets=(50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000),
+)
+PDF_DOWNLOAD_FAILURES = Counter(
+    "pdf_download_failure_total",
+    "Number of PDF download failures grouped by error type",
+    labelnames=("source", "error_type"),
+)
+PDF_PROCESSING_DURATION = Histogram(
+    "pdf_processing_duration_seconds",
+    "Duration of MinerU PDF processing",
+    labelnames=("source",),
+    buckets=(5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0),
+)
+PDF_PROCESSING_DURATION_BY_SIZE = Histogram(
+    "pdf_processing_duration_by_size_seconds",
+    "MinerU processing duration bucketed by PDF size",
+    labelnames=("source", "size_bucket"),
+    buckets=(5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0),
+)
+PDF_PROCESSING_SIZE = Histogram(
+    "pdf_processing_size_bytes",
+    "Distribution of PDF sizes processed by MinerU",
+    labelnames=("source",),
+    buckets=(50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000),
+)
+PDF_PROCESSING_GPU_UTILISATION = Gauge(
+    "pdf_processing_gpu_utilization_percent",
+    "GPU utilisation observed during MinerU PDF processing",
+    labelnames=("source", "gpu"),
+)
+PDF_PROCESSING_FAILURES = Counter(
+    "pdf_processing_failure_total",
+    "Number of PDF processing failures grouped by error type",
+    labelnames=("source", "error_type"),
 )
 CHUNKING_CIRCUIT_STATE = Gauge(
     "chunking_circuit_breaker_state",
@@ -134,6 +194,57 @@ BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
+)
+PDF_DOWNLOAD_ATTEMPTS = Counter(
+    "pdf_download_attempts_total",
+    "Number of attempts performed by the PDF downloader",
+    labelnames=("result",),
+)
+PDF_DOWNLOAD_FAILURES = Counter(
+    "pdf_download_failures_total",
+    "Number of PDF download failures grouped by reason",
+    labelnames=("reason",),
+)
+PDF_DOWNLOAD_CIRCUIT_STATE = Gauge(
+    "pdf_download_circuit_state",
+    "Circuit breaker state for PDF download sources (1=open)",
+    labelnames=("tenant", "host"),
+)
+PDF_DOWNLOAD_FAILURE_RATE = Gauge(
+    "pdf_download_failure_rate",
+    "Rolling failure rate for PDF downloads",
+    labelnames=("tenant",),
+)
+PDF_DOWNLOAD_BYTES = Histogram(
+    "pdf_download_size_bytes",
+    "Distribution of downloaded PDF sizes",
+    buckets=(1024 * 50, 1024 * 200, 1024 * 1024, 5 * 1024 * 1024, 10 * 1024 * 1024, 20 * 1024 * 1024),
+)
+PDF_DOWNLOAD_LATENCY = Histogram(
+    "pdf_download_latency_seconds",
+    "Latency distribution for PDF downloads",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0),
+)
+PDF_PROCESSING_FAILURES = Counter(
+    "pdf_processing_failures_total",
+    "Number of MinerU processing failures grouped by reason",
+    labelnames=("reason",),
+)
+PDF_PROCESSING_LATENCY = Histogram(
+    "pdf_processing_latency_seconds",
+    "Latency distribution for MinerU PDF processing",
+    buckets=(1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+PDF_PROCESSING_DURATION_BY_SIZE = Histogram(
+    "pdf_processing_duration_by_size_seconds",
+    "MinerU processing latency bucketed by PDF size",
+    labelnames=("size_bucket",),
+    buckets=(1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0),
+)
+PDF_PROCESSING_SLA_BREACHES = Counter(
+    "pdf_processing_sla_breaches_total",
+    "Number of PDF processing operations breaching SLA thresholds",
+    labelnames=("stage",),
 )
 JOB_STATUS_COUNTS = Gauge(
     "job_status_counts",
@@ -246,16 +357,27 @@ def _normalise_path(request: "Request") -> str:
     return getattr(route, "path", request.url.path)
 
 
-def _update_gpu_metrics() -> None:
+def get_gpu_utilisation_snapshot() -> dict[str, float]:
     if torch is None or not hasattr(torch, "cuda") or not torch.cuda.is_available():  # type: ignore[attr-defined]
-        GPU_UTILISATION.labels(gpu="0").set(0.0)
-        return
+        return {}
 
+    snapshot: dict[str, float] = {}
     for index in range(torch.cuda.device_count()):  # type: ignore[attr-defined]
         total = torch.cuda.get_device_properties(index).total_memory  # type: ignore[attr-defined]
         used = torch.cuda.memory_allocated(index)  # type: ignore[attr-defined]
         utilisation = float(used) / float(total) * 100 if total else 0.0
-        GPU_UTILISATION.labels(gpu=str(index)).set(utilisation)
+        snapshot[str(index)] = utilisation
+    return snapshot
+
+
+def _update_gpu_metrics() -> None:
+    snapshot = get_gpu_utilisation_snapshot()
+    if not snapshot:
+        GPU_UTILISATION.labels(gpu="0").set(0.0)
+        return
+
+    for gpu, utilisation in snapshot.items():
+        GPU_UTILISATION.labels(gpu=gpu).set(utilisation)
 
 
 def instrument_application(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
@@ -329,6 +451,20 @@ def record_resilience_retry(policy: str, stage: str) -> None:
     RESILIENCE_RETRY_ATTEMPTS.labels(policy, stage).inc()
 
 
+def record_gate_evaluation(gate: str, status: str) -> None:
+    """Record a gate evaluation outcome."""
+
+    GATE_EVALUATION_COUNTER.labels(gate, status).inc()
+    if status == "timeout":
+        GATE_TIMEOUT_COUNTER.labels(gate).inc()
+
+
+def record_phase_transition(pipeline: str, from_phase: str, to_phase: str) -> None:
+    """Record a phase transition for a gated pipeline."""
+
+    PHASE_TRANSITION_COUNTER.labels(pipeline, from_phase, to_phase).inc()
+
+
 def record_resilience_circuit_state(policy: str, stage: str, state: str) -> None:
     """Update gauge with the numeric circuit breaker state."""
 
@@ -398,6 +534,56 @@ def increment_postpdf_start_triggered() -> None:
 
     POSTPDF_START_TRIGGERED.inc()
 
+
+
+
+def _pdf_size_bucket(size_bytes: int) -> str:
+    thresholds = (
+        (100_000, "lt_100k"),
+        (500_000, "lt_500k"),
+        (1_000_000, "lt_1m"),
+        (5_000_000, "lt_5m"),
+        (10_000_000, "lt_10m"),
+    )
+    for limit, label in thresholds:
+        if size_bytes < limit:
+            return label
+    return "gte_10m"
+
+
+def record_pdf_download_success(source: str, size_bytes: int, duration_seconds: float) -> None:
+    PDF_DOWNLOAD_DURATION.labels(source=source).observe(max(duration_seconds, 0.0))
+    PDF_DOWNLOAD_SIZE.labels(source=source).observe(max(size_bytes, 0))
+
+
+def record_pdf_download_failure(source: str, error_type: str) -> None:
+    PDF_DOWNLOAD_FAILURES.labels(source=source, error_type=error_type).inc()
+
+
+def record_pdf_processing_success(
+    source: str,
+    duration_seconds: float,
+    *,
+    size_bytes: int | None = None,
+    gpu_snapshot: Mapping[str, float] | None = None,
+) -> None:
+    PDF_PROCESSING_DURATION.labels(source=source).observe(max(duration_seconds, 0.0))
+    if size_bytes is not None:
+        clamped_size = max(size_bytes, 0)
+        PDF_PROCESSING_SIZE.labels(source=source).observe(clamped_size)
+        bucket = _pdf_size_bucket(clamped_size)
+        PDF_PROCESSING_DURATION_BY_SIZE.labels(source=source, size_bucket=bucket).observe(
+            max(duration_seconds, 0.0)
+        )
+    snapshot = dict(gpu_snapshot or get_gpu_utilisation_snapshot())
+    if not snapshot:
+        snapshot = {"0": 0.0}
+    for gpu, utilisation in snapshot.items():
+        PDF_PROCESSING_GPU_UTILISATION.labels(source=source, gpu=gpu).set(max(utilisation, 0.0))
+
+
+def record_pdf_processing_failure(source: str, error_type: str) -> None:
+    PDF_PROCESSING_FAILURES.labels(source=source, error_type=error_type).inc()
 
 
 
@@ -538,6 +724,26 @@ def set_dead_letter_queue_depth(queue: str, depth: int) -> None:
 def set_orchestration_queue_depth(queue: str, depth: int) -> None:
     """Set orchestration queue depth."""
     ORCHESTRATION_QUEUE_DEPTH.labels(queue=queue).set(max(0, depth))
+
+
+def set_pdf_download_circuit_state(tenant: str, host: str, open_state: bool) -> None:
+    """Record the open/closed state of the download circuit breaker."""
+    PDF_DOWNLOAD_CIRCUIT_STATE.labels(tenant=tenant, host=host).set(1 if open_state else 0)
+
+
+def set_pdf_download_failure_rate(tenant: str, failure_rate: float) -> None:
+    """Record the rolling failure rate for PDF downloads."""
+    PDF_DOWNLOAD_FAILURE_RATE.labels(tenant=tenant).set(max(0.0, failure_rate))
+
+
+def observe_pdf_processing_duration(size_bucket: str, duration: float) -> None:
+    """Observe MinerU processing duration grouped by PDF size bucket."""
+    PDF_PROCESSING_DURATION_BY_SIZE.labels(size_bucket=size_bucket).observe(duration)
+
+
+def record_pdf_processing_sla_breach(stage: str) -> None:
+    """Increment counter when PDF processing stages breach the SLA."""
+    PDF_PROCESSING_SLA_BREACHES.labels(stage=stage).inc()
 
 
 def observe_ingestion_stage_latency(stage: str, duration: float) -> None:

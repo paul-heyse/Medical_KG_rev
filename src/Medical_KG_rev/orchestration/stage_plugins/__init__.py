@@ -38,6 +38,10 @@ def _sequence_length(value: Any) -> int:
     return 0
 
 
+def _count_single(value: Any) -> int:
+    return 1 if value is not None else 0
+
+
 def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
     state["download"] = output
 
@@ -58,6 +62,58 @@ class _UrlExtractor:
 class _StorageConfig:
     base_path: Path
     filename_template: str
+
+
+def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
+    state["mineru_result"] = output
+    ir_document = None
+    if isinstance(output, MineruProcessingResult):
+        ir_document = getattr(getattr(output.response, "document", None), "ir_document", None)
+    if isinstance(ir_document, Document):
+        state["document"] = ir_document
+
+
+_STORAGE_CACHE: dict[str, PdfStorageClient] = {}
+
+
+def _storage_cache_key(config: Mapping[str, Any]) -> str:
+    storage = config.get("storage") or {}
+    backend = str(storage.get("backend", "memory")).lower()
+    alias = storage.get("alias") or "default"
+    if backend == "local":
+        path = storage.get("path") or "/tmp/medicalkg/pdf"
+        return f"local:{alias}:{path}"
+    if backend == "s3":
+        bucket = storage.get("bucket")
+        return f"s3:{alias}:{bucket}"
+    return f"memory:{alias}"
+
+
+def _get_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
+    key = _storage_cache_key(config)
+    if key in _STORAGE_CACHE:
+        return _STORAGE_CACHE[key]
+    storage_cfg = config.get("storage") or {}
+    backend_name = str(storage_cfg.get("backend", "memory")).lower()
+    if backend_name == "local":
+        base_path = storage_cfg.get("path") or "/tmp/medicalkg/pdf"
+        backend = LocalFileObjectStore(base_path)
+    elif backend_name == "s3":
+        bucket = storage_cfg.get("bucket")
+        if not bucket:
+            raise ValueError("S3 storage backend requires a 'bucket' value")
+        backend = S3ObjectStore(bucket=str(bucket))
+    else:
+        backend = InMemoryObjectStore()
+    client = PdfStorageClient(
+        backend=backend,
+        config=PdfStorageConfig(
+            base_prefix=str(storage_cfg.get("base_prefix", "pdf")),
+            enable_access_logging=bool(storage_cfg.get("access_logging", True)),
+        ),
+    )
+    _STORAGE_CACHE[key] = client
+    return client
 
 
 @dataclass(slots=True)
@@ -368,10 +424,207 @@ class GateStage:
         return value
 
 
-def register_download_stage() -> StageRegistration:
-    """Register the built-in download stage plugin."""
+@dataclass(slots=True)
+class MineruStage:
+    """Run MinerU over downloaded PDFs and update ledger state."""
 
-    def _builder(definition: StageDefinition) -> DownloadStage:
+    name: str
+    processing_service: MineruProcessingService
+    ledger: JobLedger | None = None
+    dead_letter_queue: PdfDeadLetterQueue | None = None
+
+    def bind_runtime(self, *, ledger: JobLedger, kafka: KafkaClient | None = None) -> None:
+        self.ledger = ledger
+        if kafka:
+            self.dead_letter_queue = PdfDeadLetterQueue(kafka)
+
+    def execute(self, ctx: StageContext, upstream: Any) -> MineruProcessingResult | None:
+        document = None
+        download_result = None
+        if isinstance(upstream, Mapping):
+            candidate = upstream.get("document")
+            if isinstance(candidate, Document):
+                document = candidate
+            artifact = upstream.get("download_artifact") or upstream.get("downloaded_files")
+            if isinstance(artifact, list):
+                artifact = artifact[0] if artifact else None
+            if isinstance(artifact, PdfDownloadResult):
+                download_result = artifact
+        elif isinstance(upstream, PdfDownloadResult):
+            download_result = upstream
+        if download_result is None:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason="PDF download artifact missing",
+                    retryable=False,
+                    code="missing_artifact",
+                )
+                self.ledger.rollback_pdf_state(ctx.job_id, reason="missing download artifact")
+            if self.dead_letter_queue and ctx.job_id:
+                self.dead_letter_queue.publish(
+                    job_id=ctx.job_id,
+                    tenant_id=ctx.tenant_id,
+                    document_id=document.id if document else "unknown",
+                    stage=self.name,
+                    reason="missing_artifact",
+                    payload={},
+                )
+            logger.warning(
+                "dagster.stage.mineru.missing_artifact",
+                stage=self.name,
+                tenant_id=ctx.tenant_id,
+            )
+            return None
+        try:
+            result = self.processing_service.process(
+                tenant_id=ctx.tenant_id,
+                document_id=download_result.request.document_id,
+                storage_key=download_result.storage_key,
+                checksum=download_result.checksum,
+                correlation_id=ctx.correlation_id,
+            )
+        except (MineruOutOfMemoryError, MineruGpuUnavailableError) as exc:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason=str(exc),
+                    retryable=True,
+                    code=type(exc).__name__,
+                )
+                self.ledger.record_pdf_partial(
+                    ctx.job_id,
+                    stage=self.name,
+                    detail=str(exc),
+                    retryable=True,
+                )
+            raise
+        except MineruProcessingError as exc:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason=str(exc),
+                    retryable=exc.retryable,
+                    code=exc.code,
+                )
+                if exc.retryable:
+                    self.ledger.record_pdf_partial(
+                        ctx.job_id,
+                        stage=self.name,
+                        detail=str(exc),
+                        retryable=True,
+                    )
+                else:
+                    self.ledger.rollback_pdf_state(ctx.job_id, reason=str(exc))
+            if (
+                self.dead_letter_queue
+                and ctx.job_id
+                and not exc.retryable
+            ):
+                self.dead_letter_queue.publish(
+                    job_id=ctx.job_id,
+                    tenant_id=ctx.tenant_id,
+                    document_id=download_result.request.document_id,
+                    stage=self.name,
+                    reason=exc.code or "mineru_error",
+                    payload={"storage_key": download_result.storage_key},
+                )
+            raise
+        if self.ledger and ctx.job_id:
+            self.ledger.clear_pdf_error(ctx.job_id)
+            self.ledger.set_pdf_ir_ready(
+                ctx.job_id,
+                True,
+                checksum=result.checksum,
+            )
+        logger.info(
+            "dagster.stage.mineru.completed",
+            stage=self.name,
+            tenant_id=ctx.tenant_id,
+            document_id=download_result.request.document_id,
+            duration=round(result.duration_seconds, 3),
+        )
+        return result
+
+
+_STORAGE_CLIENTS: dict[str, PdfStorageClient] = {}
+
+
+def _resolve_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
+    storage_config = config.get("storage") if isinstance(config, Mapping) else None
+    name = "default"
+    if isinstance(storage_config, Mapping):
+        name = str(storage_config.get("name", "default"))
+    if name in _STORAGE_CLIENTS:
+        return _STORAGE_CLIENTS[name]
+    backend_type = "memory"
+    base_prefix = "pdfs"
+    if isinstance(storage_config, Mapping):
+        backend_type = str(storage_config.get("type", "memory")).lower()
+        base_prefix = str(storage_config.get("base_prefix", "pdfs"))
+    if backend_type in {"s3", "minio"}:
+        bucket = storage_config.get("bucket") if isinstance(storage_config, Mapping) else None
+        if not bucket:
+            raise ValueError("S3 storage backend requires a 'bucket' configuration")
+        backend = S3ObjectStore(str(bucket))
+    elif backend_type in {"filesystem", "fs", "local"}:
+        base_path = storage_config.get("base_path") if isinstance(storage_config, Mapping) else None
+        if not base_path:
+            raise ValueError("Filesystem storage backend requires a 'base_path' configuration")
+        backend = FileSystemObjectStore(str(base_path))
+    elif backend_type == "memory":
+        backend = InMemoryObjectStore()
+    else:
+        raise ValueError(f"Unsupported PDF storage backend '{backend_type}'")
+    client = PdfStorageClient(backend, base_prefix=base_prefix)
+    _STORAGE_CLIENTS[name] = client
+    return client
+
+
+def _create_http_client(config: Mapping[str, Any]) -> HttpClient:
+    http_config = config.get("http") if isinstance(config, Mapping) else None
+    attempts = 3
+    initial_backoff = 0.5
+    timeout = 30.0
+    rate_limit_config: RateLimitConfig | None = None
+    circuit_breaker_config: CircuitBreakerConfig | None = None
+    if isinstance(http_config, Mapping):
+        attempts = int(http_config.get("attempts", attempts))
+        initial_backoff = float(http_config.get("backoff_initial", initial_backoff))
+        timeout = float(http_config.get("timeout", timeout))
+        rate_limit = http_config.get("rate_limit")
+        if isinstance(rate_limit, Mapping):
+            rate_limit_config = RateLimitConfig(
+                rate_per_second=float(rate_limit.get("rate_per_second", 5.0)),
+                burst=rate_limit.get("burst"),
+            )
+        breaker = http_config.get("circuit_breaker")
+        if isinstance(breaker, Mapping):
+            circuit_breaker_config = CircuitBreakerConfig(
+                failure_threshold=int(breaker.get("failure_threshold", 5)),
+                recovery_timeout=float(breaker.get("recovery_timeout", 60.0)),
+            )
+    retry = RetryConfig(
+        attempts=max(1, attempts),
+        backoff_strategy=BackoffStrategy.EXPONENTIAL,
+        backoff_initial=max(0.1, initial_backoff),
+        backoff_max=timeout,
+        timeout=timeout,
+    )
+    return HttpClient(
+        retry=retry,
+        rate_limit=rate_limit_config,
+        circuit_breaker=circuit_breaker_config,
+    )
+
+
+def register_download_stage() -> StageRegistration:
+    """Register the PDF download stage."""
+
+    def _builder(definition: StageDefinition) -> PdfDownloadStage:
         config = definition.config or {}
         extractor_configs = config.get("url_extractors", [])
         extractors = tuple(
@@ -449,10 +702,35 @@ def register_gate_stage() -> StageRegistration:
     return StageRegistration(metadata=metadata, builder=_builder)
 
 
+def register_mineru_stage() -> StageRegistration:
+    """Register the MinerU PDF processing stage."""
+
+    def _builder(definition: StageDefinition) -> MineruStage:
+        config = definition.config or {}
+        storage = _resolve_storage_client(config)
+        mineru_config = config.get("mineru") if isinstance(config, Mapping) else {}
+        service = MineruProcessingService(config=mineru_config or {})
+        return MineruStage(name=definition.name, service=service, storage=storage)
+
+    metadata = StageMetadata(
+        stage_type="mineru",
+        state_key="document",
+        output_handler=_handle_mineru_output,
+        output_counter=_count_single,
+        description="Processes downloaded PDFs through MinerU to produce IR documents",
+        dependencies=("download",),
+    )
+    return StageRegistration(metadata=metadata, builder=_builder)
+
+
 __all__ = [
     "DownloadStage",
     "GateConditionError",
     "GateStage",
+    "PdfDownloadRecord",
+    "PdfDownloadStage",
+    "MineruStage",
     "register_download_stage",
     "register_gate_stage",
+    "register_mineru_stage",
 ]

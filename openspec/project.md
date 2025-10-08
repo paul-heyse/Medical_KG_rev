@@ -470,9 +470,7 @@ Medical_KG_rev/
 │   │   ├── embedding.proto
 │   │   ├── extraction.proto
 │   │   └── mineru.proto
-│   └── scripts/             # Utility scripts
-│       ├── healthcheck.py
-│       └── serve_gpu.py
+│   └── scripts/             # Utility scripts (reserved for future helpers)
 ├── tests/                   # Test suites
 │   ├── unit/
 │   ├── integration/

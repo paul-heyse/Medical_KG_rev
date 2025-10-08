@@ -5,11 +5,16 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+from importlib import resources
+from importlib.abc import Traversable
 from pathlib import Path
 from random import Random
 from typing import Iterable, Mapping, Sequence
 
 import yaml
+
+_DATA_PACKAGE = "Medical_KG_rev.services.evaluation.data"
+_DEFAULT_DATASET_SUBDIR = "test_sets"
 
 
 class QueryType(str, Enum):
@@ -117,28 +122,58 @@ class TestSetManager:
     """Loads and caches evaluation datasets stored on disk."""
 
     def __init__(self, root: str | Path | None = None) -> None:
-        self.root = Path(root or "eval/test_sets")
+        self.root = Path(root) if root is not None else None
+        self._resource_root: Traversable | None
+        if self.root is None:
+            self._resource_root = (
+                resources.files(_DATA_PACKAGE) / _DEFAULT_DATASET_SUBDIR
+            )
+        else:
+            self._resource_root = None
         self._cache: dict[tuple[str, str | None], TestSet] = {}
 
-    def _resolve_path(self, name: str) -> Path:
-        candidate = self.root / f"{name}.yaml"
-        if candidate.exists():
-            return candidate
-        raise FileNotFoundError(f"Test set '{name}' not found at {candidate}")
+    def _resolve_path(self, name: str) -> Path | Traversable:
+        filename = f"{name}.yaml"
+        if self.root is not None:
+            candidate = self.root / filename
+            if candidate.exists():
+                return candidate
+            raise FileNotFoundError(f"Test set '{name}' not found at {candidate}")
+        if self._resource_root is not None:
+            resource = self._resource_root / filename
+            if resource.is_file():
+                return resource
+        raise FileNotFoundError(
+            f"Test set '{name}' not found in packaged resources or provided root"
+        )
+
+    def _load_yaml(self, location: Path | Traversable) -> dict[str, object]:
+        if isinstance(location, Path):
+            text = location.read_text(encoding="utf-8")
+        else:
+            assert self._resource_root is not None
+            text = location.read_text(encoding="utf-8")
+        return yaml.safe_load(text) or {}
 
     def load(self, name: str, *, expected_version: str | None = None) -> TestSet:
         cache_key = (name, expected_version)
         if cache_key in self._cache:
             return self._cache[cache_key]
         path = self._resolve_path(name)
-        raw = yaml.safe_load(path.read_text()) or {}
+        raw = self._load_yaml(path)
         version = str(raw.get("version") or "unknown")
         if expected_version is not None and version != expected_version:
             raise ValueError(
                 f"Requested version '{expected_version}' but file {path} declares version '{version}'"
             )
         queries = _parse_queries(raw.get("queries", []))
-        test_set = TestSet(name=name, version=version, queries=tuple(queries), source=path)
+        source_path = path if isinstance(path, Path) else None
+        test_set = TestSet(
+            name=name,
+            version=version,
+            queries=tuple(queries),
+            source=source_path,
+        )
         test_set.ensure_quality()
         self._cache[cache_key] = test_set
         return test_set
@@ -146,6 +181,10 @@ class TestSetManager:
     def refresh(self, name: str, *, new_queries: Sequence[Mapping[str, object]], version: str) -> TestSet:
         """Create a new version of a dataset replacing the cached entry."""
 
+        if self.root is None:
+            raise RuntimeError(
+                "Cannot refresh packaged datasets; provide a filesystem root when instantiating"
+            )
         latest = self.root / f"{name}.yaml"
         archive = self.root / name / f"{version}.yaml"
         archive.parent.mkdir(parents=True, exist_ok=True)

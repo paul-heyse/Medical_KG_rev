@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-<<<<<<< HEAD
     - namespace.yaml
     - configmap-gateway.yaml
     - configmap-vllm-server.yaml
@@ -15,15 +14,18 @@ resources:
     - ingress.yaml
     - hpa-gateway.yaml
     - servicemonitor-vllm-server.yaml
-=======
+
+#to resolve by creating separate files, accidental collision it appears#
   - namespace.yaml
   - configmap-gateway.yaml
   - secret-sentry.yaml
   - deployment-gateway.yaml
   - deployment-ingest-worker.yaml
   - deployment-vllm-qwen3.yaml
+  - deployment-vllm-embedding.yaml
+  - deployment-vllm-server.yaml
+  - deployment-mineru-workers.yaml
   - service-gateway.yaml
   - service-vllm-qwen3.yaml
   - ingress.yaml
   - hpa-gateway.yaml
->>>>>>> refs/remotes/origin/codex/implement-add-embeddings-representation-proposal-ae4adw

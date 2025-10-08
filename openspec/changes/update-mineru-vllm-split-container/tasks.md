@@ -886,7 +886,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 3.2 Worker Service Update
 
-- [ ] **3.2.1** Update MinerU service to use HTTP client
+- [x] **3.2.1** Update MinerU service to use HTTP client
   - **File**: `src/Medical_KG_rev/services/mineru/service.py`
   - **Action**: Replace GPU initialization with VLLMClient:
 
@@ -927,7 +927,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: Service starts without errors
 
-- [ ] **3.2.2** Update MinerU CLI invocation
+- [x] **3.2.2** Update MinerU CLI invocation
   - **File**: `src/Medical_KG_rev/services/mineru/cli_wrapper.py`
   - **Action**: Update subprocess command:
 
@@ -952,14 +952,14 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
   - **Validation**: MinerU CLI runs successfully with new flags
 
-- [ ] **3.2.3** Remove GPU availability check
+- [x] **3.2.3** Remove GPU availability check
   - **File**: `src/Medical_KG_rev/services/mineru/service.py`
   - **Action**: Remove all `torch.cuda.is_available()` checks and GPU initialization code
   - **Validation**: Service starts on CPU-only machine
 
 ### 3.3 Worker Deployment Update
 
-- [ ] **3.3.1** Update worker Kubernetes deployment
+- [x] **3.3.1** Update worker Kubernetes deployment
   - **File**: `ops/k8s/base/deployment-mineru-workers.yaml`
   - **Specification**:
 
@@ -1216,7 +1216,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 4.4 Performance Tests
 
-- [ ] **4.4.1** Create vLLM load test script
+- [x] **4.4.1** Create vLLM load test script
   - **File**: `tests/performance/vllm_load_test.py`
   - **Specification**:
 
@@ -1386,19 +1386,19 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 7.1 Architecture Documentation
 
-- [ ] **7.1.1** Update architecture documentation
+- [x] **7.1.1** Update architecture documentation
   - **File**: `docs/gpu-microservices.md`
   - **Action**: Add "vLLM Split-Container Architecture" section with diagrams
   - **Validation**: Documentation builds without errors
 
-- [ ] **7.1.2** Create deployment guide
+- [x] **7.1.2** Create deployment guide
   - **File**: `docs/devops/vllm-deployment.md`
   - **Content**: Prerequisites, Docker deployment, K8s deployment, configuration, troubleshooting
   - **Validation**: Follow guide, verify all steps work
 
 ### 7.2 Operational Documentation
 
-- [ ] **7.2.1** Create runbook: vLLM Server Restart
+- [x] **7.2.1** Create runbook: vLLM Server Restart
   - **File**: `docs/runbooks/vllm-server-restart.md`
   - **Specification**:
 
@@ -1470,14 +1470,14 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
     ```
   - **Validation**: Execute runbook in staging environment
 
-- [ ] **7.2.2** Create troubleshooting guide
+- [x] **7.2.2** Create troubleshooting guide
   - **File**: `docs/troubleshooting/vllm-connectivity.md`
   - **Content**: Common issues, diagnostics, resolution steps
   - **Validation**: Guide covers all failure scenarios
 
 ### 7.3 API Documentation
 
-- [ ] **7.3.1** Update API documentation
+- [x] **7.3.1** Update API documentation
   - **File**: `docs/api/mineru-service.md`
   - **Action**: Document vLLM HTTP client usage, error codes, retry behavior
   - **Validation**: API docs accurate and complete
@@ -1488,16 +1488,16 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
 
 ### 8.1 Remove Legacy Code
 
-- [ ] **8.1.1** Remove monolithic worker code
+- [x] **8.1.1** Remove monolithic worker code
   - **Action**: Delete old GPU initialization code, vLLM engine imports
   - **Files**: Search codebase for `torch.cuda`, `vllm.LLM`, old backend references
   - **Validation**: `git grep -l "torch.cuda" src/` returns no results
 
-- [ ] **8.1.2** Remove legacy configuration
+- [x] **8.1.2** Remove legacy configuration
   - **Action**: Delete old `mineru.yaml` monolithic settings
   - **Validation**: No references to `vlm-vllm-engine` backend
 
-- [ ] **8.1.3** Remove legacy Docker images
+- [x] **8.1.3** Remove legacy Docker images
   - **Command**: `docker rmi ghcr.io/your-org/mineru-worker:monolithic`
   - **Validation**: Old image deleted from registry
 

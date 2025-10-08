@@ -169,17 +169,17 @@
   ```
 
 - [x] 3.2 Define `Chunk` dataclass with required fields:
-  - [ ] `chunk_id: str`
-  - [ ] `doc_id: str`
-  - [ ] `text: str`
-  - [ ] `char_offsets: tuple[int, int]`
-  - [ ] `section_label: str` (e.g., "Methods", "LOINC:34089-3")
-  - [ ] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
-  - [ ] `page_bbox: dict | None` (for PDFs)
-  - [ ] `metadata: dict[str, Any]`
+  - [x] `chunk_id: str`
+  - [x] `doc_id: str`
+  - [x] `text: str`
+  - [x] `char_offsets: tuple[int, int]`
+  - [x] `section_label: str` (e.g., "Methods", "LOINC:34089-3")
+  - [x] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
+  - [x] `page_bbox: dict | None` (for PDFs)
+  - [x] `metadata: dict[str, Any]`
 - [x] 3.3 Implement chunker registry:
-  - [ ] `register_chunker(name: str, implementation: Type[ChunkerPort])`
-  - [ ] `get_chunker(name: str) -> ChunkerPort`
+  - [x] `register_chunker(name: str, implementation: Type[ChunkerPort])`
+  - [x] `get_chunker(name: str) -> ChunkerPort`
 - [x] 3.4 Add validation: raise if profile not registered
 - [x] 3.5 Write unit tests for ChunkerPort protocol compliance
 
@@ -336,8 +336,8 @@
 
 ### 5.2 LlamaIndex Node Parsers Wrapper
 
-- [ ] 5.2.1 Create `src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py`
-- [ ] 5.2.2 Implement `LlamaIndexChunker` class using `SentenceWindowNodeParser`:
+- [x] 5.2.1 Create `src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py`
+- [x] 5.2.2 Implement `LlamaIndexChunker` class using `SentenceWindowNodeParser`:
 
   ```python
   class LlamaIndexChunker:
@@ -349,14 +349,14 @@
           )
   ```
 
-- [ ] 5.2.3 Add sentence boundary detection via scispaCy/syntok
-- [ ] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
-- [ ] 5.2.5 Write unit tests for coherence preservation
+- [x] 5.2.3 Add sentence boundary detection via scispaCy/syntok
+- [x] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
+- [x] 5.2.5 Write unit tests for coherence preservation
 
 ### 5.3 scispaCy Sentence Segmentation Wrapper
 
-- [ ] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
-- [ ] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
+- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
+- [x] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
 
   ```python
   import spacy
@@ -368,13 +368,13 @@
   ```
 
 - [ ] 5.3.3 Handle biomedical abbreviations (e.g., "Fig.", "et al.")
-- [ ] 5.3.4 Preserve char offsets
-- [ ] 5.3.5 Write unit tests with biomedical text samples
+- [x] 5.3.4 Preserve char offsets
+- [x] 5.3.5 Write unit tests with biomedical text samples
 
 ### 5.4 syntok Fast Sentence Splitter Wrapper
 
-- [ ] 5.4.1 Create `src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py`
-- [ ] 5.4.2 Implement `SyntokSentenceSegmenter`:
+- [x] 5.4.1 Create `src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py`
+- [x] 5.4.2 Implement `SyntokSentenceSegmenter`:
 
   ```python
   from syntok import segmenter
@@ -383,14 +383,14 @@
       # Implementation with offset tracking
   ```
 
-- [ ] 5.4.3 Handle messy punctuation
-- [ ] 5.4.4 Preserve char offsets
+- [x] 5.4.3 Handle messy punctuation
+- [x] 5.4.4 Preserve char offsets
 - [ ] 5.4.5 Benchmark throughput vs scispaCy (should be 5-10x faster)
 
 ### 5.5 Tokenizer Wrappers (HF / tiktoken)
 
-- [ ] 5.5.1 Create `src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py`
-- [ ] 5.5.2 Implement HF tokenizer wrapper for Qwen3:
+- [x] 5.5.1 Create `src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py`
+- [x] 5.5.2 Implement HF tokenizer wrapper for Qwen3:
 
   ```python
   from transformers import AutoTokenizer
@@ -400,9 +400,9 @@
       return len(tokenizer.encode(text))
   ```
 
-- [ ] 5.5.3 Add token budget enforcement before chunking
-- [ ] 5.5.4 Cache tokenizer instance (avoid re-loading)
-- [ ] 5.5.5 Write unit tests for token counting accuracy
+- [x] 5.5.3 Add token budget enforcement before chunking
+- [x] 5.5.4 Cache tokenizer instance (avoid re-loading)
+- [x] 5.5.5 Write unit tests for token counting accuracy
 
 ### 5.6 unstructured Wrapper (XML/HTML)
 

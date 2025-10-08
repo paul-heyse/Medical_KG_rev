@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Protocol
 
 from Medical_KG_rev.models.ir import Document
+from .validation import ensure_valid_chunks
 
 if False:  # pragma: no cover - imported for typing only
     from typing import Type
@@ -103,7 +104,9 @@ def chunk_document(
     profile = profile_loader(profile_name)
     chunker_type = profile["chunker_type"]
     chunker = get_chunker(chunker_type, profile=profile)
-    return chunker.chunk(document, profile=profile_name)
+    chunks = chunker.chunk(document, profile=profile_name)
+    ensure_valid_chunks(chunks)
+    return chunks
 
 
 def reset_registry() -> None:

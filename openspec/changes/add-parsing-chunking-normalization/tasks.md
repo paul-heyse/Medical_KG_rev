@@ -16,41 +16,41 @@
 
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
-- [ ] 1.1.1 Identify all files in `src/Medical_KG_rev/services/chunking/` to delete:
+- [x] 1.1.1 Identify all files in `src/Medical_KG_rev/services/chunking/` to delete:
   - [ ] `custom_splitters.py` (8 custom chunkers, 420 lines) - Replace with ChunkerPort + library wrappers
   - [ ] `semantic_splitter.py` (75 lines) - Replace with LlamaIndex node parsers
   - [ ] `sliding_window.py` (62 lines) - Replace with langchain RecursiveCharacterTextSplitter
   - [ ] `section_aware_splitter.py` (110 lines) - Replace with profile-based chunking
-- [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
+- [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
   - [ ] `pdf_parser.py` (bespoke PDF logic, 180 lines) - MinerU is the only PDF path
   - [ ] `xml_parser.py` (custom XML parsing, 95 lines) - Replace with unstructured
-  - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with HuggingFace/syntok
-- [ ] 1.1.3 Identify adapter methods to delete:
+  - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with scispaCy/syntok
+- [x] 1.1.3 Identify adapter methods to delete:
   - [ ] Search for `def split_document\|\.chunk\(` in adapters/ (15 occurrences)
   - [ ] All adapter-specific chunking logic → delegate to ChunkerPort
-- [ ] 1.1.4 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md`
+- [x] 1.1.4 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md`
 
 ### 1.2 Dependency Analysis (Pre-Delete Validation)
 
-- [ ] 1.2.1 Find all imports of custom chunkers:
+- [x] 1.2.1 Find all imports of custom chunkers:
 
   ```bash
   grep -r "from.*custom_splitters import\|SemanticSplitter\|SlidingWindow" src/
   ```
 
-- [ ] 1.2.2 Find all imports of custom parsers:
+- [x] 1.2.2 Find all imports of custom parsers:
 
   ```bash
   grep -r "from.*pdf_parser import\|from.*xml_parser import" src/
   ```
 
-- [ ] 1.2.3 Find all `.split_document()` calls:
+- [x] 1.2.3 Find all `.split_document()` calls:
 
   ```bash
   grep -r "\.split_document\(\|\.chunk\(" src/Medical_KG_rev/adapters/
   ```
 
-- [ ] 1.2.4 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
+- [x] 1.2.4 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
@@ -148,7 +148,7 @@
 
 - [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
 - [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [x] 2.3 Add **sentence-transformers>=2.2.0** for biomedical sentence segmentation
+- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
 - [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
 - [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
 - [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
@@ -349,14 +349,14 @@
           )
   ```
 
-- [x] 5.2.3 Add sentence boundary detection via HuggingFace/syntok
+- [x] 5.2.3 Add sentence boundary detection via scispaCy/syntok
 - [x] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
 - [x] 5.2.5 Write unit tests for coherence preservation
 
 ### 5.3 HuggingFace Sentence Segmentation Wrapper
 
-- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py`
-- [x] 5.3.2 Implement `HuggingFaceSentenceSegmenter`:
+- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
+- [x] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
 
   ```python
   import spacy
@@ -385,7 +385,7 @@
 
 - [x] 5.4.3 Handle messy punctuation
 - [x] 5.4.4 Preserve char offsets
-- [ ] 5.4.5 Benchmark throughput vs HuggingFace (should be 5-10x faster)
+- [ ] 5.4.5 Benchmark throughput vs scispaCy (should be 5-10x faster)
 
 ### 5.5 Tokenizer Wrappers (HF / tiktoken)
 
@@ -406,8 +406,8 @@
 
 ### 5.6 unstructured Wrapper (XML/HTML)
 
-- [ ] 5.6.1 Create `src/Medical_KG_rev/services/parsing/wrappers/unstructured_parser.py`
-- [ ] 5.6.2 Implement `UnstructuredParser`:
+- [x] 5.6.1 Create `src/Medical_KG_rev/services/parsing/wrappers/unstructured_parser.py`
+- [x] 5.6.2 Implement `UnstructuredParser`:
 
   ```python
   from unstructured.partition.xml import partition_xml
@@ -418,28 +418,28 @@
       # Map to IR Document
   ```
 
-- [ ] 5.6.3 Map unstructured elements to IR blocks
-- [ ] 5.6.4 Preserve metadata (element type, attributes)
-- [ ] 5.6.5 Test on JATS XML, SPL XML, HTML guidelines
+- [x] 5.6.3 Map unstructured elements to IR blocks
+- [x] 5.6.4 Preserve metadata (element type, attributes)
+- [x] 5.6.5 Test on JATS XML, SPL XML, HTML guidelines
 
 ---
 
 ## 6. Filter Chain System
 
-- [ ] 6.1 Create `src/Medical_KG_rev/services/chunking/filters/` directory
-- [ ] 6.2 Implement `drop_boilerplate` filter:
-  - [ ] Remove headers/footers via regex patterns
-  - [ ] Remove "Page X of Y" artifacts
-- [ ] 6.3 Implement `exclude_references` filter:
-  - [ ] Detect "References" section start
-  - [ ] Drop all text after that section
-- [ ] 6.4 Implement `deduplicate_page_furniture` filter:
-  - [ ] Detect repeated text across pages (e.g., running headers)
-  - [ ] Remove duplicates
-- [ ] 6.5 Implement `preserve_tables_html` filter:
-  - [ ] Keep HTML for tables when `rectangularize_confidence < 0.8`
-  - [ ] Tag chunk with `is_unparsed_table=true`
-- [ ] 6.6 Create filter chain executor:
+- [x] 6.1 Create `src/Medical_KG_rev/services/chunking/filters/` directory
+- [x] 6.2 Implement `drop_boilerplate` filter:
+  - [x] Remove headers/footers via regex patterns
+  - [x] Remove "Page X of Y" artifacts
+- [x] 6.3 Implement `exclude_references` filter:
+  - [x] Detect "References" section start
+  - [x] Drop all text after that section
+- [x] 6.4 Implement `deduplicate_page_furniture` filter:
+  - [x] Detect repeated text across pages (e.g., running headers)
+  - [x] Remove duplicates
+- [x] 6.5 Implement `preserve_tables_html` filter:
+  - [x] Keep HTML for tables when `rectangularize_confidence < 0.8`
+  - [x] Tag chunk with `is_unparsed_table=true`
+- [x] 6.6 Create filter chain executor:
 
   ```python
   def apply_filters(chunks: list[Chunk], filters: list[str]) -> list[Chunk]:
@@ -448,7 +448,7 @@
       return chunks
   ```
 
-- [ ] 6.7 Write unit tests for each filter
+- [x] 6.7 Write unit tests for each filter
 
 ---
 
@@ -505,7 +505,7 @@
 
 ### 8.1 Chunk Schema Validation
 
-- [ ] 8.1.1 Define Pydantic model for `Chunk`:
+- [x] 8.1.1 Define Pydantic model for `Chunk`:
 
   ```python
   class Chunk(BaseModel):
@@ -519,17 +519,17 @@
       metadata: dict[str, Any] = Field(default_factory=dict)
   ```
 
-- [ ] 8.1.2 Validate all chunks before storage
-- [ ] 8.1.3 Raise `ValidationError` if required fields missing
+- [x] 8.1.2 Validate all chunks before storage
+- [x] 8.1.3 Raise `ValidationError` if required fields missing
 
 ### 8.2 Provenance Tracking
 
-- [ ] 8.2.1 Attach to every chunk:
+- [x] 8.2.1 Attach to every chunk:
   - [ ] `source_system: str` (e.g., "pmc", "ctgov", "dailymed")
   - [ ] `chunking_profile: str` (e.g., "pmc-imrad")
   - [ ] `chunker_version: str` (e.g., "langchain-v0.2.0")
   - [ ] `created_at: datetime`
-- [ ] 8.2.2 Store in chunk metadata
+- [x] 8.2.2 Store in chunk metadata
 - [ ] 8.2.3 Index in OpenSearch for retrieval filters
 
 ### 8.3 Failure Semantics

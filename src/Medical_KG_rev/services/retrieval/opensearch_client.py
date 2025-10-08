@@ -36,6 +36,17 @@ class OpenSearchClient:
             profile = metadata.get("chunking_profile")
             if profile and "chunking_profile" not in stored:
                 stored["chunking_profile"] = profile
+            for field in ("section_label", "section", "section_name"):
+                value = metadata.get(field)
+                if isinstance(value, str) and value and "section_label" not in stored:
+                    stored["section_label"] = value
+            for field in ("intent_hint", "intent"):
+                value = metadata.get(field)
+                if isinstance(value, str) and value and "intent_hint" not in stored:
+                    stored["intent_hint"] = value
+            source_system = metadata.get("source_system")
+            if isinstance(source_system, str) and source_system and "source_system" not in stored:
+                stored["source_system"] = source_system
         self._indices[index][doc_id] = _IndexedDocument(doc_id=doc_id, body=stored)
 
     def bulk_index(

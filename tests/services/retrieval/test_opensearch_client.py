@@ -65,3 +65,30 @@ def test_index_propagates_chunking_profile_for_filters():
     assert len(filtered) == 1
     assert filtered[0]["_id"] == "chunk-2"
     assert filtered[0]["_source"]["chunking_profile"] == "ctgov-registry"
+
+
+def test_index_surfaces_section_and_intent_fields():
+    client = OpenSearchClient()
+    client.index(
+        "chunks",
+        "chunk-eligibility",
+        {
+            "text": "Eligibility criteria include adult patients",
+            "metadata": {
+                "chunking_profile": "ctgov-registry",
+                "section_label": "Eligibility Criteria",
+                "intent_hint": "eligibility",
+            },
+        },
+    )
+
+    result = client.search(
+        "chunks",
+        "eligibility",
+        filters={"intent_hint": "eligibility"},
+    )
+
+    assert result
+    source = result[0]["_source"]
+    assert source["section_label"] == "Eligibility Criteria"
+    assert source["intent_hint"] == "eligibility"

@@ -40,6 +40,8 @@ def pytest_addoption(parser):  # pragma: no cover - option wiring only
 
 def pytest_configure(config):  # pragma: no cover - option wiring only
     config.addinivalue_line("markers", "asyncio: async tests")
+    config.addinivalue_line("markers", "integration: integration test requiring external services")
+    config.addinivalue_line("markers", "e2e: end-to-end pipeline validation")
 
 
 @pytest.fixture(autouse=True)

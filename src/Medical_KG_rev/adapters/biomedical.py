@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
+from urllib.parse import urlparse
+
+import httpx
+import structlog
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -29,6 +33,9 @@ from Medical_KG_rev.utils.validation import (
 )
 
 from .base import AdapterContext, BaseAdapter
+
+
+logger = structlog.get_logger(__name__)
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -429,6 +436,7 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 for auth in payload.get("authorships", [])
             ]
             concepts = [concept.get("display_name") for concept in payload.get("concepts", [])]
+            pdf_metadata = self._resolve_pdf_metadata(payload)
             metadata = {
                 "openalex_id": work_id,
                 "doi": doi,
@@ -439,6 +447,8 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 "is_open_access": payload.get("open_access", {}).get("is_oa"),
                 "cited_by_count": payload.get("cited_by_count"),
             }
+            if pdf_metadata:
+                metadata.setdefault("pdf", pdf_metadata)
             abstract = payload.get("abstract_inverted_index")
             abstract_text = (
                 _flatten_abstract(abstract)
@@ -450,6 +460,10 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 title="Abstract",
                 blocks=[Block(id="abstract-block", text=_to_text(abstract_text), spans=[])],
             )
+            pdf_url = metadata.get("pdf", {}).get("url") if metadata.get("pdf") else None
+            pdf_size = metadata.get("pdf", {}).get("size_bytes") if metadata.get("pdf") else None
+            pdf_content_type = metadata.get("pdf", {}).get("content_type") if metadata.get("pdf") else None
+            pdf_checksum = metadata.get("pdf", {}).get("checksum") if metadata.get("pdf") else None
             documents.append(
                 Document(
                     id=work_id,
@@ -457,9 +471,53 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                     title=payload.get("display_name"),
                     sections=[section],
                     metadata=metadata,
+                    pdf_url=pdf_url,
+                    pdf_size_bytes=pdf_size,
+                    pdf_content_type=pdf_content_type,
+                    pdf_checksum=pdf_checksum,
                 )
             )
         return documents
+
+    def _resolve_pdf_metadata(self, payload: Mapping[str, Any]) -> dict[str, Any] | None:
+        location = payload.get("best_oa_location") or {}
+        if not isinstance(location, Mapping):
+            return None
+        url = location.get("url_for_pdf") or location.get("pdf_url")
+        if not url:
+            return None
+        parsed = urlparse(str(url))
+        if parsed.scheme not in {"http", "https"}:
+            logger.debug("adapter.openalex.pdf_url_unsupported", url=url)
+            return None
+        size = location.get("pdf_size") or location.get("file_size")
+        if isinstance(size, str) and size.isdigit():
+            size = int(size)
+        elif not isinstance(size, int):
+            size = None
+        content_type = location.get("pdf_content_type")
+        checksum = location.get("pdf_checksum")
+        headers: dict[str, str] = {}
+        try:
+            response = self._client.request("HEAD", url, headers={"Accept": "application/pdf"})
+            if response.status_code < 400:
+                headers = dict(response.headers)
+                if size is None:
+                    length = response.headers.get("Content-Length")
+                    if length and length.isdigit():
+                        size = int(length)
+                if not content_type:
+                    content_type = response.headers.get("Content-Type")
+        except httpx.HTTPError as exc:
+            logger.debug("adapter.openalex.pdf_head_failed", url=url, error=str(exc))
+        metadata = {
+            "url": str(url),
+            "size_bytes": size,
+            "content_type": content_type,
+            "checksum": checksum,
+            "headers": headers,
+        }
+        return metadata
 
 
 class UnpaywallAdapter(ResilientHTTPAdapter):

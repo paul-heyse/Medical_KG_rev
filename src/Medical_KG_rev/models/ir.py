@@ -14,7 +14,14 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from .equation import Equation
 from .figure import Figure
@@ -102,6 +109,20 @@ class Document(IRBaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     version: str = Field(default="v1")
     metadata: dict[str, Any] = Field(default_factory=dict)
+    pdf_url: AnyUrl | None = Field(default=None, description="Location of the source PDF")
+    pdf_size_bytes: int | None = Field(
+        default=None,
+        ge=0,
+        description="Size of the downloaded PDF in bytes",
+    )
+    pdf_content_type: str | None = Field(
+        default=None,
+        description="Resolved content type of the PDF resource",
+    )
+    pdf_checksum: str | None = Field(
+        default=None,
+        description="Checksum of the downloaded PDF for integrity validation",
+    )
 
     @field_validator("sections")
     @classmethod
@@ -110,6 +131,24 @@ class Document(IRBaseModel):
         if len(ids) != len(set(ids)):
             raise ValueError("Document sections must have unique identifiers")
         return value
+
+    @field_validator("pdf_content_type")
+    @classmethod
+    def _validate_pdf_content_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        lowered = value.lower()
+        if "pdf" not in lowered:
+            raise ValueError("PDF content type must describe PDF media")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_pdf_fields(self) -> Document:
+        if self.pdf_size_bytes is not None and self.pdf_size_bytes < 0:
+            raise ValueError("PDF size must be non-negative")
+        if (self.pdf_size_bytes is not None or self.pdf_content_type or self.pdf_checksum) and not self.pdf_url:
+            raise ValueError("PDF metadata requires a pdf_url to be present")
+        return self
 
     @model_validator(mode="after")
     def _validate_spans(self) -> Document:

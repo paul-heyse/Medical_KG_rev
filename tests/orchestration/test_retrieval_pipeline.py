@@ -53,6 +53,45 @@ def test_retrieval_pipeline_returns_results() -> None:
     assert result.data["results"][0]["id"] == "d1"
 
 
+def test_fusion_boosts_table_candidates() -> None:
+    context = PipelineContext(
+        tenant_id="tenant",
+        operation="retrieve",
+        data={
+            "query": "pembrolizumab adverse events",
+            "intent": {"detected": "tabular", "confidence": 0.9},
+        },
+    )
+    context.data["retrieval_candidates"] = [
+        {
+            "strategy": "bm25",
+            "results": [
+                {
+                    "id": "doc-narrative",
+                    "score": 1.0,
+                    "document": {"title": "Narrative", "metadata": {"title": "Narrative"}},
+                },
+                {
+                    "id": "doc-table",
+                    "score": 0.6,
+                    "document": {
+                        "title": "Table",
+                        "metadata": {"is_table": True, "table_html": "<table></table>"},
+                    },
+                },
+            ],
+        }
+    ]
+    fusion = FusionOrchestrator(name="fusion")
+    fusion.execute(context)
+
+    fused = context.data["fusion_results"]
+    assert fused[0]["id"] == "doc-table"
+    metadata = fused[0]["document"]["metadata"]
+    assert metadata["boosts"]["tabular_intent"]["multiplier"] > 1.0
+    assert context.data["intent"]["boost_applied"] is True
+
+
 def test_retrieval_pipeline_handles_timeouts() -> None:
     executor = ParallelExecutor(max_workers=1)
     strategies = {

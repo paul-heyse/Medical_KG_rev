@@ -64,8 +64,9 @@ def _retrieval_to_type(result: RetrievalResult) -> RetrievalResultType:
         pipeline_version=result.pipeline_version,
         partial=result.partial,
         degraded=result.degraded,
-        stage_timings=result.stage_timings,
         rerank_metrics=result.rerank_metrics,
+        stage_timings=result.stage_timings,
+        intent=result.intent,
         errors=[_problem_to_type(problem) for problem in result.errors],
     )
 
@@ -202,6 +203,7 @@ class RetrievalResultType:
     degraded: bool
     rerank_metrics: JSON
     stage_timings: JSON
+    intent: JSON
     errors: list[ProblemDetailType]
 
 
@@ -260,6 +262,8 @@ class SearchInput:
     query: str
     filters: JSON = strawberry.field(default_factory=dict)
     pagination: PaginationInput = strawberry.field(default_factory=PaginationInput)
+    query_intent: str | None = None
+    table_only: bool = False
 
 
 @strawberry.input
@@ -295,11 +299,14 @@ class RetrieveInput:
     top_k: int = 5
     filters: JSON = strawberry.field(default_factory=dict)
     rerank: bool = True
+    rerank_model: str | None = None
     rerank_top_k: int = 10
     rerank_overflow: bool = False
     profile: str | None = None
     metadata: JSON = strawberry.field(default_factory=dict)
     explain: bool = False
+    query_intent: str | None = None
+    table_only: bool = False
 
 
 @strawberry.input
@@ -387,6 +394,8 @@ class Query:
             query=arguments.query,
             filters=dict(arguments.filters or {}),
             pagination=Pagination(**asdict(arguments.pagination)),
+            query_intent=arguments.query_intent,
+            table_only=arguments.table_only,
         )
         result = service.search(args)
         return _retrieval_to_type(result)

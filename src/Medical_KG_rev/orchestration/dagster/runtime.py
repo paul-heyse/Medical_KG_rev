@@ -229,8 +229,12 @@ def _make_stage_op(
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
+        stage = stage_factory.resolve(topology.name, stage_definition)
+        bind_runtime = getattr(stage, "bind_runtime", None)
+        if callable(bind_runtime):
+            bind_runtime(job_ledger=context.resources.job_ledger)
+        metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
-<<<<<<< HEAD
         state_manager: LedgerStateManager = context.resources.job_state_manager
         ledger: JobLedger = context.resources.job_ledger
         emitter: StageEventEmitter = context.resources.event_emitter
@@ -250,20 +254,6 @@ def _make_stage_op(
 
         stage = stage_factory.resolve(topology, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
-=======
-        ledger: JobLedger = context.resources.job_ledger
-        emitter: StageEventEmitter = context.resources.event_emitter
-        kafka_client: KafkaClient = context.resources.kafka
-
-        if hasattr(stage, "bind_runtime"):
-            try:
-                stage.bind_runtime(ledger=ledger, kafka=kafka_client)
-            except TypeError:
-                try:
-                    stage.bind_runtime(ledger=ledger)
-                except TypeError:
-                    stage.bind_runtime(ledger)
->>>>>>> refs/remotes/origin/main
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {

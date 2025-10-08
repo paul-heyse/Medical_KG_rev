@@ -288,6 +288,34 @@ PIPELINE_STAGE_DURATION = Histogram(
     labelnames=("stage",),
     buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
 )
+PDF_DOWNLOAD_DURATION = Histogram(
+    "pdf_download_duration_seconds",
+    "Duration of PDF download stage executions",
+    labelnames=("pipeline", "status"),
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0),
+)
+PDF_DOWNLOAD_BYTES = Histogram(
+    "pdf_download_size_bytes",
+    "Size of downloaded PDF files",
+    labelnames=("pipeline",),
+    buckets=(1024, 4096, 16384, 65536, 262144, 1048576, 5242880, 20971520),
+)
+PDF_DOWNLOAD_EVENTS = Counter(
+    "pdf_download_events_total",
+    "PDF download stage outcomes grouped by status",
+    labelnames=("pipeline", "status"),
+)
+PIPELINE_GATE_WAIT = Histogram(
+    "pipeline_gate_wait_seconds",
+    "Elapsed time waiting for pipeline gate conditions",
+    labelnames=("pipeline", "gate"),
+    buckets=(5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0),
+)
+PIPELINE_GATE_EVENTS = Counter(
+    "pipeline_gate_events_total",
+    "Pipeline gate evaluation outcomes",
+    labelnames=("pipeline", "gate", "outcome"),
+)
 RERANK_CACHE_HIT = Gauge(
     "reranking_cache_hit_rate",
     "Cache hit rate for reranker results",
@@ -582,6 +610,26 @@ def record_reranking_error(reranker: str, error_type: str) -> None:
 
 def record_pipeline_stage(stage: str, duration_seconds: float) -> None:
     PIPELINE_STAGE_DURATION.labels(stage).observe(max(duration_seconds, 0.0))
+
+
+def record_pdf_download_duration(pipeline: str, status: str, duration_seconds: float) -> None:
+    PDF_DOWNLOAD_DURATION.labels(pipeline, status).observe(max(duration_seconds, 0.0))
+
+
+def record_pdf_download_bytes(pipeline: str, size_bytes: int) -> None:
+    PDF_DOWNLOAD_BYTES.labels(pipeline).observe(max(size_bytes, 0))
+
+
+def record_pdf_download_event(pipeline: str, status: str) -> None:
+    PDF_DOWNLOAD_EVENTS.labels(pipeline, status).inc()
+
+
+def record_gate_wait_duration(pipeline: str, gate: str, duration_seconds: float) -> None:
+    PIPELINE_GATE_WAIT.labels(pipeline, gate).observe(max(duration_seconds, 0.0))
+
+
+def record_gate_event(pipeline: str, gate: str, outcome: str) -> None:
+    PIPELINE_GATE_EVENTS.labels(pipeline, gate, outcome).inc()
 
 
 def record_cache_hit_rate(reranker: str, hit_rate: float) -> None:

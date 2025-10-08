@@ -10,6 +10,10 @@ from datetime import datetime
 from typing import Any, cast
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
+LEDGER_BOOLEAN_FIELDS: frozenset[str] = frozenset({
+    "pdf_downloaded",
+    "pdf_ir_ready",
+})
 ALLOWED_TRANSITIONS = {
     "queued": {"processing", "cancelled"},
     "processing": {"processing", "completed", "failed", "cancelled"},
@@ -605,5 +609,11 @@ class JobLedger:
         update_job_status_metrics(counts)
 
 
-__all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
+__all__ = [
+    "LEDGER_BOOLEAN_FIELDS",
+    "JobLedger",
+    "JobLedgerEntry",
+    "JobLedgerError",
+    "JobTransition",
+]
 from Medical_KG_rev.observability.metrics import update_job_status_metrics

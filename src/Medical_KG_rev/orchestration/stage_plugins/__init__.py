@@ -1,57 +1,35 @@
-"""Custom orchestration stage implementations for PDF processing."""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import structlog
 
-from Medical_KG_rev.models.ir import Document as IrDocument
 from Medical_KG_rev.observability.metrics import (
-    record_pdf_download_failure,
-    record_pdf_download_success,
-    record_pdf_processing_failure,
+    record_gate_event,
+    record_gate_wait_duration,
+    record_pdf_download_bytes,
+    record_pdf_download_event,
+    record_pdf_download_duration,
 )
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
     StageRegistration,
 )
-from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
-from Medical_KG_rev.services.mineru.service import (
-    MineruGpuUnavailableError,
-    MineruOutOfMemoryError,
-    MineruProcessor,
-)
-from Medical_KG_rev.services.pdf import (
-    DownloadCircuitBreaker,
-    GpuResourceManager,
-    MineruProcessingError,
-    MineruProcessingResult,
-    MineruProcessingService,
-    PdfDeadLetterQueue,
-    PdfDownloadError,
-    PdfDownloadRequest,
-    PdfDownloadResult,
-    PdfDownloadService,
-    PdfStorageClient,
-    PdfStorageConfig,
-    PdfUrlValidator,
-)
-from Medical_KG_rev.storage.object_store import (
-    InMemoryObjectStore,
-    LocalFileObjectStore,
-    S3ObjectStore,
-)
+from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 logger = structlog.get_logger(__name__)
 
 
 class GateConditionError(RuntimeError):
-    """Raised when a gate stage condition fails."""
+    """Raised when a gate stage condition fails or times out."""
 
 
 def _sequence_length(value: Any) -> int:
@@ -65,20 +43,25 @@ def _count_single(value: Any) -> int:
 
 
 def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
-    state["download_artifact"] = output
+    state["download"] = output
 
 
-def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
-    if hasattr(output, "ir_document"):
-        state["document"] = getattr(output, "ir_document")
-        state["mineru_metadata"] = getattr(output, "metadata", {})
-        state["mineru_duration"] = getattr(output, "duration_seconds", 0.0)
-    else:
-        state["document"] = output
+def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - gate returns metadata only
+    state.setdefault("gates", {})
+    if isinstance(output, Mapping):
+        state["gates"][output.get("gate", "unknown")] = dict(output)
 
 
-def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - no-op
-    return None
+@dataclass(slots=True, frozen=True)
+class _UrlExtractor:
+    source: str
+    path: str
+
+
+@dataclass(slots=True, frozen=True)
+class _StorageConfig:
+    base_path: Path
+    filename_template: str
 
 
 def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
@@ -135,152 +118,310 @@ def _get_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
 
 @dataclass(slots=True)
 class DownloadStage:
-    """Download PDFs referenced by documents and persist them to storage."""
+    """Download PDF assets referenced by upstream adapter payloads."""
 
     name: str
-    download_service: PdfDownloadService
-    storage: PdfStorageClient
-    ledger: JobLedger | None = None
-    dead_letter_queue: PdfDeadLetterQueue | None = None
+    extractors: tuple[_UrlExtractor, ...]
+    storage: _StorageConfig
+    timeout_seconds: float
+    max_attempts: int
+    user_agent: str
+    http_client: HttpClient = field(repr=False)
+    _ledger: JobLedger | None = field(default=None, init=False, repr=False)
 
-    def bind_runtime(self, *, ledger: JobLedger, kafka: KafkaClient | None = None) -> None:
-        self.ledger = ledger
-        if kafka:
-            self.dead_letter_queue = PdfDeadLetterQueue(kafka)
+    def bind_runtime(self, *, job_ledger: JobLedger | None = None) -> None:
+        self._ledger = job_ledger
 
-    def execute(self, ctx: StageContext, upstream: Any) -> PdfDownloadResult | None:
-        document = self._resolve_document(upstream)
-        if document is None:
-            logger.warning(
-                "dagster.stage.download.missing_document",
-                stage=self.name,
-                tenant_id=ctx.tenant_id,
-            )
-            return None
-        pdf_url = document.pdf_url or document.metadata.get("pdf_url")
-        if not pdf_url:
-            if self.ledger and ctx.job_id:
-                self.ledger.update_pdf_state(
-                    ctx.job_id,
-                    history_status="skipped",
-                    detail="Document does not specify a pdf_url",
-                )
-            logger.info(
-                "dagster.stage.download.skipped",
-                stage=self.name,
-                tenant_id=ctx.tenant_id,
-                document_id=document.id,
-            )
-            return None
-        request = PdfDownloadRequest(
-            tenant_id=ctx.tenant_id,
-            document_id=document.id,
-            url=str(pdf_url),
-            correlation_id=ctx.correlation_id,
-            expected_size=document.pdf_size,
-            expected_content_type=document.pdf_content_type,
-            metadata={"source": document.source},
-        )
-        try:
-            result = self.download_service.download(request)
-        except PdfDownloadError as exc:
-            if self.ledger and ctx.job_id:
-                self.ledger.record_pdf_failure(
-                    ctx.job_id,
-                    stage=self.name,
-                    reason=str(exc),
-                    retryable=exc.retryable,
-                    code=exc.code,
-                )
-                if not exc.retryable:
-                    self.ledger.rollback_pdf_state(ctx.job_id, reason=str(exc))
-            self.storage.run(
-                self.storage.cleanup_document(ctx.tenant_id, document.id)
-            )
-            if (
-                self.dead_letter_queue
-                and ctx.job_id
-                and not exc.retryable
-            ):
-                self.dead_letter_queue.publish(
-                    job_id=ctx.job_id,
-                    tenant_id=ctx.tenant_id,
-                    document_id=document.id,
-                    stage=self.name,
-                    reason=exc.code or "download_error",
-                    payload={"url": request.url},
-                )
-            raise
-        if self.ledger and ctx.job_id:
-            self.ledger.clear_pdf_error(ctx.job_id)
-            self.ledger.set_pdf_downloaded(
-                ctx.job_id,
-                True,
-                url=result.request.url,
-                storage_key=result.storage_key,
-                size=result.size,
-                content_type=result.content_type,
-                checksum=result.checksum,
-            )
-        logger.info(
-            "dagster.stage.download.completed",
-            stage=self.name,
-            tenant_id=ctx.tenant_id,
-            document_id=document.id,
-            bytes=result.size,
-        )
-        return result
-
-    def _resolve_document(self, upstream: Any) -> Document | None:
-        if isinstance(upstream, Document):
-            return upstream
+    def execute(self, ctx: StageContext, upstream: Any) -> Mapping[str, Any]:
+        payloads: Sequence[Mapping[str, Any]] = []
         if isinstance(upstream, Mapping):
-            candidate = upstream.get("document")
-            if isinstance(candidate, Document):
-                return candidate
-        return None
+            payloads = [upstream]
+        elif isinstance(upstream, Sequence):
+            payloads = [item for item in upstream if isinstance(item, Mapping)]
 
+        candidate_urls = self._collect_urls(ctx, payloads)
+        pipeline = ctx.pipeline_name or "unknown"
+        start_time = time.perf_counter()
+        attempt = 0
+        failures: list[dict[str, Any]] = []
+        for url in candidate_urls:
+            attempt += 1
+            try:
+                logger.info(
+                    "dagster.stage.download.fetch",
+                    stage=self.name,
+                    url=url,
+                    tenant_id=ctx.tenant_id,
+                    pipeline=ctx.pipeline_name,
+                    correlation_id=ctx.correlation_id,
+                )
+                response = self.http_client.request(
+                    "GET",
+                    url,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=self.timeout_seconds,
+                )
+                response.raise_for_status()
+                content = response.content
+                checksum = hashlib.sha256(content).hexdigest()
+                target_path = self._write_file(ctx, url, content)
+                elapsed = time.perf_counter() - start_time
+                result = {
+                    "status": "downloaded",
+                    "url": url,
+                    "path": str(target_path),
+                    "size_bytes": len(content),
+                    "sha256": checksum,
+                    "content_type": response.headers.get("content-type"),
+                    "downloaded_at": datetime.now(UTC).isoformat(),
+                    "attempt": attempt,
+                }
+                self._record_success(ctx, result)
+                record_pdf_download_duration(pipeline, "success", elapsed)
+                record_pdf_download_bytes(pipeline, len(content))
+                record_pdf_download_event(pipeline, "success")
+                return {
+                    "status": "success",
+                    "files": [result],
+                    "attempts": attempt,
+                    "gate_ready": True,
+                    "elapsed_seconds": elapsed,
+                }
+            except Exception as exc:  # pragma: no cover - exercised via failure test path
+                logger.warning(
+                    "dagster.stage.download.failed",
+                    stage=self.name,
+                    tenant_id=ctx.tenant_id,
+                    pipeline=ctx.pipeline_name,
+                    correlation_id=ctx.correlation_id,
+                    url=url,
+                    error=str(exc),
+                )
+                failures.append({"url": url, "error": str(exc), "attempt": attempt})
+                record_pdf_download_event(pipeline, "failure")
 
-@dataclass(slots=True)
-class GateCondition:
-    key: str
-    expected: Any = True
+        elapsed = time.perf_counter() - start_time
+        self._record_failure(ctx, failures)
+        record_pdf_download_duration(pipeline, "failure", elapsed)
+        return {
+            "status": "failed",
+            "files": [],
+            "attempts": attempt,
+            "failures": failures,
+            "elapsed_seconds": elapsed,
+        }
+
+    def _collect_urls(
+        self,
+        ctx: StageContext,
+        payloads: Sequence[Mapping[str, Any]],
+    ) -> list[str]:
+        urls: list[str] = []
+        for extractor in self.extractors:
+            sources: Iterable[Any]
+            if extractor.source == "payload":
+                sources = payloads
+            elif extractor.source == "context":
+                sources = [ctx.metadata]
+            else:
+                logger.debug(
+                    "dagster.stage.download.unknown_source",
+                    stage=self.name,
+                    source=extractor.source,
+                )
+                continue
+            for source in sources:
+                value = self._resolve_path(source, extractor.path)
+                if isinstance(value, str) and value.startswith("http"):
+                    urls.append(value)
+                elif isinstance(value, Sequence):
+                    for item in value:
+                        if isinstance(item, str) and item.startswith("http"):
+                            urls.append(item)
+        # remove duplicates preserving order
+        seen: set[str] = set()
+        unique: list[str] = []
+        for url in urls:
+            if url not in seen:
+                seen.add(url)
+                unique.append(url)
+        return unique
+
+    def _resolve_path(self, data: Any, path: str) -> Any:
+        current = [data]
+        for raw_segment in path.split("."):
+            segment = raw_segment
+            explode = False
+            if raw_segment.endswith("[]"):
+                explode = True
+                segment = raw_segment[:-2]
+            next_values: list[Any] = []
+            for value in current:
+                if isinstance(value, Mapping):
+                    next_value = value.get(segment)
+                elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+                    try:
+                        index = int(segment)
+                    except ValueError:
+                        continue
+                    next_value = value[index] if 0 <= index < len(value) else None
+                else:
+                    next_value = getattr(value, segment, None)
+                if explode and isinstance(next_value, Sequence) and not isinstance(next_value, (str, bytes)):
+                    next_values.extend(next_value)
+                elif explode and isinstance(next_value, Mapping):
+                    next_values.extend(next_value.values())
+                elif next_value is not None:
+                    next_values.append(next_value)
+            current = next_values
+        if not current:
+            return None
+        if len(current) == 1:
+            return current[0]
+        return current
+
+    def _write_file(self, ctx: StageContext, url: str, content: bytes) -> Path:
+        target_dir = self.storage.base_path
+        target_dir.mkdir(parents=True, exist_ok=True)
+        filename = self._render_filename(ctx, url)
+        path = target_dir / filename
+        path.write_bytes(content)
+        return path
+
+    def _render_filename(self, ctx: StageContext, url: str) -> str:
+        identifier = ctx.doc_id or ctx.job_id or hashlib.sha1(url.encode(), usedforsecurity=False).hexdigest()
+        template_context = {
+            "doc_id": identifier,
+            "job_id": ctx.job_id or identifier,
+            "tenant_id": ctx.tenant_id,
+            "timestamp": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
+        }
+        try:
+            rendered = self.storage.filename_template.format(**template_context)
+        except KeyError:
+            rendered = f"{identifier}.pdf"
+        safe = [char if char.isalnum() or char in {"-", "_", "."} else "-" for char in rendered]
+        filename = "".join(safe)
+        if not filename.lower().endswith(".pdf"):
+            filename = f"{filename}.pdf"
+        return filename
+
+    def _record_success(self, ctx: StageContext, result: Mapping[str, Any]) -> None:
+        if not self._ledger or not ctx.job_id:
+            return
+        metadata = {
+            "pdf_url": result.get("url"),
+            "pdf_path": result.get("path"),
+            "pdf_sha256": result.get("sha256"),
+            "pdf_downloaded_at": result.get("downloaded_at"),
+        }
+        self._ledger.set_pdf_downloaded(ctx.job_id, True)
+        self._ledger.update_metadata(ctx.job_id, metadata)
+
+    def _record_failure(self, ctx: StageContext, failures: Sequence[Mapping[str, Any]]) -> None:
+        if not self._ledger or not ctx.job_id:
+            return
+        failure = failures[-1] if failures else {}
+        metadata = {
+            "pdf_downloaded": False,
+            "pdf_download_error": failure.get("error"),
+            "pdf_last_attempt_url": failure.get("url"),
+        }
+        self._ledger.set_pdf_downloaded(ctx.job_id, False)
+        self._ledger.update_metadata(ctx.job_id, metadata)
 
 
 @dataclass(slots=True)
 class GateStage:
-    """Gate stage validating state conditions before proceeding."""
+    """Wait for ledger conditions to resume downstream execution."""
 
     name: str
-    conditions: tuple[GateCondition, ...]
+    gate_name: str
+    field: str
+    expected: Any
+    resume_stage: str
+    timeout_seconds: float
+    poll_interval_seconds: float
+    _ledger: JobLedger | None = field(default=None, init=False, repr=False)
 
-    def execute(self, ctx: StageContext, upstream: Any) -> None:
-        state = upstream if isinstance(upstream, dict) else {"value": upstream}
-        for condition in self.conditions:
-            value = state
-            for part in condition.key.split("."):
-                if isinstance(value, dict):
-                    value = value.get(part)
-                else:
-                    value = getattr(value, part, None)
-            if value != condition.expected:
-                logger.warning(
-                    "dagster.stage.gate.blocked",
+    def bind_runtime(self, *, job_ledger: JobLedger | None = None) -> None:
+        self._ledger = job_ledger
+
+    def execute(self, ctx: StageContext, upstream: Any) -> Mapping[str, Any]:  # pragma: no cover - validated in unit tests
+        if self._ledger is None:
+            raise GateConditionError(f"Gate '{self.name}' requires JobLedger binding")
+        if ctx.job_id is None:
+            raise GateConditionError(f"Gate '{self.name}' requires job context for ledger evaluation")
+
+        pipeline = ctx.pipeline_name or "unknown"
+        start = time.perf_counter()
+        attempts = 0
+        deadline = start + self.timeout_seconds
+        last_value: Any = None
+        while True:
+            entry = self._ledger.get(ctx.job_id)
+            attempts += 1
+            if entry is None:
+                raise GateConditionError(f"Gate '{self.name}' could not locate ledger entry for job '{ctx.job_id}'")
+            last_value = self._resolve_field(entry, self.field)
+            if last_value == self.expected:
+                elapsed = time.perf_counter() - start
+                metadata = {
+                    "gate": self.gate_name,
+                    "elapsed_seconds": elapsed,
+                    "attempts": attempts,
+                    "value": last_value,
+                }
+                record_gate_wait_duration(pipeline, self.gate_name, elapsed)
+                record_gate_event(pipeline, self.gate_name, "passed")
+                logger.info(
+                    "dagster.stage.gate.passed",
                     stage=self.name,
                     tenant_id=ctx.tenant_id,
-                    key=condition.key,
-                    expected=condition.expected,
-                    actual=value,
+                    pipeline=ctx.pipeline_name,
+                    correlation_id=ctx.correlation_id,
+                    gate=self.gate_name,
+                    elapsed=elapsed,
+                    attempts=attempts,
+                )
+                self._ledger.update_metadata(
+                    ctx.job_id,
+                    {
+                        f"gate.{self.gate_name}.passed_at": datetime.now(UTC).isoformat(),
+                        f"gate.{self.gate_name}.attempts": attempts,
+                        f"gate.{self.gate_name}.elapsed_seconds": elapsed,
+                    },
+                )
+                return metadata
+            if time.perf_counter() >= deadline:
+                elapsed = time.perf_counter() - start
+                record_gate_wait_duration(pipeline, self.gate_name, elapsed)
+                record_gate_event(pipeline, self.gate_name, "timeout")
+                logger.warning(
+                    "dagster.stage.gate.timeout",
+                    stage=self.name,
+                    tenant_id=ctx.tenant_id,
+                    pipeline=ctx.pipeline_name,
+                    correlation_id=ctx.correlation_id,
+                    gate=self.gate_name,
+                    elapsed=elapsed,
+                    attempts=attempts,
+                    last_value=last_value,
                 )
                 raise GateConditionError(
-                    f"Gate '{self.name}' blocked: expected {condition.key} == {condition.expected!r}"
+                    f"Gate '{self.name}' timed out after {elapsed:.2f}s waiting for {self.field} == {self.expected!r}"
                 )
-        logger.debug(
-            "dagster.stage.gate.passed",
-            stage=self.name,
-            tenant_id=ctx.tenant_id,
-            conditions=len(self.conditions),
-        )
+            record_gate_event(pipeline, self.gate_name, "waiting")
+            time.sleep(self.poll_interval_seconds)
+
+    def _resolve_field(self, entry: Any, path: str) -> Any:
+        value: Any = entry
+        for segment in path.split("."):
+            if isinstance(value, Mapping):
+                value = value.get(segment)
+            else:
+                value = getattr(value, segment, None)
+        return value
 
 
 @dataclass(slots=True)
@@ -485,76 +626,46 @@ def register_download_stage() -> StageRegistration:
 
     def _builder(definition: StageDefinition) -> PdfDownloadStage:
         config = definition.config or {}
-        storage = _get_storage_client(config)
-        validator_cfg = config.get("validator") or {}
-        validator = PdfUrlValidator(
-            timeout=float(validator_cfg.get("timeout", 15.0)),
-            max_attempts=int(validator_cfg.get("max_attempts", 3)),
+        extractor_configs = config.get("url_extractors", [])
+        extractors = tuple(
+            _UrlExtractor(source=str(item.get("source")), path=str(item.get("path")))
+            for item in extractor_configs
+            if isinstance(item, Mapping)
         )
-        breaker_cfg = config.get("circuit_breaker") or {}
-        circuit_breaker = DownloadCircuitBreaker(
-            failure_threshold=int(breaker_cfg.get("failure_threshold", 5)),
-            recovery_timeout=float(breaker_cfg.get("recovery_timeout_seconds", 300.0)),
+        storage_config = config.get("storage", {}) if isinstance(config.get("storage"), Mapping) else {}
+        storage = _StorageConfig(
+            base_path=Path(str(storage_config.get("base_path"))),
+            filename_template=str(storage_config.get("filename_template", "{job_id}.pdf")),
         )
-        download_service = PdfDownloadService(
-            storage=storage,
-            validator=validator,
-            timeout=float(config.get("timeout", 60.0)),
-            max_attempts=int(config.get("max_attempts", 3)),
-            chunk_size=int(config.get("chunk_size", 512 * 1024)),
-            circuit_breaker=circuit_breaker,
-            failure_alert_threshold=float(config.get("failure_alert_threshold", 0.5)),
-            failure_window_seconds=float(config.get("failure_window_seconds", 300.0)),
-            backoff_initial=float(config.get("backoff_initial", 1.0)),
-            backoff_max=float(config.get("backoff_max", 10.0)),
+        http_config = config.get("http", {}) if isinstance(config.get("http"), Mapping) else {}
+        timeout = float(http_config.get("timeout_seconds", 45))
+        attempts = int(http_config.get("max_attempts", 3))
+        user_agent = str(http_config.get("user_agent", "Medical-KG-Pipeline/1.0"))
+        retry = RetryConfig(
+            attempts=attempts,
+            timeout=timeout,
+            backoff_strategy=BackoffStrategy.EXPONENTIAL,
+            backoff_initial=1.0,
+            backoff_max=min(60.0, timeout * 2),
         )
+        client = HttpClient(retry=retry)
         return DownloadStage(
             name=definition.name,
-            download_service=download_service,
+            extractors=extractors,
             storage=storage,
+            timeout_seconds=timeout,
+            max_attempts=attempts,
+            user_agent=user_agent,
+            http_client=client,
         )
 
     metadata = StageMetadata(
         stage_type="download",
-        state_key="download_artifact",
+        state_key="download",
         output_handler=_handle_download_output,
-        output_counter=lambda output: 1 if output else 0,
-        description="Downloads PDF resources referenced by documents",
-        dependencies=("parse",),
-    )
-    return StageRegistration(metadata=metadata, builder=_builder)
-
-
-def register_mineru_stage() -> StageRegistration:
-    """Register the MinerU processing stage plugin."""
-
-    def _builder(definition: StageDefinition) -> MineruStage:
-        config = definition.config or {}
-        storage = _get_storage_client(config)
-        gpu_cfg = config.get("gpu") or {}
-        gpu_manager = GpuResourceManager(
-            max_concurrent=gpu_cfg.get("max_concurrent"),
-            gpu_memory_mb=gpu_cfg.get("memory_mb"),
-        )
-        processor = MineruProcessor()
-        processing_cfg = config.get("processing") or {}
-        processing_service = MineruProcessingService(
-            processor=processor,
-            storage=storage,
-            gpu_manager=gpu_manager,
-            timeout=float(processing_cfg.get("timeout", config.get("timeout", 300.0))),
-            sla_seconds=float(processing_cfg.get("sla_seconds", 240.0)),
-            enable_state_recovery=bool(processing_cfg.get("stateful_recovery", True)),
-        )
-        return MineruStage(name=definition.name, processing_service=processing_service)
-
-    metadata = StageMetadata(
-        stage_type="mineru",
-        state_key="mineru_result",
-        output_handler=_handle_mineru_output,
-        output_counter=lambda output: 1 if output else 0,
-        description="Processes downloaded PDFs with MinerU to produce structured output",
-        dependencies=("download", "parse"),
+        output_counter=_sequence_length,
+        description="Downloads external PDF resources and stores them for MinerU processing",
+        dependencies=("ingest",),
     )
     return StageRegistration(metadata=metadata, builder=_builder)
 
@@ -564,24 +675,28 @@ def register_gate_stage() -> StageRegistration:
 
     def _builder(definition: StageDefinition) -> GateStage:
         config = definition.config or {}
-        conditions_config = config.get("conditions") or []
-        parsed: list[GateCondition] = []
-        for entry in conditions_config:
-            if isinstance(entry, Mapping):
-                key = entry.get("key") or "value"
-                parsed.append(GateCondition(key=str(key), expected=entry.get("expected", True)))
-            elif isinstance(entry, str):
-                parsed.append(GateCondition(key=entry, expected=True))
-        if not parsed:
-            parsed.append(GateCondition(key="value", expected=True))
-        return GateStage(name=definition.name, conditions=tuple(parsed))
+        gate_name = str(config.get("gate") or definition.name)
+        field = str(config.get("field", "pdf_ir_ready"))
+        expected = config.get("equals", True)
+        resume_stage = str(config.get("resume_stage", "chunk"))
+        timeout = float(config.get("timeout_seconds", 900))
+        poll = float(config.get("poll_interval_seconds", 15))
+        return GateStage(
+            name=definition.name,
+            gate_name=gate_name,
+            field=field,
+            expected=expected,
+            resume_stage=resume_stage,
+            timeout_seconds=timeout,
+            poll_interval_seconds=poll,
+        )
 
     metadata = StageMetadata(
         stage_type="gate",
         state_key=None,
         output_handler=_handle_gate_output,
         output_counter=lambda _: 0,
-        description="Halts pipeline execution until configured conditions are met",
+        description="Halts pipeline execution until ledger conditions are satisfied",
         dependencies=("download",),
     )
     return StageRegistration(metadata=metadata, builder=_builder)
@@ -609,7 +724,7 @@ def register_mineru_stage() -> StageRegistration:
 
 
 __all__ = [
-    "GateCondition",
+    "DownloadStage",
     "GateConditionError",
     "GateStage",
     "PdfDownloadRecord",

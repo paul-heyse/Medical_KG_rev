@@ -1,26 +1,69 @@
 name: pdf-two-phase
-version: "2025-01-01"
+version: "2025-03-15"
 applicable_sources:
   - pmc
   - pmc-fulltext
+  - openalex
 metadata:
   owner: ingestion-team
-  description: PDF ingestion with MinerU gate.
+  description: Two-phase PDF ingestion pipeline with MinerU gate enforcement.
+  tags:
+    - pdf
+    - mineru
+    - two-phase
 stages:
   - name: ingest
     type: ingest
     policy: default
+    config:
+      adapter: openalex
+      domain: biomedical
+      strict: false
+      parameters:
+        include:
+          - id
+          - doi
+          - title
+          - best_oa_location
+          - primary_location
+          - locations
   - name: download
     type: download
     policy: polite-api
     depends_on:
       - ingest
+    config:
+      storage:
+        base_path: /var/lib/medical-kg/pdfs
+        filename_template: "{doc_id}.pdf"
+      http:
+        timeout_seconds: 45
+        max_attempts: 3
+        user_agent: Medical-KG-Pipeline/1.0
+      url_extractors:
+        - source: payload
+          path: best_oa_location.pdf_url
+        - source: payload
+          path: best_oa_location.url
+        - source: payload
+          path: primary_location.pdf_url
+        - source: payload
+          path: locations[].pdf_url
+        - source: context
+          path: metadata.pdf_url
   - name: gate_pdf_ir_ready
     type: gate
     gate: pdf_ir_ready
     policy: default
     depends_on:
       - download
+    config:
+      gate: pdf_ir_ready
+      field: pdf_ir_ready
+      equals: true
+      resume_stage: chunk
+      timeout_seconds: 1800
+      poll_interval_seconds: 15.0
   - name: chunk
     type: chunk
     policy: gpu-bound
@@ -53,8 +96,7 @@ gates:
     timeout_seconds: 900
     poll_interval_seconds: 10.0
     condition:
-      mode: all
-      clauses:
-        - field: pdf_ir_ready
-          operator: equals
-          value: true
+      field: pdf_ir_ready
+      equals: true
+      timeout_seconds: 1800
+      poll_interval_seconds: 15.0

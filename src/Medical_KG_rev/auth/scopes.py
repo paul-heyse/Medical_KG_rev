@@ -11,6 +11,7 @@ class Scopes:
     JOBS_WRITE = "jobs:write"
     EMBED_READ = "embed:read"
     EMBED_WRITE = "embed:write"
+    EMBED_ADMIN = "embed:admin"
     RETRIEVE_READ = "kg:read"
     KG_WRITE = "kg:write"
     PROCESS_WRITE = "process:write"
@@ -25,6 +26,7 @@ SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.JOBS_WRITE: "Cancel or mutate jobs",
     Scopes.EMBED_READ: "Read embedding metadata and namespace catalogs",
     Scopes.EMBED_WRITE: "Generate embeddings",
+    Scopes.EMBED_ADMIN: "Administer embedding namespaces and storage",
     Scopes.RETRIEVE_READ: "Search the knowledge graph",
     Scopes.KG_WRITE: "Write to the knowledge graph",
     Scopes.PROCESS_WRITE: "Execute processing utilities (chunking, extraction)",

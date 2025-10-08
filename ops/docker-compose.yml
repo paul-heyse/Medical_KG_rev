@@ -20,6 +20,11 @@ services:
       MK_SECURITY__OAUTH__JWKS_URL: https://idp.local/realms/medical/protocol/openid-connect/certs
       MK_SECURITY__OAUTH__CLIENT_ID: medical-gateway
       MK_SECURITY__OAUTH__CLIENT_SECRET: dev-secret
+      MK_EMBEDDING__POLICY__CACHE_TTL_SECONDS: '60'
+      MK_EMBEDDING__POLICY__MAX_CACHE_ENTRIES: '512'
+      MK_EMBEDDING__POLICY__DRY_RUN: 'false'
+      MK_EMBEDDING__PERSISTER__BACKEND: vector_store
+      MK_EMBEDDING__PERSISTER__CACHE_LIMIT: '256'
     ports:
       - '8000:8000'
     depends_on:

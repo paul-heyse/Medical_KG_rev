@@ -16,7 +16,7 @@ from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
-from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import ChunkStage, StageContext
 
 logger = structlog.get_logger(__name__)
@@ -51,8 +51,8 @@ class ChunkingService:
         self._stage_definition = stage_definition or StageDefinition(name="chunk", type="chunk")
         if stage_factory is None:
             manager = adapter_manager or get_plugin_manager()
-            registry = build_default_stage_factory(manager)
-            stage_factory = StageFactory(registry)
+            plugin_manager = create_stage_plugin_manager(manager)
+            stage_factory = StageFactory(plugin_manager)
         self._stage_factory = stage_factory
 
     def chunk(self, *args: Any, **kwargs: Any) -> list[Chunk]:

@@ -36,7 +36,7 @@ from ..orchestration.dagster import (
     PipelineConfigLoader,
     ResiliencePolicyLoader,
     StageFactory,
-    build_default_stage_factory,
+    create_stage_plugin_manager,
     submit_to_dagster,
 )
 from ..orchestration.stages.contracts import StageContext
@@ -116,9 +116,16 @@ class GatewayError(RuntimeError):
         self.detail = detail
 
 
-def _build_stage_factory(manager: AdapterPluginManager | None = None) -> StageFactory:
-    registry = build_default_stage_factory(manager or get_plugin_manager())
-    return StageFactory(registry)
+def _build_stage_factory(
+    manager: AdapterPluginManager | None = None,
+    *,
+    job_ledger: JobLedger | None = None,
+) -> StageFactory:
+    plugin_manager = create_stage_plugin_manager(
+        manager or get_plugin_manager(),
+        job_ledger=job_ledger,
+    )
+    return StageFactory(plugin_manager)
 
 
 @dataclass
@@ -148,7 +155,10 @@ class GatewayService:
 
     def __post_init__(self) -> None:
         if self.stage_factory is None:
-            self.stage_factory = _build_stage_factory(self.adapter_manager)
+            self.stage_factory = _build_stage_factory(
+                self.adapter_manager,
+                job_ledger=self.ledger,
+            )
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.namespace_registry is None:
@@ -1400,8 +1410,11 @@ def get_gateway_service() -> GatewayService:
         adapter_manager = get_plugin_manager()
         _pipeline_loader = PipelineConfigLoader()
         _resilience_loader = ResiliencePolicyLoader()
-        stage_builders = build_default_stage_factory(adapter_manager)
-        _stage_factory = StageFactory(stage_builders)
+        stage_plugin_manager = create_stage_plugin_manager(
+            adapter_manager,
+            job_ledger=_ledger,
+        )
+        _stage_factory = StageFactory(stage_plugin_manager)
         _orchestrator = DagsterOrchestrator(
             _pipeline_loader,
             _resilience_loader,

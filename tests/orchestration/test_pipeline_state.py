@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-import json
+import orjson
 import zlib
 from typing import Iterable
 
@@ -100,12 +100,22 @@ def test_pipeline_state_stage_flow_serialises() -> None:
         "kg",
         GraphWriteReceipt(nodes_written=1, edges_written=0, correlation_id="corr", metadata={}),
     )
+    state.apply_stage_output(
+        "download",
+        "download",
+        [{"asset_id": "pdf-1", "uri": "s3://bucket/file.pdf"}],
+    )
+    state.apply_stage_output("gate", "pdf_gate", True)
+    assert state.has_pdf_assets()
+    assert state.is_pdf_ready is True
 
     snapshot = state.serialise()
     assert snapshot["payload_count"] == 1
     assert snapshot["chunk_count"] == 1
     assert snapshot["embedding_count"] == 1
     assert snapshot["stage_results"]["index"]["output_count"] == 1
+    assert snapshot["pdf_asset_count"] == 1
+    assert snapshot["gate_status"]["pdf_gate"] is True
 
 
 def test_serialise_caches_until_mutation() -> None:
@@ -132,8 +142,14 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     state = _sample_state({"foo": "bar"})
     state.apply_stage_output("ingest", "ingest", [{"foo": 1}])
     state.record_stage_metrics("ingest", stage_type="ingest", attempts=1)
+    state.apply_stage_output(
+        "download",
+        "download",
+        [{"asset_id": "pdf-1", "uri": "s3://bucket/file.pdf"}],
+    )
+    state.apply_stage_output("gate", "pdf_gate", False)
     payload = state.serialise()
-    encoded = base64.b64encode(zlib.compress(json.dumps(payload).encode("utf-8"))).decode("ascii")
+    encoded = base64.b64encode(zlib.compress(orjson.dumps(payload))).decode("ascii")
 
     recovered = PipelineState.recover(
         encoded,
@@ -143,6 +159,8 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     assert recovered.schema_version == payload["version"]
     assert recovered.metadata == state.metadata
     assert "ingest" in recovered.stage_results
+    assert recovered.has_pdf_assets()
+    assert recovered.gate_status["pdf_gate"] is False
 
 
 def test_dependencies_require_completed_stage() -> None:
@@ -302,3 +320,31 @@ def test_legacy_round_trip_preserves_core_fields() -> None:
     assert restored.embedding_batch.model == batch.model
     assert restored.metadata == state.metadata
     assert restored.stage_results.keys() == state.stage_results.keys()
+
+
+def test_persist_with_retry_retries_on_failure() -> None:
+    state = _sample_state({"foo": "bar"})
+    attempts = {"count": 0}
+
+    def writer(data: bytes) -> str:
+        attempts["count"] += 1
+        if attempts["count"] < 2:
+            raise RuntimeError("transient failure")
+        return "ok"
+
+    result = state.persist_with_retry(writer)
+    assert result == "ok"
+    assert attempts["count"] == 2
+
+
+def test_validate_transition_requires_pdf_assets_for_gate() -> None:
+    state = _sample_state()
+    with pytest.raises(PipelineStateValidationError):
+        state.validate_transition("gate")
+    state.apply_stage_output("parse", "parse", _build_document())
+    state.apply_stage_output(
+        "download",
+        "download",
+        [{"asset_id": "pdf-1", "uri": "s3://bucket/file.pdf"}],
+    )
+    state.validate_transition("gate")

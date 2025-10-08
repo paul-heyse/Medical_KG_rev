@@ -59,6 +59,44 @@ MINERU_VLLM_CIRCUIT_BREAKER_STATE = Gauge(
     "Circuit breaker state for MinerU vLLM client (0=closed, 1=half-open, 2=open)",
 )
 
+STAGE_PLUGIN_REGISTRATIONS = Counter(
+    "medicalkg_stage_plugin_registrations_total",
+    "Registered stage plugins by stage type",
+    labelnames=("plugin", "stage_type"),
+)
+
+STAGE_PLUGIN_FAILURES = Counter(
+    "medicalkg_stage_plugin_failures_total",
+    "Stage plugin load or execution failures",
+    labelnames=("plugin", "stage_type"),
+)
+
+STAGE_PLUGIN_HEALTH = Gauge(
+    "medicalkg_stage_plugin_health",
+    "Health status of registered stage plugins (1=healthy, 0=unhealthy)",
+    labelnames=("plugin",),
+)
+
+PIPELINE_STATE_CACHE_HITS = Counter(
+    "medicalkg_pipeline_state_cache_hits_total",
+    "Pipeline state cache hits",
+)
+
+PIPELINE_STATE_CACHE_MISSES = Counter(
+    "medicalkg_pipeline_state_cache_misses_total",
+    "Pipeline state cache misses",
+)
+
+PIPELINE_STATE_CACHE_SIZE = Gauge(
+    "medicalkg_pipeline_state_cache_size",
+    "Current size of the pipeline state cache",
+)
+
+PIPELINE_STATE_SERIALISATIONS = Counter(
+    "medicalkg_pipeline_state_serialisations_total",
+    "Number of pipeline state serialisations performed",
+)
+
 logger = structlog.get_logger(__name__)
 
 REQUEST_COUNTER = Counter(

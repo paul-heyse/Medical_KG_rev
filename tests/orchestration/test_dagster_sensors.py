@@ -58,3 +58,7 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
     assert adapter_config["parameters"]["dataset"] == "pmc"
 
     assert request.tags["medical_kg.resume_stage"] == "chunk"
+    assert request.tags["medical_kg.pipeline"] == "pdf-two-phase"
+
+    metadata_ctx = ctx_config["metadata"]
+    assert metadata_ctx["correlation_id"] == "corr-sensor"

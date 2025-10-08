@@ -80,6 +80,7 @@ class CloudEventFactory:
         duration_ms: int,
         output_count: int,
         attempt: int,
+        state_snapshot: str | None = None,
     ) -> CloudEvent:
         attributes = self._base_attributes("stage.completed", ctx, stage)
         data = {
@@ -91,6 +92,8 @@ class CloudEventFactory:
             "duration_ms": duration_ms,
             "output_count": output_count,
         }
+        if state_snapshot is not None:
+            data["state_snapshot"] = state_snapshot
         return CloudEvent(attributes, data)
 
     def stage_failed(
@@ -100,6 +103,7 @@ class CloudEventFactory:
         *,
         error: str,
         attempt: int,
+        state_snapshot: str | None = None,
     ) -> CloudEvent:
         attributes = self._base_attributes("stage.failed", ctx, stage)
         data = {
@@ -110,6 +114,8 @@ class CloudEventFactory:
             "attempt": attempt,
             "error": error,
         }
+        if state_snapshot is not None:
+            data["state_snapshot"] = state_snapshot
         return CloudEvent(attributes, data)
 
     def stage_retrying(
@@ -165,6 +171,7 @@ class StageEventEmitter:
         attempt: int,
         duration_ms: int,
         output_count: int,
+        state_snapshot: str | None = None,
     ) -> None:
         event = self._factory.stage_completed(
             ctx,
@@ -172,11 +179,26 @@ class StageEventEmitter:
             duration_ms=duration_ms,
             output_count=output_count,
             attempt=attempt,
+            state_snapshot=state_snapshot,
         )
         self._publish(event)
 
-    def emit_failed(self, ctx: StageContext, stage: str, *, attempt: int, error: str) -> None:
-        event = self._factory.stage_failed(ctx, stage, error=error, attempt=attempt)
+    def emit_failed(
+        self,
+        ctx: StageContext,
+        stage: str,
+        *,
+        attempt: int,
+        error: str,
+        state_snapshot: str | None = None,
+    ) -> None:
+        event = self._factory.stage_failed(
+            ctx,
+            stage,
+            error=error,
+            attempt=attempt,
+            state_snapshot=state_snapshot,
+        )
         self._publish(event)
 
     def emit_retrying(

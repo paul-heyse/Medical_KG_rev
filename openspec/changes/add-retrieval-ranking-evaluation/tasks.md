@@ -511,71 +511,69 @@
 
 ### 5.1 Tabular Query Detection (8 tasks)
 
-- [ ] 5.1.1 Create query intent classifier
+- [x] 5.1.1 Create query intent classifier
   - **File**: `src/Medical_KG_rev/services/retrieval/routing/intent_classifier.py`
   - **Method**: Rule-based or simple ML classifier
 
-- [ ] 5.1.2 Define tabular query patterns
+- [x] 5.1.2 Define tabular query patterns
   - **Keywords**: "adverse events", "effect sizes", "outcome measures", "results table"
   - **Regex**: Match clinical trial registry terminology
 
-- [ ] 5.1.3 Implement keyword matching
+- [x] 5.1.3 Implement keyword matching
   - **Method**: Check query for tabular keywords
   - **Output**: `is_tabular_query: bool`
 
-- [ ] 5.1.4 Add query intent enumeration
+- [x] 5.1.4 Add query intent enumeration
   - **Enum**: `QueryIntent.TABULAR`, `QueryIntent.NARRATIVE`, `QueryIntent.MIXED`
   - **Default**: `NARRATIVE`
 
-- [ ] 5.1.5 Implement confidence scoring
+- [x] 5.1.5 Implement confidence scoring
   - **Output**: `tabular_confidence: float` (0-1 scale)
   - **Use**: Higher confidence → stronger boosting
 
-- [ ] 5.1.6 Add manual intent override
+- [x] 5.1.6 Add manual intent override
   - **API**: `/v1/search?query_intent=tabular`
   - **Use Case**: User explicitly wants tabular results
 
-- [ ] 5.1.7 Write intent classifier tests
+- [x] 5.1.7 Write intent classifier tests
   - **Cases**: Clear tabular, clear narrative, ambiguous
 
-- [ ] 5.1.8 Benchmark classifier accuracy
+- [x] 5.1.8 Benchmark classifier accuracy
   - **Test Set**: 100 queries labeled by domain experts
   - **Target**: >85% accuracy
 
-### 5.2 Table Chunk Boosting (12 tasks)
-
-- [ ] 5.2.1 Identify table chunks in index
+- [x] 5.2.1 Identify table chunks in index
   - **Field**: `is_unparsed_table=true` or `intent_hint="ae"`
   - **Source**: From Proposal 1 chunking
 
-- [ ] 5.2.2 Implement OpenSearch boosting query
+- [x] 5.2.2 Implement OpenSearch boosting query
   - **Method**: Use `function_score` with `field_value_factor`
   - **Boost**: 3x for table chunks when tabular query detected
 
-- [ ] 5.2.3 Add dynamic boosting based on confidence
+- [x] 5.2.3 Add dynamic boosting based on confidence
   - **Formula**: `boost = 1 + (2 * tabular_confidence)`
   - **Range**: 1x (no boost) to 3x (high confidence)
 
-- [ ] 5.2.4 Preserve table HTML in results
+- [x] 5.2.4 Preserve table HTML in results
   - **Field**: `table_html` (from Proposal 1)
   - **Use**: Frontend rendering of structured tables
 
-- [ ] 5.2.5 Add table metadata to results
+- [x] 5.2.5 Add table metadata to results
   - **Fields**: `is_table: bool`, `table_type: str` (ae, outcomes, demographics)
   - **Display**: Show table icon in UI
 
-- [ ] 5.2.6 Implement table-only search mode
+- [x] 5.2.6 Implement table-only search mode
   - **API**: `/v1/search?table_only=true`
   - **Use Case**: "Show me all adverse event tables"
 
-- [ ] 5.2.7 Add table ranking heuristics
+- [x] 5.2.7 Add table ranking heuristics
   - **Rules**: Prioritize tables with more rows, complete data
 
-- [ ] 5.2.8 Implement fallback for no tables
+- [x] 5.2.8 Implement fallback for no tables
   - **Strategy**: If no tables found, return narrative results
   - **Logging**: Log "no tables found for tabular query"
 
-- [ ] 5.2.9 Write table boosting tests
+- [x] 5.2.9 Write table boosting tests
   - **Cases**: Tabular query with tables, without tables
 
 - [ ] 5.2.10 Integration test: Table routing end-to-end

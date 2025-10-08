@@ -33,6 +33,7 @@ from ..models import (
     RetrieveRequest,
 )
 from ..services import GatewayService, get_gateway_service
+from ..services.retrieval.routing import QueryIntent
 
 router = APIRouter(prefix="/v1", tags=["gateway"])
 health_router = APIRouter(tags=["system"])
@@ -458,6 +459,8 @@ async def search(
     top_k: int = Query(5, ge=1, le=50),
     rerank: bool = Query(True),
     rerank_model: str | None = Query(default=None, min_length=1, max_length=128),
+    query_intent: QueryIntent | None = Query(default=None),
+    table_only: bool = Query(False),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="GET /v1/search")
     ),
@@ -470,6 +473,8 @@ async def search(
         filters={},
         rerank=rerank,
         rerank_model=rerank_model,
+        query_intent=query_intent,
+        table_only=table_only,
     )
     result: RetrievalResult = service.retrieve(request_model)
     odata = ODataParams.from_request(http_request)
@@ -482,6 +487,7 @@ async def search(
         "partial": result.partial,
         "degraded": result.degraded,
         "stage_timings": result.stage_timings,
+        "intent": result.intent,
         "errors": [error.model_dump(mode="json") for error in result.errors],
     }
     return json_api_response(result, meta=meta)

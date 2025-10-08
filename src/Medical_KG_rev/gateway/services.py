@@ -49,6 +49,7 @@ from ..services.evaluation import (
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
+from ..services.retrieval.routing import IntentClassifier, QueryIntent
 from ..services.reranking import ModelDownloadError, ModelHandle, RerankerModelRegistry
 from ..services.retrieval.router import (
     RetrievalRouter,
@@ -101,6 +102,22 @@ class GatewayError(RuntimeError):
         self.detail = detail
 
 
+def _is_table_document(metadata: Mapping[str, Any] | None) -> bool:
+    if not isinstance(metadata, Mapping):
+        return False
+    if bool(metadata.get("is_table")):
+        return True
+    segment = str(metadata.get("segment_type", ""))
+    if segment.lower() == "table":
+        return True
+    intent_hint = str(metadata.get("intent_hint", "")).lower()
+    if intent_hint in {"ae", "adverse_events", "table"}:
+        return True
+    if "table_html" in metadata:
+        return True
+    return False
+
+
 @dataclass
 class GatewayService:
     """Coordinates business logic shared across protocols."""
@@ -113,6 +130,7 @@ class GatewayService:
     chunker: ChunkingService = field(default_factory=ChunkingService)
     reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
     reranker_models: RerankerModelRegistry = field(default_factory=RerankerModelRegistry)
+    intent_classifier: IntentClassifier = field(default_factory=IntentClassifier)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
@@ -545,6 +563,18 @@ class GatewayService:
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
+        classification = self.intent_classifier.classify(
+            request.query, override=request.query_intent
+        )
+        intent_payload = {
+            "detected": classification.intent.value,
+            "confidence": classification.confidence,
+            "override": classification.override.value if classification.override else None,
+            "matched_patterns": list(classification.matched_patterns),
+            "table_only": request.table_only,
+        }
+        metadata.setdefault("intent", intent_payload.copy())
+
         overrides: dict[str, dict[str, Any]] = {
             "final": {"top_k": request.top_k, "explain": request.explain},
             "rerank": {
@@ -608,14 +638,25 @@ class GatewayService:
                 "config": overrides,
                 "explain": request.explain,
                 "top_k": request.top_k,
+                "intent": intent_payload,
+                "table_only": request.table_only,
+                "tabular_confidence": classification.confidence,
+                "query_intent": classification.intent.value,
             },
         )
         executor = self._executor_for_profile(profile)
         pipeline_name = getattr(executor.executor, "pipeline", profile.query)
         result_context = executor.run(context)
 
-        documents: list[DocumentSummary] = []
-        for item in result_context.data.get("results", [])[: request.top_k]:
+        pipeline_intent = result_context.data.get("intent")
+        if isinstance(pipeline_intent, Mapping):
+            intent_payload.update({k: v for k, v in pipeline_intent.items()})
+            metadata["intent"].update(intent_payload)
+
+        raw_results = list(result_context.data.get("results", []))
+        processed: list[DocumentSummary] = []
+        table_documents: list[DocumentSummary] = []
+        for item in raw_results:
             document_payload = dict(item.get("document", {}))
             doc_id = str(document_payload.get("id") or item.get("id"))
             metadata_payload = {
@@ -623,17 +664,27 @@ class GatewayService:
                 for key, value in document_payload.items()
                 if key not in {"id", "title", "summary", "source"}
             }
-            documents.append(
-                DocumentSummary(
-                    id=doc_id,
-                    title=str(document_payload.get("title", doc_id)),
-                    score=float(item.get("score", 0.0)),
-                    summary=document_payload.get("summary"),
-                    source=document_payload.get("source", pipeline_name),
-                    metadata=metadata_payload,
-                    explain=item.get("strategies") if request.explain else None,
-                )
+            summary = DocumentSummary(
+                id=doc_id,
+                title=str(document_payload.get("title", doc_id)),
+                score=float(item.get("score", 0.0)),
+                summary=document_payload.get("summary"),
+                source=document_payload.get("source", pipeline_name),
+                metadata=metadata_payload,
+                explain=item.get("strategies") if request.explain else None,
             )
+            processed.append(summary)
+            if _is_table_document(metadata_payload):
+                table_documents.append(summary)
+
+        if request.table_only:
+            if table_documents:
+                documents = table_documents[: request.top_k]
+            else:
+                intent_payload.setdefault("warnings", []).append("table_only_fallback")
+                documents = processed[: request.top_k]
+        else:
+            documents = processed[: request.top_k]
 
         errors = [self._convert_problem(problem) for problem in result_context.errors]
         rerank_metrics = {
@@ -665,6 +716,7 @@ class GatewayService:
                 name: round(duration, 6)
                 for name, duration in result_context.stage_timings.items()
             },
+            intent=intent_payload,
         )
 
         duration = perf_counter() - started
@@ -982,6 +1034,10 @@ class GatewayService:
 
     def search(self, args: SearchArguments) -> RetrievalResult:
         job_id = self._new_job("system", "search")
+        intent_payload = {
+            "detected": args.query_intent.value if args.query_intent else None,
+            "table_only": args.table_only,
+        }
         request = RetrievalResult(
             query=args.query,
             documents=[
@@ -995,6 +1051,7 @@ class GatewayService:
                 )
             ],
             total=1,
+            intent=intent_payload,
         )
         self.ledger.update_metadata(job_id, {"query": args.query})
         self._complete_job(job_id, payload={"documents": 1})

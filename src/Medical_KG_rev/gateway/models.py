@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from Medical_KG_rev.adapters import AdapterDomain
 from Medical_KG_rev.services.evaluation import EvaluationResult, MetricSummary
+from Medical_KG_rev.services.retrieval.routing import QueryIntent
 
 
 class ProblemDetail(BaseModel):
@@ -114,6 +115,7 @@ class RetrievalResult(BaseModel):
     degraded: bool = False
     errors: Sequence[ProblemDetail] = Field(default_factory=list)
     stage_timings: dict[str, float] = Field(default_factory=dict)
+    intent: dict[str, Any] = Field(default_factory=dict)
 
 
 class EntityLinkResult(BaseModel):
@@ -189,6 +191,8 @@ class RetrieveRequest(BaseModel):
     profile: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     explain: bool = False
+    query_intent: QueryIntent | None = Field(default=None)
+    table_only: bool = False
 
 
 class PipelineQueryRequest(RetrieveRequest):
@@ -339,6 +343,8 @@ class SearchArguments(BaseModel):
     query: str
     filters: dict[str, Any] = Field(default_factory=dict)
     pagination: Pagination = Field(default_factory=Pagination)
+    query_intent: QueryIntent | None = Field(default=None)
+    table_only: bool = False
 
 
 def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationResult:

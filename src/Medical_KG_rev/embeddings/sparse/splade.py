@@ -1,11 +1,10 @@
-"""Learned sparse embedder approximations for SPLADE style models."""
+"""Pyserini SPLADE adapter with OpenSearch rank_features integration."""
 
 from __future__ import annotations
 
-import collections
-import hashlib
-from dataclasses import dataclass, field
-from typing import Counter, Mapping
+import importlib
+from dataclasses import dataclass
+from typing import Mapping
 
 import structlog
 
@@ -18,7 +17,7 @@ logger = structlog.get_logger(__name__)
 
 
 def build_rank_features_mapping(namespace: str) -> Mapping[str, object]:
-    """Generate OpenSearch rank_features mapping for a namespace."""
+    """Generate an OpenSearch mapping for SPLADE `rank_features`."""
 
     field_name = namespace.replace(".", "_")
     return {
@@ -31,139 +30,110 @@ def build_rank_features_mapping(namespace: str) -> Mapping[str, object]:
     }
 
 
-@dataclass(slots=True)
-class SPLADEDocEmbedder:
-    config: EmbedderConfig
-    _top_k: int = 0
-    _normalization: str = "none"
-    _vocabulary: Counter[str] = field(default_factory=collections.Counter)
-    _builder: RecordBuilder | None = None
-    name: str = ""
-    kind: str = ""
-
-    def __post_init__(self) -> None:
-        params = self.config.parameters
-        self._top_k = int(params.get("top_k", 400))
-        self._normalization = str(params.get("normalization", "l2"))
-        self._builder = RecordBuilder(self.config, normalized_override=self.config.normalize)
-        self.name = self.config.name
-        self.kind = self.config.kind
-
-    def _term_weights(self, text: str) -> dict[str, float]:
-        tokens = [token.strip().lower() for token in text.split() if token.strip()]
-        weights: Counter[str] = collections.Counter()
-        for token in tokens:
-            digest = hashlib.md5(token.encode("utf-8")).hexdigest()
-            value = int(digest[:8], 16) / 0xFFFFFFFF
-            weights[token] += float(value)
-        most_common = weights.most_common(self._top_k)
-        ranked = {token: float(weight) for token, weight in most_common}
-        self._vocabulary.update(ranked)
-        return self._normalize_weights(ranked)
-
-    def _normalize_weights(self, weights: dict[str, float]) -> dict[str, float]:
-        if not weights:
-            return {}
-        if self._normalization == "l1":
-            total = sum(weights.values()) or 1.0
-            return {token: value / total for token, value in weights.items()}
-        if self._normalization == "l2":
-            norm = sum(value * value for value in weights.values()) ** 0.5 or 1.0
-            return {token: value / norm for token, value in weights.items()}
-        if self._normalization == "max":
-            maximum = max(weights.values()) or 1.0
-            return {token: value / maximum for token, value in weights.items()}
-        return weights
-
-    def vocabulary_snapshot(self, top_n: int = 50) -> Mapping[str, float]:
-        return dict(self._vocabulary.most_common(top_n))
-
-    def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        assert self._builder is not None
-        weights_list = [self._term_weights(text) for text in request.texts]
-        records = self._builder.sparse(
-            request,
-            weights_list,
-            extra_metadata={"normalization": self._normalization},
-        )
-        for record, weights in zip(records, weights_list, strict=False):
-            logger.debug(
-                "splade.embedding.generated",
-                chunk_id=record.id,
-                terms=len(weights),
-                normalization=self._normalization,
-            )
-        return records
-
-    def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        return self.embed_documents(request)
+class PyseriniNotInstalledError(RuntimeError):
+    """Raised when Pyserini is required but not available."""
 
 
-@dataclass(slots=True)
-class SPLADEQueryEmbedder(SPLADEDocEmbedder):
-    pass
+def _load_pyserini_encoder(mode: str) -> type:
+    """Import the appropriate Pyserini encoder class."""
+
+    try:
+        module = importlib.import_module("pyserini.encode")
+    except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional dependency
+        raise PyseriniNotInstalledError("pyserini>=0.22.0 is required for SPLADE embeddings") from exc
+    class_name = "SpladeQueryEncoder" if mode == "query" else "SpladeDocumentEncoder"
+    try:
+        return getattr(module, class_name)
+    except AttributeError as exc:  # pragma: no cover - defensive guard
+        raise PyseriniNotInstalledError(f"pyserini.encode.{class_name} is unavailable") from exc
 
 
 @dataclass(slots=True)
 class PyseriniSparseEmbedder:
+    """Thin wrapper delegating SPLADE expansion to Pyserini."""
+
     config: EmbedderConfig
-    _weighting: str = "bm25"
-    _normalization: str = "none"
-    _vocabulary: Counter[str] = field(default_factory=collections.Counter)
+    _mode: str = "document"
+    _top_k: int = 400
+    _max_terms: int | None = None
+    _encoder: object | None = None
     _builder: RecordBuilder | None = None
     name: str = ""
     kind: str = ""
 
     def __post_init__(self) -> None:
         params = self.config.parameters
-        self._weighting = params.get("weighting", "bm25")
-        self._normalization = str(params.get("normalization", "none"))
+        self._mode = str(params.get("mode", "document")).lower()
+        self._top_k = int(params.get("top_k", 400))
+        self._max_terms = params.get("max_terms")
+        encoder_cls = _load_pyserini_encoder(self._mode)
+        self._encoder = encoder_cls(self.config.model_id)
         self._builder = RecordBuilder(self.config, normalized_override=self.config.normalize)
         self.name = self.config.name
         self.kind = self.config.kind
-
-    def _term_weights(self, text: str) -> dict[str, float]:
-        tokens = [token.strip().lower() for token in text.split() if token.strip()]
-        weights: dict[str, float] = {}
-        for token in tokens:
-            digest = hashlib.sha1(token.encode("utf-8")).hexdigest()
-            magnitude = int(digest[:8], 16) / 0xFFFFFFFF
-            if self._weighting == "bm25":
-                weight = 1.2 + 1.5 * magnitude
-            else:
-                weight = magnitude
-            weights[token] = weights.get(token, 0.0) + float(weight)
-        self._vocabulary.update(weights)
-        return self._normalize(weights)
-
-    def _normalize(self, weights: dict[str, float]) -> dict[str, float]:
-        if not weights:
-            return {}
-        if self._normalization == "max":
-            maximum = max(weights.values()) or 1.0
-            return {token: value / maximum for token, value in weights.items()}
-        if self._normalization == "l2":
-            norm = sum(value * value for value in weights.values()) ** 0.5 or 1.0
-            return {token: value / norm for token, value in weights.items()}
-        return weights
-
-    def vocabulary_snapshot(self, top_n: int = 50) -> Mapping[str, float]:
-        return dict(self._vocabulary.most_common(top_n))
-
-    def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        assert self._builder is not None
-        weights_list = [self._term_weights(text) for text in request.texts]
-        return self._builder.sparse(
-            request,
-            weights_list,
-            extra_metadata={"weighting": self._weighting},
+        logger.info(
+            "embedding.splade.pyserini.initialised",
+            namespace=self.config.namespace,
+            mode=self._mode,
+            top_k=self._top_k,
+            model=self.config.model_id,
         )
 
+    def _expand(self, text: str) -> dict[str, float]:
+        if not text:
+            return {}
+        assert self._encoder is not None
+        weights = self._encoder.encode(text, top_k=self._top_k)  # type: ignore[attr-defined]
+        if not isinstance(weights, dict):  # pragma: no cover - Pyserini contract
+            raise TypeError("Pyserini SPLADE encoder must return a dict of term weights")
+        if self._max_terms is not None:
+            items = sorted(weights.items(), key=lambda item: item[1], reverse=True)[: self._max_terms]
+            return {term: float(score) for term, score in items}
+        return {term: float(score) for term, score in weights.items()}
+
+    def _records(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
+        assert self._builder is not None
+        expansions = [self._expand(text) for text in request.texts]
+        metadata = {
+            "mode": self._mode,
+            "top_k": self._top_k,
+            "provider": self.config.provider,
+        }
+        safe_expansions = [weights or {"__empty__": 0.0} for weights in expansions]
+        records = self._builder.sparse(
+            request,
+            safe_expansions,
+            extra_metadata=metadata,
+            dim_from_terms=True,
+        )
+        final_records: list[EmbeddingRecord] = []
+        for weights, record in zip(expansions, records, strict=False):
+            if weights:
+                final_records.append(record)
+                continue
+            final_records.append(
+                EmbeddingRecord.model_construct(
+                    id=record.id,
+                    tenant_id=record.tenant_id,
+                    namespace=record.namespace,
+                    model_id=record.model_id,
+                    model_version=record.model_version,
+                    kind=record.kind,
+                    dim=0,
+                    terms={},
+                    metadata=record.metadata,
+                    correlation_id=record.correlation_id,
+                )
+            )
+        return final_records
+
+    def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
+        return self._records(request)
+
     def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
-        return self.embed_documents(request)
+        # Query-side expansion uses the same encoder but may have different top_k configured.
+        return self._records(request)
 
 
 def register_sparse(registry: EmbedderRegistry) -> None:
-    registry.register("splade-doc", lambda config: SPLADEDocEmbedder(config=config))
-    registry.register("splade-query", lambda config: SPLADEQueryEmbedder(config=config))
     registry.register("pyserini", lambda config: PyseriniSparseEmbedder(config=config))

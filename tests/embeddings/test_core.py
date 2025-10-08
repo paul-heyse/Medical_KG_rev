@@ -1,13 +1,22 @@
 from __future__ import annotations
 
-from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
+from Medical_KG_rev.embeddings.dense.openai_compat import OpenAICompatEmbedder
 from Medical_KG_rev.embeddings.namespace import DimensionMismatchError, NamespaceManager
-from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
-from Medical_KG_rev.embeddings.dense.sentence_transformers import SentenceTransformersEmbedder
+from Medical_KG_rev.embeddings.ports import (
+    EmbedderConfig,
+    EmbeddingRecord,
+    EmbeddingRequest,
+    EmbeddingRequest as AdapterEmbeddingRequest,
+)
+from Medical_KG_rev.services import GpuNotAvailableError
+from Medical_KG_rev.services.embedding.registry import EmbeddingModelRegistry
 from Medical_KG_rev.services.embedding.service import EmbeddingRequest as ServiceRequest, EmbeddingWorker
+from Medical_KG_rev.embeddings.utils.tokenization import TokenizerCache
 
 
 def test_embedding_record_validation() -> None:
@@ -52,68 +61,128 @@ def test_namespace_manager_dimension_validation() -> None:
         manager.introspect_dimension(config.namespace, 8)
 
 
-def test_sentence_transformers_embedder_generates_vectors() -> None:
+def test_openai_compat_embedder_normalizes_vectors(monkeypatch: pytest.MonkeyPatch) -> None:
     config = EmbedderConfig(
-        name="bge-small",
-        provider="sentence-transformers",
+        name="qwen3",
+        provider="vllm",
         kind="single_vector",
-        namespace="single_vector.bge_small.384.v1",
-        model_id="BAAI/bge-small-en",
+        namespace="single_vector.qwen3.4096.v1",
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        dim=384,
+        dim=4096,
         normalize=True,
-        batch_size=2,
+        parameters={"endpoint": "http://localhost:8001/v1"},
     )
-    embedder = SentenceTransformersEmbedder(config)
+    embedder = OpenAICompatEmbedder(config)
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self) -> dict[str, Any]:
+            return {
+                "data": [
+                    {"embedding": [3.0, 4.0]},
+                    {"embedding": [8.0, 15.0]},
+                ]
+            }
+
+        def raise_for_status(self) -> None:  # noqa: D401 - match httpx API
+            return None
+
+    monkeypatch.setattr(
+        "Medical_KG_rev.embeddings.dense.openai_compat.httpx.post",
+        lambda *args, **kwargs: FakeResponse(),
+    )
     request = EmbeddingRequest(
         tenant_id="tenant-x",
         namespace=config.namespace,
-        texts=["a quick brown fox"],
-        ids=["chunk-1"],
+        texts=["alpha", "beta"],
+        ids=["chunk-1", "chunk-2"],
     )
     records = embedder.embed_documents(request)
-    assert len(records) == 1
-    assert len(records[0].vectors or []) == 1
-    assert pytest.approx(sum(v * v for v in records[0].vectors[0]), rel=1e-3) == pytest.approx(1.0, rel=1e-3)
-    assert records[0].metadata["onnx_optimized"] is False
+    norms = [sum(value * value for value in record.vectors[0]) ** 0.5 for record in records]
+    assert pytest.approx(norms[0], rel=1e-6) == 1.0
+    assert pytest.approx(norms[1], rel=1e-6) == 1.0
 
 
-def test_sentence_transformers_respects_request_metadata() -> None:
+def test_openai_compat_embedder_raises_on_gpu_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     config = EmbedderConfig(
-        name="bge-small",
-        provider="sentence-transformers",
+        name="qwen3",
+        provider="vllm",
         kind="single_vector",
-        namespace="single_vector.bge_small.384.v1",
-        model_id="BAAI/bge-small-en",
+        namespace="single_vector.qwen3.4096.v1",
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        dim=384,
+        dim=4096,
         normalize=True,
-        batch_size=2,
+        parameters={"endpoint": "http://localhost:8001/v1"},
     )
-    embedder = SentenceTransformersEmbedder(config)
+    embedder = OpenAICompatEmbedder(config)
+
+    class FakeResponse:
+        status_code = 503
+
+        def json(self) -> dict[str, Any]:
+            return {"error": {"message": "GPU unavailable"}}
+
+        def raise_for_status(self) -> None:  # pragma: no cover - not called
+            raise AssertionError("raise_for_status should not be reached")
+
+    monkeypatch.setattr(
+        "Medical_KG_rev.embeddings.dense.openai_compat.httpx.post",
+        lambda *args, **kwargs: FakeResponse(),
+    )
     request = EmbeddingRequest(
         tenant_id="tenant-x",
         namespace=config.namespace,
-        texts=["metadata test"],
+        texts=["alpha"],
         ids=["chunk-1"],
-        metadata=[{"source": "ingestion"}],
     )
-    record = embedder.embed_documents(request)[0]
-    assert record.metadata["source"] == "ingestion"
-    assert record.metadata["provider"] == config.provider
+    with pytest.raises(GpuNotAvailableError):
+        embedder.embed_documents(request)
 
 
-def test_embedding_worker_runs_with_default_config() -> None:
-    config_path = Path(__file__).resolve().parents[2] / "config" / "embeddings.yaml"
-    worker = EmbeddingWorker(config_path=str(config_path))
+def test_embedding_worker_with_stub_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = NamespaceManager()
+    worker = EmbeddingWorker(namespace_manager=manager, vector_store=None)
+    fake_config = EmbedderConfig(
+        name="qwen3",
+        provider="vllm",
+        kind="single_vector",
+        namespace="single_vector.qwen3.4096.v1",
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
+        model_version="v1",
+        dim=4096,
+        parameters={"max_tokens": 8192},
+        requires_gpu=False,
+    )
+    manager.register(fake_config)
+
+    class DummyEmbedder:
+        def embed_documents(self, request: AdapterEmbeddingRequest) -> list[EmbeddingRecord]:  # type: ignore[override]
+            return [
+                EmbeddingRecord(
+                    id=request.ids[0],
+                    tenant_id=request.tenant_id,
+                    namespace=request.namespace,
+                    model_id=fake_config.model_id,
+                    model_version=fake_config.model_version,
+                    kind=fake_config.kind,
+                    dim=fake_config.dim,
+                    vectors=[[0.1 for _ in range(fake_config.dim or 0)]],
+                    metadata={"provider": fake_config.provider},
+                )
+            ]
+
+    monkeypatch.setattr(EmbeddingWorker, "_resolve_configs", lambda self, request: [fake_config])
+    monkeypatch.setattr(EmbeddingModelRegistry, "get", lambda self, config: DummyEmbedder())
+    monkeypatch.setattr(TokenizerCache, "ensure_within_limit", lambda *args, **kwargs: None)
+
     request = ServiceRequest(
-        tenant_id="tenant-123",
-        chunk_ids=["chunk-1", "chunk-2"],
-        texts=["doc one text", "doc two text"],
+        tenant_id="tenant-x",
+        chunk_ids=["chunk-1"],
+        texts=["hello world"],
     )
     response = worker.run(request)
     assert response.vectors
-    namespaces = {vector.namespace for vector in response.vectors}
-    assert "single_vector.bge_small_en.384.v1" in namespaces
-    storage_targets = {vector.metadata.get("storage_target") for vector in response.vectors}
-    assert "qdrant" in storage_targets
+    assert response.vectors[0].metadata["storage_target"] == "faiss"

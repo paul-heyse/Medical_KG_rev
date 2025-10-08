@@ -77,7 +77,7 @@ def embedding_worker(monkeypatch: pytest.MonkeyPatch):
         namespace="single_vector.qwen3.4096.v1",
         model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        dim=4096,
+        dim=2,
         parameters={"max_tokens": 8192, "endpoint": "http://localhost:8001/v1"},
         requires_gpu=False,
     )
@@ -100,7 +100,7 @@ def embedding_worker(monkeypatch: pytest.MonkeyPatch):
         context=SecurityContext(subject="tester", tenant_id="tenant", scopes={"index:write"}),
         config=NamespaceConfig(
             name=fake_config.namespace,
-            params=IndexParams(dimension=4096),
+            params=IndexParams(dimension=2),
         ),
     )
     assert registry.get(tenant_id="tenant", namespace=fake_config.namespace)
@@ -130,7 +130,7 @@ def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
         namespace="single_vector.qwen3.4096.v1",
         model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        dim=4096,
+        dim=2,
         parameters={"max_tokens": 8192, "endpoint": "http://localhost:8001/v1"},
         requires_gpu=False,
     )
@@ -190,3 +190,38 @@ def test_worker_uses_cache_hits(embedding_worker) -> None:
 
     assert embedder.calls == 0
     assert response.vectors[0].id == "chunk-1"
+
+
+def test_worker_persists_named_vectors(monkeypatch: pytest.MonkeyPatch, embedding_worker) -> None:
+    worker, vector_store, config, embedder = embedding_worker
+
+    def multi_vector_response(request):  # type: ignore[override]
+        return [
+            EmbeddingRecord(
+                id=request.ids[0] if request.ids else "chunk-1",
+                tenant_id=request.tenant_id,
+                namespace=request.namespace,
+                model_id=config.model_id,
+                model_version=config.model_version,
+                kind=config.kind,
+                dim=config.dim,
+                vectors=[[0.1, 0.2], [0.3, 0.4]],
+                metadata={"provider": config.provider},
+            )
+        ]
+
+    monkeypatch.setattr(DummyEmbedder, "embed_documents", multi_vector_response)
+    worker.run(EmbeddingRequest(tenant_id="tenant", chunk_ids=["chunk-1"], texts=["sample"]))
+    stored = vector_store.records[0]
+    assert stored["named_vectors"]["segment_1"] == [0.3, 0.4]
+
+
+def test_worker_skips_empty_records(monkeypatch: pytest.MonkeyPatch, embedding_worker) -> None:
+    worker, vector_store, config, embedder = embedding_worker
+
+    def empty_response(request):  # type: ignore[override]
+        return []
+
+    monkeypatch.setattr(DummyEmbedder, "embed_documents", empty_response)
+    worker.run(EmbeddingRequest(tenant_id="tenant", chunk_ids=["chunk-1"], texts=["sample"]))
+    assert vector_store.records == []

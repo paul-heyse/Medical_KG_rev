@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from types import SimpleNamespace
 
 from Medical_KG_rev.services.chunking.wrappers.huggingface_segmenter import (
@@ -8,29 +7,40 @@ from Medical_KG_rev.services.chunking.wrappers.syntok_segmenter import (
     SyntokSentenceSegmenter,
 )
 
-
-@dataclass
-class _FakeSpan:
-    start_char: int
-    end_char: int
-
-
 def test_huggingface_segmenter_offsets():
     def loader():
-        class _Model:
-            def __call__(self, text: str):
-                # Mock Hugging Face model behavior
-                return {"label": "POSITIVE", "score": 0.9}
+        def _segment(text: str):
+            return [
+                (0, 13, "Sentence one."),
+                (14, len(text), "Sentence two"),
+            ]
 
-        return _Model()
+        return _segment
 
     segmenter = HuggingFaceSentenceSegmenter(loader=lambda: loader())
     text = "Sentence one. Sentence two"
     segments = segmenter.segment(text)
-    # Note: The current implementation uses simple splitting as fallback
-    # This test verifies the interface works correctly
-    assert len(segments) >= 1
-    assert all(isinstance(seg, tuple) and len(seg) == 3 for seg in segments)
+    assert segments == [
+        (0, 13, "Sentence one."),
+        (14, len(text), "Sentence two"),
+    ]
+
+
+def test_huggingface_segmenter_merges_abbreviations():
+    text = "Fig. 1 shows reduced error."
+
+    def loader():
+        def _segment(_: str):
+            return [
+                (0, 5, text[0:5]),
+                (5, len(text), text[5:]),
+            ]
+
+        return _segment
+
+    segmenter = HuggingFaceSentenceSegmenter(loader=lambda: loader())
+    segments = segmenter.segment(text)
+    assert segments == [(0, len(text), text)]
 
 
 def test_syntok_segmenter_offsets():

@@ -77,6 +77,25 @@ GPU_UTILISATION = Gauge(
     "GPU memory utilisation percentage",
     labelnames=("gpu",),
 )
+MINERU_VLLM_REQUEST_DURATION = Histogram(
+    "mineru_vllm_request_duration_seconds",
+    "Duration of vLLM API requests",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+MINERU_VLLM_CLIENT_FAILURES = Counter(
+    "mineru_vllm_client_failures_total",
+    "Total number of vLLM client failures",
+    labelnames=("error_type",),
+)
+MINERU_VLLM_CLIENT_RETRIES = Counter(
+    "mineru_vllm_client_retries_total",
+    "Total number of vLLM client retry attempts",
+    labelnames=("retry_number",),
+)
+MINERU_VLLM_CIRCUIT_BREAKER_STATE = Gauge(
+    "mineru_vllm_circuit_breaker_state",
+    "Circuit breaker state for vLLM client (0=closed, 1=half_open, 2=open)",
+)
 BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",

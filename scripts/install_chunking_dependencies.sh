@@ -6,22 +6,25 @@ usage() {
 Usage: scripts/install_chunking_dependencies.sh [options]
 
 Install the optional chunking/parsing dependencies inside a dedicated virtual
-environment and verify that the required resources (including the scispaCy
-model) are available.  This script is intended to simplify deployment of the
-new chunking stack in fresh environments.
+environment and verify that the required resources (including the configured
+Hugging Face tokenizer) are available. This script is intended to simplify
+deployment of the new chunking stack in fresh environments.
 
 Options:
-  --venv PATH        Target virtual environment directory (default: .venv-chunking)
-  --check-only       Only run the dependency check (requires an existing venv)
+  --venv PATH         Target virtual environment directory (default: .venv-chunking)
+  --check-only        Only run the dependency check (requires an existing venv)
   --full-requirements Install all packages from requirements.txt instead of the
-                      minimal chunking set.
-  -h, --help         Show this message.
+                       minimal chunking set.
+  --hf-model NAME     Hugging Face model/tokenizer to download (defaults to
+                       MEDICAL_KG_SENTENCE_MODEL when set).
+  -h, --help          Show this message.
 EOF
 }
 
 VENV_DIR=".venv-chunking"
 CHECK_ONLY=0
 FULL_REQUIREMENTS=0
+HF_MODEL="${MEDICAL_KG_SENTENCE_MODEL:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,6 +39,10 @@ while [[ $# -gt 0 ]]; do
     --full-requirements)
       FULL_REQUIREMENTS=1
       shift
+      ;;
+    --hf-model)
+      HF_MODEL="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -59,6 +66,7 @@ if [[ ! -d "${VENV_DIR}" ]]; then
   exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${VENV_DIR}/bin/activate"
 
 PYTHON_VERSION="$(python - <<'PY'
@@ -82,10 +90,10 @@ if [[ ${CHECK_ONLY} -eq 0 ]]; then
     python -m pip install \
       langchain-text-splitters==0.2.0 \
       llama-index-core==0.10.0 \
-      scispacy==0.5.4 \
       syntok==1.4.4 \
       tiktoken==0.6.0 \
-      transformers==4.38.0
+      transformers==4.38.0 \
+      pydantic==2.6.4
 
     if [[ ${PYTHON_MINOR} -lt 12 ]]; then
       python -m pip install 'unstructured[local-inference]==0.12.0'
@@ -95,8 +103,15 @@ if [[ ${CHECK_ONLY} -eq 0 ]]; then
     fi
   fi
 
-  echo "[chunking] Downloading scispaCy model" >&2
-  python -m spacy download en_core_sci_sm
+  if [[ -n "${HF_MODEL}" ]]; then
+    echo "[chunking] Downloading Hugging Face tokenizer: ${HF_MODEL}" >&2
+    python - <<PY
+from transformers import AutoTokenizer
+AutoTokenizer.from_pretrained("${HF_MODEL}", use_fast=True)
+PY
+  else
+    echo "[chunking] Skipping Hugging Face tokenizer download; provide --hf-model or set MEDICAL_KG_SENTENCE_MODEL." >&2
+  fi
 fi
 
 echo "[chunking] Verifying dependencies" >&2

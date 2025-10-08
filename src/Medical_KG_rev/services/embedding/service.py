@@ -19,7 +19,7 @@ from Medical_KG_rev.embeddings.ports import (
 )
 from Medical_KG_rev.embeddings.registry import EmbedderFactory, EmbedderRegistry
 from Medical_KG_rev.embeddings.storage import StorageRouter
-from Medical_KG_rev.embeddings.utils.gpu import ensure_available
+from Medical_KG_rev.embeddings.utils.gpu import ensure_available, ensure_memory_budget
 from Medical_KG_rev.embeddings.utils.tokenization import (
     TokenLimitExceededError,
     TokenizerCache,
@@ -31,6 +31,7 @@ from Medical_KG_rev.observability.metrics import (
     record_embedding_success,
     record_embedding_timing,
 )
+from Medical_KG_rev.services import GpuNotAvailableError
 from Medical_KG_rev.services.embedding.cache import (
     EmbeddingCache,
     NullEmbeddingCache,
@@ -43,6 +44,49 @@ from .namespace.registry import EmbeddingNamespaceRegistry
 from .registry import EmbeddingModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+
+@dataclass(slots=True)
+class BatchController:
+    """Adaptive batch sizing heuristics shared across namespace runs."""
+
+    overrides: dict[str, int] = field(default_factory=dict)
+    history: dict[str, list[tuple[int, float]]] = field(default_factory=dict)
+    window: int = 10
+
+    def choose(
+        self,
+        namespace: str,
+        default: int,
+        pending: int,
+        *,
+        candidates: Sequence[int] | None = None,
+    ) -> int:
+        pending = max(1, pending)
+        if namespace in self.overrides:
+            return max(1, min(self.overrides[namespace], pending))
+        records = self.history.get(namespace, [])
+        if records:
+            best_size, _ = max(
+                records,
+                key=lambda item: item[0] / max(item[1], 1e-9),
+            )
+            return max(1, min(best_size, pending))
+        if candidates:
+            valid = [size for size in candidates if 0 < size <= pending]
+            if valid:
+                return max(valid)
+        return max(1, min(default or pending, pending))
+
+    def record_success(self, namespace: str, batch_size: int, duration: float) -> None:
+        duration = max(duration, 1e-9)
+        history = self.history.setdefault(namespace, [])
+        history.append((max(1, batch_size), duration))
+        if len(history) > self.window:
+            del history[:-self.window]
+
+    def reduce(self, namespace: str, batch_size: int) -> None:
+        self.overrides[namespace] = max(1, batch_size)
 
 
 @dataclass(slots=True)
@@ -132,6 +176,7 @@ class EmbeddingWorker:
     factory: EmbedderFactory | None = field(init=False, default=None)
     storage_router: StorageRouter | None = field(init=False, default=None)
     tokenizers: TokenizerCache | None = field(init=False, default=None)
+    _batch_controller: BatchController = field(init=False, default_factory=BatchController)
 
     def __post_init__(self) -> None:
         if self.model_registry is None:
@@ -240,6 +285,45 @@ class EmbeddingWorker:
         ttl = config.parameters.get("cache_ttl_seconds")
         return int(ttl) if isinstance(ttl, int) and ttl > 0 else None
 
+    def _candidate_batches(self, config: EmbedderConfig) -> list[int]:
+        if not config.parameters:
+            return []
+        raw = config.parameters.get("candidate_batch_sizes")
+        if not isinstance(raw, (list, tuple)):
+            return []
+        candidates: list[int] = []
+        for item in raw:
+            try:
+                value = int(item)
+            except (TypeError, ValueError):
+                continue
+            if 0 < value <= 4096:
+                candidates.append(value)
+        return sorted(set(candidates))
+
+    def _gpu_budget(self, config: EmbedderConfig) -> tuple[float | None, int | None]:
+        if not config.parameters:
+            return None, None
+        fraction_raw = config.parameters.get("gpu_memory_fraction")
+        reserve_raw = config.parameters.get("gpu_memory_reserve_mb")
+        fraction = None
+        reserve = None
+        try:
+            if fraction_raw is not None:
+                fraction = float(fraction_raw)
+        except (TypeError, ValueError):  # pragma: no cover - validation guard
+            fraction = None
+        try:
+            if reserve_raw is not None:
+                reserve = int(reserve_raw)
+        except (TypeError, ValueError):  # pragma: no cover - validation guard
+            reserve = None
+        return fraction, reserve
+
+    def _is_oom_error(self, exc: Exception) -> bool:
+        message = str(exc).lower()
+        return "out of memory" in message or "cuda oom" in message or "cuda error" in message
+
     def _lookup_cache(
         self,
         *,
@@ -294,42 +378,102 @@ class EmbeddingWorker:
                 )
             try:
                 if missing_indices:
-                    subset_texts = [adapter_request.texts[index] for index in missing_indices]
-                    subset_ids = [adapter_request.ids[index] for index in missing_indices]  # type: ignore[index]
-                    subset_metadata = (
-                        [adapter_request.metadata[index] for index in missing_indices]  # type: ignore[index]
-                        if adapter_request.metadata
-                        else [{} for _ in missing_indices]
-                    )
-                    try:
-                        self.tokenizers.ensure_within_limit(
-                            model_id=config.model_id,
-                            texts=subset_texts,
-                            max_tokens=self._token_budget(config),
-                            correlation_id=request.correlation_id,
-                        )
-                    except TokenLimitExceededError:
-                        logger.error(
-                            "embedding.token_limit_exceeded",
-                            namespace=config.namespace,
-                            model=config.model_id,
-                            correlation_id=request.correlation_id,
-                        )
-                        raise
-                    subset_request = AdapterEmbeddingRequest(
-                        tenant_id=adapter_request.tenant_id,
-                        namespace=adapter_request.namespace,
-                        texts=subset_texts,
-                        ids=subset_ids,
-                        correlation_id=adapter_request.correlation_id,
-                        metadata=subset_metadata,
-                    )
-                    new_records = embedder.embed_documents(subset_request)
+                    pending: list[tuple[int, str, str, Mapping[str, object]]]
+                    pending = []
+                    for index in missing_indices:
+                        text = adapter_request.texts[index]
+                        identifier = (
+                            adapter_request.ids[index]
+                            if adapter_request.ids
+                            else f"{adapter_request.namespace}:{index}"
+                        )  # type: ignore[index]
+                        meta = (
+                            adapter_request.metadata[index]
+                            if adapter_request.metadata
+                            else {}
+                        )  # type: ignore[index]
+                        pending.append((index, text, str(identifier), dict(meta)))
                     ttl = self._cache_ttl(config)
-                    for index, record in zip(missing_indices, new_records):
-                        cached_records[index] = record
-                        if self.cache is not None:
-                            self.cache.set(record, ttl=ttl)
+                    fraction, reserve = self._gpu_budget(config)
+                    candidates = self._candidate_batches(config)
+                    current_batch_size = self._batch_controller.choose(
+                        config.namespace,
+                        config.batch_size,
+                        len(pending),
+                        candidates=candidates,
+                    )
+                    while pending:
+                        attempt = min(current_batch_size, len(pending))
+                        batch = pending[:attempt]
+                        subset_texts = [item[1] for item in batch]
+                        subset_ids = [item[2] for item in batch]
+                        subset_metadata = [dict(item[3]) for item in batch]
+                        try:
+                            self.tokenizers.ensure_within_limit(
+                                model_id=config.model_id,
+                                texts=subset_texts,
+                                max_tokens=self._token_budget(config),
+                                correlation_id=request.correlation_id,
+                            )
+                        except TokenLimitExceededError:
+                            logger.error(
+                                "embedding.token_limit_exceeded",
+                                namespace=config.namespace,
+                                model=config.model_id,
+                                correlation_id=request.correlation_id,
+                            )
+                            raise
+                        ensure_memory_budget(
+                            config.requires_gpu,
+                            operation=f"embed:{config.namespace}",
+                            fraction=fraction,
+                            reserve_mb=reserve,
+                        )
+                        subset_request = AdapterEmbeddingRequest(
+                            tenant_id=adapter_request.tenant_id,
+                            namespace=adapter_request.namespace,
+                            texts=subset_texts,
+                            ids=subset_ids,
+                            correlation_id=adapter_request.correlation_id,
+                            metadata=subset_metadata,
+                        )
+                        batch_started = perf_counter()
+                        try:
+                            new_records = embedder.embed_documents(subset_request)
+                        except (GpuNotAvailableError, RuntimeError) as exc:
+                            if self._is_oom_error(exc) and attempt > 1:
+                                current_batch_size = max(1, attempt // 2)
+                                self._batch_controller.reduce(
+                                    config.namespace, current_batch_size
+                                )
+                                logger.warning(
+                                    "embedding.batch.reduced",
+                                    namespace=config.namespace,
+                                    previous=attempt,
+                                    updated=current_batch_size,
+                                    reason="oom",
+                                )
+                                continue
+                            raise
+                        batch_duration = perf_counter() - batch_started
+                        if len(new_records) != len(batch):
+                            raise ValueError(
+                                "Embedder returned mismatched record count for batch"
+                            )
+                        self._batch_controller.record_success(
+                            config.namespace, len(new_records), batch_duration
+                        )
+                        for (index, _, _, _), record in zip(batch, new_records, strict=False):
+                            cached_records[index] = record
+                            if self.cache is not None:
+                                self.cache.set(record, ttl=ttl)
+                        pending = pending[attempt:]
+                        current_batch_size = self._batch_controller.choose(
+                            config.namespace,
+                            config.batch_size,
+                            len(pending) if pending else current_batch_size,
+                            candidates=candidates,
+                        )
                 ordered: list[EmbeddingRecord] = []
                 for index in range(len(adapter_request.texts)):
                     record = cached_records.get(index)

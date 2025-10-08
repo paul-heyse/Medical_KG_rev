@@ -896,55 +896,55 @@
 
 ### 7.1 Unit Tests (50 tests)
 
-- [ ] **7.1.1** vLLM client tests (10 tests):
+- [x] **7.1.1** vLLM client tests (10 tests):
   - Test successful embedding request
   - Test batch embedding (64 texts)
   - Test error handling (timeout, 503, invalid input)
   - Test GPU health check
   - Test empty text handling
 
-- [ ] **7.1.2** Pyserini wrapper tests (10 tests):
+- [x] **7.1.2** Pyserini wrapper tests (10 tests):
   - Test document expansion (top_k=400)
   - Test query expansion (top_k=100)
   - Test empty text handling
   - Test long text truncation
   - Test term weight sorting
 
-- [ ] **7.1.3** Namespace registry tests (10 tests):
+- [x] **7.1.3** Namespace registry tests (10 tests):
   - Test register namespace
   - Test get namespace
   - Test list namespaces
   - Test unknown namespace error
   - Test load from YAML
 
-- [ ] **7.1.4** FAISS index tests (10 tests):
+- [x] **7.1.4** FAISS index tests (10 tests):
   - Test add vectors
   - Test search KNN
   - Test save/load index
   - Test GPU vs CPU index
   - Test HNSW index
 
-- [ ] **7.1.5** GPU enforcer tests (5 tests):
+- [x] **7.1.5** GPU enforcer tests (5 tests):
   - Test GPU available check
   - Test GPU unavailable error
   - Test health endpoint
   - Test fail-fast behavior
 
-- [ ] **7.1.6** Storage writer tests (5 tests):
+- [x] **7.1.6** Storage writer tests (5 tests):
   - Test write embeddings to FAISS
   - Test write sparse embeddings to OpenSearch
   - Test Neo4j metadata writes
 
 ### 7.2 Integration Tests (21 tests)
 
-- [ ] **7.2.1** End-to-end embedding pipeline (5 tests):
+- [x] **7.2.1** End-to-end embedding pipeline (5 tests):
   - Test chunk → vLLM embed → FAISS write
   - Test chunk → Pyserini expand → OpenSearch write
   - Test multi-namespace embedding (dense + sparse)
   - Test GPU fail-fast integration
   - Test orchestration stage integration
 
-- [ ] **7.2.2** Storage integration (8 tests):
+- [x] **7.2.2** Storage integration (8 tests):
   - Test FAISS roundtrip (add → search)
   - Test OpenSearch rank_features roundtrip
   - Test Neo4j metadata writes
@@ -954,7 +954,7 @@
   - Test GPU-accelerated FAISS search
   - Test FAISS memory-mapped loading
 
-- [ ] **7.2.3** API integration (8 tests):
+- [x] **7.2.3** API integration (8 tests):
   - Test REST `/v1/embed` with namespace parameter
   - Test GraphQL embedding mutation
   - Test gRPC embedding service
@@ -966,14 +966,14 @@
 
 ### 7.3 Quality Validation (10 tests)
 
-- [ ] **7.3.1** Embedding quality tests (5 tests):
+- [x] **7.3.1** Embedding quality tests (5 tests):
   - Test: Qwen3 embeddings vs BGE embeddings (semantic similarity correlation ≥0.85)
   - Test: SPLADE expansion vs custom expansion (term overlap ≥90%)
   - Test: Embedding stability (same text → same vector across runs)
   - Test: Tokenization accuracy (exact token count vs approximate ±5%)
   - Test: Retrieval quality (Recall@10 stable or improved)
 
-- [ ] **7.3.2** Performance benchmarks (5 tests):
+- [x] **7.3.2** Performance benchmarks (5 tests):
   - Benchmark: vLLM throughput (target: ≥1000 emb/sec)
   - Benchmark: Pyserini throughput (target: ≥500 docs/sec)
   - Benchmark: FAISS search latency (target: P95 <50ms for 10M vectors)
@@ -986,12 +986,12 @@
 
 ### 8.1 Batching Optimization
 
-- [ ] **8.1.1** Tune vLLM batch size:
+- [x] **8.1.1** Tune vLLM batch size:
   - Test batch sizes: 32, 64, 128
   - Measure: Throughput (emb/sec) vs GPU memory usage
   - Select: Optimal batch size balancing throughput and memory
 
-- [ ] **8.1.2** Implement dynamic batching in orchestration:
+- [x] **8.1.2** Implement dynamic batching in orchestration:
   - Accumulate chunks until batch size or timeout
   - Send batch to vLLM for efficient GPU utilization
   - Handle partial batches at end of job
@@ -1021,12 +1021,12 @@
 
 ### 8.3 GPU Memory Management
 
-- [ ] **8.3.1** Configure vLLM GPU memory:
+- [x] **8.3.1** Configure vLLM GPU memory:
   - Set `--gpu-memory-utilization=0.9` (leave 10% buffer)
   - Monitor GPU memory via Prometheus
   - Alert if GPU memory >95% for >5 minutes
 
-- [ ] **8.3.2** Implement graceful degradation:
+- [x] **8.3.2** Implement graceful degradation:
   - If vLLM reports OOM, reduce batch size dynamically
   - If repeated OOMs, fail job with clear error message
   - Log GPU memory pressure for capacity planning

@@ -16,10 +16,6 @@ from typing import Any, Callable, Dict, Protocol
 from Medical_KG_rev.models.ir import Document
 from .validation import ensure_valid_chunks
 
-if False:  # pragma: no cover - imported for typing only
-    from typing import Type
-
-
 @dataclass(slots=True)
 class Chunk:
     """Normalized representation of a chunk returned by chunkers."""

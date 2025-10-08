@@ -1,15 +1,9 @@
-#!/usr/bin/env python
-"""Lightweight sanity check for chunking-related dependencies.
-
-This helper is intended for deployment pipelines so that engineers can verify
-that the optional libraries required by the new chunking stack are available in
-the runtime environment.  It validates both Python packages and, where
-applicable, required resources (such as the scispaCy language model).
-"""
+"""Verify the optional parsing/chunking dependency stack is available."""
 
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 from typing import Iterable
 
@@ -24,17 +18,32 @@ def _check_modules(modules: Iterable[str]) -> list[str]:
     return missing
 
 
-def _check_scispacy_model() -> list[str]:
-    try:
-        import spacy
-    except ImportError as exc:  # pragma: no cover - exercised when dependency missing
-        return [f"spacy: {exc}"]
+def _check_huggingface_model() -> list[str]:
+    model_name = os.getenv("MEDICAL_KG_SENTENCE_MODEL")
+    if not model_name:
+        return [
+            "MEDICAL_KG_SENTENCE_MODEL is not configured; the Hugging Face "
+            "sentence segmenter will fall back to heuristic splitting.",
+        ]
 
-    model_name = "en_core_sci_sm"
     try:
-        spacy.load(model_name)
-    except Exception as exc:  # pragma: no cover - executed if model missing
-        return [f"spacy model '{model_name}': {exc}"]
+        from transformers import AutoTokenizer
+    except ImportError as exc:  # pragma: no cover - handled by module checks
+        return [f"transformers: {exc}"]
+
+    try:
+        AutoTokenizer.from_pretrained(
+            model_name,
+            use_fast=True,
+            local_files_only=True,
+        )
+    except OSError as exc:
+        return [
+            f"Hugging Face tokenizer '{model_name}' not found locally: {exc}. "
+            "Download the model prior to deployment.",
+        ]
+    except Exception as exc:  # pragma: no cover - unexpected failure
+        return [f"Hugging Face tokenizer '{model_name}': {exc}"]
     return []
 
 
@@ -42,15 +51,15 @@ def main() -> int:
     modules = [
         "langchain_text_splitters",
         "llama_index.core",
-        "scispacy",
         "syntok.segmenter",
         "unstructured.partition",
         "tiktoken",
         "transformers",
+        "pydantic",
     ]
 
     missing = _check_modules(modules)
-    missing.extend(_check_scispacy_model())
+    missing.extend(_check_huggingface_model())
 
     if missing:
         print("Chunking dependency check failed:")

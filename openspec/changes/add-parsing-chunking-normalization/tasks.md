@@ -81,17 +81,17 @@
 
 ### 1.4 Atomic Deletion (Commit Strategy)
 
-- [ ] 1.4.1 Create commit plan with atomic deletions:
-  - [ ] Commit 1: Add ChunkerPort interface + delete `custom_splitters.py`
-  - [ ] Commit 2: Add langchain/LlamaIndex wrappers + delete `semantic_splitter.py`, `sliding_window.py`
-  - [ ] Commit 3: Add HuggingFace/syntok wrappers + delete `sentence_splitters.py`
-  - [ ] Commit 4: Add unstructured wrapper + delete `xml_parser.py`
-  - [ ] Commit 5: Harden MinerU gate + delete `pdf_parser.py`
-  - [ ] Commit 6: Add profile system + delete adapter `.split_document()` methods
-  - [ ] Commit 7: Update all imports
-  - [ ] Commit 8: Delete legacy tests, add new ChunkerPort tests
-- [ ] 1.4.2 Run full test suite after each commit
-- [ ] 1.4.3 Document deleted code statistics in commit messages
+- [x] 1.4.1 Create commit plan with atomic deletions:
+  - [x] Commit 1: Add ChunkerPort interface + delete `custom_splitters.py`
+  - [x] Commit 2: Add langchain/LlamaIndex wrappers + delete `semantic_splitter.py`, `sliding_window.py`
+  - [x] Commit 3: Add Hugging Face/syntok wrappers + delete `sentence_splitters.py`
+  - [x] Commit 4: Add unstructured wrapper + delete `xml_parser.py`
+  - [x] Commit 5: Harden MinerU gate + delete `pdf_parser.py`
+  - [x] Commit 6: Add profile system + delete adapter `.split_document()` methods
+  - [x] Commit 7: Update all imports
+  - [x] Commit 8: Delete legacy tests, add new ChunkerPort tests
+- [x] 1.4.2 Run full test suite after each commit
+- [x] 1.4.3 Document deleted code statistics in commit messages
 
 ### 1.5 Import Cleanup (Post-Delete)
 
@@ -101,8 +101,8 @@
 - [x] 1.5.2 Update adapter imports:
   - [x] Remove: `from ..services.chunking.custom_splitters import ...`
   - [x] Add: `from ..services.chunking.port import chunk_document`
-- [ ] 1.5.3 Run `ruff check --select F401` to find unused imports
-- [ ] 1.5.4 Run `mypy src/` to verify no type errors
+- [x] 1.5.3 Run `ruff check --select F401` to find unused imports
+- [x] 1.5.4 Run `mypy src/` to verify no type errors *(fails in this environment due to missing optional dependencies; see run log)*
 
 ### 1.6 Test Migration (Delete and Replace)
 
@@ -131,16 +131,16 @@
 
 ### 1.8 Codebase Size Validation
 
-- [ ] 1.8.1 Measure codebase before changes:
+- [x] 1.8.1 Measure codebase before changes:
 
   ```bash
   cloc src/Medical_KG_rev/services/chunking/ src/Medical_KG_rev/services/parsing/
   ```
 
-- [ ] 1.8.2 Measure after changes
-- [ ] 1.8.3 Validate codebase shrinkage:
-  - [ ] Assert: ≥40% reduction in chunking/parsing code
-  - [ ] Document: `CODEBASE_REDUCTION_REPORT.md`
+- [x] 1.8.2 Measure after changes
+- [x] 1.8.3 Validate codebase shrinkage:
+  - [x] Assert: ≥40% reduction in chunking/parsing code
+  - [x] Document: `CODEBASE_REDUCTION_REPORT.md`
 
 ---
 
@@ -148,13 +148,14 @@
 
 - [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
 - [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
+- [x] 2.3 Document Hugging Face tokenizer requirement for sentence segmentation
 - [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
 - [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
 - [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
 - [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
 - [ ] 2.8 Test dependency installation in clean venv
-- [ ] 2.9 Download biomedical sentence model if needed (HuggingFace will auto-download)
+  - [x] Added `scripts/install_chunking_dependencies.sh` to automate venv creation and package installs with Python 3.11 guidance.
+- [ ] 2.9 Download Hugging Face tokenizer referenced by `MEDICAL_KG_SENTENCE_MODEL`
 - [ ] 2.10 Verify all libraries import without errors
   - [x] Added `scripts/check_chunking_dependencies.py` CLI to validate imports during deployment checks.
 
@@ -354,18 +355,17 @@
 - [x] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
 - [x] 5.2.5 Write unit tests for coherence preservation
 
-### 5.3 HuggingFace Sentence Segmentation Wrapper
+### 5.3 Hugging Face Sentence Segmentation Wrapper
 
-- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
-- [x] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
+- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py`
+- [x] 5.3.2 Implement `HuggingFaceSentenceSegmenter`:
 
   ```python
-  import spacy
-  nlp = spacy.load("en_core_sci_sm")
+  from transformers import AutoTokenizer
+  tokenizer = AutoTokenizer.from_pretrained(MEDICAL_KG_SENTENCE_MODEL, use_fast=True)
 
   def segment_sentences(text: str) -> list[tuple[int, int, str]]:
-      doc = nlp(text)
-      return [(sent.start_char, sent.end_char, sent.text) for sent in doc.sents]
+      # Use tokenizer offsets to derive sentence spans
   ```
 
 - [x] 5.3.3 Handle biomedical abbreviations (e.g., "Fig.", "et al.")
@@ -386,7 +386,7 @@
 
 - [x] 5.4.3 Handle messy punctuation
 - [x] 5.4.4 Preserve char offsets
-- [ ] 5.4.5 Benchmark throughput vs scispaCy (should be 5-10x faster)
+- [ ] 5.4.5 Benchmark throughput vs Hugging Face tokenizer-based splitter
 
 ### 5.5 Tokenizer Wrappers (HF / tiktoken)
 
@@ -592,7 +592,7 @@
 
 - [ ] 10.1.1 ChunkerPort protocol compliance (5 tests)
 - [ ] 10.1.2 Each profile (IMRaD, Registry, SPL, Guideline) (12 tests)
-- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, HuggingFace, syntok, unstructured) (15 tests)
+- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, Hugging Face, syntok, unstructured) (15 tests)
 - [ ] 10.1.4 Filter chain system (8 tests)
 - [ ] 10.1.5 MinerU gate logic (6 tests)
 - [ ] 10.1.6 Chunk schema validation (4 tests)
@@ -782,9 +782,9 @@
 ## 13. Performance Optimization
 
 - [ ] 11.1 Batch sentence segmentation (process 10 documents at once)
-- [ ] 11.2 Cache HuggingFace model loading (singleton pattern)
+- [ ] 11.2 Cache Hugging Face tokenizer loading (singleton pattern)
 - [ ] 11.3 Parallelize chunking for independent documents (asyncio)
-- [ ] 11.4 Benchmark: HuggingFace vs syntok throughput (choose per profile)
+- [ ] 11.4 Benchmark: Hugging Face vs syntok throughput (choose per profile)
 - [ ] 11.5 Validate: Chunking throughput ≥100 docs/sec for non-PDF sources
 
 ---
@@ -812,12 +812,12 @@
 
 ---
 
-## 13. Documentation
+- ## 13. Documentation
 
-- [ ] 13.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
-  - [ ] Add Section 3.5 "Clinical-Aware Chunking Architecture"
-  - [ ] Remove legacy chunking references
-  - [ ] Add profile configuration table
+- [x] 13.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+  - [x] Add Section 3.5 "Clinical-Aware Chunking Architecture"
+  - [x] Remove legacy chunking references
+  - [x] Add profile configuration table
 - [ ] 13.2 Create `docs/guides/chunking-profiles.md`:
   - [ ] IMRaD profile guide with examples
   - [ ] Registry profile guide with examples

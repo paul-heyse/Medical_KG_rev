@@ -446,16 +446,16 @@ class Chunk(BaseModel):
 - Iterate profiles based on quantitative feedback
 - Version profiles in Git (e.g., `pmc-imrad-v2.yaml`) for reproducibility
 
-### Risk 2: HuggingFace Model Performance Overhead
+### Risk 2: Hugging Face Tokenizer Availability
 
-**Risk**: Transformer-based sentence segmentation is 5-10x slower than syntok, may bottleneck high-volume ingestion
+**Risk**: Environments without the configured Hugging Face tokenizer may fall back to heuristic splitting, degrading accuracy
 
 **Mitigation**:
 
-- Use syntok for high-throughput batches (e.g., bulk PMC ingestion)
-- Use HuggingFace models only when biomedical sentence boundaries are critical (e.g., Methods→Results transitions)
-- Profile-level flag: `sentence_splitter: syntok` vs `sentence_splitter: huggingface`
-- Benchmark both on representative corpus, choose based on quality/speed trade-off
+- Document the `MEDICAL_KG_SENTENCE_MODEL` requirement in deployment guides
+- Bundle tokenizer download in `scripts/install_chunking_dependencies.sh`
+- Validate availability via `scripts/check_chunking_dependencies.py` before release
+- Provide syntok as a high-throughput fallback for less sensitive domains
 
 ### Risk 3: MinerU Gate Requires Workflow Changes
 
@@ -470,7 +470,7 @@ class Chunk(BaseModel):
 
 ### Risk 4: Library Version Management
 
-**Risk**: LangChain/LlamaIndex/HuggingFace may introduce breaking changes in future versions
+**Risk**: LangChain/LlamaIndex/Hugging Face may introduce breaking changes in future versions
 
 **Mitigation**:
 
@@ -487,7 +487,7 @@ class Chunk(BaseModel):
 
 **Day 1-3**: Foundation
 
-- [ ] Install dependencies (langchain-text-splitters, llama-index-core, sentence-transformers, syntok, unstructured)
+- [ ] Install dependencies (langchain-text-splitters, llama-index-core, transformers, syntok, unstructured, pydantic)
 - [ ] Create `ChunkerPort` interface + runtime registry
 - [ ] Define `Chunk` Pydantic model with provenance fields
 
@@ -509,7 +509,7 @@ class Chunk(BaseModel):
 
 - [ ] **Commit 1**: Add ChunkerPort + delete `custom_splitters.py` (8 custom chunkers)
 - [ ] **Commit 2**: Add LangChain wrapper + delete `semantic_splitter.py`, `sliding_window.py`
-- [ ] **Commit 3**: Add HuggingFace/syntok wrappers + delete `sentence_splitters.py`
+- [ ] **Commit 3**: Add Hugging Face/syntok wrappers + delete `sentence_splitters.py`
 - [ ] **Commit 4**: Add unstructured wrapper + delete `xml_parser.py`
 - [ ] **Commit 5**: Harden MinerU gate + delete `pdf_parser.py`
 - [ ] **Commit 6**: Add profiles + delete adapter `.split_document()` methods

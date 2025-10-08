@@ -39,7 +39,7 @@ _DEFAULT_NAMESPACES: dict[str, NamespaceConfig] = {
         normalize=True,
         batch_size=64,
         requires_gpu=True,
-        endpoint="http://vllm-embeddings:8001/v1",
+        endpoint="http://vllm-qwen3:8001/v1",
         parameters={"timeout": 60, "max_tokens": 8192},
     ),
     "sparse.splade_v3.400.v1": NamespaceConfig(

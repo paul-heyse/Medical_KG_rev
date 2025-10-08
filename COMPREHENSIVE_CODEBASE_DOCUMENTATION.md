@@ -533,6 +533,7 @@ class MineruService:
   - **Library Delegation**: OpenAI-compatible vLLM endpoint and Pyserini encoders replace bespoke Python implementations
   - **Vector Storage**: OpenSearch `rank_features` (sparse) + FAISS (dense) indexing with namespace-aware routing
   - **Performance**: ≥1000 embeddings/second on GPU with fail-fast GPU enforcement
+  - **Container Images**: Per-model vLLM Dockerfiles live under `ops/vllm/` and publish to `ghcr.io/example/vllm-qwen3-embedding`
 
 - **Vector Store Service**: GPU-accelerated similarity search and indexing
   - **Storage Backends**: FAISS (dense), OpenSearch (sparse + lexical), Qdrant (optional dense)
@@ -553,7 +554,7 @@ from Medical_KG_rev.services.embedding.namespace.loader import load_namespace_re
 registry = load_namespace_registry(Path("config/embedding/namespaces"))
 qwen3 = registry.get("single_vector.qwen3.4096.v1")
 assert qwen3.provider == "vllm"
-assert qwen3.parameters["endpoint"] == "http://vllm-embedding:8001/v1"
+assert qwen3.parameters["endpoint"] == "http://vllm-qwen3:8001/v1"
 ```
 
 ### 6. Orchestration and Event-Driven Architecture

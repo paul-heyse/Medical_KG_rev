@@ -35,7 +35,7 @@ callers should stop writing directly to bespoke stores.
 
 ## 4. Operational Readiness
 
-1. Build the vLLM container: `docker-compose build vllm-embedding`
+1. Build the vLLM container: `docker-compose build vllm-qwen3`
 2. Provision GPUs and verify `python -m scripts.embedding.verify_environment`
    reports `"gpu": {"available": true}`.
 3. Pre-download models with

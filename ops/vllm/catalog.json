@@ -1,0 +1,11 @@
+{
+  "models": [
+    {
+      "name": "qwen3-embedding-8b",
+      "model_id": "Qwen/Qwen2.5-Coder-1.5B",
+      "dockerfile": "Dockerfile.qwen3-embedding-8b",
+      "image": "ghcr.io/example/vllm-qwen3-embedding:latest",
+      "default_port": 8001
+    }
+  ]
+}

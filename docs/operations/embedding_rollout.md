@@ -5,7 +5,7 @@ This guide captures the staged rollout procedure for the vLLM/Pyserini embedding
 ## 1. Prerequisites
 
 - Install Kubernetes CLI (`kubectl`) with access to the target cluster.
-- Ensure the vLLM image has been published to the container registry referenced by `ops/k8s/base/deployment-vllm-embedding.yaml`.
+- Ensure the vLLM image has been published to the container registry referenced by `ops/k8s/base/deployment-vllm-qwen3.yaml`.
 - Prometheus and Grafana must be configured using the manifests in `ops/monitoring/` so the new metrics appear during validation.
 
 ## 2. Deploy to Staging
@@ -19,7 +19,7 @@ python scripts/embedding/deploy.py staging
 
 Monitor the deployment:
 
-1. `kubectl rollout status deployment/vllm-embedding -n embeddings`
+1. `kubectl rollout status deployment/vllm-qwen3 -n embeddings`
 2. `kubectl get pods -n embeddings` to verify GPU scheduling (node selector + tolerations enforced).
 3. Inspect Grafana dashboard **Embeddings & Representation** for:
    - `medicalkg_embedding_duration_seconds` P95 under 500ms.

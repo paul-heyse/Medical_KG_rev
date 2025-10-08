@@ -13,7 +13,8 @@ dependencies such as `huggingface_hub` or `pyserini` are unavailable.
 - `setup_environment.sh` – convenience wrapper that installs production
   dependencies with `pip` and then runs the environment verifier.  This script
   is idempotent and safe to run repeatedly in CI or provisioning pipelines.
-- `verify_environment.py` – checks for GPU availability and dependency
-  versions before starting the vLLM embedding microservice.
+- `verify_environment.py` – checks for GPU availability, validates the
+  vLLM Docker catalog under `ops/vllm/`, and surfaces dependency
+  versions before starting the embedding microservice.
 
 Run the scripts with `python -m scripts.embedding.<name>`.

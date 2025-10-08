@@ -28,45 +28,63 @@
 
 This proposal **eliminates 25% of embedding code** by replacing fragmented embedding integrations with a unified, library-based architecture that enforces GPU-only execution, standardizes storage, and enables multi-namespace experimentation.
 
-### Key Innovations
+### Key Changes
 
-1. **vLLM OpenAI-Compatible Serving** - Single dense embedding endpoint (Qwen3-Embedding-8B)
-2. **Pyserini SPLADE Wrapper** - Standardized sparse signals with doc-side expansion
-3. **Multi-Namespace Registry** - Experiment with new models without breaking existing code
-4. **GPU Fail-Fast Enforcement** - 100% enforcement, zero silent CPU fallbacks
-5. **Unified Storage Strategy** - FAISS (dense), OpenSearch rank_features (sparse)
+- **vLLM Dense Embeddings**: Qwen3-Embedding-8B via OpenAI-compatible API (5x faster: 1000+ emb/sec)
+- **Pyserini Sparse Signals**: SPLADE-v3 document-side expansion with OpenSearch `rank_features`
+- **Multi-Namespace Registry**: A/B test models, gradual migration, explicit versioning
+- **GPU Fail-Fast**: 100% enforcement, no CPU fallbacks
+- **FAISS Primary Storage**: GPU-accelerated KNN (<50ms P95 for 10M vectors)
 
----
+### Breaking Changes
 
-## Problem Statement
-
-Current embedding architecture suffers from three critical problems:
-
-1. **Model Fragmentation**: 3+ embedding models (BGE, SPLADE, ColBERT) with inconsistent serving
-   - 15% of embedding failures due to token misalignment
-   - Engineers debug "which embedding model?" across 8 codebase locations
-
-2. **CPU Fallback Violations**: Silent CPU fallbacks degrade quality by 40-60%
-   - 12% drop in Recall@10 when CPU fallbacks occur
-
-3. **Storage Inconsistency**: Dense vectors scattered across FAISS, Neo4j, ad-hoc files
-   - Sparse signals lack standardized `rank_features` format
+- ❌ Embedding API requires `namespace` parameter (e.g., `namespace="single_vector.qwen3.4096.v1"`)
+- ❌ GPU fail-fast: Embedding jobs fail immediately if GPU unavailable (no CPU fallback)
+- ❌ FAISS primary for dense vectors (Neo4j vector index opt-in for graph queries only)
+- ❌ OpenSearch `rank_features` field required for sparse signals
 
 ---
 
-## Solution Architecture
+## vLLM Dense Embeddings
 
-### vLLM OpenAI-Compatible Serving
+### Setup
+
+**Start vLLM Server**:
+
+```bash
+# Docker Compose (development)
+docker-compose up -d vllm-embedding
+
+# Kubernetes (production)
+kubectl apply -f ops/k8s/deployments/vllm-service.yaml
+```
+
+**Verify Health**:
+
+```bash
+curl http://vllm-service:8001/health
+# Expected: {"status": "healthy", "gpu": "available"}
+```
+
+### Usage
+
+**Python Client**:
 
 ```python
-# Single endpoint for all dense embeddings
-import openai
+from Medical_KG_rev.services.embedding.vllm import VLLMClient
 
-openai.api_base = "http://vllm-service:8001/v1"
-openai.api_key = "none"
+# Initialize client
+client = VLLMClient(base_url="http://vllm-service:8001")
 
-embeddings = openai.Embedding.create(
-    input=["Text to embed"],
+# Embed texts (batch size up to 64)
+texts = [
+    "Significant reduction in HbA1c levels",
+    "Patient reported improved glycemic control"
+]
+
+# Call vLLM via OpenAI-compatible API
+embeddings = await client.embed(
+    texts=texts,
     model="Qwen/Qwen2.5-Coder-1.5B"
 )
 
@@ -136,11 +154,18 @@ result = embed_service.embed(
 )
 ```
 
-**Benefits**:
+**Health Check**:
 
-- Experiment with new models without breaking existing code
-- A/B test embeddings (route 10% traffic, compare Recall@K)
-- Graceful migration (old namespaces remain queryable)
+```bash
+curl http://vllm-service:8001/health
+
+# GPU available:
+# {"status": "healthy", "gpu": "available"}
+
+# GPU unavailable:
+# HTTP 503 Service Unavailable
+# {"status": "unhealthy", "gpu": "unavailable"}
+```
 
 ---
 
@@ -235,30 +260,93 @@ chunks:
 }
 ```
 
-**Benefits**:
-
-- Enables BM25+SPLADE hybrid queries without separate index
-- Efficient storage (only top-K terms stored)
-- Native OpenSearch support
-
 ---
 
-## Breaking Changes
+## Multi-Namespace Registry
 
-1. **Embedding API Signature**: Requires `namespace` parameter
+### Namespace Configuration
 
-   ```python
-   # Before
-   embeddings = embed(texts=["..."])
+**Dense Embedding Namespace**:
 
-   # After
-   embeddings = embed(
-       texts=["..."],
-       namespace="single_vector.qwen3.4096.v1"
-   )
-   ```
+```yaml
+# config/embedding/namespaces/single_vector.qwen3.4096.v1.yaml
+name: qwen3-embedding-8b
+kind: single_vector
+model_id: Qwen/Qwen2.5-Coder-1.5B
+model_version: v1
+dim: 4096
+provider: vllm
+endpoint: http://vllm-service:8001/v1/embeddings
+parameters:
+  batch_size: 64
+  normalize: true
+  max_tokens: 8192
+  gpu_memory_utilization: 0.9
+```
 
-2. **GPU Fail-Fast**: Jobs fail immediately if GPU unavailable (no CPU fallback)
+**Sparse Embedding Namespace**:
+
+```yaml
+# config/embedding/namespaces/sparse.splade_v3.400.v1.yaml
+name: splade-v3
+kind: sparse
+model_id: naver/splade-v3
+model_version: v3
+dim: 400  # top_k terms
+provider: pyserini
+parameters:
+  top_k: 400
+  expand_query_side: false  # Default: doc-side only
+```
+
+### Registry Usage
+
+**Load Namespaces**:
+
+```python
+from Medical_KG_rev.services.embedding.namespace import load_namespaces
+
+# Load all namespaces from config/embedding/namespaces/*.yaml
+registry = load_namespaces()
+
+# List available namespaces
+namespaces = registry.list_namespaces()
+print(namespaces)
+# Output: [
+#   "single_vector.qwen3.4096.v1",
+#   "sparse.splade_v3.400.v1",
+#   "multi_vector.colbert_v2.128.v1"
+# ]
+
+# Get namespace config
+config = registry.get("single_vector.qwen3.4096.v1")
+print(f"Provider: {config.provider}")  # Output: Provider: vllm
+print(f"Endpoint: {config.endpoint}")  # Output: Endpoint: http://vllm-service:8001/v1/embeddings
+```
+
+**Embed with Namespace**:
+
+```python
+from Medical_KG_rev.services.embedding import EmbeddingService
+
+service = EmbeddingService(registry=registry)
+
+# Dense embeddings (vLLM)
+dense_embeds = await service.embed(
+    texts=["diabetes treatment"],
+    namespace="single_vector.qwen3.4096.v1"
+)
+
+# Sparse embeddings (Pyserini)
+sparse_embeds = await service.embed(
+    texts=["diabetes treatment"],
+    namespace="sparse.splade_v3.400.v1"
+)
+```
+
+### A/B Testing Workflow
+
+**Experiment Setup**:
 
    ```python
    # Job ledger state
@@ -544,91 +632,68 @@ TOKEN_OVERFLOW_RATE = Gauge(
 
 ---
 
-## Performance Targets
+## Migration Guide
 
-### Dense Embeddings (vLLM)
+### Pre-Migration Checklist
 
-| Metric | Target | Validation |
-|--------|--------|------------|
-| Throughput | ≥1000 emb/sec | Load test, batch_size=64, GPU T4 |
-| Latency P95 | <200ms | Prometheus histogram, 1000 requests |
-| GPU Utilization | 70-85% | nvidia-smi during load test |
-| Token Overflow | <5% | Monitor `TOKEN_OVERFLOW_RATE` |
+- [ ] vLLM service deployed and healthy (staging)
+- [ ] Pyserini wrapper tested with sample data
+- [ ] FAISS index created (empty, ready for population)
+- [ ] OpenSearch mapping updated for `rank_features` (staging)
+- [ ] All tests passing (unit, integration, performance)
+- [ ] No legacy imports remain
+- [ ] Monitoring dashboards deployed
+- [ ] Runbook reviewed by ops team
 
-### Sparse Embeddings (Pyserini)
+### Migration Steps
 
-| Metric | Target | Validation |
-|--------|--------|------------|
-| Throughput | ≥500 docs/sec | Load test, doc-side expansion |
-| Latency P95 | <400ms | Prometheus histogram |
-| Top-K Terms | 300-400 avg | CloudEvents `top_k_terms_avg` |
-| GPU Memory | <4GB | nvidia-smi memory usage |
+**Step 1: Deploy vLLM Service**:
 
-### Storage
+```bash
+# Kubernetes
+kubectl apply -f ops/k8s/deployments/vllm-service.yaml
 
-| Operation | Target | Validation |
-|-----------|--------|------------|
-| FAISS KNN | P95 <50ms | k6 load test, 10M vectors |
-| OpenSearch Sparse | P95 <200ms | k6 with rank_features |
-| FAISS Build | <2 hours | 10M vectors, incremental |
-
----
-
-## Deployment
-
-### Docker (vLLM)
-
-```dockerfile
-FROM nvcr.io/nvidia/pytorch:23.10-py3
-
-RUN pip install vllm==0.3.0 transformers==4.38.0
-
-# Pre-download model (reduces startup time)
-RUN python -c "from transformers import AutoModel; \
-    AutoModel.from_pretrained('Qwen/Qwen2.5-Coder-1.5B', \
-    cache_dir='/models/qwen3')"
-
-CMD ["python", "-m", "vllm.entrypoints.openai.api_server", \
-     "--model", "Qwen/Qwen2.5-Coder-1.5B", \
-     "--gpu-memory-utilization", "0.8"]
+# Verify health
+curl http://vllm-service:8001/health
 ```
 
-### Kubernetes GPU Allocation
+**Step 2: Update Gateway + Orchestration**:
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-embedding
-spec:
-  replicas: 2
-  template:
-    spec:
-      containers:
-      - name: vllm
-        image: medical-kg/vllm-embedding:latest
-        resources:
-          limits:
-            nvidia.com/gpu: 1
-            memory: 16Gi
-          requests:
-            nvidia.com/gpu: 1
-            memory: 12Gi
-        ports:
-        - containerPort: 8001
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8001
-          initialDelaySeconds: 60
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8001
-          initialDelaySeconds: 30
-      nodeSelector:
-        gpu: "true"
-        gpu-type: "t4"
+```bash
+kubectl apply -f ops/k8s/deployments/gateway.yaml
+kubectl apply -f ops/k8s/deployments/orchestration.yaml
+```
+
+**Step 3: Create FAISS Index**:
+
+```bash
+python scripts/embedding/create_faiss_index.py
+```
+
+**Step 4: Update OpenSearch Mapping**:
+
+```bash
+python scripts/embedding/update_opensearch_mapping.py
+```
+
+**Step 5: Re-Embed Existing Chunks (Background)**:
+
+```bash
+# Run in background (non-blocking)
+python scripts/embedding/reembed_chunks.py &
+```
+
+**Step 6: Validate for 48 Hours**:
+
+```bash
+# Monitor metrics
+curl http://gateway:8000/metrics | grep embedding
+
+# Check GPU utilization
+nvidia-smi
+
+# Validate retrieval quality
+python scripts/evaluate_retrieval.py --before-migration --after-migration
 ```
 
 ---
@@ -721,66 +786,38 @@ namespaces:
 
 **Test Coverage**:
 
-- 60+ unit tests (vLLM client, Pyserini wrapper, namespace registry, GPU enforcer)
-- 30 integration tests (end-to-end embedding + storage)
-- Performance tests (throughput, latency, GPU utilization)
-- Contract tests (REST/GraphQL API compatibility)
+```bash
+# 1. Reduce vLLM GPU memory utilization via container env override
+docker compose run --rm \
+  -e GPU_MEMORY_UTILIZATION=0.8 \
+  vllm-embedding --help  # Compose will respect override on next up
 
-**Quality Validation**:
+# 2. Reduce batch size
+# In namespace config: batch_size: 32  # Reduce from 64 to 32
 
-- Codebase reduction: 25% (530 → 400 lines) ✅
-- GPU enforcement: 100% (zero CPU fallbacks) ✅
-- Embedding throughput: ≥1000 emb/sec (vLLM) ✅
-- Token overflow rate: <5% ✅
-
----
-
-## Success Criteria
-
-### Code Quality
-
-- ✅ 25% codebase reduction (530 → 400 lines)
-- ✅ Test coverage ≥90%
-- ✅ Zero legacy imports
-- ✅ Lint clean (0 ruff/mypy errors)
-
-### Functionality
-
-- ✅ vLLM serving at 1000+ emb/sec
-- ✅ Pyserini SPLADE produces `rank_features`
-- ✅ GPU fail-fast 100% enforcement
-- ✅ Multi-namespace registry supports 3+ namespaces
-
-### Performance
-
-- ✅ Dense throughput: ≥1000 emb/sec
-- ✅ Sparse throughput: ≥500 docs/sec
-- ✅ FAISS KNN: P95 <50ms (10M vectors)
-- ✅ OpenSearch sparse: P95 <200ms
-
----
-
-## Timeline
-
-**6 Weeks Total**:
-
-- **Week 1-2**: Build (vLLM setup, Pyserini wrapper, namespace registry, atomic deletions)
-- **Week 3-4**: Integration testing (all namespaces, GPU fail-fast, storage migration)
-- **Week 5-6**: Production deployment (deploy, monitor, stabilize, document)
+# 3. Monitor GPU memory
+watch -n 1 nvidia-smi
+```
 
 ---
 
 ## Dependencies
 
 ```txt
-# New libraries
-vllm>=0.3.0
-pyserini>=0.22.0
-faiss-gpu>=1.7.4
+pyserini>=0.22.0       # SPLADE-v3 wrapper with document-side expansion
+faiss-gpu>=1.7.4       # GPU-accelerated dense vector search
+redis[hiredis]>=5.0.0  # Embedding cache backend
+```
 
-# Updated libraries
-transformers>=4.38.0
-torch>=2.1.0  # CUDA 12.1+
+vLLM itself ships exclusively as the Docker image
+`ghcr.io/example/vllm-qwen3-embedding:latest`; no Python package is imported by the
+application code.
+
+### Updated Libraries
+
+```txt
+transformers>=4.38.0  # Qwen3 tokenizer support
+torch>=2.1.0  # CUDA 12.1+ for FAISS GPU helpers and health checks
 ```
 
 ---

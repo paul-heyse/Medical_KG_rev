@@ -7,37 +7,28 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-try:  # pragma: no cover - optional observability dependencies
-    from ..utils.logging import configure_logging
-except Exception:  # pragma: no cover - provide no-op when logging extras unavailable
-    import logging
+from ..utils.logging import configure_logging
 
-    def configure_logging(*_, **__) -> None:  # type: ignore[override]
-        logging.getLogger(__name__).warning(
-            "observability.logging.unavailable",
-            message="Logging configuration skipped due to missing dependencies",
-        )
-
-try:  # pragma: no cover - metrics module optional in minimal envs
+try:  # pragma: no cover - metrics optional in minimal environments
     from .metrics import register_metrics
-except Exception:  # pragma: no cover - provide noop fallback
-    def register_metrics(*_, **__) -> None:  # type: ignore[override]
-        return None
+except Exception:  # pragma: no cover - fallback stub when dependencies missing
+    def register_metrics(app, settings):  # type: ignore[override]
+        logger.warning("metrics.registration.unavailable", reason="dependencies_missing")
 
-try:  # pragma: no cover - sentry optional
+try:  # pragma: no cover - sentry optional dependency
     from .sentry import initialise_sentry
-except Exception:  # pragma: no cover - provide noop fallback
-    def initialise_sentry(*_, **__) -> None:  # type: ignore[override]
-        return None
+except Exception:  # pragma: no cover - fallback stub when sentry dependencies missing
+    def initialise_sentry(settings):  # type: ignore[override]
+        logger.info("sentry.disabled", reason="dependencies_missing")
 
-try:  # pragma: no cover - tracing optional
+try:  # pragma: no cover - tracing optional dependency
     from .tracing import configure_tracing, instrument_application
-except Exception:  # pragma: no cover - provide noop fallback
-    def configure_tracing(*_, **__) -> None:  # type: ignore[override]
-        return None
+except Exception:  # pragma: no cover - fallback stub when tracing dependencies missing
+    def configure_tracing(service_name, telemetry):  # type: ignore[override]
+        logger.info("tracing.disabled", reason="dependencies_missing")
 
-    def instrument_application(*_, **__) -> None:  # type: ignore[override]
-        return None
+    def instrument_application(app, settings):  # type: ignore[override]
+        logger.info("tracing.instrumentation.skipped", reason="dependencies_missing")
 
 if TYPE_CHECKING:  # pragma: no cover - import hints only
     from fastapi import FastAPI

@@ -362,12 +362,20 @@ async def embed_text(
 ) -> JSONResponse:
     request = _ensure_tenant(request, security)  # type: ignore[assignment]
     embeddings = service.embed(request)
-    meta = {"total": len(embeddings), "model": request.model}
+    meta = {
+        "total": len(embeddings),
+        "model": request.model,
+        "namespace": request.namespace,
+    }
     get_audit_trail().record(
         context=security,
         action="embed",
         resource="embedding",
-        metadata={"inputs": len(request.inputs), "model": request.model},
+        metadata={
+            "inputs": len(request.inputs),
+            "model": request.model,
+            "namespace": request.namespace,
+        },
     )
     return json_api_response(embeddings, meta=meta)
 

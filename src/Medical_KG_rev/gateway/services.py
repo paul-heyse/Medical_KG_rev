@@ -503,13 +503,27 @@ class GatewayService:
             embeddings.append(
                 EmbeddingVector(
                     id=f"emb-{index}",
-                    vector=vector,
                     model=request.model,
-                    metadata={"length": len(text), "normalized": request.normalize},
+                    namespace=request.namespace,
+                    kind="single_vector",
+                    dimension=len(vector),
+                    vector=vector,
+                    metadata={
+                        "length": len(text),
+                        "normalized": request.normalize,
+                        "namespace": request.namespace,
+                    },
                 )
             )
         self.ledger.update_metadata(job_id, {"embeddings": len(embeddings)})
-        self._complete_job(job_id, payload={"embeddings": len(embeddings)})
+        self._complete_job(
+            job_id,
+            payload={
+                "embeddings": len(embeddings),
+                "namespace": request.namespace,
+                "model": request.model,
+            },
+        )
         return embeddings
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:

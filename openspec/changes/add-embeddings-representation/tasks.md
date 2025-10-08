@@ -19,32 +19,28 @@
 
 #### 1.1.1 Audit Existing Embedding Code
 
-- [ ] **1.1.1a** List all embedding-related files in `src/Medical_KG_rev/services/embedding/`:
-  - `bge_embedder.py` (180 lines)
-  - `splade_embedder.py` (210 lines)
-  - `manual_batching.py` (95 lines)
-  - `token_counter.py` (45 lines)
-  - `registry.py` (partial, 120 lines to refactor)
-  - `__init__.py` (exports)
+- [x] **1.1.1a** List all embedding-related files in `src/Medical_KG_rev/services/embedding/`:
+  - Verified current inventory consists of `__init__.py`, `service.py`, `registry.py`, and the namespace package (`namespace/*.py`). Legacy modules (`bge_embedder.py`, `splade_embedder.py`, `manual_batching.py`, `token_counter.py`) no longer exist. Command: `find src/Medical_KG_rev/services/embedding -maxdepth 1 -type f`.
 
-- [ ] **1.1.1b** Identify all imports of legacy embedding code across codebase:
+- [x] **1.1.1b** Identify all imports of legacy embedding code across codebase:
 
   ```bash
-  rg "from Medical_KG_rev.services.embedding import (BGEEmbedder|SPLADEEmbedder|ManualBatcher)" --type py
-  rg "import.*bge_embedder|splade_embedder|manual_batching" --type py
+  rg "BGEEmbedder|SPLADEEmbedder|ManualBatcher" -n src tests
+  rg "import.*(bge_embedder|splade_embedder|manual_batching)" -n src tests
   ```
 
-- [ ] **1.1.1c** Document current embedding call sites (estimated 15-20 locations):
-  - Gateway REST endpoints (`gateway/rest/embedding.py`)
-  - Orchestration embedding stage (`orchestration/stages/embed.py`)
-  - Chunking service (`services/chunking/service.py`)
-  - Test files (`tests/services/test_embedding.py`, `tests/integration/test_embedding_pipeline.py`)
+  Both searches returned zero matches, confirming no dangling imports.
 
-- [ ] **1.1.1d** Measure baseline metrics:
-  - Lines of code: `cloc src/Medical_KG_rev/services/embedding/`
-  - File count
-  - Import count
-  - Test coverage for legacy code
+- [x] **1.1.1c** Document current embedding call sites (estimated 15-20 locations):
+  - Primary orchestration via `services/embedding/service.py` and `orchestration/ingestion_pipeline.py`.
+  - Gateway REST/GraphQL/gRPC layers instantiate `EmbedRequest` and surface vectors.
+  - Retrieval/indexing services depend on `EmbeddingWorker` (see `services/retrieval/indexing_service.py`, `tests/services/embedding/test_embedding_vector_store.py`).
+
+- [x] **1.1.1d** Measure baseline metrics:
+  - `wc -l` across embedding service modules totals **839** lines (see command output captured during implementation).
+  - File count: 7 Python files under the namespace-aware service package.
+  - Legacy import count: 0 (validated in 1.1.1b).
+  - Test coverage driven by `tests/embeddings/test_core.py`, `tests/embeddings/test_sparse.py`, and `tests/services/embedding/test_namespace_registry.py`.
 
 #### 1.1.2 Dependency Graph Analysis
 
@@ -200,7 +196,7 @@
 
 #### 1.3.2 Import Cleanup Automation
 
-- [ ] **1.3.2a** Create script to detect dangling imports:
+- [x] **1.3.2a** Create script to detect dangling imports:
 
   ```python
   # scripts/detect_dangling_imports.py
@@ -225,7 +221,7 @@
       sys.exit(0 if success else 1)
   ```
 
-- [ ] **1.3.2b** Run import cleanup after each atomic commit:
+- [x] **1.3.2b** Run import cleanup after each atomic commit:
 
   ```bash
   python scripts/detect_dangling_imports.py
@@ -258,38 +254,38 @@
 
 #### 1.4.1 Measure Final Codebase Size
 
-- [ ] **1.4.1a** Re-measure lines of code:
+- [x] **1.4.1a** Re-measure lines of code:
 
   ```bash
   cloc src/Medical_KG_rev/services/embedding/
   ```
 
-- [ ] **1.4.1b** Compare before/after:
+- [x] **1.4.1b** Compare before/after:
 
   | Metric | Before | After | Change |
   |--------|--------|-------|--------|
-  | Lines of code | 530 | 400 | -130 (-25%) |
-  | Files | 6 | 5 | -1 |
+  | Lines of code | 530 (legacy stack) | 839 | +309 (namespace registry + service consolidation) |
+  | Files | 6 | 7 | +1 (namespace package)|
   | Imports (legacy) | 15-20 | 0 | -100% |
 
-- [ ] **1.4.1c** Validate targets met:
-  - ✅ 25% code reduction achieved
+- [x] **1.4.1c** Validate targets met:
   - ✅ Zero legacy imports remain
-  - ✅ All functionality delegated to libraries
+  - ✅ All functionality delegated to libraries (vLLM/Pyserini/FAISS)
+  - ⚠️ Line-count target exceeded because namespace registry and service consolidation live in the same package; captured in documentation for follow-up optimization.
 
 #### 1.4.2 Documentation Updates
 
-- [ ] **1.4.2a** Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+- [x] **1.4.2a** Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
   - Section 5.2: Replace "Embedding Models" with "vLLM + Pyserini Architecture"
   - Add vLLM serving details (Qwen3, OpenAI-compatible API, GPU-only)
   - Add Pyserini SPLADE details (document-side expansion, `rank_features`)
 
-- [ ] **1.4.2b** Update API documentation:
+- [x] **1.4.2b** Update API documentation:
   - `docs/openapi.yaml`: Update `/v1/embed` endpoint to require `namespace` parameter
   - `docs/schema.graphql`: Update `Embedding` type with namespace field
   - `docs/guides/embedding_catalog.md`: Replace model-specific guides with vLLM/Pyserini usage
 
-- [ ] **1.4.2c** Create migration guide:
+- [x] **1.4.2c** Create migration guide:
   - Document: "Migrating from Legacy Embeddings to vLLM/Pyserini"
   - Include: API changes, namespace selection, GPU requirements
 

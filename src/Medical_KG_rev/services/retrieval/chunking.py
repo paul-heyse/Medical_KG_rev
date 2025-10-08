@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Mapping
 
 import structlog
+from pydantic import BaseModel, Field, field_validator
+
 from Medical_KG_rev.adapters import get_plugin_manager
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.chunking.exceptions import (
@@ -25,14 +28,89 @@ from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 logger = structlog.get_logger(__name__)
 
 
+class ChunkCommand(BaseModel):
+    """Command object carrying all information required for chunking."""
+
+    tenant_id: str
+    document_id: str
+    text: str
+    strategy: str = Field(default="section")
+    chunk_size: int | None = Field(default=None, ge=64, le=4096)
+    overlap: float | None = Field(default=None, ge=0.0, lt=1.0)
+    options: dict[str, Any] = Field(default_factory=dict)
+    correlation_id: str = Field(default_factory=lambda: uuid4().hex)
+    requested_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
+
+    @field_validator("text")
+    @classmethod
+    def _validate_text(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise InvalidDocumentError("Chunking requests require non-empty text")
+        return value
+
+    @field_validator("strategy")
+    @classmethod
+    def _normalise_strategy(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("Strategy must be a string")
+        return value.strip().lower()
+
+    def context_metadata(self) -> dict[str, Any]:
+        metadata = {
+            "strategy": self.strategy,
+            "max_tokens": self.chunk_size,
+            "overlap": self.overlap,
+            "requested_at": self.requested_at.isoformat(),
+        }
+        metadata.update(self.options_without_text())
+        return metadata
+
+    def options_without_text(self) -> dict[str, Any]:
+        return {k: v for k, v in self.options.items() if k != "text"}
+
+    def build_document(self) -> Document:
+        text = self.text.strip()
+        paragraphs = [segment.strip() for segment in text.split("\n\n") if segment.strip()]
+        if not paragraphs:
+            paragraphs = [text]
+        blocks: list[Block] = []
+        for index, paragraph in enumerate(paragraphs):
+            blocks.append(
+                Block(
+                    id=f"{self.document_id}:block:{index}",
+                    type=BlockType.PARAGRAPH,
+                    text=paragraph,
+                    metadata={"paragraph_index": index},
+                )
+            )
+        metadata = self.options_without_text()
+        section_title = metadata.get("section_title") if isinstance(metadata, Mapping) else None
+        section = Section(
+            id=f"{self.document_id}:section:0",
+            title=str(section_title) if section_title else None,
+            blocks=blocks,
+        )
+        source = metadata.get("source") if isinstance(metadata, Mapping) else None
+        document = Document(
+            id=self.document_id,
+            source=str(source or "gateway"),
+            title=metadata.get("title") if isinstance(metadata, Mapping) else None,
+            sections=[section],
+            metadata=dict(metadata or {}),
+        )
+        return document
+
+
 @dataclass(slots=True)
 class ChunkingOptions:
-    """Options accepted by the gateway chunking endpoint."""
+    """Internal options passed to the chunking stage."""
 
-    strategy: str = "semantic"
-    max_tokens: int | None = None
-    overlap: float | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    strategy: str
+    max_tokens: int | None
+    overlap: float | None
+    metadata: Mapping[str, Any]
 
 
 class ChunkingService:
@@ -40,7 +118,7 @@ class ChunkingService:
 
     _DEFAULT_PIPELINE = "gateway-direct"
     _DEFAULT_VERSION = "v1"
-    _SUPPORTED_STRATEGIES = ("semantic", "paragraph", "section")
+    _SUPPORTED_STRATEGIES = ("semantic", "paragraph", "section", "table", "sliding-window")
 
     def __init__(
         self,
@@ -64,6 +142,11 @@ class ChunkingService:
     def chunk(self, command: ChunkCommand) -> list[Chunk]:
         """Chunk raw text into retrieval-ready spans."""
 
+        if command.strategy not in self._SUPPORTED_STRATEGIES:
+            raise ChunkerConfigurationError(
+                f"Unsupported chunking strategy '{command.strategy}'"
+            )
+
         chunk_options = ChunkingOptions(
             strategy=command.strategy,
             max_tokens=command.chunk_size,
@@ -71,10 +154,27 @@ class ChunkingService:
             metadata=dict(command.metadata),
         )
         stage = self._resolve_stage()
+        options = ChunkingOptions(
+            strategy=command.strategy,
+            max_tokens=command.chunk_size,
+            overlap=command.overlap,
+            metadata=command.options_without_text(),
+        )
         context = StageContext(
             tenant_id=command.tenant_id,
             doc_id=command.document_id,
             correlation_id=command.correlation_id,
+            metadata=self._context_metadata(options),
+            pipeline_name=self._DEFAULT_PIPELINE,
+            pipeline_version=self._DEFAULT_VERSION,
+        )
+        document = command.build_document()
+        logger.debug(
+            "gateway.chunking.execute",
+            tenant_id=command.tenant_id,
+            doc_id=command.document_id,
+            strategy=command.strategy,
+        )
             metadata=self._context_metadata(chunk_options, command),
             pipeline_name=self._DEFAULT_PIPELINE,
             pipeline_version=self._DEFAULT_VERSION,
@@ -107,6 +207,7 @@ class ChunkingService:
             raise TypeError("Resolved chunk stage does not implement ChunkStage")
         return stage
 
+    def _context_metadata(self, options: ChunkingOptions) -> dict[str, Any]:
     def _build_document(self, document_id: str, text: str, metadata: Mapping[str, Any]) -> Document:
         paragraphs = [segment.strip() for segment in text.split("\n\n") if segment.strip()]
         if not paragraphs:
@@ -150,4 +251,4 @@ class ChunkingService:
         return metadata
 
 
-__all__ = ["Chunk", "ChunkingOptions", "ChunkingService"]
+__all__ = ["Chunk", "ChunkCommand", "ChunkingOptions", "ChunkingService"]

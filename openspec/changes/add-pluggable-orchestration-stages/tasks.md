@@ -24,9 +24,9 @@
 - [x] 2.1 Create StagePluginManager class with entry point discovery
 - [x] 2.2 Implement plugin loading and validation logic
 - [x] 2.3 Add plugin metadata collection and capability reporting
-- [x] 2.4 Create plugin lifecycle management (load, validate, unload)
+- [ ] 2.4 Create plugin lifecycle management (load, validate, unload)
 - [x] 2.5 Add plugin configuration schema validation
-- [x] 2.6 Implement plugin dependency resolution and loading order
+- [ ] 2.6 Implement plugin dependency resolution and loading order
 - [ ] 2.7 Add plugin isolation mechanisms and resource limits
 - [ ] 2.8 Create plugin version compatibility checking and conflict resolution
 - [x] 2.9 Implement plugin health monitoring and failure recovery

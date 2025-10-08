@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Callable, Mapping, Sequence
 
 import structlog
@@ -33,6 +35,7 @@ from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 from .faiss_index import FAISSIndex
+from .hybrid import HybridComponentSettings, HybridSearchCoordinator
 from .opensearch_client import OpenSearchClient
 from .rerank_policy import TenantRerankPolicy
 from .reranker import CrossEncoderReranker
@@ -41,6 +44,7 @@ from .router import RetrievalRouter, RouterMatch
 logger = structlog.get_logger(__name__)
 
 DEFAULT_POLICY_PATH = Path("config/retrieval/reranking.yaml")
+DEFAULT_COMPONENT_CONFIG_PATH = Path("config/retrieval/components.yaml")
 
 
 @dataclass(slots=True)
@@ -74,6 +78,8 @@ class RetrievalService:
         namespace_map: Mapping[str, str] | None = None,
         rerank_policy: TenantRerankPolicy | None = None,
         model_registry: RerankerModelRegistry | None = None,
+        hybrid_coordinator: HybridSearchCoordinator | None = None,
+        hybrid_settings: HybridComponentSettings | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -87,6 +93,9 @@ class RetrievalService:
         )
         self._model_registry = model_registry or RerankerModelRegistry()
         self._model_handles: dict[str, ModelHandle] = {}
+        self._hybrid = hybrid_coordinator or self._build_hybrid_coordinator(
+            hybrid_settings
+        )
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
@@ -166,7 +175,7 @@ class RetrievalService:
         )
         namespace = self._resolve_namespace(embedding_kind)
         component_k = max(k, self._candidate_pool)
-        component_results, component_errors = self._execute_components(
+        component_results, component_errors, component_timings = self._execute_components(
             index=index,
             query=query,
             filters=filters or {},
@@ -230,6 +239,8 @@ class RetrievalService:
 
         metrics.setdefault("components", {})
         metrics["components"]["errors"] = list(component_errors)
+        if component_timings:
+            metrics["components"]["timings_ms"] = dict(component_timings)
         rerank_metadata = dict(metrics.get("reranking", {}))
         rerank_metadata.update(decision.as_metadata())
         rerank_metadata.setdefault("requested", rerank)
@@ -256,6 +267,8 @@ class RetrievalService:
             metadata.setdefault("component_scores", dict(document.strategy_scores))
             metadata.setdefault("components", {})
             metadata["components"].setdefault("errors", list(component_errors))
+            if component_timings:
+                metadata["components"].setdefault("timings_ms", dict(component_timings))
             if rerank_metadata:
                 metadata.setdefault("reranking", rerank_metadata)
             result = RetrievalResult(
@@ -282,7 +295,27 @@ class RetrievalService:
         namespace: str,
         top_k: int,
         context: SecurityContext,
-    ) -> tuple[dict[str, Sequence[Mapping[str, object]]], list[str]]:
+    ) -> tuple[
+        dict[str, Sequence[Mapping[str, object]]],
+        list[str],
+        dict[str, float],
+    ]:
+        if self._hybrid:
+            outcome = self._hybrid.search_sync(
+                index=index,
+                query=query,
+                k=top_k,
+                filters=filters,
+                correlation_id=context.identity,
+                context=context,
+                cache_scope=context.tenant_id,
+            )
+            component_results = outcome.component_results
+            errors = outcome.component_errors
+            for component in component_results:
+                component_results.setdefault(component, [])
+            return component_results, errors, dict(outcome.timings_ms)
+
         tasks: dict[str, Callable[[], Sequence[Mapping[str, object]]]] = {
             "bm25": lambda: self.opensearch.search(
                 index,
@@ -304,8 +337,13 @@ class RetrievalService:
 
         results: dict[str, Sequence[Mapping[str, object]]] = {}
         errors: list[str] = []
+        timings: dict[str, float] = {}
+        start_times: dict[str, float] = {}
         with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-            future_map = {executor.submit(func): name for name, func in tasks.items()}
+            future_map = {}
+            for name, func in tasks.items():
+                start_times[name] = perf_counter()
+                future_map[executor.submit(func)] = name
             for future in as_completed(future_map):
                 component = future_map[future]
                 try:
@@ -318,9 +356,81 @@ class RetrievalService:
                     )
                     errors.append(f"{component}:{exc.__class__.__name__}")
                     results[component] = []
+                finally:
+                    started = start_times.get(component, perf_counter())
+                    timings[component] = (perf_counter() - started) * 1000.0
         for component in tasks:
             results.setdefault(component, [])
-        return results, errors
+        return results, errors, timings
+
+    def _build_hybrid_coordinator(
+        self, settings: HybridComponentSettings | None
+    ) -> HybridSearchCoordinator:
+        resolved_settings = settings
+        if resolved_settings is None:
+            try:
+                resolved_settings = HybridComponentSettings.from_file(
+                    DEFAULT_COMPONENT_CONFIG_PATH
+                )
+            except FileNotFoundError:
+                resolved_settings = HybridComponentSettings()
+        components = {
+            "bm25": self._bm25_component,
+            "splade": self._splade_component,
+            "dense": self._dense_component,
+        }
+        return HybridSearchCoordinator(components, settings=resolved_settings)
+
+    async def _bm25_component(
+        self,
+        *,
+        index: str,
+        query: str,
+        k: int,
+        filters: Mapping[str, object],
+        context: SecurityContext | None = None,
+    ) -> Sequence[Mapping[str, object]]:
+        return await asyncio.to_thread(
+            self.opensearch.search,
+            index,
+            query,
+            "bm25",
+            filters,
+            True,
+            k,
+        )
+
+    async def _splade_component(
+        self,
+        *,
+        index: str,
+        query: str,
+        k: int,
+        filters: Mapping[str, object],
+        context: SecurityContext | None = None,
+    ) -> Sequence[Mapping[str, object]]:
+        return await asyncio.to_thread(
+            self.opensearch.search,
+            index,
+            query,
+            "splade",
+            filters,
+            True,
+            k,
+        )
+
+    async def _dense_component(
+        self,
+        *,
+        index: str,
+        query: str,
+        k: int,
+        filters: Mapping[str, object],
+        context: SecurityContext | None = None,
+    ) -> Sequence[Mapping[str, object]]:
+        if context is None:
+            raise ValueError("Security context required for dense retrieval")
+        return await asyncio.to_thread(self._dense_search, query, k, context)
 
     def _materialise_documents(
         self,

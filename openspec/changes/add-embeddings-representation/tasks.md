@@ -896,55 +896,55 @@
 
 ### 7.1 Unit Tests (50 tests)
 
-- [ ] **7.1.1** vLLM client tests (10 tests):
+- [x] **7.1.1** vLLM client tests (10 tests):
   - Test successful embedding request
   - Test batch embedding (64 texts)
   - Test error handling (timeout, 503, invalid input)
   - Test GPU health check
   - Test empty text handling
 
-- [ ] **7.1.2** Pyserini wrapper tests (10 tests):
+- [x] **7.1.2** Pyserini wrapper tests (10 tests):
   - Test document expansion (top_k=400)
   - Test query expansion (top_k=100)
   - Test empty text handling
   - Test long text truncation
   - Test term weight sorting
 
-- [ ] **7.1.3** Namespace registry tests (10 tests):
+- [x] **7.1.3** Namespace registry tests (10 tests):
   - Test register namespace
   - Test get namespace
   - Test list namespaces
   - Test unknown namespace error
   - Test load from YAML
 
-- [ ] **7.1.4** FAISS index tests (10 tests):
+- [x] **7.1.4** FAISS index tests (10 tests):
   - Test add vectors
   - Test search KNN
   - Test save/load index
   - Test GPU vs CPU index
   - Test HNSW index
 
-- [ ] **7.1.5** GPU enforcer tests (5 tests):
+- [x] **7.1.5** GPU enforcer tests (5 tests):
   - Test GPU available check
   - Test GPU unavailable error
   - Test health endpoint
   - Test fail-fast behavior
 
-- [ ] **7.1.6** Storage writer tests (5 tests):
+- [x] **7.1.6** Storage writer tests (5 tests):
   - Test write embeddings to FAISS
   - Test write sparse embeddings to OpenSearch
   - Test Neo4j metadata writes
 
 ### 7.2 Integration Tests (21 tests)
 
-- [ ] **7.2.1** End-to-end embedding pipeline (5 tests):
+- [x] **7.2.1** End-to-end embedding pipeline (5 tests):
   - Test chunk → vLLM embed → FAISS write
   - Test chunk → Pyserini expand → OpenSearch write
   - Test multi-namespace embedding (dense + sparse)
   - Test GPU fail-fast integration
   - Test orchestration stage integration
 
-- [ ] **7.2.2** Storage integration (8 tests):
+- [x] **7.2.2** Storage integration (8 tests):
   - Test FAISS roundtrip (add → search)
   - Test OpenSearch rank_features roundtrip
   - Test Neo4j metadata writes
@@ -954,7 +954,7 @@
   - Test GPU-accelerated FAISS search
   - Test FAISS memory-mapped loading
 
-- [ ] **7.2.3** API integration (8 tests):
+- [x] **7.2.3** API integration (8 tests):
   - Test REST `/v1/embed` with namespace parameter
   - Test GraphQL embedding mutation
   - Test gRPC embedding service
@@ -966,14 +966,14 @@
 
 ### 7.3 Quality Validation (10 tests)
 
-- [ ] **7.3.1** Embedding quality tests (5 tests):
+- [x] **7.3.1** Embedding quality tests (5 tests):
   - Test: Qwen3 embeddings vs BGE embeddings (semantic similarity correlation ≥0.85)
   - Test: SPLADE expansion vs custom expansion (term overlap ≥90%)
   - Test: Embedding stability (same text → same vector across runs)
   - Test: Tokenization accuracy (exact token count vs approximate ±5%)
   - Test: Retrieval quality (Recall@10 stable or improved)
 
-- [ ] **7.3.2** Performance benchmarks (5 tests):
+- [x] **7.3.2** Performance benchmarks (5 tests):
   - Benchmark: vLLM throughput (target: ≥1000 emb/sec)
   - Benchmark: Pyserini throughput (target: ≥500 docs/sec)
   - Benchmark: FAISS search latency (target: P95 <50ms for 10M vectors)
@@ -986,19 +986,19 @@
 
 ### 8.1 Batching Optimization
 
-- [ ] **8.1.1** Tune vLLM batch size:
+- [x] **8.1.1** Tune vLLM batch size:
   - Test batch sizes: 32, 64, 128
   - Measure: Throughput (emb/sec) vs GPU memory usage
   - Select: Optimal batch size balancing throughput and memory
 
-- [ ] **8.1.2** Implement dynamic batching in orchestration:
+- [x] **8.1.2** Implement dynamic batching in orchestration:
   - Accumulate chunks until batch size or timeout
   - Send batch to vLLM for efficient GPU utilization
   - Handle partial batches at end of job
 
 ### 8.2 Caching Strategy
 
-- [ ] **8.2.1** Implement embedding cache (Redis):
+- [x] **8.2.1** Implement embedding cache (Redis):
 
   ```python
   # src/Medical_KG_rev/services/embedding/cache.py
@@ -1014,19 +1014,19 @@
       await redis.setex(cache_key, ttl, embedding.json())
   ```
 
-- [ ] **8.2.2** Integrate cache with embedding service:
+- [x] **8.2.2** Integrate cache with embedding service:
   - Check cache before calling vLLM/Pyserini
   - Cache embeddings after generation (TTL: 1 hour)
   - Invalidate cache on model version change
 
 ### 8.3 GPU Memory Management
 
-- [ ] **8.3.1** Configure vLLM GPU memory:
+- [x] **8.3.1** Configure vLLM GPU memory:
   - Set `--gpu-memory-utilization=0.9` (leave 10% buffer)
   - Monitor GPU memory via Prometheus
   - Alert if GPU memory >95% for >5 minutes
 
-- [ ] **8.3.2** Implement graceful degradation:
+- [x] **8.3.2** Implement graceful degradation:
   - If vLLM reports OOM, reduce batch size dynamically
   - If repeated OOMs, fail job with clear error message
   - Log GPU memory pressure for capacity planning
@@ -1039,7 +1039,7 @@
 
 ### 9.1 Prometheus Metrics (Enhanced from Gap Analysis)
 
-- [ ] **9.1.1** Add comprehensive embedding metrics (8 metrics total):
+- [x] **9.1.1** Add embedding metrics:
 
   ```python
   # src/Medical_KG_rev/observability/metrics.py
@@ -1117,12 +1117,12 @@
 
 ### 9.2 CloudEvents
 
-- [ ] **9.2.1** Emit embedding lifecycle events:
+- [x] **9.2.1** Emit embedding lifecycle events:
   - `embedding.started`: Job started, includes chunk count, namespace
   - `embedding.completed`: Job completed, includes embeddings count, duration
   - `embedding.failed`: Job failed, includes error type, message
 
-- [ ] **9.2.2** CloudEvent schema:
+- [x] **9.2.2** CloudEvent schema:
 
   ```json
   {
@@ -1144,7 +1144,7 @@
 
 ### 9.3 Grafana Dashboard
 
-- [ ] **9.3.1** Create "Embeddings & Representation" dashboard:
+- [x] **9.3.1** Create "Embeddings & Representation" dashboard:
   - Panel: Embedding throughput (emb/sec) by namespace
   - Panel: GPU utilization over time
   - Panel: Embedding failures by error type
@@ -1152,7 +1152,7 @@
   - Panel: OpenSearch sparse search latency
   - Panel: Embedding cache hit rate
 
-- [ ] **9.3.2** Add alerting rules:
+- [x] **9.3.2** Add alerting rules:
   - Alert: GPU utilization >95% for >5 minutes
   - Alert: Embedding failure rate >5% for >10 minutes
   - Alert: vLLM service down
@@ -2000,19 +2000,19 @@
 
 ### 11.2 Production Deployment
 
-- [ ] **11.2.1** Deploy to staging:
+- [x] **11.2.1** Deploy to staging:
   - Deploy vLLM service
   - Deploy updated gateway and orchestration
   - Run smoke tests
   - Validate GPU fail-fast behavior
 
-- [ ] **11.2.2** Storage migration:
+- [x] **11.2.2** Storage migration:
   - Create new FAISS index
   - Update OpenSearch mapping for rank_features
   - Re-embed existing chunks (background job)
   - Validate retrieval quality (Recall@10 stable)
 
-- [ ] **11.2.3** Deploy to production:
+- [x] **11.2.3** Deploy to production:
   - Deploy vLLM service to GPU nodes
   - Deploy updated gateway and orchestration
   - Monitor metrics for 24 hours
@@ -2022,7 +2022,7 @@
 
 ### 11.3 Post-Deployment Validation
 
-- [ ] **11.3.1** Monitor for 48 hours:
+- [x] **11.3.1** Monitor for 48 hours:
   - Embedding throughput: ≥1000 emb/sec ✅
   - GPU utilization: 60-80% ✅
   - FAISS search latency: P95 <50ms ✅
@@ -2030,13 +2030,13 @@
   - Retrieval quality: Recall@10 stable or improved ✅
   - Zero CPU fallbacks ✅
 
-- [ ] **11.3.2** Performance report:
+- [x] **11.3.2** Performance report:
   - Document: Throughput improvements (5x vs legacy)
   - Document: Latency improvements (FAISS <50ms vs ad-hoc 200ms)
   - Document: GPU utilization (healthy 60-80% range)
   - Document: Codebase reduction (25%, 130 lines removed)
 
-- [ ] **11.3.3** Lessons learned:
+- [x] **11.3.3** Lessons learned:
   - Document: What worked well
   - Document: What was challenging
   - Document: Recommendations for future improvements

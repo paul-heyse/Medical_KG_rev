@@ -66,7 +66,7 @@ Legacy configuration documents can be converted with `Medical_KG_rev.config.migr
 | --- | --- | --- |
 | `GPUUnavailableError` | Reranker requires CUDA but none detected | Update deployment targets or disable GPU-only rerankers. |
 | Low cache hit rate | Index updates invalidated cache | Use cache warming via `RerankingEngine.warm_cache` for popular queries. |
-| Slow reranking latency | Oversized batches triggering splits | Check `retrieval_pipeline_stage_duration_seconds` metrics and reduce `rerank_candidates`. |
+| Slow reranking latency | Oversized batches triggering splits | Check `reranking_duration_seconds` histogram and reduce `rerank_candidates`. |
 
 ## Evaluation Harness Usage
 

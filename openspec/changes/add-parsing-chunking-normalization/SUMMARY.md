@@ -229,32 +229,14 @@ class Chunk:
 | Token overflow | Low | Low | Monitor metrics, tune profile token budgets |
 | Table rectangularization | Medium | Low | Preserve HTML by default, rectangularize opt-in |
 
----
-
-## Observability
-
-### Prometheus Metrics
-
-- `medicalkg_chunking_duration_seconds{profile, source}` - Latency per profile
-- `medicalkg_chunks_per_document{profile, source}` - Chunk count distribution
-- `medicalkg_chunk_token_overflow_total{profile}` - Token budget overflows
-- `medicalkg_table_preservation_rate{profile}` - % tables preserved as HTML
-- `medicalkg_mineru_duration_seconds` - PDF processing latency
-- `medicalkg_mineru_failures_total{error_type}` - MinerU failure taxonomy
-
-### CloudEvents
-
-```json
-{
-  "type": "com.medical-kg.chunking.completed",
-  "data": {
-    "profile": "pmc-imrad",
-    "chunk_count": 45,
-    "duration_seconds": 1.2,
-    "token_overflows": 0,
-    "tables_preserved": 3
-  }
-}
+```txt
+langchain-text-splitters>=0.2.0
+llama-index-core>=0.10.0
+syntok>=1.4.4
+unstructured[local-inference]>=0.12.0
+tiktoken>=0.6.0
+transformers>=4.38.0
+pydantic>=2.6.0
 ```
 
 ### Grafana Dashboards
@@ -270,20 +252,12 @@ class Chunk:
 
 ## Testing Strategy
 
-### Comprehensive Coverage
-
-- **50+ Unit Tests**: ChunkerPort, profiles, libraries, filters, MinerU gate
-- **21 Integration Tests**: End-to-end per profile, PDF two-phase
-- **Performance Tests**: Latency benchmarks, load tests (100 concurrent), soak tests (24hr)
-- **Contract Tests**: REST/GraphQL/gRPC API compatibility (Schemathesis, Inspector, Buf)
-- **Table Tests**: HTML preservation, rectangularization decisions
-
-### Quality Validation
-
-- Manual inspection of 100 chunks for offset accuracy
-- Section labels match expected structure
-- No mid-sentence splits (sample 100 chunks)
-- Table HTML preserved when uncertainty high
+| Risk | Mitigation |
+|------|------------|
+| Profile tuning complexity | Start with conservative defaults, iterate based on metrics |
+| Hugging Face tokenizer availability | Download tokenizer artifacts during deployment and configure `MEDICAL_KG_SENTENCE_MODEL` |
+| MinerU gate workflow change | Document runbook, add Dagster UI shortcuts, implement auto-sensor |
+| Library version management | Pin exact versions, test upgrades in staging, maintain golden output tests |
 
 ---
 

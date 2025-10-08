@@ -3,7 +3,7 @@
 ## Pipeline Architecture and Flow
 
 - **Ingestion**: Documents enter via `/v1/ingest` or `/v1/pipelines/ingest`, are queued in Kafka (`ingest.requests.v1`), processed by chunking → embedding → indexing workers, and complete on `ingest.results.v1`. Server-sent events broadcast `jobs.started`, `jobs.progress`, and `jobs.completed` notifications to `/v1/jobs/{job_id}/events`.
-- **Query**: Requests reach `/v1/retrieve`, `/v1/pipelines/query`, or the GraphQL `retrieve` mutation. The `QueryPipelineExecutor` executes retrieval strategies in parallel, fuses results, reranks candidates, and returns final selections with pipeline version metadata and optional explain traces.
+- **Query**: Requests reach `/v1/retrieve`, `/v1/pipelines/query`, or the GraphQL `retrieve` mutation. The gateway now delegates directly to `Medical_KG_rev.services.retrieval.RetrievalService`, which fans out to BM25/SPLADE/dense components, fuses their responses, applies reranking, and returns final selections annotated with `RETRIEVAL_PIPELINE_VERSION` metadata and optional explain traces.
 - **State & Observability**: All stages update the in-memory ledger, emit Prometheus metrics, trace spans, and structured logs keyed by correlation IDs. SSE consumers receive updates with stage names, statuses, and timestamps for live monitoring.
 
 ## Configuration Guide

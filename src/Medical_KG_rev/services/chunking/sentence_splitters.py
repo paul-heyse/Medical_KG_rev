@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import warnings
 from functools import lru_cache
+from typing import Callable, List, Tuple
 
-Segment = tuple[int, int, str]
+Segment = Tuple[int, int, str]
 
 
-def get_sentence_splitter(name: str) -> Callable[[str], list[Segment]]:
+def get_sentence_splitter(name: str) -> Callable[[str], List[Segment]]:
     name = name.lower()
-    if name == "scispacy":
-        return _huggingface_split  # Replaced scispacy with Hugging Face
-    if name == "huggingface":
+    if name in {"huggingface", "hf"}:
+        return _huggingface_split
+    if name == "scispacy":  # pragma: no cover - deprecated path
+        warnings.warn(
+            "SciSpaCy sentence splitting has been removed. Falling back to the "
+            "Hugging Face-backed segmenter.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return _huggingface_split
     if name == "syntok":
         return _syntok_split
@@ -26,7 +33,7 @@ def _huggingface_segmenter():  # pragma: no cover - heavy dependency path
     return HuggingFaceSentenceSegmenter()
 
 
-def _huggingface_split(text: str) -> list[Segment]:
+def _huggingface_split(text: str) -> List[Segment]:
     segmenter = _huggingface_segmenter()
     return segmenter.segment(text)
 
@@ -38,13 +45,13 @@ def _syntok_segmenter():  # pragma: no cover - heavy dependency path
     return SyntokSentenceSegmenter()
 
 
-def _syntok_split(text: str) -> list[Segment]:
+def _syntok_split(text: str) -> List[Segment]:
     segmenter = _syntok_segmenter()
     return segmenter.segment(text)
 
 
-def _simple_split(text: str) -> list[Segment]:
-    sentences: list[Segment] = []
+def _simple_split(text: str) -> List[Segment]:
+    sentences: List[Segment] = []
     cursor = 0
     for part in [segment.strip() for segment in text.split(". ") if segment.strip()]:
         idx = text.find(part, cursor)

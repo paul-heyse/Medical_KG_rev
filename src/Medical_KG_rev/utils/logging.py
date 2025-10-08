@@ -15,14 +15,22 @@ try:  # Optional structlog dependency
 except Exception:  # pragma: no cover - structlog may not be installed in lightweight envs
     structlog = None  # type: ignore
 
-from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    ConsoleSpanExporter,
-)
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+try:  # Optional OpenTelemetry dependency
+    from opentelemetry import trace
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+    from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+except Exception:  # pragma: no cover - tracing optional in lightweight environments
+    trace = None  # type: ignore
+    Resource = None  # type: ignore
+    TracerProvider = None  # type: ignore
+    BatchSpanProcessor = None  # type: ignore
+    ConsoleSpanExporter = None  # type: ignore
+    TraceIdRatioBased = None  # type: ignore
 
 try:  # Optional Jaeger exporter dependency
     from opentelemetry.exporter.jaeger.thrift import JaegerExporter
@@ -34,7 +42,15 @@ try:  # Optional OTLP exporter dependency
 except Exception:  # pragma: no cover - OTLP exporter optional
     OTLPSpanExporter = None  # type: ignore
 
-from Medical_KG_rev.config import TelemetrySettings
+try:  # pragma: no cover - optional settings dependency
+    from Medical_KG_rev.config import TelemetrySettings
+except Exception:  # pragma: no cover - fallback for lightweight environments
+    class TelemetrySettings:  # type: ignore[override]
+        """Fallback telemetry settings used when the config package is minimal."""
+
+        sample_ratio: float = 1.0
+        exporter: str = "console"
+        endpoint: str | None = None
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from Medical_KG_rev.config.settings import LoggingSettings
@@ -180,11 +196,18 @@ def configure_logging(
 def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
     """Configure OpenTelemetry tracing provider."""
 
+    if trace is None or TracerProvider is None or Resource is None or TraceIdRatioBased is None:
+        logging.getLogger(__name__).warning(
+            "telemetry.opentelemetry.unavailable",
+            message="OpenTelemetry not installed; tracing disabled",
+        )
+        return
+
     resource = Resource(attributes={"service.name": service_name})
     sampler = TraceIdRatioBased(telemetry.sample_ratio)
     provider = TracerProvider(resource=resource, sampler=sampler)
 
-    exporter = ConsoleSpanExporter()
+    exporter = ConsoleSpanExporter() if ConsoleSpanExporter is not None else None
     if telemetry.exporter.lower() == "jaeger" and JaegerExporter is not None:
         host = "localhost"
         port = 6831
@@ -199,8 +222,9 @@ def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
         else:  # pragma: no cover - default constructor handles env based config
             exporter = OTLPSpanExporter()
 
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
+    if exporter is not None and BatchSpanProcessor is not None:
+        processor = BatchSpanProcessor(exporter)
+        provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
 
 

@@ -1,30 +1,82 @@
 syntax = "proto3";
 
+syntax = "proto3";
+
 package medicalkg.gateway.v1;
 
 option go_package = "github.com/your-org/medicalkg/gateway/v1";
 
-message EmbedChunksRequest {
-  string tenant_id = 1;
-  repeated string chunk_ids = 2;
-  repeated string texts = 3;
+service EmbeddingService {
+  rpc Embed(EmbedRequest) returns (EmbedResponse);
+  rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse);
+  rpc ValidateTexts(ValidateTextsRequest) returns (ValidateTextsResponse);
+}
+
+message EmbedRequest {
+  repeated string inputs = 1;
+  string namespace = 2;
+  string tenant_id = 3;
   bool normalize = 4;
-  int32 batch_size = 5;
-  repeated string models = 6;
 }
 
 message EmbeddingVector {
-  string chunk_id = 1;
+  string id = 1;
   string model = 2;
+  string namespace = 3;
+  string kind = 4;
+  int32 dimension = 5;
+  repeated float values = 6;
+  map<string, double> terms = 7;
+  map<string, string> metadata = 8;
+}
+
+message EmbeddingMetadata {
+  string provider = 1;
+  int32 dimension = 2;
+  double duration_ms = 3;
+  string model = 4;
+}
+
+message EmbedResponse {
+  string namespace = 1;
+  repeated EmbeddingVector embeddings = 2;
+  EmbeddingMetadata metadata = 3;
+}
+
+message NamespaceInfo {
+  string id = 1;
+  string provider = 2;
   string kind = 3;
   int32 dimension = 4;
-  repeated float values = 5;
+  int32 max_tokens = 5;
+  bool enabled = 6;
+  repeated string allowed_tenants = 7;
+  repeated string allowed_scopes = 8;
 }
 
-message EmbedChunksResponse {
-  repeated EmbeddingVector vectors = 1;
+message ListNamespacesRequest {
+  string tenant_id = 1;
 }
 
-service EmbeddingService {
-  rpc EmbedChunks (EmbedChunksRequest) returns (EmbedChunksResponse);
+message ListNamespacesResponse {
+  repeated NamespaceInfo namespaces = 1;
+}
+
+message ValidateTextsRequest {
+  string tenant_id = 1;
+  string namespace = 2;
+  repeated string texts = 3;
+}
+
+message TextValidationResult {
+  int32 text_index = 1;
+  int32 token_count = 2;
+  bool exceeds_budget = 3;
+  string warning = 4;
+}
+
+message ValidateTextsResponse {
+  string namespace = 1;
+  bool valid = 2;
+  repeated TextValidationResult results = 3;
 }

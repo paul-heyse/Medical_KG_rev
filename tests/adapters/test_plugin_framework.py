@@ -72,7 +72,7 @@ def test_circuit_breaker_opens_after_failures():
         with pytest.raises(RuntimeError):
             await failing_call()
 
-        with pytest.raises(RuntimeError, match="Circuit breaker is open"):
+        with pytest.raises(CircuitBreakerError):
             await failing_call()
 
     asyncio.run(_run())

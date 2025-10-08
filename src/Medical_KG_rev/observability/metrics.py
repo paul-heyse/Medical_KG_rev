@@ -36,12 +36,40 @@ from prometheus_client import (  # type: ignore
     generate_latest,
 )
 
+MINERU_VLLM_REQUEST_DURATION = Histogram(
+    "mineru_vllm_request_duration_seconds",
+    "Duration of MinerU → vLLM API requests",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+
+MINERU_VLLM_CLIENT_FAILURES = Counter(
+    "mineru_vllm_client_failures_total",
+    "Total MinerU vLLM client failures grouped by error type",
+    labelnames=("error_type",),
+)
+
+MINERU_VLLM_CLIENT_RETRIES = Counter(
+    "mineru_vllm_client_retries_total",
+    "Number of retry attempts performed by the MinerU vLLM client",
+    labelnames=("retry_number",),
+)
+
+MINERU_VLLM_CIRCUIT_BREAKER_STATE = Gauge(
+    "mineru_vllm_circuit_breaker_state",
+    "Circuit breaker state for MinerU vLLM client (0=closed, 1=half-open, 2=open)",
+)
+
 logger = structlog.get_logger(__name__)
 
 REQUEST_COUNTER = Counter(
     "api_requests",
     "Total HTTP requests served by the gateway",
     labelnames=("method", "path", "status"),
+)
+CROSS_TENANT_ACCESS_ATTEMPTS = Counter(
+    "medicalkg_cross_tenant_access_attempts_total",
+    "Attempted cross-tenant accesses (blocked)",
+    labelnames=("source_tenant", "target_tenant"),
 )
 REQUEST_LATENCY = Histogram(
     "api_request_duration_seconds",

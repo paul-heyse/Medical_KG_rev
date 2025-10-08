@@ -24,27 +24,37 @@ logger = structlog.get_logger(__name__)
 
 
 _DEFAULT_NAMESPACES: dict[str, NamespaceDefinition] = {
-    "single_vector.bge_small_en.384.v1": NamespaceDefinition(
-        name="bge-small-en",
-        provider="sentence-transformers",
+    "single_vector.qwen3.4096.v1": NamespaceDefinition(
+        name="qwen3-embedding",
+        provider="vllm",
         kind="single_vector",
-        model_id="BAAI/bge-small-en",
-        model_version="v1.5",
-        dim=384,
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
+        model_version="v1",
+        dim=4096,
         pooling="mean",
         normalize=True,
-        batch_size=32,
+        batch_size=64,
+        requires_gpu=True,
+        parameters={
+            "endpoint": "http://vllm-embeddings:8001/v1",
+            "timeout": 60,
+            "max_tokens": 8192,
+        },
     ),
     "sparse.splade_v3.400.v1": NamespaceDefinition(
         name="splade-v3",
-        provider="splade-doc",
+        provider="pyserini",
         kind="sparse",
-        model_id="splade-v3",
+        model_id="naver/splade-v3",
         model_version="v3",
         dim=400,
         normalize=False,
-        batch_size=8,
-        parameters={"top_k": 400},
+        batch_size=32,
+        parameters={
+            "top_k": 400,
+            "mode": "document",
+            "max_terms": 400,
+        },
     ),
     "multi_vector.colbert_v2.128.v1": NamespaceDefinition(
         name="colbert-v2",

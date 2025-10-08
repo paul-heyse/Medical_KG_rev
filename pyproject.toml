@@ -118,7 +118,7 @@ dependencies = [
     "scikit-learn>=1.7.2",
 
     # ML / AI Libraries
-    "torch==2.8.0", # PyTorch
+    "torch>=2.8.0", # PyTorch
     "transformers>=4.57.0", #Hugging Face models
     "sentence-transformers>=5.1.1", #Dense embeddings & rerankers
     "huggingface-hub>=0.35.3", #Model downloads
@@ -636,7 +636,7 @@ dev = [
 gpu = [
     # GPU-specific dependencies
     "faiss-gpu>=1.7.4 ; platform_system != 'Windows'",  # GPU-accelerated vector search (Linux/macOS)
-    "torch==2.8.0",  # PyTorch
+    "torch>=2.8.0",  # PyTorch
 ]
 
 docs = [

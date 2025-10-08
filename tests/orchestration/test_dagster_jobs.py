@@ -57,6 +57,12 @@ from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
+from Medical_KG_rev.orchestration.stages.plugin_manager import (
+    StagePlugin,
+    StagePluginContext,
+    StagePluginManager,
+    StagePluginMetadata,
+)
 
 PipelineConfigLoader = _CONFIG_MODULE.PipelineConfigLoader
 ResiliencePolicyLoader = _CONFIG_MODULE.ResiliencePolicyLoader
@@ -278,6 +284,21 @@ class StubKGStage(_BaseStage):
         )
 
 
+class _StubStagePlugin(StagePlugin):
+    def __init__(self, mapping: dict[str, object]) -> None:
+        super().__init__(
+            StagePluginMetadata(
+                name="stub-stage-plugin",
+                version="1.0.0",
+                stage_types=tuple(mapping.keys()),
+            )
+        )
+        self._mapping = mapping
+
+    def create_stage(self, definition, context):
+        return self._mapping[definition.stage_type]
+
+
 @pytest.fixture()
 def orchestrator() -> DagsterOrchestrator:
     execution_log: list[str] = []
@@ -291,18 +312,19 @@ def orchestrator() -> DagsterOrchestrator:
     extract = StubExtractStage(execution_log)
     kg = StubKGStage(execution_log)
 
-    stage_factory = StageFactory(
-        {
-            "ingest": lambda stage: ingest,
-            "parse": lambda stage: parse,
-            "ir-validation": lambda stage: validate,
-            "chunk": lambda stage: chunk,
-            "embed": lambda stage: embed,
-            "index": lambda stage: index,
-            "extract": lambda stage: extract,
-            "knowledge-graph": lambda stage: kg,
-        }
-    )
+    mapping = {
+        "ingest": ingest,
+        "parse": parse,
+        "ir-validation": validate,
+        "chunk": chunk,
+        "embed": embed,
+        "index": index,
+        "extract": extract,
+        "knowledge-graph": kg,
+    }
+    plugin_manager = StagePluginManager(StagePluginContext(resources={}))
+    plugin_manager.register(_StubStagePlugin(mapping))
+    stage_factory = StageFactory(plugin_manager)
 
     loader = PipelineConfigLoader("config/orchestration/pipelines")
     policies = ResiliencePolicyLoader("config/orchestration/resilience.yaml")

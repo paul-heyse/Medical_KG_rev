@@ -14,10 +14,10 @@ from .runtime import (
     DagsterRunResult,
     StageFactory,
     StageResolutionError,
+    build_stage_factory,
     pdf_ir_ready_sensor,
     submit_to_dagster,
 )
-from .stages import build_default_stage_factory
 
 __all__ = [
     "GateCondition",
@@ -31,7 +31,7 @@ __all__ = [
     "DagsterRunResult",
     "StageFactory",
     "StageResolutionError",
+    "build_stage_factory",
     "pdf_ir_ready_sensor",
     "submit_to_dagster",
-    "build_default_stage_factory",
 ]

@@ -10,11 +10,9 @@ from uuid import uuid4
 import structlog
 
 from Medical_KG_rev.adapters import AdapterPluginError
-from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.haystack.components import (
     HaystackChunker,
     HaystackEmbedder,
@@ -251,68 +249,3 @@ def create_default_pipeline_resource() -> HaystackPipelineResource:
         sparse_writer=NoOpDocumentWriter(name="opensearch"),
     )
 
-
-def build_default_stage_factory(
-    manager: AdapterPluginManager,
-    pipeline: HaystackPipelineResource | None = None,
-) -> dict[str, Callable[[StageDefinition], object]]:
-    """Return builder mappings for standard Dagster stage types."""
-
-    pipeline = pipeline or create_default_pipeline_resource()
-    splitter = pipeline.splitter
-    embedder = pipeline.embedder
-    dense_writer = pipeline.dense_writer
-    sparse_writer = pipeline.sparse_writer
-
-    def _ingest_builder(definition: StageDefinition) -> IngestStage:
-        config = definition.config
-        adapter_name = config.get("adapter")
-        if not adapter_name:
-            raise ValueError(f"Stage '{definition.name}' requires an adapter name")
-        strict = bool(config.get("strict", False))
-        domain_value = config.get("domain")
-        try:
-            domain = AdapterDomain(domain_value) if domain_value else AdapterDomain.BIOMEDICAL
-        except Exception as exc:  # pragma: no cover - validation guard
-            raise ValueError(f"Invalid adapter domain '{domain_value}'") from exc
-        extra_parameters = config.get("parameters", {}) if isinstance(config, Mapping) else {}
-        return AdapterIngestStage(
-            manager,
-            adapter_name=adapter_name,
-            strict=strict,
-            default_domain=domain,
-            extra_parameters=extra_parameters if isinstance(extra_parameters, Mapping) else {},
-        )
-
-    def _parse_builder(_: StageDefinition) -> ParseStage:
-        return AdapterParseStage()
-
-    def _validation_builder(_: StageDefinition) -> ParseStage:
-        return IRValidationStage()
-
-    def _chunk_builder(_: StageDefinition) -> ChunkStage:
-        return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
-
-    def _embed_builder(_: StageDefinition) -> EmbedStage:
-        return HaystackEmbedder(embedder=embedder, require_gpu=False, sparse_expander=None)
-
-    def _index_builder(_: StageDefinition) -> IndexStage:
-        return HaystackIndexWriter(dense_writer=dense_writer, sparse_writer=sparse_writer)
-
-    def _extract_builder(_: StageDefinition) -> ExtractStage:
-        return NoOpExtractStage()
-
-    def _kg_builder(_: StageDefinition) -> KGStage:
-        return NoOpKnowledgeGraphStage()
-
-    registry: dict[str, Callable[[StageDefinition], object]] = {
-        "ingest": _ingest_builder,
-        "parse": _parse_builder,
-        "ir-validation": _validation_builder,
-        "chunk": _chunk_builder,
-        "embed": _embed_builder,
-        "index": _index_builder,
-        "extract": _extract_builder,
-        "knowledge-graph": _kg_builder,
-    }
-    return registry

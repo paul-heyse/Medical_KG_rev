@@ -233,6 +233,18 @@ class JobLedger:
             entry.metadata.update(metadata)
         if pdf_downloaded is not None:
             entry.pdf_downloaded = pdf_downloaded
+        if pdf_url is not None:
+            entry.pdf_url = pdf_url
+        if pdf_storage_key is not None:
+            entry.pdf_storage_key = pdf_storage_key
+        if pdf_checksum is not None:
+            entry.pdf_checksum = pdf_checksum
+        if pdf_size_bytes is not None:
+            entry.pdf_size_bytes = pdf_size_bytes
+        if pdf_content_type is not None:
+            entry.pdf_content_type = pdf_content_type
+        if pdf_downloaded_at is not None:
+            entry.pdf_downloaded_at = pdf_downloaded_at
         if pdf_ir_ready is not None:
             entry.pdf_ir_ready = pdf_ir_ready
         if pdf_url is not None:
@@ -314,6 +326,9 @@ class JobLedger:
         )
         entry.retry_count_per_stage.setdefault(stage, entry.retry_count_per_stage.get(stage, 0))
         return entry
+
+    def assign_pipeline(self, job_id: str, pipeline_name: str | None) -> JobLedgerEntry:
+        return self._update(job_id, pipeline_name=pipeline_name)
 
     def mark_stage_started(self, job_id: str, stage: str) -> JobLedgerEntry:
         entry = self.mark_processing(job_id, stage)

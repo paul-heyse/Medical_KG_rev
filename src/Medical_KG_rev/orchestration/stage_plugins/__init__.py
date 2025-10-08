@@ -1,3 +1,5 @@
+"""Custom orchestration stage implementations for PDF processing."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,12 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import structlog
 
-from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.models.ir import Document as IrDocument
+from Medical_KG_rev.observability.metrics import (
+    record_pdf_download_failure,
+    record_pdf_download_success,
+    record_pdf_processing_failure,
+)
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
@@ -53,8 +60,21 @@ def _sequence_length(value: Any) -> int:
     return 0
 
 
+def _count_single(value: Any) -> int:
+    return 1 if value is not None else 0
+
+
 def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
     state["download_artifact"] = output
+
+
+def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
+    if hasattr(output, "ir_document"):
+        state["document"] = getattr(output, "ir_document")
+        state["mineru_metadata"] = getattr(output, "metadata", {})
+        state["mineru_duration"] = getattr(output, "duration_seconds", 0.0)
+    else:
+        state["document"] = output
 
 
 def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # pragma: no cover - no-op
@@ -389,10 +409,81 @@ class MineruStage:
         return result
 
 
-def register_download_stage() -> StageRegistration:
-    """Register the built-in download stage plugin."""
+_STORAGE_CLIENTS: dict[str, PdfStorageClient] = {}
 
-    def _builder(definition: StageDefinition) -> DownloadStage:
+
+def _resolve_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
+    storage_config = config.get("storage") if isinstance(config, Mapping) else None
+    name = "default"
+    if isinstance(storage_config, Mapping):
+        name = str(storage_config.get("name", "default"))
+    if name in _STORAGE_CLIENTS:
+        return _STORAGE_CLIENTS[name]
+    backend_type = "memory"
+    base_prefix = "pdfs"
+    if isinstance(storage_config, Mapping):
+        backend_type = str(storage_config.get("type", "memory")).lower()
+        base_prefix = str(storage_config.get("base_prefix", "pdfs"))
+    if backend_type in {"s3", "minio"}:
+        bucket = storage_config.get("bucket") if isinstance(storage_config, Mapping) else None
+        if not bucket:
+            raise ValueError("S3 storage backend requires a 'bucket' configuration")
+        backend = S3ObjectStore(str(bucket))
+    elif backend_type in {"filesystem", "fs", "local"}:
+        base_path = storage_config.get("base_path") if isinstance(storage_config, Mapping) else None
+        if not base_path:
+            raise ValueError("Filesystem storage backend requires a 'base_path' configuration")
+        backend = FileSystemObjectStore(str(base_path))
+    elif backend_type == "memory":
+        backend = InMemoryObjectStore()
+    else:
+        raise ValueError(f"Unsupported PDF storage backend '{backend_type}'")
+    client = PdfStorageClient(backend, base_prefix=base_prefix)
+    _STORAGE_CLIENTS[name] = client
+    return client
+
+
+def _create_http_client(config: Mapping[str, Any]) -> HttpClient:
+    http_config = config.get("http") if isinstance(config, Mapping) else None
+    attempts = 3
+    initial_backoff = 0.5
+    timeout = 30.0
+    rate_limit_config: RateLimitConfig | None = None
+    circuit_breaker_config: CircuitBreakerConfig | None = None
+    if isinstance(http_config, Mapping):
+        attempts = int(http_config.get("attempts", attempts))
+        initial_backoff = float(http_config.get("backoff_initial", initial_backoff))
+        timeout = float(http_config.get("timeout", timeout))
+        rate_limit = http_config.get("rate_limit")
+        if isinstance(rate_limit, Mapping):
+            rate_limit_config = RateLimitConfig(
+                rate_per_second=float(rate_limit.get("rate_per_second", 5.0)),
+                burst=rate_limit.get("burst"),
+            )
+        breaker = http_config.get("circuit_breaker")
+        if isinstance(breaker, Mapping):
+            circuit_breaker_config = CircuitBreakerConfig(
+                failure_threshold=int(breaker.get("failure_threshold", 5)),
+                recovery_timeout=float(breaker.get("recovery_timeout", 60.0)),
+            )
+    retry = RetryConfig(
+        attempts=max(1, attempts),
+        backoff_strategy=BackoffStrategy.EXPONENTIAL,
+        backoff_initial=max(0.1, initial_backoff),
+        backoff_max=timeout,
+        timeout=timeout,
+    )
+    return HttpClient(
+        retry=retry,
+        rate_limit=rate_limit_config,
+        circuit_breaker=circuit_breaker_config,
+    )
+
+
+def register_download_stage() -> StageRegistration:
+    """Register the PDF download stage."""
+
+    def _builder(definition: StageDefinition) -> PdfDownloadStage:
         config = definition.config or {}
         storage = _get_storage_client(config)
         validator_cfg = config.get("validator") or {}
@@ -496,11 +587,33 @@ def register_gate_stage() -> StageRegistration:
     return StageRegistration(metadata=metadata, builder=_builder)
 
 
+def register_mineru_stage() -> StageRegistration:
+    """Register the MinerU PDF processing stage."""
+
+    def _builder(definition: StageDefinition) -> MineruStage:
+        config = definition.config or {}
+        storage = _resolve_storage_client(config)
+        mineru_config = config.get("mineru") if isinstance(config, Mapping) else {}
+        service = MineruProcessingService(config=mineru_config or {})
+        return MineruStage(name=definition.name, service=service, storage=storage)
+
+    metadata = StageMetadata(
+        stage_type="mineru",
+        state_key="document",
+        output_handler=_handle_mineru_output,
+        output_counter=_count_single,
+        description="Processes downloaded PDFs through MinerU to produce IR documents",
+        dependencies=("download",),
+    )
+    return StageRegistration(metadata=metadata, builder=_builder)
+
+
 __all__ = [
-    "DownloadStage",
     "GateCondition",
     "GateConditionError",
     "GateStage",
+    "PdfDownloadRecord",
+    "PdfDownloadStage",
     "MineruStage",
     "register_download_stage",
     "register_gate_stage",

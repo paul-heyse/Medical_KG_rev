@@ -49,3 +49,12 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
     ctx_config = request.run_config["ops"]["bootstrap"]["config"]["context"]
     assert ctx_config["job_id"] == job_id
     assert ctx_config["pipeline_name"] == "pdf-two-phase"
+    assert ctx_config["pipeline_version"] == "2025-01-01"
+
+    payload_config = request.run_config["ops"]["bootstrap"]["config"]["payload"]
+    assert payload_config == {"dataset": "pmc", "item": {"id": "doc-sensor"}}
+
+    adapter_config = request.run_config["ops"]["bootstrap"]["config"]["adapter_request"]
+    assert adapter_config["parameters"]["dataset"] == "pmc"
+
+    assert request.tags["medical_kg.resume_stage"] == "chunk"

@@ -139,6 +139,24 @@ class Document(IRBaseModel):
             raise ValueError("Document sections must have unique identifiers")
         return value
 
+    @field_validator("pdf_content_type")
+    @classmethod
+    def _validate_pdf_content_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        lowered = value.lower()
+        if "pdf" not in lowered:
+            raise ValueError("PDF content type must describe PDF media")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_pdf_fields(self) -> Document:
+        if self.pdf_size_bytes is not None and self.pdf_size_bytes < 0:
+            raise ValueError("PDF size must be non-negative")
+        if (self.pdf_size_bytes is not None or self.pdf_content_type or self.pdf_checksum) and not self.pdf_url:
+            raise ValueError("PDF metadata requires a pdf_url to be present")
+        return self
+
     @model_validator(mode="after")
     def _validate_spans(self) -> Document:
         text_lengths: dict[str, int] = {}

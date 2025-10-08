@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("pydantic")
+
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 
 
@@ -13,6 +15,14 @@ def test_create_and_retrieve_entry() -> None:
     assert entry.current_stage == "pending"
     assert not entry.pdf_downloaded
     assert not entry.pdf_ir_ready
+    assert entry.pdf_url is None
+    assert entry.pdf_storage_key is None
+    assert entry.pdf_checksum is None
+    assert entry.pdf_size_bytes is None
+    assert entry.pdf_content_type is None
+    assert entry.pdf_downloaded_at is None
+    assert entry.pdf_processed_at is None
+    assert entry.pdf_error is None
 
     retrieved = ledger.get("job-1")
     assert retrieved is not None

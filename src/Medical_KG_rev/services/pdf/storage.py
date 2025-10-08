@@ -166,7 +166,19 @@ class PdfStorageClient:
         segment = "".join(cleaned).strip("-")
         return segment or "unknown"
 
-    def run(self, awaitable: Any) -> Any:
+    def _list_keys(self, prefix: str) -> Iterable[str]:
+        if hasattr(self._backend, "list_prefix"):
+            return self._run(self._backend.list_prefix(prefix))
+        return []
+
+    def _audit(self, action: str, **kwargs: object) -> None:
+        payload = {"action": action, **kwargs}
+        correlation_id = get_correlation_id()
+        if correlation_id:
+            payload["correlation_id"] = correlation_id
+        logger.info("pdf.storage.audit", **payload)
+
+    def _run(self, awaitable):
         try:
             return asyncio.run(awaitable)
         except RuntimeError:

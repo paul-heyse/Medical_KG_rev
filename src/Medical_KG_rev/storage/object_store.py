@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import mimetypes
+from pathlib import Path
 from typing import Iterable
 
 try:  # Optional dependency
@@ -149,6 +151,60 @@ class S3ObjectStore(ObjectStore):
     @property
     def client(self):  # pragma: no cover - convenience accessor
         return self._client
+
+
+class FileSystemObjectStore(ObjectStore):
+    """Persist objects on the local filesystem.
+
+    This backend is primarily intended for development and integration testing
+    environments where an S3-compatible service is not available. Objects are
+    written relative to a base directory that mirrors the logical object key
+    hierarchy.
+    """
+
+    def __init__(self, base_path: str | Path) -> None:
+        path = Path(base_path).expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        self._base_path = path
+        self._base_path.mkdir(parents=True, exist_ok=True)
+        self._metadata_suffix = ".meta.json"
+
+    async def put(self, key: str, data: bytes, *, metadata: dict[str, str] | None = None) -> None:
+        target = self._base_path / key
+        target.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(target.write_bytes, data)
+        if metadata:
+            meta_path = target.with_suffix(target.suffix + self._metadata_suffix)
+            payload = json.dumps({str(k): str(v) for k, v in metadata.items()}, sort_keys=True)
+            await asyncio.to_thread(meta_path.write_text, payload, encoding="utf-8")
+        else:
+            meta_path = target.with_suffix(target.suffix + self._metadata_suffix)
+            if meta_path.exists():
+                await asyncio.to_thread(meta_path.unlink)
+
+    async def get(self, key: str) -> bytes:
+        target = self._base_path / key
+        if not target.exists():
+            raise StorageError(f"Object '{key}' not found")
+        return await asyncio.to_thread(target.read_bytes)
+
+    async def delete(self, key: str) -> None:
+        target = self._base_path / key
+        await asyncio.to_thread(target.unlink, missing_ok=True)
+        meta_path = target.with_suffix(target.suffix + self._metadata_suffix)
+        if meta_path.exists():
+            await asyncio.to_thread(meta_path.unlink, missing_ok=True)
+
+    async def list_prefix(self, prefix: str) -> list[str]:
+        base = self._base_path / prefix
+        if not base.exists():
+            return []
+        keys: list[str] = []
+        for file_path in base.rglob("*"):
+            if file_path.is_file() and not file_path.name.endswith(self._metadata_suffix):
+                keys.append(str(file_path.relative_to(self._base_path)))
+        return keys
 
 
 class FigureStorageClient:

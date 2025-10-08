@@ -45,7 +45,8 @@ from Medical_KG_rev.orchestration.dagster.stages import (
 )
 from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
-from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
+from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.state_manager import LedgerStateManager
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 from Medical_KG_rev.utils.logging import get_logger
@@ -63,18 +64,18 @@ class StageFactory:
 
     registry: StageRegistry = field(default_factory=StageRegistry)
 
-    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+    def resolve(self, topology: PipelineTopologyConfig, stage: StageDefinition) -> object:
         try:
             builder = self.registry.get_builder(stage.stage_type)
             metadata = self.registry.get_metadata(stage.stage_type)
         except StageRegistryError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
-                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+                f"Pipeline '{topology.name}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
-        instance = builder(stage)
+        instance = builder(topology, stage)
         logger.debug(
             "dagster.stage.resolved",
-            pipeline=pipeline,
+            pipeline=topology.name,
             stage=stage.name,
             stage_type=stage.stage_type,
             description=metadata.description,
@@ -88,7 +89,7 @@ class StageFactory:
         self,
         *,
         metadata: StageMetadata,
-        builder: Callable[[StageDefinition], object],
+        builder: Callable[[PipelineTopologyConfig, StageDefinition], object],
         replace: bool = False,
     ) -> None:
         self.registry.register_stage(metadata=metadata, builder=builder, replace=replace)
@@ -213,11 +214,14 @@ def _make_stage_op(
             "stage_factory",
             "resilience_policies",
             "job_ledger",
+            "job_state_manager",
             "event_emitter",
         },
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
         stage = stage_factory.resolve(topology.name, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
@@ -245,7 +249,7 @@ def _make_stage_op(
         def _on_retry(retry_state: Any) -> None:
             job_identifier = state.get("job_id")
             if job_identifier:
-                ledger.increment_retry(job_identifier, stage_name)
+                state_manager.record_retry(job_identifier, stage_name)
             sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
             attempt_number = getattr(retry_state, "attempt_number", 0) + 1
             error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
@@ -278,10 +282,8 @@ def _make_stage_op(
         stage_ctx: StageContext = state["context"]
         job_id = stage_ctx.job_id or state.get("job_id")
 
-        initial_attempt = 1
-        if job_id:
-            entry = ledger.mark_stage_started(job_id, stage_name)
-            initial_attempt = entry.retry_count_per_stage.get(stage_name, 0) + 1
+        attempt = state_manager.stage_started(job_id, stage_name)
+        initial_attempt = attempt.attempt
         emitter.emit_started(stage_ctx, stage_name, attempt=initial_attempt)
 
         start_time = time.perf_counter()
@@ -316,6 +318,11 @@ def _make_stage_op(
             attempts = execution_state.get("attempts") or 1
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
             if job_id:
+                if stage_type == "download":
+                    try:
+                        ledger.record_pdf_error(job_id, error=str(exc))
+                    except JobLedgerError:
+                        logger.debug("dagster.stage.download.error_record_failed", job_id=job_id)
                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
             raise
 
@@ -325,6 +332,64 @@ def _make_stage_op(
         duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
         duration_ms = int(duration_seconds * 1000)
         output_count = _infer_output_count(metadata, result)
+
+        if job_id and stage_type == "download":
+            downloads = updated.get("downloaded_files") or []
+            success_record = next(
+                (
+                    record
+                    for record in downloads
+                    if getattr(record, "status", "") == "success"
+                    and getattr(record, "storage_key", None)
+                ),
+                None,
+            )
+            if success_record is not None:
+                try:
+                    ledger.record_pdf_download(
+                        job_id,
+                        url=str(getattr(success_record, "url", "")),
+                        storage_key=str(getattr(success_record, "storage_key")),
+                        size_bytes=getattr(success_record, "size_bytes", None),
+                        content_type=getattr(success_record, "content_type", None),
+                        checksum=getattr(success_record, "checksum", None),
+                    )
+                except JobLedgerError:
+                    logger.debug("dagster.stage.download.ledger_update_failed", job_id=job_id)
+            else:
+                failure = next(
+                    (
+                        getattr(record, "error", None)
+                        for record in downloads
+                        if getattr(record, "status", "") == "failed"
+                    ),
+                    None,
+                )
+                if failure:
+                    try:
+                        ledger.record_pdf_error(job_id, error=str(failure))
+                    except JobLedgerError:
+                        logger.debug("dagster.stage.download.error_record_failed", job_id=job_id)
+
+        if job_id and stage_type == "mineru":
+            try:
+                ledger.set_pdf_ir_ready(job_id, True)
+            except JobLedgerError:
+                logger.debug("dagster.stage.mineru.ledger_update_failed", job_id=job_id)
+            mineru_metadata = updated.get("mineru_metadata")
+            mineru_duration = updated.get("mineru_duration")
+            metadata_updates: dict[str, object] = {}
+            if isinstance(mineru_metadata, Mapping):
+                metadata_updates.update(
+                    {f"mineru.{key}": value for key, value in mineru_metadata.items()}
+                )
+            if mineru_duration is not None:
+                metadata_updates["mineru.duration_seconds"] = float(mineru_duration)
+            if metadata_updates:
+                try:
+                    ledger.update_metadata(job_id, metadata_updates)
+                except JobLedgerError:
+                    logger.debug("dagster.stage.mineru.metadata_update_failed", job_id=job_id)
 
         if job_id:
             ledger.update_metadata(
@@ -386,6 +451,7 @@ class BuiltPipelineJob:
     job_definition: Any
     final_node: str
     version: str
+    total_phases: int
 
 
 def _normalise_name(name: str) -> str:
@@ -431,11 +497,14 @@ def _build_pipeline_job(
         },
     )
 
+    total_phases = max((stage.phase_index for stage in topology.stages), default=1)
+
     return BuiltPipelineJob(
         job_name=job.name,
         job_definition=job,
         final_node=order[-1] if order else "bootstrap",
         version=topology.version,
+        total_phases=total_phases,
     )
 
 
@@ -472,6 +541,7 @@ class DagsterOrchestrator:
         self.plugin_manager = plugin_manager or get_plugin_manager()
         self.base_path = Path(base_path or pipeline_loader.base_path)
         self.job_ledger = job_ledger or JobLedger()
+        self.state_manager = LedgerStateManager(self.job_ledger)
         self.kafka_client = kafka_client or KafkaClient()
         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
@@ -480,6 +550,7 @@ class DagsterOrchestrator:
             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
             "job_ledger": ResourceDefinition.hardcoded_resource(self.job_ledger),
+            "job_state_manager": ResourceDefinition.hardcoded_resource(self.state_manager),
             "event_emitter": ResourceDefinition.hardcoded_resource(self.event_emitter),
             "haystack_pipeline": ResourceDefinition.hardcoded_resource(self.pipeline_resource),
             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
@@ -516,13 +587,7 @@ class DagsterOrchestrator:
         self._definitions = None
 
     def _record_job_attempt(self, job_id: str | None) -> int:
-        if not job_id:
-            return 1
-        try:
-            return self.job_ledger.record_attempt(job_id)
-        except JobLedgerError:
-            logger.debug("dagster.ledger.missing_job", job_id=job_id)
-            return 1
+        return self.state_manager.record_job_attempt(job_id)
 
     def submit(
         self,
@@ -567,23 +632,15 @@ class DagsterOrchestrator:
         job_attempt = self._record_job_attempt(context.job_id)
         run_identifier = context.job_id or context.correlation_id or uuid4().hex
 
-        if context.job_id:
-            try:
-                self.job_ledger.update_metadata(
-                    context.job_id,
-                    {
-                        "pipeline_version": job.version,
-                        "correlation_id": context.correlation_id,
-                        "adapter_request": adapter_request.model_dump(),
-                        "payload": dict(payload),
-                    },
-                )
-            except JobLedgerError:
-                logger.debug(
-                    "dagster.ledger.metadata_update_failed",
-                    job_id=context.job_id,
-                    pipeline=pipeline,
-                )
+        context_metadata = dict(context.metadata) if isinstance(context.metadata, Mapping) else {}
+        self.state_manager.prepare_run(
+            context_metadata=context_metadata,
+            job_id=context.job_id,
+            pipeline=pipeline,
+            pipeline_version=job.version,
+            adapter_request=adapter_request,
+            payload=payload,
+        )
 
         self.openlineage.emit_run_started(
             pipeline,
@@ -597,7 +654,7 @@ class DagsterOrchestrator:
         try:
             result = job.job_definition.execute_in_process(run_config=run_config)
         except Exception as exc:
-            ledger_entry = self.job_ledger.get(context.job_id) if context.job_id else None
+            ledger_entry = self.state_manager.fetch_entry(context.job_id)
             self.openlineage.emit_run_failed(
                 pipeline,
                 run_id=run_identifier,
@@ -611,12 +668,7 @@ class DagsterOrchestrator:
 
         duration_ms = int((time.perf_counter() - start_time) * 1000)
 
-        ledger_entry = None
-        if context.job_id:
-            try:
-                ledger_entry = self.job_ledger.mark_completed(context.job_id)
-            except JobLedgerError:
-                ledger_entry = self.job_ledger.get(context.job_id)
+        ledger_entry = self.state_manager.complete_run(context.job_id)
 
         self.openlineage.emit_run_completed(
             pipeline,
@@ -628,7 +680,6 @@ class DagsterOrchestrator:
             duration_ms=duration_ms,
         )
 
-        final_state = result.output_for_node(job.final_node)
         return DagsterRunResult(
             pipeline=pipeline,
             success=result.success,
@@ -664,15 +715,25 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
             continue
         if not entry.pdf_ir_ready or entry.status != "processing":
             continue
-        run_key = f"{entry.job_id}-resume"
+        phase_label = entry.phase or entry.metadata.get("phase") or "phase-1"
+        try:
+            current_phase_index = int(str(phase_label).split("-", maxsplit=1)[1])
+        except Exception:
+            current_phase_index = 1
+        resume_phase_index = max(current_phase_index + 1, 2)
+        resume_phase = f"phase-{resume_phase_index}"
+        run_key = f"{entry.job_id}-resume-{resume_phase_index}"
+        resume_stage = entry.metadata.get("resume_stage", "chunk")
         context_payload = {
             "tenant_id": entry.tenant_id,
             "job_id": entry.job_id,
             "doc_id": entry.doc_key,
             "correlation_id": entry.metadata.get("correlation_id"),
-            "metadata": dict(entry.metadata),
+            "metadata": {**dict(entry.metadata), "resume_stage": resume_stage},
             "pipeline_name": entry.pipeline_name,
             "pipeline_version": entry.metadata.get("pipeline_version", entry.pipeline_name or ""),
+            "phase": resume_phase,
+            "phase_ready": True,
         }
         adapter_payload = entry.metadata.get("adapter_request", {})
         payload = entry.metadata.get("payload", {})
@@ -693,7 +754,8 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                 run_config=run_config,
                 tags={
                     "medical_kg.pipeline": entry.pipeline_name or "",
-                    "medical_kg.resume_stage": "chunk",
+                    "medical_kg.resume_stage": resume_stage,
+                    "medical_kg.resume_phase": resume_phase,
                 },
             )
         )

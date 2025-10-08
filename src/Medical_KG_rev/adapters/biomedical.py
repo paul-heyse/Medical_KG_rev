@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
+from urllib.parse import urlparse
+
+import httpx
+import structlog
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -33,6 +37,9 @@ from Medical_KG_rev.utils.validation import (
 from Medical_KG_rev.services.pdf import PdfUrlValidator
 
 from .base import AdapterContext, BaseAdapter
+
+logger = structlog.get_logger(__name__)
+
 
 logger = structlog.get_logger(__name__)
 
@@ -441,6 +448,7 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 for auth in payload.get("authorships", [])
             ]
             concepts = [concept.get("display_name") for concept in payload.get("concepts", [])]
+            pdf_metadata = self._resolve_pdf_metadata(payload)
             metadata = {
                 "openalex_id": work_id,
                 "doi": doi,
@@ -491,6 +499,10 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 title="Abstract",
                 blocks=[Block(id="abstract-block", text=_to_text(abstract_text), spans=[])],
             )
+            pdf_url = metadata.get("pdf", {}).get("url") if metadata.get("pdf") else None
+            pdf_size = metadata.get("pdf", {}).get("size_bytes") if metadata.get("pdf") else None
+            pdf_content_type = metadata.get("pdf", {}).get("content_type") if metadata.get("pdf") else None
+            pdf_checksum = metadata.get("pdf", {}).get("checksum") if metadata.get("pdf") else None
             documents.append(
                 Document(
                     id=work_id,

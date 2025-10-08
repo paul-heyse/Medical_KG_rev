@@ -9,12 +9,15 @@ from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 import structlog
 
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+from Medical_KG_rev.orchestration.dagster.configuration import (
+    PipelineTopologyConfig,
+    StageDefinition,
+)
 
 logger = structlog.get_logger(__name__)
 
 
-StageBuilder = Callable[[StageDefinition], object]
+StageBuilder = Callable[[PipelineTopologyConfig | None, StageDefinition], object]
 
 
 class StageRegistryError(RuntimeError):

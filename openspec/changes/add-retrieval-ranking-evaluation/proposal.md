@@ -297,6 +297,572 @@ All existing retrieval code retained and enhanced.
 
 ---
 
+## Observability & Monitoring
+
+### Prometheus Metrics
+
+```python
+# Retrieval performance metrics
+RETRIEVAL_DURATION = Histogram(
+    "medicalkg_retrieval_duration_seconds",
+    "Retrieval duration per component",
+    ["component", "tenant_id"],  # component: bm25, splade, dense
+    buckets=[0.05, 0.1, 0.2, 0.3, 0.5]
+)
+
+FUSION_DURATION = Histogram(
+    "medicalkg_fusion_duration_seconds",
+    "Fusion ranking duration",
+    ["method", "tenant_id"],  # method: rrf, weighted
+    buckets=[0.001, 0.005, 0.01, 0.02, 0.05]
+)
+
+RERANK_DURATION = Histogram(
+    "medicalkg_rerank_duration_seconds",
+    "Cross-encoder reranking duration",
+    ["model", "tenant_id"],
+    buckets=[0.05, 0.1, 0.15, 0.2, 0.3]
+)
+
+# Quality metrics
+RECALL_AT_K = Gauge(
+    "medicalkg_retrieval_recall_at_k",
+    "Recall@K on test set",
+    ["k", "component"]  # k: 5, 10, 20; component: bm25, hybrid, hybrid+rerank
+)
+
+NDCG_AT_K = Gauge(
+    "medicalkg_retrieval_ndcg_at_k",
+    "nDCG@K on test set",
+    ["k", "fusion_method"]  # k: 5, 10, 20; fusion: rrf, weighted
+)
+
+COMPONENT_CONTRIBUTION = Gauge(
+    "medicalkg_component_contribution_rate",
+    "% of results from each component in top-10",
+    ["component"]  # bm25, splade, dense
+)
+
+# Query routing metrics
+TABLE_QUERY_RATE = Counter(
+    "medicalkg_table_queries_total",
+    "Queries routed to table-aware path",
+    ["intent_type"]  # ae, outcome, eligibility
+)
+
+CLINICAL_BOOST_RATE = Counter(
+    "medicalkg_clinical_boosts_total",
+    "Clinical intent boosts applied",
+    ["boost_type", "section_label"]
+)
+```
+
+### CloudEvents
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.medical-kg.retrieval.completed",
+  "source": "/retrieval-service",
+  "id": "retrieval-abc123",
+  "time": "2025-10-08T14:30:00Z",
+  "data": {
+    "query_id": "query-abc123",
+    "tenant_id": "tenant-001",
+    "components_used": ["bm25", "splade", "dense"],
+    "fusion_method": "rrf",
+    "reranked": false,
+    "duration_ms": {
+      "bm25": 78,
+      "splade": 115,
+      "dense": 42,
+      "fusion": 8,
+      "total": 125
+    },
+    "results_count": 10,
+    "component_contributions": {
+      "bm25": 4,
+      "splade": 3,
+      "dense": 3
+    }
+  }
+}
+```
+
+### Grafana Dashboard Panels
+
+1. **Retrieval Latency by Component**: Line chart showing P50/P95/P99 for BM25, SPLADE, Dense
+2. **Recall@10 Trend**: Time-series showing Recall@10 over time (daily evaluation on test set)
+3. **nDCG@10 by Fusion Method**: Bar chart comparing RRF vs Weighted normalization
+4. **Component Contribution**: Stacked area chart showing % of top-10 results from each component
+5. **Reranking Impact**: Before/after comparison of nDCG@10 with reranking enabled
+6. **Table Query Routing**: Gauge showing % of queries routed to table-aware path
+7. **Clinical Boost Application Rate**: Pie chart of boost types (eligibility, ae, results)
+
+---
+
+## Configuration Management
+
+### Fusion Configuration
+
+```yaml
+# config/retrieval/fusion.yaml
+default_method: rrf  # or "weighted"
+
+rrf:
+  k: 60  # Standard constant
+
+weighted:
+  normalize_method: minmax  # or "zscore"
+  weights:
+    bm25: 0.3
+    splade: 0.35
+    dense: 0.35
+  # Weights must sum to 1.0
+
+# Component selection
+components:
+  bm25:
+    enabled: true
+    timeout_ms: 300
+  splade:
+    enabled: true
+    timeout_ms: 300
+  dense:
+    enabled: true
+    timeout_ms: 300
+
+# Reranking
+reranking:
+  enabled: false  # Feature flag
+  model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  batch_size: 32
+  top_k_rerank: 100
+  gpu_required: true
+```
+
+### Clinical Boosting Configuration
+
+```yaml
+# config/retrieval/clinical_boosting.yaml
+intent_boosting:
+  eligibility:
+    boost_factor: 3.0
+    section_labels: ["Eligibility Criteria", "Inclusion Criteria"]
+    intent_hints: ["eligibility"]
+
+  adverse_events:
+    boost_factor: 2.0
+    section_labels: ["Adverse Reactions", "Safety", "Adverse Events"]
+    intent_hints: ["ae"]
+
+  results:
+    boost_factor: 2.0
+    section_labels: ["Results", "Outcomes"]
+    intent_hints: ["outcome", "endpoint"]
+
+  methods:
+    boost_factor: 1.5
+    section_labels: ["Methods", "Study Design"]
+    intent_hints: ["methods"]
+
+# Table routing
+table_routing:
+  enabled: true
+  query_patterns:
+    - "adverse event"
+    - "side effect"
+    - "outcome measure"
+    - "effect size"
+  boost_table_chunks: 2.5
+```
+
+---
+
+## API Integration
+
+### REST API
+
+```http
+POST /v1/search
+Content-Type: application/vnd.api+json
+Authorization: Bearer <jwt_token>
+
+{
+  "data": {
+    "type": "SearchRequest",
+    "attributes": {
+      "query": "adverse events of metformin in diabetes",
+      "k": 10,
+      "components": ["bm25", "splade", "dense"],
+      "fusion_method": "rrf",
+      "enable_reranking": false,
+      "query_intent": "adverse_events",
+      "filters": {
+        "source": "clinicaltrials",
+        "date_range": {"start": "2020-01-01", "end": "2025-01-01"}
+      }
+    }
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "data": {
+    "type": "SearchResult",
+    "id": "search-abc123",
+    "attributes": {
+      "query": "adverse events of metformin in diabetes",
+      "results": [
+        {
+          "chunk_id": "PMC123:chunk_5",
+          "text": "...",
+          "fused_score": 0.87,
+          "component_scores": {
+            "bm25": 12.5,
+            "splade": 8.3,
+            "dense": 0.82
+          },
+          "section_label": "Adverse Reactions",
+          "intent_hint": "ae",
+          "doc_id": "PMC123",
+          "metadata": {...}
+        }
+      ],
+      "metadata": {
+        "fusion_method": "rrf",
+        "reranked": false,
+        "components_used": ["bm25", "splade", "dense"],
+        "duration_ms": 125,
+        "table_routing_applied": true
+      }
+    }
+  }
+}
+```
+
+### GraphQL API
+
+```graphql
+mutation Search($input: SearchInput!) {
+  search(input: $input) {
+    queryId
+    results {
+      chunkId
+      text
+      fusedScore
+      componentScores {
+        bm25
+        splade
+        dense
+      }
+      sectionLabel
+      intentHint
+      docId
+    }
+    metadata {
+      fusionMethod
+      reranked
+      componentsUsed
+      durationMs
+    }
+  }
+}
+
+input SearchInput {
+  query: String!
+  k: Int = 10
+  components: [String!] = ["bm25", "splade", "dense"]
+  fusionMethod: String = "rrf"
+  enableReranking: Boolean = false
+  queryIntent: String
+  filters: SearchFilters
+}
+
+input SearchFilters {
+  source: String
+  dateRange: DateRange
+  sectionLabel: String
+  intentHint: String
+}
+```
+
+### New Evaluation Endpoint
+
+```http
+POST /v1/evaluate
+Content-Type: application/vnd.api+json
+Authorization: Bearer <jwt_token>
+
+{
+  "data": {
+    "type": "EvaluationRequest",
+    "attributes": {
+      "test_set_id": "clinical-queries-v1",
+      "components": ["bm25", "hybrid", "hybrid+rerank"],
+      "metrics": ["recall@5", "recall@10", "ndcg@10", "mrr"]
+    }
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "data": {
+    "type": "EvaluationResult",
+    "attributes": {
+      "test_set_id": "clinical-queries-v1",
+      "query_count": 50,
+      "results": {
+        "bm25": {
+          "recall@5": 0.58,
+          "recall@10": 0.65,
+          "ndcg@10": 0.68,
+          "mrr": 0.72
+        },
+        "hybrid": {
+          "recall@5": 0.74,
+          "recall@10": 0.82,
+          "ndcg@10": 0.79,
+          "mrr": 0.84
+        },
+        "hybrid+rerank": {
+          "recall@5": 0.78,
+          "recall@10": 0.85,
+          "ndcg@10": 0.83,
+          "mrr": 0.87
+        }
+      },
+      "per_query_breakdown": [...],
+      "timestamp": "2025-10-08T14:30:00Z"
+    }
+  }
+}
+```
+
+---
+
+## Rollback Procedures
+
+### Rollback Trigger Conditions
+
+**Automated Triggers**:
+
+- Retrieval latency P95 >500ms for >10 minutes
+- Recall@10 drops below 65% (baseline) for >15 minutes
+- Error rate >5% for >5 minutes
+- Component failure rate >20% for >10 minutes
+
+**Manual Triggers**:
+
+- Incorrect result ranking reported by domain experts
+- Fusion producing unexpected results (variance >40%)
+- Reranking causing user complaints
+- Clinical boosting over-prioritizing irrelevant results
+
+### Rollback Steps
+
+```bash
+# Phase 1: Immediate mitigation (if in canary)
+# 1. Shift traffic back to BM25-only
+kubectl set env deployment/retrieval-service ENABLE_HYBRID=false
+
+# 2. Disable reranking immediately
+kubectl set env deployment/retrieval-service ENABLE_RERANKING=false
+
+# Phase 2: Full rollback (if needed)
+# 3. Revert feature branch
+git revert <hybrid-retrieval-commit-sha>
+
+# 4. Redeploy previous version
+kubectl rollout undo deployment/retrieval-service
+
+# 5. Validate baseline restoration (10 minutes)
+# Check metrics:
+# - Retrieval latency P95 <100ms (BM25 baseline)
+# - Recall@10 = 65% (baseline)
+# - Error rate <1%
+
+# 6. Post-incident analysis (2 hours)
+# Gather logs, metrics, component scores
+# Identify root cause (fusion bug, component timeout, etc.)
+# Create incident report
+
+# 7. Fix and redeploy (1-3 days)
+# Fix identified issues in separate branch
+# Re-test with shadow traffic
+# Schedule new deployment
+```
+
+### Recovery Time Objective (RTO)
+
+- **Canary rollback**: 2 minutes (traffic shift)
+- **Full rollback**: 10 minutes (revert + redeploy)
+- **Maximum RTO**: 15 minutes
+
+---
+
+## Resource Requirements
+
+### GPU Requirements
+
+**Reranking Service** (Optional, enabled by feature flag):
+
+- **Model**: cross-encoder/ms-marco-MiniLM-L-6-v2 (420MB)
+- **GPU Memory**: 2GB minimum (handles batch_size=32)
+- **GPU Type**: NVIDIA T4 or better
+- **Throughput**: ~500 query-doc pairs/second on T4
+
+**If GPU unavailable**:
+
+- Reranking automatically disabled (feature flag check on startup)
+- System falls back to fusion-only (no degradation of core functionality)
+
+### CPU/Memory Requirements
+
+**Hybrid Retrieval Service**:
+
+- **CPU**: 4 cores (parallel component execution)
+- **Memory**: 8GB (FAISS index + OpenSearch connection + models)
+
+**Evaluation Service**:
+
+- **CPU**: 2 cores (metric calculation)
+- **Memory**: 2GB (test set + results)
+
+---
+
+## Test Set Creation & Maintenance
+
+### Test Set Composition
+
+**50 Clinical Queries** stratified by type:
+
+1. **Exact Term Queries** (15 queries, 30%)
+   - NCT IDs: "NCT04267848"
+   - Drug names: "metformin", "insulin glargine"
+   - Gene names: "BRCA1", "TP53"
+   - **Expected**: BM25 should dominate, high precision
+
+2. **Paraphrase Queries** (20 queries, 40%)
+   - "diabetes treatment" vs "managing blood glucose levels"
+   - "adverse events" vs "side effects and safety concerns"
+   - **Expected**: Dense vectors should contribute, semantic similarity critical
+
+3. **Complex Clinical Queries** (15 queries, 30%)
+   - "efficacy of metformin in type 2 diabetes with renal impairment"
+   - "comparison of insulin vs oral hypoglycemics in elderly patients"
+   - **Expected**: Hybrid + reranking should excel, multi-faceted relevance
+
+### Gold-Standard Relevance Judgments
+
+**Relevance Scale** (0-3):
+
+- **3 - Highly Relevant**: Directly answers query, complete information
+- **2 - Relevant**: Partially answers query, useful context
+- **1 - Marginally Relevant**: Tangentially related, minimal value
+- **0 - Not Relevant**: Off-topic or irrelevant
+
+**Judgment Process**:
+
+1. Domain expert (MD or PhD) reviews top-20 results for each query
+2. Assigns relevance score (0-3) to each result
+3. Second expert reviews 20% of queries for inter-annotator agreement (target: Cohen's κ >0.7)
+4. Adjudication for disagreements
+
+**Storage**:
+
+```json
+{
+  "test_set_id": "clinical-queries-v1",
+  "created": "2025-10-01",
+  "queries": [
+    {
+      "query_id": "q001",
+      "query_text": "adverse events of metformin in diabetes",
+      "query_type": "paraphrase",
+      "relevance_judgments": {
+        "PMC123:chunk_5": 3,
+        "NCT04267848:chunk_12": 2,
+        "PMC456:chunk_8": 1,
+        "PMC789:chunk_3": 0
+      }
+    }
+  ]
+}
+```
+
+### Test Set Refresh Cadence
+
+- **Quarterly**: Add 10 new queries, retire 10 oldest queries
+- **Rationale**: Prevent overfitting, adapt to new clinical terminology
+- **Process**: Domain expert proposes new queries, relevance judgments collected, test set updated
+
+---
+
+## Security & Multi-Tenancy
+
+### Tenant Isolation in Retrieval
+
+**Query-Level Filtering**:
+
+```python
+# All retrieval components filter by tenant_id from JWT
+async def search_bm25(query: str, tenant_id: str, k: int) -> list[SearchResult]:
+    opensearch_query = {
+        "bool": {
+            "must": [
+                {"multi_match": {"query": query, "fields": ["text", "title_path"]}},
+                {"term": {"tenant_id": tenant_id}}  # Mandatory filter
+            ]
+        }
+    }
+    # ...
+```
+
+**FAISS Tenant Filtering**:
+
+- Metadata filtering post-KNN retrieval
+- Tenant_id stored in chunk metadata
+- Results filtered before fusion
+
+**Verification**:
+
+- Integration tests validate no cross-tenant leakage
+- Audit logging for all retrieval requests (query, tenant_id, results)
+
+### Component Score Explainability
+
+**Purpose**: Users can see why a result ranked high
+
+**Example**:
+
+```json
+{
+  "chunk_id": "PMC123:chunk_5",
+  "fused_score": 0.87,
+  "component_scores": {
+    "bm25": 12.5,    # High lexical overlap
+    "splade": 8.3,   # Moderate term expansion
+    "dense": 0.82    # High semantic similarity
+  },
+  "explanation": "Ranked highly due to exact term match (BM25) and semantic similarity (dense)"
+}
+```
+
+**Benefits**:
+
+- Trust: Users understand ranking rationale
+- Debugging: Engineers identify component failures
+- Tuning: Data scientists adjust fusion weights based on component contributions
+
+---
+
 ## Implementation Strategy
 
 **Hard Cutover for Evaluation** (No Legacy):

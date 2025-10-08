@@ -280,6 +280,574 @@ torch>=2.1.0  # CUDA 12.1+ for vLLM and FAISS GPU
 
 ---
 
+## Observability & Monitoring
+
+### Prometheus Metrics
+
+```python
+# Embedding performance metrics
+EMBEDDING_DURATION = Histogram(
+    "medicalkg_embedding_duration_seconds",
+    "Embedding generation duration",
+    ["namespace", "provider", "tenant_id"],  # provider: vllm, pyserini
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0]
+)
+
+EMBEDDING_BATCH_SIZE = Histogram(
+    "medicalkg_embedding_batch_size",
+    "Number of texts per embedding batch",
+    ["namespace"],
+    buckets=[1, 8, 16, 32, 64, 128]
+)
+
+EMBEDDING_TOKEN_COUNT = Histogram(
+    "medicalkg_embedding_tokens_per_text",
+    "Token count per embedded text",
+    ["namespace"],
+    buckets=[50, 100, 200, 400, 512, 1024]
+)
+
+# GPU metrics
+GPU_UTILIZATION = Gauge(
+    "medicalkg_embedding_gpu_utilization_percent",
+    "GPU utilization during embedding",
+    ["gpu_id", "service"]  # service: vllm, splade
+)
+
+GPU_MEMORY_USED = Gauge(
+    "medicalkg_embedding_gpu_memory_bytes",
+    "GPU memory used by embedding service",
+    ["gpu_id", "service"]
+)
+
+# Failure metrics
+EMBEDDING_FAILURES = Counter(
+    "medicalkg_embedding_failures_total",
+    "Embedding failures by type",
+    ["namespace", "error_type"]  # error_type: gpu_unavailable, token_overflow, timeout
+)
+
+TOKEN_OVERFLOW_RATE = Gauge(
+    "medicalkg_embedding_token_overflow_rate",
+    "% of texts exceeding token budget",
+    ["namespace"]
+)
+
+# Namespace metrics
+NAMESPACE_USAGE = Counter(
+    "medicalkg_embedding_namespace_requests_total",
+    "Requests per namespace",
+    ["namespace", "operation"]  # operation: embed, validate
+)
+```
+
+### CloudEvents
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.medical-kg.embedding.completed",
+  "source": "/embedding-service",
+  "id": "embed-abc123",
+  "time": "2025-10-08T14:30:00Z",
+  "data": {
+    "job_id": "job-abc123",
+    "namespace": "single_vector.qwen3.4096.v1",
+    "provider": "vllm",
+    "text_count": 64,
+    "duration_seconds": 0.12,
+    "gpu_id": 0,
+    "gpu_utilization_percent": 85,
+    "token_overflows": 0,
+    "tokens_per_text_avg": 287
+  }
+}
+```
+
+### Grafana Dashboard Panels
+
+1. **Embedding Latency by Namespace**: Line chart (P50, P95, P99) per namespace
+2. **GPU Utilization**: Time-series showing GPU usage (vLLM, SPLADE)
+3. **Throughput**: Embeddings/second per namespace
+4. **Token Overflow Rate**: Gauge showing % of texts exceeding budget
+5. **Namespace Usage Distribution**: Pie chart of requests per namespace
+6. **Failure Rate**: Counter showing failures by error type
+7. **GPU Memory Pressure**: Line chart of GPU memory usage over time
+
+---
+
+## Configuration Management
+
+### vLLM Configuration
+
+```yaml
+# config/embedding/vllm.yaml
+service:
+  host: 0.0.0.0
+  port: 8001
+  gpu_memory_utilization: 0.8  # Reserve 80% of GPU memory
+  max_model_len: 512  # Max sequence length
+  dtype: float16  # Use FP16 for efficiency
+
+model:
+  name: "Qwen/Qwen2.5-Coder-1.5B"
+  trust_remote_code: true
+  download_dir: "/models/qwen3-embedding"
+
+batching:
+  max_batch_size: 64
+  max_wait_time_ms: 50  # Wait up to 50ms to fill batch
+
+health_check:
+  enabled: true
+  gpu_check_interval_seconds: 30
+  fail_fast_on_gpu_unavailable: true
+```
+
+### Namespace Registry Configuration
+
+```yaml
+# config/embedding/namespaces.yaml
+namespaces:
+  single_vector.qwen3.4096.v1:
+    provider: vllm
+    endpoint: "http://vllm-service:8001"
+    model_name: "Qwen/Qwen2.5-Coder-1.5B"
+    dimension: 4096
+    max_tokens: 512
+    tokenizer: "Qwen/Qwen2.5-Coder-1.5B"
+    enabled: true
+
+  sparse.splade_v3.400.v1:
+    provider: pyserini
+    endpoint: "http://pyserini-service:8002"
+    model_name: "naver/splade-cocondenser-ensembledistil"
+    max_tokens: 512
+    doc_side_expansion: true
+    query_side_expansion: false
+    top_k_terms: 400
+    enabled: true
+
+  multi_vector.colbert_v2.128.v1:
+    provider: colbert
+    endpoint: "http://colbert-service:8003"
+    model_name: "colbert-ir/colbertv2.0"
+    dimension: 128
+    max_tokens: 512
+    enabled: false  # Optional, not enabled by default
+```
+
+### Pyserini SPLADE Configuration
+
+```yaml
+# config/embedding/pyserini.yaml
+service:
+  host: 0.0.0.0
+  port: 8002
+  gpu_memory_utilization: 0.6
+
+model:
+  name: "naver/splade-cocondenser-ensembledistil"
+  cache_dir: "/models/splade"
+
+expansion:
+  doc_side:
+    enabled: true
+    top_k_terms: 400
+    normalize_weights: true
+  query_side:
+    enabled: false  # Opt-in only
+    top_k_terms: 200
+
+opensearch:
+  rank_features_field: "splade_terms"
+  max_weight: 10.0
+```
+
+---
+
+## API Integration
+
+### REST API
+
+```http
+POST /v1/embed
+Content-Type: application/vnd.api+json
+Authorization: Bearer <jwt_token>
+
+{
+  "data": {
+    "type": "EmbeddingRequest",
+    "attributes": {
+      "texts": [
+        "Metformin is used to treat type 2 diabetes.",
+        "Adverse events include gastrointestinal disturbances."
+      ],
+      "namespace": "single_vector.qwen3.4096.v1",
+      "options": {
+        "normalize": true,
+        "return_tokens": false
+      }
+    }
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "data": {
+    "type": "EmbeddingResult",
+    "attributes": {
+      "namespace": "single_vector.qwen3.4096.v1",
+      "embeddings": [
+        {
+          "text_index": 0,
+          "embedding": [0.123, -0.456, ...],  # 4096-D vector
+          "dimension": 4096,
+          "token_count": 12
+        },
+        {
+          "text_index": 1,
+          "embedding": [0.789, -0.012, ...],
+          "dimension": 4096,
+          "token_count": 9
+        }
+      ],
+      "metadata": {
+        "provider": "vllm",
+        "model": "Qwen/Qwen2.5-Coder-1.5B",
+        "duration_ms": 120,
+        "gpu_utilization_percent": 85
+      }
+    }
+  }
+}
+```
+
+### GraphQL API
+
+```graphql
+mutation EmbedTexts($input: EmbeddingInput!) {
+  embed(input: $input) {
+    namespace
+    embeddings {
+      textIndex
+      embedding
+      dimension
+      tokenCount
+    }
+    metadata {
+      provider
+      durationMs
+      gpuUtilization
+    }
+  }
+}
+
+input EmbeddingInput {
+  texts: [String!]!
+  namespace: String!
+  options: EmbeddingOptions
+}
+
+input EmbeddingOptions {
+  normalize: Boolean = true
+  returnTokens: Boolean = false
+}
+```
+
+### New Namespace Management Endpoints
+
+```http
+GET /v1/namespaces
+Authorization: Bearer <jwt_token>
+
+Response:
+{
+  "data": [{
+    "type": "EmbeddingNamespace",
+    "id": "single_vector.qwen3.4096.v1",
+    "attributes": {
+      "provider": "vllm",
+      "dimension": 4096,
+      "max_tokens": 512,
+      "enabled": true,
+      "model": "Qwen/Qwen2.5-Coder-1.5B"
+    }
+  }]
+}
+```
+
+```http
+POST /v1/namespaces/{namespace}/validate
+Authorization: Bearer <jwt_token>
+
+{
+  "texts": ["Sample text for validation"]
+}
+
+Response:
+{
+  "valid": true,
+  "token_counts": [4],
+  "warnings": []
+}
+```
+
+---
+
+## Rollback Procedures
+
+### Rollback Trigger Conditions
+
+**Automated Triggers**:
+
+- Embedding latency P95 >2s for >10 minutes
+- GPU failure rate >20% for >5 minutes
+- Token overflow rate >15% for >15 minutes
+- vLLM service unavailable for >5 minutes
+
+**Manual Triggers**:
+
+- Embedding quality degradation reported by retrieval metrics
+- GPU memory leaks causing OOM
+- vLLM startup failures
+- Incorrect vector dimensions or sparse term weights
+
+### Rollback Steps
+
+```bash
+# Phase 1: Immediate mitigation (if in canary)
+# 1. Disable new embedding service
+kubectl scale deployment/vllm-embedding --replicas=0
+kubectl scale deployment/pyserini-splade --replicas=0
+
+# 2. Re-enable legacy embedding service (if still deployed)
+kubectl scale deployment/legacy-embedding --replicas=3
+
+# Phase 2: Full rollback (if needed)
+# 3. Revert feature branch
+git revert <embedding-standardization-commit-sha>
+
+# 4. Redeploy previous version
+kubectl rollout undo deployment/embedding-service
+
+# 5. Revert OpenSearch mapping changes
+curl -X PUT "opensearch:9200/chunks/_mapping" -d @legacy-mapping.json
+
+# 6. Validate baseline restoration (15 minutes)
+# Check metrics:
+# - Embedding latency P95 <500ms (legacy baseline)
+# - GPU utilization 60-70% (legacy)
+# - Zero token overflows (legacy truncated silently)
+
+# 7. Post-incident analysis (2 hours)
+# Gather logs, metrics, GPU traces
+# Identify root cause (vLLM config, GPU memory, tokenizer mismatch)
+# Create incident report
+
+# 8. Fix and redeploy (2-5 days)
+# Fix identified issues in separate branch
+# Re-test with isolated GPU environment
+# Schedule new deployment
+```
+
+### Recovery Time Objective (RTO)
+
+- **Canary rollback**: 5 minutes (scale down new, scale up legacy)
+- **Full rollback**: 15 minutes (revert + redeploy + mapping)
+- **Maximum RTO**: 20 minutes
+
+---
+
+## vLLM Deployment Details
+
+### Docker Configuration
+
+```dockerfile
+# Dockerfile.vllm
+FROM nvcr.io/nvidia/pytorch:23.10-py3
+
+# Install vLLM
+RUN pip install vllm==0.3.0 transformers==4.38.0
+
+# Download Qwen3 model weights (reduces startup time)
+RUN python -c "from transformers import AutoModel; AutoModel.from_pretrained('Qwen/Qwen2.5-Coder-1.5B', cache_dir='/models/qwen3')"
+
+# Copy vLLM config
+COPY config/embedding/vllm.yaml /config/vllm.yaml
+
+# Start vLLM server
+CMD ["python", "-m", "vllm.entrypoints.openai.api_server", \
+     "--model", "Qwen/Qwen2.5-Coder-1.5B", \
+     "--host", "0.0.0.0", \
+     "--port", "8001", \
+     "--gpu-memory-utilization", "0.8", \
+     "--max-model-len", "512", \
+     "--dtype", "float16"]
+```
+
+### Kubernetes GPU Allocation
+
+```yaml
+# k8s/vllm-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-embedding
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: vllm
+        image: medical-kg/vllm-embedding:latest
+        resources:
+          limits:
+            nvidia.com/gpu: 1  # Request 1 GPU per pod
+            memory: 16Gi
+          requests:
+            nvidia.com/gpu: 1
+            memory: 12Gi
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: VLLM_GPU_MEMORY_UTILIZATION
+          value: "0.8"
+        ports:
+        - containerPort: 8001
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      nodeSelector:
+        gpu: "true"
+        gpu-type: "t4"  # Or "v100", "a100" based on availability
+```
+
+### Model Loading Strategy
+
+**Pre-Download Strategy** (Recommended):
+
+1. Bake model weights into Docker image (adds ~1.5GB to image size)
+2. vLLM loads from local cache on startup (30-60s)
+3. No network dependency during pod initialization
+
+**On-Demand Strategy** (Alternative):
+
+1. Mount shared model volume (NFS/EFS)
+2. vLLM downloads on first startup (5-10 minutes)
+3. Subsequent startups use cached models
+
+**Validation**:
+
+```bash
+# Test vLLM startup time
+time docker run medical-kg/vllm-embedding:latest python -c "from vllm import LLM; LLM('Qwen/Qwen2.5-Coder-1.5B')"
+# Target: <60 seconds
+```
+
+---
+
+## Security & Multi-Tenancy
+
+### Tenant Isolation in Embeddings
+
+**Request-Level Filtering**:
+
+```python
+# All embedding requests include tenant_id from JWT
+async def embed_texts(
+    texts: list[str],
+    namespace: str,
+    tenant_id: str  # Extracted from JWT
+) -> list[Embedding]:
+    # Store tenant_id with embeddings for audit
+    embeddings = await vllm_client.embed(texts, namespace)
+
+    # Log request with tenant_id
+    logger.info(
+        "Embedding request",
+        extra={
+            "tenant_id": tenant_id,
+            "namespace": namespace,
+            "text_count": len(texts),
+            "correlation_id": request.correlation_id
+        }
+    )
+
+    return embeddings
+```
+
+**Storage-Level Isolation**:
+
+- FAISS indices partitioned by tenant_id (separate index per tenant)
+- OpenSearch sparse signals include `tenant_id` field for filtering
+- Neo4j embedding metadata tagged with tenant_id
+
+**Verification**:
+
+- Integration tests validate no cross-tenant embedding leakage
+- Audit logging for all embedding requests (tenant_id, namespace, text count)
+
+### Namespace Access Control
+
+**Role-Based Access**:
+
+```yaml
+# Authorization rules for namespaces
+namespaces:
+  single_vector.qwen3.4096.v1:
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["all"]  # Public namespace
+
+  single_vector.custom_model.2048.v1:
+    allowed_scopes: ["embed:admin"]
+    allowed_tenants: ["tenant-123"]  # Private namespace
+```
+
+---
+
+## Performance Benchmarking
+
+### Dense Embedding Benchmarks (vLLM)
+
+| Metric | Target | Validation Method |
+|--------|--------|-------------------|
+| Throughput | ≥1000 emb/sec | Load test with batch_size=64, GPU T4 |
+| Latency P95 | <200ms | Prometheus histogram, 1000 requests |
+| GPU Utilization | 70-85% | nvidia-smi during load test |
+| Token Overflow Rate | <5% | Monitor `TOKEN_OVERFLOW_RATE` metric |
+
+### Sparse Embedding Benchmarks (Pyserini SPLADE)
+
+| Metric | Target | Validation Method |
+|--------|--------|-------------------|
+| Throughput | ≥500 docs/sec | Load test with doc-side expansion |
+| Latency P95 | <400ms | Prometheus histogram |
+| Top-K Terms Avg | 300-400 | CloudEvents `top_k_terms_avg` |
+| GPU Memory | <4GB | nvidia-smi memory usage |
+
+### Storage Benchmarks
+
+| Operation | Target | Validation Method |
+|-----------|--------|-------------------|
+| FAISS Index | P95 <50ms for 10M vectors | k6 load test |
+| OpenSearch sparse | P95 <200ms | k6 load test with rank_features |
+| FAISS Build | <2 hours for 10M vectors | Incremental indexing test |
+
+---
+
 ## Implementation Strategy
 
 **Hard Cutover** (No Legacy Compatibility):

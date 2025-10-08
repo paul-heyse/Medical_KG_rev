@@ -184,7 +184,7 @@
 - [x] 4.5 Create `aiolimiter.AsyncLimiter` factory from policy config
 - [x] 4.6 Implement policy application at stage execution boundary
 - [x] 4.7 Add Prometheus metrics for retry attempts, circuit breaker state changes, rate limit waits
-- [ ] 4.8 Write resilience policy unit tests with respx mocks
+- [x] 4.8 Write resilience policy unit tests with respx mocks
 
 ## 5. Pipeline Topology Definitions
 

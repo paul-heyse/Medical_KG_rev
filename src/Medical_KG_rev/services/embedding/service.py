@@ -14,7 +14,10 @@ from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.runtime import (
     StageFactory,
     StageResolutionError,
+    build_stage_factory,
 )
+from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
@@ -31,6 +34,10 @@ logger = structlog.get_logger(__name__)
 def _default_stage_factory() -> StageFactory:
     """Instantiate the default stage factory using registered adapters."""
 
+    adapter_manager = get_plugin_manager()
+    pipeline_resource = create_default_pipeline_resource()
+    job_ledger = JobLedger()
+    return build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
     plugin_manager = create_stage_plugin_manager(get_plugin_manager())
     return StageFactory(plugin_manager)
 

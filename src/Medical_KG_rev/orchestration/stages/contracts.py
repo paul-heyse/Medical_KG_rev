@@ -11,11 +11,205 @@ from __future__ import annotations
 
 import base64
 import copy
+import json as _json
 import time
 import zlib
 from dataclasses import asdict, dataclass, field
+from importlib import util as importlib_util
 from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
+import structlog
+from prometheus_client import Counter, Histogram
+
+if importlib_util.find_spec("pydantic") is not None:
+    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
+
+    PYDANTIC_AVAILABLE = True
+else:  # pragma: no cover - fallback for lightweight environments
+    PYDANTIC_AVAILABLE = False
+
+    class ValidationError(ValueError):
+        """Fallback validation error when Pydantic is unavailable."""
+
+    class BaseModel:  # type: ignore[override]
+        model_config: dict[str, Any] = {}
+
+        def __init__(self, **data: Any) -> None:
+            for key, value in data.items():
+                setattr(self, key, value)
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+            payload = self.model_dump(mode="python")
+            if update:
+                payload.update(update)
+            return self.__class__(**payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+            return cls(**dict(payload))
+
+    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
+        if default_factory is not None:
+            return default_factory()
+        return default
+
+    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
+        return dict(kwargs)
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.adapters.plugins.models import AdapterRequest  # type: ignore[import]
+else:  # pragma: no cover - fallback for lightweight test environments
+
+    @dataclass(slots=True)
+    class AdapterRequest:
+        tenant_id: str
+        correlation_id: str | None = None
+        domain: str | None = None
+        parameters: dict[str, Any] = field(default_factory=dict)
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "AdapterRequest":
+            return cls(
+                tenant_id=str(payload.get("tenant_id", "")),
+                correlation_id=payload.get("correlation_id"),
+                domain=payload.get("domain"),
+                parameters=dict(payload.get("parameters", {})),
+            )
+
+        def model_copy(self, *, deep: bool = False) -> "AdapterRequest":
+            return AdapterRequest(
+                tenant_id=self.tenant_id,
+                correlation_id=self.correlation_id,
+                domain=self.domain,
+                parameters=copy.deepcopy(self.parameters) if deep else dict(self.parameters),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:  # pragma: no cover - simple shim
+            return {
+                "tenant_id": self.tenant_id,
+                "correlation_id": self.correlation_id,
+                "domain": self.domain,
+                "parameters": copy.deepcopy(self.parameters),
+            }
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.chunking.models import Chunk  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Chunk:
+        chunk_id: str
+        doc_id: str
+        tenant_id: str
+        body: str
+        title_path: tuple[str, ...]
+        section: str
+        start_char: int
+        end_char: int
+        granularity: str
+        chunker: str
+        chunker_version: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Chunk":
+            return cls(
+                chunk_id=str(payload.get("chunk_id")),
+                doc_id=str(payload.get("doc_id")),
+                tenant_id=str(payload.get("tenant_id", "")),
+                body=str(payload.get("body", "")),
+                title_path=tuple(payload.get("title_path", ())),
+                section=str(payload.get("section", "")),
+                start_char=int(payload.get("start_char", 0)),
+                end_char=int(payload.get("end_char", 0)),
+                granularity=str(payload.get("granularity", "")),
+                chunker=str(payload.get("chunker", "")),
+                chunker_version=str(payload.get("chunker_version", "")),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.models.entities import Claim, Entity  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Entity:
+        id: str
+        type: str
+        text: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Entity":
+            return cls(id=str(payload.get("id", "")), type=str(payload.get("type", "")), text=str(payload.get("text", "")))
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+    @dataclass(slots=True)
+    class Claim:
+        id: str
+        statement: str
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Claim":
+            return cls(id=str(payload.get("id", "")), statement=str(payload.get("statement", "")))
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return asdict(self)
+
+
+if PYDANTIC_AVAILABLE:
+    from Medical_KG_rev.models.ir import Document  # type: ignore[import]
+else:  # pragma: no cover - fallback shim
+
+    @dataclass(slots=True)
+    class Document:
+        id: str
+        source: str
+        sections: tuple[Any, ...] = ()
+        metadata: dict[str, Any] = field(default_factory=dict)
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "Document":
+            return cls(
+                id=str(payload.get("id", "")),
+                source=str(payload.get("source", "")),
+                sections=tuple(payload.get("sections", ())),
+                metadata=dict(payload.get("metadata", {})),
+            )
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            return {
+                "id": self.id,
+                "source": self.source,
+                "sections": list(self.sections),
+                "metadata": copy.deepcopy(self.metadata),
+            }
+import orjson
+import structlog
+import time
+import zlib
+from dataclasses import dataclass, field
+from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
+
+import structlog
+
+from Medical_KG_rev.orchestration.state import (
+    PipelineStateCache,
+    PipelineStateModel,
+    dumps_json,
+    dumps_orjson,
+    encode_base64,
+    record_stage_metrics,
+    serialise_payload,
+)
 import orjson
 import structlog
 from attrs import asdict as attr_asdict
@@ -28,11 +222,289 @@ from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.observability.metrics import PIPELINE_STATE_SERIALISATIONS
+from attrs import define, field as attrs_field
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 
 RawPayload = dict[str, Any]
 
 
+_state_logger = structlog.get_logger("Medical_KG_rev.pipeline_state")
+
+_STATE_MUTATIONS = Counter(
+    "orchestration_pipeline_state_mutations_total",
+    "Total number of mutating operations executed against PipelineState",
+    labelnames=("operation",),
+)
+_STATE_SERIALISATION_LATENCY = Histogram(
+    "orchestration_pipeline_state_serialisation_seconds",
+    "Latency of PipelineState serialisation operations",
+    labelnames=("format",),
+    buckets=(
+        0.0005,
+        0.001,
+        0.002,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+    ),
+)
+_STATE_DEPENDENCY_FAILURES = Counter(
+    "orchestration_pipeline_state_dependency_failures_total",
+    "Number of times a stage attempted to execute without satisfying dependencies",
+    labelnames=("stage_type",),
+)
+
+
+if importlib_util.find_spec("orjson") is not None:
+    import orjson as _orjson  # type: ignore[import]
+    ORJSON_AVAILABLE = True
+else:  # pragma: no cover - fallback path for minimal environments
+    ORJSON_AVAILABLE = False
+
+    class _OrjsonShim:
+        JSONDecodeError = ValueError
+
+        @staticmethod
+        def dumps(payload: Any) -> bytes:
+            return _json.dumps(payload).encode("utf-8")
+
+        @staticmethod
+        def loads(data: Any) -> Any:
+            if isinstance(data, (bytes, bytearray)):
+                return _json.loads(bytes(data).decode("utf-8"))
+            return _json.loads(data)
+
+    _orjson = _OrjsonShim()
+
+orjson = _orjson
+
+
+if importlib_util.find_spec("pydantic") is not None:
+    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
+
+    PYDANTIC_AVAILABLE = True
+else:  # pragma: no cover - fallback for lightweight environments
+    PYDANTIC_AVAILABLE = False
+
+    class ValidationError(ValueError):
+        """Fallback validation error when Pydantic is unavailable."""
+
+    class BaseModel:  # type: ignore[override]
+        """Minimal shim providing the interface we rely on for tests."""
+
+        model_config: dict[str, Any] = {}
+
+        def __init__(self, **data: Any) -> None:
+            for key, value in data.items():
+                setattr(self, key, value)
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+            payload = self.model_dump(mode="python")
+            if update:
+                payload.update(update)
+            return self.__class__(**payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+            return cls(**dict(payload))
+
+    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
+        if default_factory is not None:
+            return default_factory()
+        return default
+
+    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
+        return dict(kwargs)
+
+
+if importlib_util.find_spec("attrs") is not None:
+    from attrs import asdict as attr_asdict  # type: ignore[import]
+    from attrs import define as attr_define  # type: ignore[import]
+    from attrs import field as attr_field  # type: ignore[import]
+else:  # pragma: no cover - fallback for environments without attrs
+    attr_asdict = asdict
+
+    def attr_define(*, slots: bool = False):  # type: ignore[override]
+        def _decorator(cls):
+            return dataclass(cls, slots=slots)
+
+        return _decorator
+
+    def attr_field(*, default: Any | None = None, factory: Callable[[], Any] | None = None):  # type: ignore[override]
+        if factory is not None:
+            return field(default_factory=factory)
+        return field(default=default)
+
+
+if importlib_util.find_spec("tenacity") is not None:
+    from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential  # type: ignore[import]
+else:  # pragma: no cover - fallback for environments without tenacity
+
+    def stop_after_attempt(count: int) -> int:
+        return max(1, int(count))
+
+    def wait_exponential(**_: Any) -> None:  # pragma: no cover - compatibility shim
+        return None
+
+    def retry_if_exception_type(exc_type: type[BaseException]) -> type[BaseException]:  # pragma: no cover - shim
+        return exc_type
+
+    def retry(*, reraise: bool | None = None, stop: Any | None = None, wait: Any | None = None, retry: Any | None = None):
+        max_attempts = stop if isinstance(stop, int) else 1
+
+        def _decorator(func):
+            def _wrapped(*args, **kwargs):
+                attempts = 0
+                while True:
+                    try:
+                        attempts += 1
+                        return func(*args, **kwargs)
+                    except Exception:  # pragma: no cover - simple retry shim
+                        if attempts >= max_attempts:
+                            raise
+
+            return _wrapped
+
+        return _decorator
+
+
+@attr_define(slots=True)
+class PDFStateTracker:
+    """Track PDF download and gate status for long-running ingest jobs."""
+
+    downloads: tuple[str, ...] = ()
+    last_attempt_ms: int | None = None
+    gate_open: bool = False
+    gate_reason: str | None = None
+    ledger_reference: str | None = None
+
+    def record_download(self, asset_id: str, *, attempt_ms: int | None = None) -> None:
+        if asset_id not in self.downloads:
+            self.downloads = (*self.downloads, asset_id)
+        if attempt_ms is not None:
+            self.last_attempt_ms = attempt_ms
+
+    def mark_gate(self, *, opened: bool, reason: str | None = None) -> None:
+        self.gate_open = opened
+        self.gate_reason = reason
+
+    def set_ledger_reference(self, reference: str | None) -> None:
+        self.ledger_reference = reference
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "downloads": list(self.downloads),
+            "last_attempt_ms": self.last_attempt_ms,
+            "gate_open": self.gate_open,
+            "gate_reason": self.gate_reason,
+            "ledger_reference": self.ledger_reference,
+        }
+
+
+if PYDANTIC_AVAILABLE:
+
+    class StageContext(BaseModel):
+        """Immutable context shared across stage boundaries."""
+
+        model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+
+        tenant_id: str
+        job_id: str | None = None
+        doc_id: str | None = None
+        correlation_id: str | None = None
+        metadata: dict[str, Any] = Field(default_factory=dict)
+        pipeline_name: str | None = None
+        pipeline_version: str | None = None
+
+        def with_metadata(self, **values: Any) -> "StageContext":
+            """Return a new context instance with additional metadata."""
+
+            updated = {**self.metadata, **values}
+            return self.model_copy(update={"metadata": updated})
+
+        def to_dict(self) -> dict[str, Any]:
+            """Return a serialisable representation of the context."""
+
+            return self.model_dump(mode="json")
+
+        @classmethod
+        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+            """Rehydrate a context from a mapping payload."""
+
+            return cls.model_validate(payload)
+
+else:
+
+    @dataclass(slots=True)
+    class StageContext:
+        """Immutable context shared across stage boundaries."""
+
+        tenant_id: str
+        job_id: str | None = None
+        doc_id: str | None = None
+        correlation_id: str | None = None
+        metadata: dict[str, Any] = field(default_factory=dict)
+        pipeline_name: str | None = None
+        pipeline_version: str | None = None
+
+        def with_metadata(self, **values: Any) -> "StageContext":
+            updated = dict(self.metadata)
+            updated.update(values)
+            return StageContext(
+                tenant_id=self.tenant_id,
+                job_id=self.job_id,
+                doc_id=self.doc_id,
+                correlation_id=self.correlation_id,
+                metadata=updated,
+                pipeline_name=self.pipeline_name,
+                pipeline_version=self.pipeline_version,
+            )
+
+        def to_dict(self) -> dict[str, Any]:
+            return {
+                "tenant_id": self.tenant_id,
+                "job_id": self.job_id,
+                "doc_id": self.doc_id,
+                "correlation_id": self.correlation_id,
+                "metadata": dict(self.metadata),
+                "pipeline_name": self.pipeline_name,
+                "pipeline_version": self.pipeline_version,
+            }
+
+        @classmethod
+        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+            return cls(
+                tenant_id=str(payload.get("tenant_id")),
+                job_id=payload.get("job_id"),
+                doc_id=payload.get("doc_id"),
+                correlation_id=payload.get("correlation_id"),
+                metadata=dict(payload.get("metadata", {})),
+                pipeline_name=payload.get("pipeline_name"),
+                pipeline_version=payload.get("pipeline_version"),
+            )
+
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "StageContext":
+            payload = self.to_dict()
+            if update:
+                payload.update(update)
+            return StageContext.from_dict(payload)
+
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:
+            return self.to_dict()
+
+        @classmethod
+        def model_validate(cls, payload: Mapping[str, Any]) -> "StageContext":
+            return cls.from_dict(payload)
+logger = structlog.get_logger(__name__)
 _STATE_SERIALISE_COUNTER = Counter(
     "medical_kg_pipeline_state_serialise_total",
     "Total pipeline state serialisation attempts",
@@ -114,7 +586,8 @@ class GraphWriteReceipt:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@attr_define(slots=True)
+@pydantic_dataclass(config=ConfigDict(validate_assignment=True))
 class StageContext:
     """Immutable context shared across stage boundaries."""
 
@@ -122,7 +595,7 @@ class StageContext:
     job_id: str | None = None
     doc_id: str | None = None
     correlation_id: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     pipeline_name: str | None = None
     pipeline_version: str | None = None
 
@@ -169,26 +642,57 @@ class StageContext:
         )
 
 
-@dataclass(slots=True)
+@define(slots=True)
 class StageResultSnapshot:
     """Aggregated metadata describing a stage execution."""
 
     stage: str
     stage_type: str
-    attempts: int | None = None
-    duration_ms: int | None = None
-    output_count: int | None = None
-    error: str | None = None
+    attempts: int | None = attrs_field(default=None)
+    duration_ms: int | None = attrs_field(default=None)
+    output_count: int | None = attrs_field(default=None)
+    error: str | None = attrs_field(default=None)
+
+    def as_dict(self) -> dict[str, Any]:
+        return attr_asdict(self)
+
+
+@define(slots=True, frozen=True)
+class DownloadArtifact:
+    """Represents a downloaded PDF artefact available for downstream stages."""
+
+    document_id: str
+    tenant_id: str
+    uri: str
+    metadata: dict[str, Any] = attrs_field(factory=dict)
+
+
+@define(slots=True, frozen=True)
+class GateDecision:
+    """Represents the outcome of a gate stage evaluation."""
+
+    name: str
+    ready: bool
+    metadata: dict[str, Any] = attrs_field(factory=dict)
+@dataclass(slots=True)
+class PdfGateState:
+    """Represents the progress of the PDF two-phase pipeline gate."""
+
+    downloaded: bool = False
+    ir_ready: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "stage": self.stage,
-            "stage_type": self.stage_type,
-            "attempts": self.attempts,
-            "duration_ms": self.duration_ms,
-            "output_count": self.output_count,
-            "error": self.error,
+            "downloaded": self.downloaded,
+            "ir_ready": self.ir_ready,
+            "metadata": dict(self.metadata),
         }
+
+    def merge_metadata(self, values: Mapping[str, Any] | None) -> None:
+        if not values:
+            return
+        self.metadata.update(dict(values))
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,11 +707,15 @@ class PipelineStateSnapshot:
     claims: tuple[Claim, ...]
     index_receipt: IndexReceipt | None
     graph_receipt: GraphWriteReceipt | None
+    downloads: tuple[DownloadArtifact, ...]
+    gate_decisions: dict[str, GateDecision]
     pdf_assets: tuple[PdfAsset, ...]
     gate_status: dict[str, bool]
     metadata: dict[str, Any]
     stage_results: dict[str, StageResultSnapshot]
     job_id: str | None
+    pdf_tracker: PDFStateTracker
+    pdf_gate: PdfGateState
 
 
 class PipelineStateValidationError(ValueError):
@@ -216,6 +724,46 @@ class PipelineStateValidationError(ValueError):
     def __init__(self, message: str, *, rule: str | None = None) -> None:
         super().__init__(message)
         self.rule = rule
+
+
+if PYDANTIC_AVAILABLE:
+
+    class PipelineStateEnvelope(BaseModel):
+        """Pydantic schema enforcing PipelineState invariants."""
+
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+
+        context: StageContext
+        adapter_request: AdapterRequest
+        payload: dict[str, Any] = Field(default_factory=dict)
+        payloads: tuple[RawPayload, ...] = ()
+        document: Document | None = None
+        chunks: tuple[Chunk, ...] = ()
+        embedding_batch: EmbeddingBatch | None = None
+        entities: tuple[Entity, ...] = ()
+        claims: tuple[Claim, ...] = ()
+        index_receipt: IndexReceipt | None = None
+        graph_receipt: GraphWriteReceipt | None = None
+        metadata: dict[str, Any] = Field(default_factory=dict)
+        stage_results: dict[str, StageResultSnapshot] = Field(default_factory=dict)
+        schema_version: str = "v1"
+        job_id: str | None = None
+        pdf_tracker: PDFStateTracker = Field(default_factory=PDFStateTracker)
+
+else:
+
+    class PipelineStateEnvelope:
+        """Fallback schema shim when Pydantic is not installed."""
+
+        @staticmethod
+        def model_validate(payload: Mapping[str, Any]) -> Mapping[str, Any]:  # pragma: no cover - trivial
+            return payload
+class PipelineGateNotReady(RuntimeError):
+    """Raised when a gate stage determines processing must pause."""
+
+    def __init__(self, message: str, *, gate: str) -> None:
+        super().__init__(message)
+        self.gate = gate
 
 
 @dataclass(slots=True)
@@ -233,20 +781,60 @@ class PipelineState:
     claims: tuple[Claim, ...] = ()
     index_receipt: IndexReceipt | None = None
     graph_receipt: GraphWriteReceipt | None = None
+    downloads: tuple[DownloadArtifact, ...] = ()
+    gate_decisions: dict[str, GateDecision] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     stage_results: dict[str, StageResultSnapshot] = field(default_factory=dict)
     pdf_assets: tuple[PdfAsset, ...] = ()
     gate_status: dict[str, bool] = field(default_factory=dict)
     schema_version: str = "v1"
     job_id: str | None = None
+    pdf_tracker: PDFStateTracker = field(default_factory=PDFStateTracker)
+    pdf_gate: PdfGateState = field(default_factory=PdfGateState)
     _dirty: bool = field(default=True, init=False, repr=False)
     _cache: _StateCache = field(default_factory=_StateCache, init=False, repr=False)
     _tenant_id: str = field(init=False, repr=False)
     _checkpoints: dict[str, PipelineStateSnapshot] = field(default_factory=dict, init=False, repr=False)
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
+    _DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
+        "parse": ("ingest",),
+        "ir-validation": ("ingest", "parse"),
+        "chunk": ("parse",),
+        "embed": ("chunk",),
+        "index": ("embed",),
+        "extract": ("parse",),
+        "knowledge-graph": ("extract",),
+        "pdf-download": ("ingest",),
+        "pdf-gate": ("pdf-download",),
+    }
+    _SERIALISATION_CACHE: ClassVar[PipelineStateCache] = PipelineStateCache(ttl_seconds=120.0)
 
     def __post_init__(self) -> None:
+        if PYDANTIC_AVAILABLE:
+            try:
+                PipelineStateEnvelope.model_validate(
+                    {
+                        "context": self.context,
+                        "adapter_request": self.adapter_request,
+                        "payload": self.payload,
+                        "payloads": self.payloads,
+                        "document": self.document,
+                        "chunks": self.chunks,
+                        "embedding_batch": self.embedding_batch,
+                        "entities": self.entities,
+                        "claims": self.claims,
+                        "index_receipt": self.index_receipt,
+                        "graph_receipt": self.graph_receipt,
+                        "metadata": self.metadata,
+                        "stage_results": self.stage_results,
+                        "schema_version": self.schema_version,
+                        "job_id": self.job_id,
+                        "pdf_tracker": self.pdf_tracker,
+                    }
+                )
+            except ValidationError as exc:  # pragma: no cover - defensive guard
+                raise PipelineStateValidationError(str(exc)) from exc
         self._tenant_id = self.context.tenant_id
 
     @classmethod
@@ -271,6 +859,8 @@ class PipelineState:
     # ------------------------------------------------------------------
     def _mark_dirty(self) -> None:
         self._dirty = True
+        self._serialised_cache = None
+        _STATE_MUTATIONS.labels(operation="mutate").inc()
         self._cache = _StateCache()
 
     def is_dirty(self) -> bool:
@@ -296,12 +886,25 @@ class PipelineState:
         clone.claims = tuple(copy.deepcopy(self.claims))
         clone.index_receipt = copy.deepcopy(self.index_receipt)
         clone.graph_receipt = copy.deepcopy(self.graph_receipt)
+        clone.downloads = tuple(copy.deepcopy(self.downloads))
+        clone.gate_decisions = {
+            name: copy.deepcopy(decision) for name, decision in self.gate_decisions.items()
+        }
         clone.metadata = copy.deepcopy(self.metadata)
         clone.stage_results = {
             name: copy.deepcopy(result) for name, result in self.stage_results.items()
         }
         clone.schema_version = self.schema_version
         clone.job_id = self.job_id
+        clone.pdf_tracker = copy.deepcopy(self.pdf_tracker)
+        clone._dirty = self._dirty
+        clone._serialised_cache = (
+            copy.deepcopy(self._serialised_cache) if self._serialised_cache is not None else None
+        clone.pdf_gate = PdfGateState(
+            downloaded=self.pdf_gate.downloaded,
+            ir_ready=self.pdf_gate.ir_ready,
+            metadata=copy.deepcopy(self.pdf_gate.metadata),
+        )
         clone._dirty = self._dirty
         clone._cache = copy.deepcopy(self._cache)
         clone._checkpoints = {
@@ -329,6 +932,11 @@ class PipelineState:
 
         snapshot = self.snapshot(include_stage_results=include_stage_results)
         self._checkpoints[self._checkpoint_label(label)] = snapshot
+        logger.debug(
+            "pipeline_state.checkpoint_created",
+            label=self._checkpoint_label(label),
+            tenant_id=self._tenant_id,
+        )
         return snapshot
 
     def get_checkpoint(self, label: str | None = None) -> PipelineStateSnapshot | None:
@@ -350,6 +958,11 @@ class PipelineState:
         snapshot = self.get_checkpoint(label)
         if snapshot is not None:
             self.restore(snapshot, restore_stage_results=restore_stage_results)
+            logger.debug(
+                "pipeline_state.checkpoint_restored",
+                label=self._checkpoint_label(label),
+                tenant_id=self._tenant_id,
+            )
         return snapshot
 
     def clear_checkpoint(self, label: str | None = None) -> None:
@@ -451,6 +1064,21 @@ class PipelineState:
         self.graph_receipt = receipt
         self._mark_dirty()
 
+    def set_downloads(self, artifacts: Sequence[DownloadArtifact]) -> None:
+        self.downloads = tuple(artifacts)
+        self._mark_dirty()
+
+    def require_downloads(self) -> tuple[DownloadArtifact, ...]:
+        if not self.downloads:
+            raise ValueError("PipelineState does not contain download artefacts")
+        return self.downloads
+
+    def record_gate_decision(self, decision: GateDecision) -> None:
+        self.gate_decisions[decision.name] = decision
+        self._mark_dirty()
+
+    def get_gate_decision(self, name: str) -> GateDecision | None:
+        return self.gate_decisions.get(name)
     def has_pdf_assets(self) -> bool:
         return bool(self.pdf_assets)
 
@@ -494,6 +1122,8 @@ class PipelineState:
 
         if stage_type in {"parse", "ir-validation"}:
             self.require_payloads()
+        elif stage_type == "download":
+            self.require_payloads()
         elif stage_type == "chunk":
             self.require_document()
         elif stage_type == "embed":
@@ -507,6 +1137,11 @@ class PipelineState:
             # state must contain the tuple marker.
             if self.entities is None or self.claims is None:
                 raise ValueError("PipelineState requires extraction outputs before KG stage")
+        elif stage_type == "pdf-gate":
+            if not self.pdf_tracker.downloads:
+                raise ValueError("PDF gate cannot run before any downloads are recorded")
+        elif stage_type == "gate":
+            self.require_downloads()
         elif stage_type == "download":
             self.require_document()
         elif stage_type == "gate":
@@ -527,6 +1162,10 @@ class PipelineState:
             "index": "index_receipt",
             "extract": "extraction",
             "knowledge-graph": "graph_receipt",
+            "download": "downloads",
+            "gate": "gate_decisions",
+            "pdf-download": "metadata",
+            "pdf-ir-gate": "metadata",
             "download": "pdf_assets",
             "gate": "gate_status",
         }.get(stage_type, stage_type)
@@ -570,6 +1209,40 @@ class PipelineState:
             if not isinstance(output, GraphWriteReceipt):
                 raise TypeError("Knowledge graph stage must return a GraphWriteReceipt")
             self.set_graph_receipt(output)
+        elif stage_type == "pdf-download":
+            assets = output or ()
+            if isinstance(assets, Sequence) and not isinstance(assets, (str, bytes)):
+                for asset in assets:
+                    self.pdf_tracker.record_download(str(asset))
+            else:
+                self.pdf_tracker.record_download(str(assets))
+            self._mark_dirty()
+        elif stage_type == "pdf-gate":
+            decision = getattr(output, "allowed", None)
+            if decision is None:
+                decision = bool(output)
+            reason = getattr(output, "reason", None)
+            self.pdf_tracker.mark_gate(opened=bool(decision), reason=reason)
+            reference = getattr(output, "ledger_reference", None)
+            if reference is not None:
+                self.pdf_tracker.set_ledger_reference(str(reference))
+            self._mark_dirty()
+        elif stage_type == "download":
+            if not isinstance(output, Sequence) or not all(
+                isinstance(item, DownloadArtifact) for item in output
+            ):
+                raise TypeError("Download stage must return DownloadArtifact instances")
+            self.set_downloads(output)
+        elif stage_type == "gate":
+            if not isinstance(output, GateDecision):
+                raise TypeError("Gate stage must return a GateDecision")
+            self.record_gate_decision(output)
+        elif stage_type == "pdf-download":
+            metadata = output if isinstance(output, Mapping) else None
+            self.mark_pdf_downloaded(metadata=metadata)
+        elif stage_type == "pdf-ir-gate":
+            metadata = output if isinstance(output, Mapping) else None
+            self.mark_pdf_ir_ready(metadata=metadata)
         elif stage_type == "download":
             if not isinstance(output, Sequence):
                 raise TypeError("Download stage must return a sequence of PDF assets")
@@ -583,6 +1256,14 @@ class PipelineState:
 
         self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
         self._mark_dirty()
+        _state_logger.debug(
+            "pipeline_state.stage_applied",
+        logger.debug(
+            "pipeline_state.stage_output_applied",
+            stage=stage_name,
+            stage_type=stage_type,
+            tenant_id=self._tenant_id,
+        )
 
     def infer_output_count(self, stage_type: str, output: Any) -> int:
         if output is None:
@@ -604,6 +1285,12 @@ class PipelineState:
             return output.nodes_written
         if stage_type == "download" and isinstance(output, Sequence):
             return len(output)
+        if stage_type == "pdf-download" and isinstance(output, Sequence):
+            return len(tuple(output))
+        if stage_type == "download" and isinstance(output, Sequence):
+            return len(output)
+        if stage_type == "gate" and isinstance(output, GateDecision):
+            return int(output.ready)
         if stage_type == "gate" and isinstance(output, bool):
             return 1
         return 1
@@ -628,7 +1315,24 @@ class PipelineState:
         snapshot.duration_ms = duration_ms
         snapshot.output_count = output_count
         snapshot.error = error
+        record_stage_metrics(
+            pipeline=self.context.pipeline_name,
+            stage=stage_name,
+            stage_type=snapshot.stage_type,
+            attempts=attempts,
+            duration_ms=duration_ms,
+            error=error,
+        )
         self._mark_dirty()
+        _state_logger.debug(
+            "pipeline_state.stage_metrics_recorded",
+            stage=stage_name,
+            stage_type=snapshot.stage_type,
+            attempts=attempts,
+            duration_ms=duration_ms,
+            output_count=output_count,
+            error=error,
+        )
 
     def mark_stage_failed(
         self,
@@ -671,6 +1375,55 @@ class PipelineState:
             self.metadata.pop(key, None)
         self._mark_dirty()
 
+    def dependencies_satisfied(self, dependencies: Sequence[str]) -> bool:
+        """Return True when all dependency stages have completed successfully."""
+
+        for dependency in dependencies:
+            snapshot = self.stage_results.get(dependency)
+            if snapshot is None or snapshot.error:
+                return False
+        return True
+
+    def ensure_dependencies(self, stage_name: str, dependencies: Sequence[str]) -> None:
+        """Raise if any dependency is missing or failed."""
+
+        unmet: list[str] = []
+        for dependency in dependencies:
+            snapshot = self.stage_results.get(dependency)
+            if snapshot is None:
+                unmet.append(dependency)
+            elif snapshot.error:
+                unmet.append(f"{dependency} (failed)")
+        if unmet:
+            dependency_list = ", ".join(sorted(unmet))
+            raise ValueError(
+                f"Stage '{stage_name}' cannot execute until dependencies are satisfied: {dependency_list}"
+            )
+
+    def mark_pdf_downloaded(self, *, metadata: Mapping[str, Any] | None = None) -> None:
+        """Flag the PDF gate as downloaded and merge metadata."""
+
+        self.pdf_gate.downloaded = True
+        self.pdf_gate.merge_metadata(metadata)
+        self.metadata.setdefault("pdf", {})["downloaded"] = True
+        self._mark_dirty()
+
+    def mark_pdf_ir_ready(self, *, metadata: Mapping[str, Any] | None = None) -> None:
+        """Flag the PDF gate as ready for IR stage and merge metadata."""
+
+        self.pdf_gate.ir_ready = True
+        self.pdf_gate.merge_metadata(metadata)
+        self.metadata.setdefault("pdf", {})["ir_ready"] = True
+        self._mark_dirty()
+
+    def reset_pdf_gate(self) -> None:
+        """Reset the PDF gate state."""
+
+        self.pdf_gate = PdfGateState()
+        if "pdf" in self.metadata:
+            self.metadata.pop("pdf", None)
+        self._mark_dirty()
+
     # ------------------------------------------------------------------
     # Snapshot & rollback helpers
     # ------------------------------------------------------------------
@@ -692,11 +1445,21 @@ class PipelineState:
             claims=tuple(copy.deepcopy(self.claims)),
             index_receipt=copy.deepcopy(self.index_receipt),
             graph_receipt=copy.deepcopy(self.graph_receipt),
+            downloads=tuple(copy.deepcopy(self.downloads)),
+            gate_decisions={
+                name: copy.deepcopy(decision) for name, decision in self.gate_decisions.items()
+            },
             pdf_assets=tuple(copy.deepcopy(self.pdf_assets)),
             gate_status=dict(self.gate_status),
             metadata=copy.deepcopy(self.metadata),
             stage_results=stage_payload,
             job_id=self.job_id,
+            pdf_tracker=copy.deepcopy(self.pdf_tracker),
+            pdf_gate=PdfGateState(
+                downloaded=self.pdf_gate.downloaded,
+                ir_ready=self.pdf_gate.ir_ready,
+                metadata=copy.deepcopy(self.pdf_gate.metadata),
+            ),
         )
 
     def restore(
@@ -715,6 +1478,10 @@ class PipelineState:
         self.claims = tuple(copy.deepcopy(snapshot.claims))
         self.index_receipt = copy.deepcopy(snapshot.index_receipt)
         self.graph_receipt = copy.deepcopy(snapshot.graph_receipt)
+        self.downloads = tuple(copy.deepcopy(snapshot.downloads))
+        self.gate_decisions = {
+            name: copy.deepcopy(decision) for name, decision in snapshot.gate_decisions.items()
+        }
         self.pdf_assets = tuple(copy.deepcopy(snapshot.pdf_assets))
         self.gate_status = dict(snapshot.gate_status)
         self.metadata = copy.deepcopy(snapshot.metadata)
@@ -723,6 +1490,12 @@ class PipelineState:
                 name: copy.deepcopy(result) for name, result in snapshot.stage_results.items()
             }
         self.job_id = snapshot.job_id
+        self.pdf_tracker = copy.deepcopy(snapshot.pdf_tracker)
+        self.pdf_gate = PdfGateState(
+            downloaded=snapshot.pdf_gate.downloaded,
+            ir_ready=snapshot.pdf_gate.ir_ready,
+            metadata=copy.deepcopy(snapshot.pdf_gate.metadata),
+        )
         self._mark_dirty()
 
     def rollback(self, snapshot: PipelineStateSnapshot) -> None:
@@ -741,14 +1514,18 @@ class PipelineState:
     ) -> dict[str, Any]:
         """Return a metadata snapshot suitable for logging or Kafka payloads."""
 
+        if use_cache and not self._dirty and self._serialised_cache is not None:
+            _STATE_SERIALISATION_LATENCY.labels(format="dict").observe(0.0)
+            return copy.deepcopy(self._serialised_cache)
         if use_cache and not self._dirty and self._cache.payload is not None:
             return copy.deepcopy(self._cache.payload)
 
+        start = time.perf_counter()
         snapshot: dict[str, Any] = {
             "version": self.schema_version,
             "job_id": self.job_id,
             "context": self.context.to_dict(),
-            "adapter_request": self.adapter_request.model_dump(),
+            "adapter_request": self.adapter_request.model_dump(mode="json"),
             "payload": dict(self.payload),
             "payload_count": len(self.payloads),
             "document_id": getattr(self.document, "id", None),
@@ -758,8 +1535,12 @@ class PipelineState:
             else 0,
             "entity_count": len(self.entities),
             "claim_count": len(self.claims),
+            "metadata": copy.deepcopy(self.metadata),
             "index_receipt": self.index_receipt.metadata if self.index_receipt else None,
             "graph_receipt": self.graph_receipt.metadata if self.graph_receipt else None,
+            "pdf": self.pdf_tracker.as_dict(),
+            "download_count": len(self.downloads),
+            "gate_status": {name: decision.ready for name, decision in self.gate_decisions.items()},
             "gate_status": dict(self.gate_status),
         }
         if self.pdf_assets:
@@ -776,10 +1557,32 @@ class PipelineState:
             snapshot["stage_results"] = {
                 name: result.as_dict() for name, result in self.stage_results.items()
             }
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="dict").observe(elapsed)
+        if self.pdf_gate:
+            snapshot["pdf_gate"] = self.pdf_gate.as_dict()
+
+        model = serialise_payload(snapshot)
+        payload = model.model_dump(mode="json")
+
         if use_cache:
             self._cache.payload = copy.deepcopy(snapshot)
+            self._serialised_cache = copy.deepcopy(payload)
             self._dirty = False
-        return copy.deepcopy(snapshot)
+        serialised = copy.deepcopy(snapshot)
+        PIPELINE_STATE_SERIALISATIONS.inc()
+        logger.debug(
+            "pipeline_state.serialised",
+            tenant_id=self._tenant_id,
+            payload_count=len(self.payloads),
+            stage_count=len(self.stage_results),
+        )
+        return serialised
+        else:
+            self._serialised_cache = None
+            self._cache.payload = copy.deepcopy(snapshot)
+            self._dirty = False
+        return copy.deepcopy(payload)
 
     def to_legacy_dict(self) -> dict[str, Any]:
         """Return a dictionary compatible with legacy dict-based state consumers."""
@@ -821,15 +1624,31 @@ class PipelineState:
             payload["index_receipt"] = asdict(self.index_receipt)
         if self.graph_receipt is not None:
             payload["graph_receipt"] = asdict(self.graph_receipt)
+        payload["pdf"] = self.pdf_tracker.as_dict()
+        payload["pdf_gate"] = self.pdf_gate.as_dict()
         if self.pdf_assets:
             payload["pdf_assets"] = [attr_asdict(asset) for asset in self.pdf_assets]
         if self.gate_status:
             payload["gate_status"] = dict(self.gate_status)
         return payload
 
-    def serialise_json(self) -> str:
-        """Return a JSON encoded snapshot of the state."""
+    def _cache_key(self) -> str:
+        return (
+            self.job_id
+            or self.context.job_id
+            or self.context.correlation_id
+            or f"state-{id(self)}"
+        )
 
+        start = time.perf_counter()
+        payload = self.serialise()
+        encoded = orjson.dumps(payload).decode("utf-8")
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="json").observe(elapsed)
+        return encoded
+        return orjson.dumps(self.serialise()).decode("utf-8")
+    def to_model(self) -> PipelineStateModel:
+        """Return the Pydantic representation for the current state."""
         if not self._dirty and self._cache.json_bytes is not None:
             return self._cache.json_bytes.decode("utf-8")
         payload = self.serialise()
@@ -841,7 +1660,23 @@ class PipelineState:
         self._cache.json_bytes = json_bytes
         return json_bytes.decode("utf-8")
 
-    def serialise_compressed(self) -> bytes:
+        payload = self.serialise()
+        return PipelineStateModel.model_validate(payload)
+
+    def serialise_json(self, *, use_cache: bool = True) -> str:
+        """Return a JSON encoded snapshot of the state."""
+
+        payload = self.serialise(use_cache=use_cache)
+        if use_cache and not self._dirty:
+            cached = self._SERIALISATION_CACHE.get(self._cache_key())
+            if cached is not None:
+                return cached.decode("utf-8")
+            blob = dumps_orjson(payload)
+            self._SERIALISATION_CACHE.set(self._cache_key(), blob)
+            return blob.decode("utf-8")
+        return dumps_json(payload)
+
+    def serialise_compressed(self, *, use_cache: bool = True) -> bytes:
         """Compress the JSON snapshot for efficient transport."""
 
         if not self._dirty and self._cache.compressed is not None:
@@ -856,11 +1691,76 @@ class PipelineState:
         _STATE_SERIALISE_COUNTER.labels(format="compressed").inc()
         _STATE_SERIALISE_LATENCY.labels(format="compressed").observe(duration)
         self._cache.compressed = compressed
+        start = time.perf_counter()
+        encoded = self.serialise_json().encode("utf-8")
+        compressed = zlib.compress(encoded)
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="compressed").observe(elapsed)
         return compressed
 
     def serialise_base64(self) -> str:
         """Return a base64 encoded compressed snapshot."""
 
+        start = time.perf_counter()
+        compressed = self.serialise_compressed()
+        encoded = base64.b64encode(compressed).decode("ascii")
+        elapsed = time.perf_counter() - start
+        _STATE_SERIALISATION_LATENCY.labels(format="base64").observe(elapsed)
+        return encoded
+
+    def persist_with_retry(self, persist: Callable[[dict[str, Any]], None]) -> None:
+        """Persist the current snapshot using tenacity-backed retries."""
+
+        snapshot = self.serialise()
+
+        @retry(
+            reraise=True,
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=0.1, min=0.1, max=1.0),
+            retry=retry_if_exception_type(Exception),
+        )
+        def _attempt(payload: dict[str, Any]) -> None:
+            persist(payload)
+
+        _attempt(snapshot)
+        _STATE_MUTATIONS.labels(operation="persist").inc()
+        _state_logger.debug(
+            "pipeline_state.persisted",
+            tenant_id=self._tenant_id,
+            job_id=self.job_id,
+        )
+        if not self._dirty and self._cache.compressed is not None:
+            return self._cache.compressed
+        json_bytes = self._cache.json_bytes
+        if json_bytes is None or self._dirty:
+            json_bytes = orjson.dumps(self.serialise())
+            self._cache.json_bytes = json_bytes
+        start = time.perf_counter()
+        compressed = zlib.compress(json_bytes)
+        duration = time.perf_counter() - start
+        _STATE_SERIALISE_COUNTER.labels(format="compressed").inc()
+        _STATE_SERIALISE_LATENCY.labels(format="compressed").observe(duration)
+        self._cache.compressed = compressed
+        return compressed
+
+        payload = self.serialise(use_cache=use_cache)
+        if use_cache and not self._dirty:
+            cached = self._SERIALISATION_CACHE.get(self._cache_key())
+            if cached is not None:
+                return zlib.compress(cached)
+        blob = dumps_orjson(payload)
+        if use_cache and not self._dirty:
+            self._SERIALISATION_CACHE.set(self._cache_key(), blob)
+        return zlib.compress(blob)
+
+    def serialise_base64(self, *, use_cache: bool = True) -> str:
+        """Return a base64 encoded compressed snapshot."""
+
+        payload = self.serialise(use_cache=use_cache)
+        blob = dumps_orjson(payload)
+        if use_cache and not self._dirty:
+            self._SERIALISATION_CACHE.set(self._cache_key(), blob)
+        return encode_base64(blob)
         if not self._dirty and self._cache.base64_payload is not None:
             return self._cache.base64_payload
         compressed = self.serialise_compressed()
@@ -921,6 +1821,12 @@ class PipelineState:
             entries["entity_count"] = (len(self.entities), len(other.entities))
         if len(self.claims) != len(other.claims):
             entries["claim_count"] = (len(self.claims), len(other.claims))
+        if len(self.downloads) != len(other.downloads):
+            entries["download_count"] = (len(self.downloads), len(other.downloads))
+        self_gates = {name: decision.ready for name, decision in self.gate_decisions.items()}
+        other_gates = {name: decision.ready for name, decision in other.gate_decisions.items()}
+        if self_gates != other_gates:
+            entries["gate_status"] = (self_gates, other_gates)
         if len(self.pdf_assets) != len(other.pdf_assets):
             entries["pdf_asset_count"] = (len(self.pdf_assets), len(other.pdf_assets))
         if self.gate_status != other.gate_status:
@@ -945,6 +1851,7 @@ class PipelineState:
         """Best-effort recovery for pipeline state snapshots."""
 
         if isinstance(payload, (bytes, bytearray)):
+            decoded = zlib.decompress(bytes(payload)).decode("utf-8")
             decoded = zlib.decompress(bytes(payload))
             recovered = orjson.loads(decoded)
         elif isinstance(payload, str):
@@ -953,10 +1860,14 @@ class PipelineState:
             except (ValueError, TypeError):
                 recovered = orjson.loads(payload)
             else:
+                decoded = zlib.decompress(compressed).decode("utf-8")
                 decoded = zlib.decompress(compressed)
                 recovered = orjson.loads(decoded)
         else:
             recovered = payload
+
+        if not isinstance(recovered, Mapping):
+            recovered = {}
 
         state = cls.initialise(
             context=context,
@@ -966,6 +1877,13 @@ class PipelineState:
         state.schema_version = str(recovered.get("version", "v1"))
         state.job_id = recovered.get("job_id") or context.job_id
         state.metadata.update(dict(recovered.get("metadata", {})))
+        pdf_payload = recovered.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            state.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            state.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
+            state.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
+            state.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
+            state.pdf_tracker.ledger_reference = pdf_payload.get("ledger_reference")
         stage_payload = recovered.get("stage_results")
         if isinstance(stage_payload, Mapping):
             for name, payload_data in stage_payload.items():
@@ -978,6 +1896,12 @@ class PipelineState:
                         output_count=payload_data.get("output_count"),
                         error=payload_data.get("error"),
                     )
+        gates = recovered.get("gate_status")
+        if isinstance(gates, Mapping):
+            for name, ready in gates.items():
+                state.gate_decisions[str(name)] = GateDecision(
+                    name=str(name), ready=bool(ready)
+                )
         pdf_payload = recovered.get("pdf_assets")
         if isinstance(pdf_payload, Sequence):
             state.set_pdf_assets(pdf_payload)
@@ -1065,6 +1989,15 @@ class PipelineState:
         else:
             self.graph_receipt = None
         self.metadata = copy.deepcopy(payload.get("metadata", {}))
+        pdf_payload = payload.get("pdf_gate") or payload.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            self.pdf_gate = PdfGateState(
+                downloaded=bool(pdf_payload.get("downloaded", False)),
+                ir_ready=bool(pdf_payload.get("ir_ready", False)),
+                metadata=dict(pdf_payload.get("metadata", {})),
+            )
+        else:
+            self.pdf_gate = PdfGateState()
         pdf_payload = payload.get("pdf_assets")
         if isinstance(pdf_payload, Sequence):
             self.set_pdf_assets(pdf_payload)
@@ -1093,6 +2026,13 @@ class PipelineState:
                     )
         self.job_id = payload.get("job_id") or self.context.job_id
         self.schema_version = str(payload.get("version", self.schema_version))
+        pdf_payload = payload.get("pdf")
+        if isinstance(pdf_payload, Mapping):
+            self.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            self.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
+            self.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
+            self.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
+            self.pdf_tracker.ledger_reference = pdf_payload.get("ledger_reference")
         self._dirty = True
         self._cache = _StateCache()
         self.clear_checkpoints()
@@ -1153,12 +2093,41 @@ class PipelineState:
     def validate_transition(self, stage_type: str) -> None:
         """Ensure the state is ready for the requested stage transition."""
 
+        for dependency, satisfied in self._dependency_status(stage_type).items():
+            if not satisfied:
+                _STATE_DEPENDENCY_FAILURES.labels(stage_type=stage_type).inc()
+                raise PipelineStateValidationError(
+                    f"Stage '{stage_type}' requires '{dependency}' to complete before execution"
+                )
         try:
             self.ensure_ready_for(stage_type)
         except ValueError as exc:
             raise PipelineStateValidationError(
                 f"State missing prerequisites for stage '{stage_type}': {exc}"
             ) from exc
+
+    def _dependency_status(self, stage_type: str) -> dict[str, bool]:
+        requirements = self._DEPENDENCIES.get(stage_type, ())
+        if not requirements:
+            return {}
+        statuses: dict[str, bool] = {}
+        known_stage_types = {result.stage_type for result in self.stage_results.values()}
+        for requirement in requirements:
+            if requirement == "ingest":
+                statuses[requirement] = bool(self.payloads)
+            elif requirement == "parse":
+                statuses[requirement] = self.document is not None
+            elif requirement == "chunk":
+                statuses[requirement] = bool(self.chunks)
+            elif requirement == "embed":
+                statuses[requirement] = self.embedding_batch is not None
+            elif requirement == "extract":
+                statuses[requirement] = bool(self.entities or self.claims)
+            elif requirement == "pdf-download":
+                statuses[requirement] = bool(self.pdf_tracker.downloads)
+            else:
+                statuses[requirement] = requirement in known_stage_types
+        return statuses
 
 
 @runtime_checkable
@@ -1210,16 +2179,35 @@ class KGStage(Protocol):
     def execute(self, ctx: StageContext, state: PipelineState) -> GraphWriteReceipt: ...
 
 
+@runtime_checkable
+class DownloadStage(Protocol):
+    """Download raw assets required for downstream processing."""
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]: ...
+
+
+@runtime_checkable
+class GateStage(Protocol):
+    """Enforce conditional progression based on external readiness signals."""
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision: ...
+
+
 __all__ = [
     "ChunkStage",
     "EmbedStage",
     "EmbeddingBatch",
     "EmbeddingVector",
+    "DownloadArtifact",
+    "GateDecision",
     "ExtractStage",
     "GraphWriteReceipt",
     "IngestStage",
     "IndexReceipt",
     "IndexStage",
+    "DownloadStage",
+    "GateStage",
+    "PipelineGateNotReady",
     "PipelineState",
     "PipelineStateSnapshot",
     "PipelineStateValidationError",

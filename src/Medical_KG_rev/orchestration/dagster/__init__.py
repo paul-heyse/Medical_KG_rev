@@ -14,6 +14,7 @@ from .runtime import (
     DagsterRunResult,
     StageFactory,
     StageResolutionError,
+    build_stage_factory,
     pdf_ir_ready_sensor,
     submit_to_dagster,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "DagsterRunResult",
     "StageFactory",
     "StageResolutionError",
+    "build_stage_factory",
     "pdf_ir_ready_sensor",
     "submit_to_dagster",
     "create_stage_plugin_manager",

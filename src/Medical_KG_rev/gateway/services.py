@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
@@ -11,12 +10,15 @@ from typing import Any
 
 import structlog
 from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
+from aiolimiter import AsyncLimiter
+from pybreaker import CircuitBreaker
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..auth.scopes import Scopes
+from ..observability.events import record_business_event
 from ..observability.metrics import observe_job_duration
 from ..config.settings import get_settings
 from ..orchestration import (
@@ -29,9 +31,11 @@ from ..orchestration.dagster import (
     PipelineConfigLoader,
     ResiliencePolicyLoader,
     StageFactory,
+    build_stage_factory,
     create_stage_plugin_manager,
     submit_to_dagster,
 )
+from ..orchestration.dagster.stages import create_default_pipeline_resource
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
@@ -57,6 +61,19 @@ from ..validation.fhir import FHIRValidationError, FHIRValidator
 from Medical_KG_rev.embeddings.ports import (
     EmbeddingRecord,
     EmbeddingRequest as AdapterEmbeddingRequest,
+from ..utils.errors import ProblemDetail as PipelineProblemDetail
+from ..validation import UCUMValidator
+from ..validation.fhir import FHIRValidationError, FHIRValidator
+from .coordinators import (
+    ChunkingCoordinator,
+    ChunkingRequest as CoordinatorChunkingRequest,
+    ChunkingResult,
+    CoordinatorConfig,
+    CoordinatorError,
+    EmbeddingCoordinator,
+    EmbeddingRequest as CoordinatorEmbeddingRequest,
+    EmbeddingResult,
+    JobLifecycleManager,
 )
 from .models import (
     AdapterConfigSchemaView,
@@ -113,6 +130,12 @@ class GatewayError(RuntimeError):
 
 def _build_stage_factory(
     manager: AdapterPluginManager | None = None,
+    ledger: JobLedger | None = None,
+) -> StageFactory:
+    adapter_manager = manager or get_plugin_manager()
+    job_ledger = ledger or JobLedger()
+    pipeline_resource = create_default_pipeline_resource()
+    return build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
     *,
     job_ledger: JobLedger | None = None,
 ) -> StageFactory:
@@ -148,13 +171,19 @@ class GatewayService:
     embedding_persister: EmbeddingPersister | None = None
     embedding_persister_settings: PersisterRuntimeSettings | None = None
     embedding_telemetry: EmbeddingTelemetry | None = None
+    job_lifecycle: JobLifecycleManager | None = None
+    chunking_coordinator: ChunkingCoordinator | None = None
+    embedding_coordinator: EmbeddingCoordinator | None = None
 
     def __post_init__(self) -> None:
+        self.job_lifecycle = JobLifecycleManager(self.ledger, self.events)
         if self.stage_factory is None:
             self.stage_factory = _build_stage_factory(
                 self.adapter_manager,
                 job_ledger=self.ledger,
             )
+            self.stage_factory = _build_stage_factory(self.adapter_manager, self.ledger)
+            
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.chunking_error_translator is None:
@@ -181,6 +210,28 @@ class GatewayService:
                 settings=settings,
             )
             self.embedding_persister_settings = settings
+        if self.chunking_coordinator is None:
+            self.chunking_coordinator = ChunkingCoordinator(
+                lifecycle=self.job_lifecycle,
+                chunker=self.chunker,
+                config=self._build_coordinator_config("chunking"),
+            )
+        if self.embedding_coordinator is None:
+            if self.namespace_registry is None:
+                raise RuntimeError("Namespace registry not initialised")
+            if self.embedding_persister is None:
+                raise RuntimeError("Embedding persister not initialised")
+            if self.namespace_policy is None:
+                raise RuntimeError("Namespace policy not initialised")
+            self.embedding_coordinator = EmbeddingCoordinator(
+                lifecycle=self.job_lifecycle,
+                registry=self.embedding_registry,
+                namespace_registry=self.namespace_registry,
+                policy=self.namespace_policy,
+                persister=self.embedding_persister,
+                telemetry=self.embedding_telemetry,
+                config=self._build_coordinator_config("embedding", retry_attempts=4),
+            )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -203,6 +254,16 @@ class GatewayService:
             dry_run=settings.dry_run,
         )
         return policy
+
+    def _build_coordinator_config(self, name: str, *, retry_attempts: int = 3) -> CoordinatorConfig:
+        return CoordinatorConfig(
+            name=name,
+            retry_attempts=retry_attempts,
+            retry_wait_base=0.2,
+            retry_wait_max=2.0,
+            breaker=CircuitBreaker(f"{name}-coordinator"),
+            limiter=AsyncLimiter(10, 1),
+        )
 
     def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
         payload = problem.to_response()
@@ -517,6 +578,32 @@ class GatewayService:
         return chunks
 
     def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.chunking_coordinator is None:
+            raise RuntimeError("Chunking coordinator not initialised")
+
+        coordinator_request = CoordinatorChunkingRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=None,
+            metadata={"document_id": request.document_id},
+            document_id=request.document_id,
+            strategy=request.strategy,
+            chunk_size=request.chunk_size,
+            overlap=request.overlap,
+            options=request.options,
+        )
+        try:
+            result: ChunkingResult = self.chunking_coordinator(coordinator_request)
+        except CoordinatorError as exc:
+            detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
+            if isinstance(detail, ProblemDetail):
+                raise GatewayError(detail) from exc
+            raise
+        observe_job_duration("chunk", result.duration_s)
+        return list(result.chunks)
+
+    def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.embedding_coordinator is None:
+            raise RuntimeError("Embedding coordinator not initialised")
         if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
             raise RuntimeError("Embedding components not initialised")
 
@@ -599,17 +686,25 @@ class GatewayService:
             )
             return EmbeddingResponse(namespace=namespace, embeddings=(), metadata=metadata)
 
-        embedder = self.embedding_registry.get(namespace)
-        adapter_request = AdapterEmbeddingRequest(
+        coordinator_request = CoordinatorEmbeddingRequest(
             tenant_id=request.tenant_id,
-            namespace=namespace,
-            texts=texts,
-            ids=ids,
-            correlation_id=correlation_id,
-            metadata=metadata_payload,
+            correlation_id=None,
+            metadata={"namespace": request.namespace},
+            namespace=request.namespace,
+            texts=request.texts,
+            options=request.options,
         )
-
         try:
+            result: EmbeddingResult = self.embedding_coordinator(coordinator_request)
+        except CoordinatorError as exc:
+            detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
+            if isinstance(detail, ProblemDetail):
+                raise GatewayError(detail) from exc
+            raise
+        observe_job_duration("embed", result.duration_s)
+        if result.response is None:
+            raise RuntimeError("Embedding coordinator returned no response")
+        return result.response
             records = embedder.embed_documents(adapter_request)
         except Exception as exc:  # pragma: no cover - network/library error
             detail = ProblemDetail(
@@ -1279,6 +1374,8 @@ def get_gateway_service() -> GatewayService:
         adapter_manager = get_plugin_manager()
         _pipeline_loader = PipelineConfigLoader()
         _resilience_loader = ResiliencePolicyLoader()
+        pipeline_resource = create_default_pipeline_resource()
+        _stage_factory = build_stage_factory(adapter_manager, pipeline_resource, _ledger)
         stage_plugin_manager = create_stage_plugin_manager(
             adapter_manager,
             job_ledger=_ledger,
@@ -1288,6 +1385,57 @@ def get_gateway_service() -> GatewayService:
             _pipeline_loader,
             _resilience_loader,
             _stage_factory,
+            plugin_manager=adapter_manager,
+            job_ledger=_ledger,
+            pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

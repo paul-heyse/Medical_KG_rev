@@ -6,12 +6,13 @@ from dataclasses import dataclass, field
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 from uuid import uuid4
 
 from dagster import (
     Definitions,
     ExecuteInProcessResult,
+    Field,
     In,
     Out,
     ResourceDefinition,
@@ -28,10 +29,16 @@ from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
+    PipelinePhasePlan,
     PipelineTopologyConfig,
     StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
+)
+from Medical_KG_rev.orchestration.dagster.gates import (
+    GateConditionError,
+    GateEvaluationResult,
+    GateTimeoutError,
 )
 from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
@@ -48,6 +55,12 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
+from Medical_KG_rev.observability.metrics import (
+    observe_gate_duration,
+    record_gate_evaluation,
+    record_gate_timeout,
+    record_phase_transition,
+)
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -101,9 +114,10 @@ class StageFactory:
     name="bootstrap",
     out=Out(dict),
     config_schema={
-        "context": dict,
-        "adapter_request": dict,
-        "payload": dict,
+        "context": Field(dict),
+        "adapter_request": Field(dict),
+        "payload": Field(dict),
+        "resume": Field(dict, default_value={}),
     },
 )
 def bootstrap_op(context) -> dict[str, Any]:
@@ -112,6 +126,7 @@ def bootstrap_op(context) -> dict[str, Any]:
     ctx_payload = context.op_config["context"]
     adapter_payload = context.op_config["adapter_request"]
     payload = context.op_config.get("payload", {})
+    resume_payload = context.op_config.get("resume", {})
 
     stage_ctx = StageContext(
         tenant_id=ctx_payload["tenant_id"],
@@ -130,6 +145,8 @@ def bootstrap_op(context) -> dict[str, Any]:
         "payload": payload,
         "results": {},
         "job_id": stage_ctx.job_id,
+        "resume": dict(resume_payload or {}),
+        "phases": {"order": [], "completed": []},
     }
     logger.debug(
         "dagster.bootstrap.initialised",
@@ -197,13 +214,101 @@ def _resolve_upstream_value(
     return {key: state.get(key) for key in keys}
 
 
+def _make_phase_marker_op(
+    topology: PipelineTopologyConfig,
+    phase: str,
+    phase_plan: PipelinePhasePlan,
+    *,
+    action: str,
+):
+    op_name = f"{phase}_{action}"
+
+    @op(
+        name=op_name,
+        ins={"state": In(dict)},
+        out=Out(dict),
+        required_resource_keys={"job_ledger"},
+    )
+    def _marker_op(context, state: dict[str, Any]) -> dict[str, Any]:
+        ledger: JobLedger = context.resources.job_ledger
+        phases_state = state.setdefault("phases", {})
+        phases_state.setdefault("order", list(phase_plan.phases))
+        resume_state = state.setdefault("resume", {})
+        job_id = state.get("job_id") or getattr(state.get("context"), "job_id", None)
+        phase_index = phase_plan.phase_index(phase)
+        resume_phase = resume_state.get("phase")
+
+        if action == "start":
+            skip_phase = False
+            if resume_phase is not None:
+                try:
+                    resume_index = phase_plan.phase_index(resume_phase)
+                except KeyError:
+                    resume_index = None
+                if resume_index is not None and phase_index < resume_index:
+                    skip_phase = True
+            phases_state["current"] = phase
+            phases_state["skip_current"] = skip_phase
+            record_phase_transition(topology.name, phase, "start")
+            if job_id:
+                status = "skipped" if skip_phase else "running"
+                metadata = {f"phase.{phase}.status": status}
+                metadata["phase.current"] = None if skip_phase else phase
+                ledger.update_metadata(job_id, metadata)
+        else:
+            skip_phase = phases_state.get("skip_current", False)
+            completed = phases_state.setdefault("completed", [])
+            if phase not in completed:
+                completed.append(phase)
+            phases_state["skip_current"] = False
+            phases_state["current"] = None
+            transition = "skipped" if skip_phase else "completed"
+            record_phase_transition(topology.name, phase, transition)
+            if job_id:
+                metadata = {f"phase.{phase}.status": transition, "phase.current": None}
+                ledger.update_metadata(job_id, metadata)
+            if resume_state.get("phase") == phase and not resume_state.get("stage"):
+                resume_state.pop("phase", None)
+        return state
+
+    return _marker_op
+
+
+def _make_phase_graph(
+    topology: PipelineTopologyConfig,
+    phase: str,
+    stage_names: Iterable[str],
+    stage_ops: Mapping[str, Any],
+    phase_plan: PipelinePhasePlan,
+) -> Any:
+    safe_name = _normalise_name(topology.name)
+    start_op = _make_phase_marker_op(topology, phase, phase_plan, action="start")
+    end_op = _make_phase_marker_op(topology, phase, phase_plan, action="end")
+    start_alias = start_op.alias(f"{phase}_start")
+    end_alias = end_op.alias(f"{phase}_end")
+    stage_aliases = [stage_ops[name].alias(name) for name in stage_names]
+
+    @graph(name=f"{safe_name}_{phase}_phase")
+    def _phase_graph(state):
+        state = start_alias(state)
+        for op_def in stage_aliases:
+            state = op_def(state)
+        state = end_alias(state)
+        return state
+
+    return _phase_graph
+
+
 def _make_stage_op(
     topology: PipelineTopologyConfig,
     stage_definition: StageDefinition,
+    phase_plan: PipelinePhasePlan,
 ):
     stage_type = stage_definition.stage_type
     stage_name = stage_definition.name
     policy_name = stage_definition.policy or "default"
+    stage_phase = stage_definition.phase
+    stage_position = phase_plan.stage_positions.get(stage_name, 0)
 
     @op(
         name=stage_name,
@@ -218,9 +323,36 @@ def _make_stage_op(
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
+        policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
+
+        phases_state = state.setdefault("phases", {})
+        resume_state = state.setdefault("resume", {})
+        skip_phase = phases_state.get("skip_current", False)
+        if skip_phase:
+            logger.debug(
+                "dagster.stage.skipped",
+                pipeline=topology.name,
+                stage=stage_name,
+                reason="phase-skipped",
+            )
+            return state
+
+        resume_phase = resume_state.get("phase")
+        if resume_phase == stage_phase:
+            resume_stage = resume_state.get("stage")
+            if resume_stage:
+                resume_index = phase_plan.stage_positions.get(resume_stage, stage_position)
+                if stage_name != resume_stage and stage_position < resume_index:
+                    logger.debug(
+                        "dagster.stage.skipped",
+                        pipeline=topology.name,
+                        stage=stage_name,
+                        reason="before-resume-stage",
+                    )
+                    return state
+
         stage = stage_factory.resolve(topology.name, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
-        policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -229,6 +361,8 @@ def _make_stage_op(
             "failed": False,
             "error": None,
         }
+
+        gate_result: GateEvaluationResult | None = None
 
         def _on_retry(retry_state: Any) -> None:
             job_identifier = state.get("job_id")
@@ -261,8 +395,6 @@ def _make_stage_op(
             on_failure=_on_failure,
         )
 
-        wrapped = policy_loader.apply(policy_name, stage_name, execute, hooks=hooks)
-
         stage_ctx: StageContext = state["context"]
         job_id = stage_ctx.job_id or state.get("job_id")
 
@@ -275,33 +407,95 @@ def _make_stage_op(
         start_time = time.perf_counter()
 
         try:
-            if stage_type == "ingest":
-                adapter_request: AdapterRequest = state["adapter_request"]
-                result = wrapped(stage_ctx, adapter_request)
-            elif stage_type in {"parse", "ir-validation"}:
-                payloads = state.get("payloads", [])
-                result = wrapped(stage_ctx, payloads)
-            elif stage_type == "chunk":
-                document = state.get("document")
-                result = wrapped(stage_ctx, document)
-            elif stage_type == "embed":
-                chunks = state.get("chunks", [])
-                result = wrapped(stage_ctx, chunks)
-            elif stage_type == "index":
-                batch = state.get("embedding_batch")
-                result = wrapped(stage_ctx, batch)
-            elif stage_type == "extract":
-                document = state.get("document")
-                result = wrapped(stage_ctx, document)
-            elif stage_type == "knowledge-graph":
-                entities = state.get("entities", [])
-                claims = state.get("claims", [])
-                result = wrapped(stage_ctx, entities, claims)
-            else:  # pragma: no cover - guard for future expansion
-                upstream = _resolve_upstream_value(state, metadata, stage_factory)
-                result = wrapped(stage_ctx, upstream)
+            if stage_type == "gate":
+                gate_stage = stage
+
+                def _default_failure_result(message: str) -> GateEvaluationResult:
+                    return GateEvaluationResult(
+                        gate=gate_stage.definition.name,
+                        satisfied=False,
+                        attempts=execution_state.get("attempts", 0),
+                        duration_seconds=execution_state.get("duration", 0.0),
+                        details={},
+                        last_error=message,
+                    )
+
+                def _update_gate_metadata(result: GateEvaluationResult, status: str) -> None:
+                    record_gate_evaluation(gate_stage.definition.name, success=status == "passed")
+                    if result.duration_seconds:
+                        observe_gate_duration(gate_stage.definition.name, result.duration_seconds)
+                    if status == "timeout":
+                        record_gate_timeout(gate_stage.definition.name)
+                    state.setdefault("gate_results", {})[
+                        gate_stage.definition.name
+                    ] = result.details
+                    if job_id:
+                        metadata_update = {
+                            f"gate.{gate_stage.definition.name}.status": status,
+                            f"gate.{gate_stage.definition.name}.attempts": result.attempts,
+                            f"gate.{gate_stage.definition.name}.duration_ms": int(
+                                result.duration_seconds * 1000
+                            ),
+                            f"gate.{gate_stage.definition.name}.resume_stage": gate_stage.definition.resume_stage,
+                            f"gate.{gate_stage.definition.name}.resume_phase": gate_stage.definition.resume_phase,
+                        }
+                        if result.last_error:
+                            metadata_update[
+                                f"gate.{gate_stage.definition.name}.error"
+                            ] = result.last_error
+                        ledger.update_metadata(job_id, metadata_update)
+
+                try:
+                    gate_result = gate_stage.evaluate(stage_ctx, ledger, state)
+                except GateTimeoutError as exc:
+                    gate_result = exc.result or _default_failure_result(str(exc))
+                    execution_state["attempts"] = gate_result.attempts or 1
+                    execution_state["duration"] = gate_result.duration_seconds
+                    _update_gate_metadata(gate_result, "timeout")
+                    raise
+                except GateConditionError as exc:
+                    gate_result = exc.result or _default_failure_result(str(exc))
+                    execution_state["attempts"] = gate_result.attempts or 1
+                    execution_state["duration"] = gate_result.duration_seconds
+                    _update_gate_metadata(gate_result, "failed")
+                    raise
+                else:
+                    execution_state["attempts"] = gate_result.attempts or 1
+                    execution_state["duration"] = gate_result.duration_seconds
+                    _update_gate_metadata(gate_result, "passed")
+                    result = gate_result
+            else:
+                wrapped = policy_loader.apply(policy_name, stage_name, execute, hooks=hooks)
+                if stage_type == "ingest":
+                    adapter_request: AdapterRequest = state["adapter_request"]
+                    result = wrapped(stage_ctx, adapter_request)
+                elif stage_type in {"parse", "ir-validation"}:
+                    payloads = state.get("payloads", [])
+                    result = wrapped(stage_ctx, payloads)
+                elif stage_type == "chunk":
+                    document = state.get("document")
+                    result = wrapped(stage_ctx, document)
+                elif stage_type == "embed":
+                    chunks = state.get("chunks", [])
+                    result = wrapped(stage_ctx, chunks)
+                elif stage_type == "index":
+                    batch = state.get("embedding_batch")
+                    result = wrapped(stage_ctx, batch)
+                elif stage_type == "extract":
+                    document = state.get("document")
+                    result = wrapped(stage_ctx, document)
+                elif stage_type == "knowledge-graph":
+                    entities = state.get("entities", [])
+                    claims = state.get("claims", [])
+                    result = wrapped(stage_ctx, entities, claims)
+                else:  # pragma: no cover - guard for future expansion
+                    upstream = _resolve_upstream_value(state, metadata, stage_factory)
+                    result = wrapped(stage_ctx, upstream)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
+            if stage_type == "gate" and gate_result is not None:
+                attempts = gate_result.attempts or attempts
+                execution_state["duration"] = gate_result.duration_seconds
             emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
             if job_id:
                 ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
@@ -310,9 +504,13 @@ def _make_stage_op(
         updated = dict(state)
         _apply_stage_output(metadata, stage_name, updated, result)
         attempts = execution_state.get("attempts") or 1
-        duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
+        if stage_type == "gate" and gate_result is not None:
+            duration_seconds = gate_result.duration_seconds
+            output_count = 0
+        else:
+            duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
+            output_count = _infer_output_count(metadata, result)
         duration_ms = int(duration_seconds * 1000)
-        output_count = _infer_output_count(metadata, result)
 
         if job_id:
             ledger.update_metadata(
@@ -340,32 +538,13 @@ def _make_stage_op(
             duration_ms=duration_ms,
             output_count=output_count,
         )
+        if stage_type == "download" and job_id:
+            ledger.set_pdf_downloaded(job_id, True)
+        if resume_state.get("phase") == stage_phase and resume_state.get("stage") == stage_name:
+            resume_state.pop("stage", None)
         return updated
 
     return _stage_op
-
-
-def _topological_order(stages: list[StageDefinition]) -> list[str]:
-    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
-    resolved: list[str] = []
-    temporary: set[str] = set()
-    permanent: set[str] = set()
-
-    def visit(node: str) -> None:
-        if node in permanent:
-            return
-        if node in temporary:
-            raise ValueError(f"Cycle detected involving stage '{node}'")
-        temporary.add(node)
-        for dep in graph.get(node, set()):
-            visit(dep)
-        temporary.remove(node)
-        permanent.add(node)
-        resolved.append(node)
-
-    for stage in graph:
-        visit(stage)
-    return resolved
 
 
 @dataclass(slots=True)
@@ -392,20 +571,24 @@ def _build_pipeline_job(
     *,
     resource_defs: Mapping[str, ResourceDefinition],
 ) -> BuiltPipelineJob:
+    phase_plan = topology.build_phase_plan()
     stage_ops = {
-        stage.name: _make_stage_op(topology, stage)
+        stage.name: _make_stage_op(topology, stage, phase_plan)
         for stage in topology.stages
     }
-    order = _topological_order(topology.stages)
+
+    phase_graphs = [
+        (phase, _make_phase_graph(topology, phase, phase_plan.phase_to_stages.get(phase, ()), stage_ops, phase_plan))
+        for phase in phase_plan.phases
+    ]
 
     safe_name = _normalise_name(topology.name)
 
     @graph(name=f"{safe_name}_graph")
     def _pipeline_graph():
         state = bootstrap_op.alias("bootstrap")()
-        for stage_name in order:
-            op_def = stage_ops[stage_name].alias(stage_name)
-            state = op_def(state)
+        for phase, graph_def in phase_graphs:
+            state = graph_def.alias(f"{phase}_phase")(state)
         return state
 
     job = _pipeline_graph.to_job(
@@ -419,10 +602,14 @@ def _build_pipeline_job(
         },
     )
 
+    final_node = "bootstrap"
+    if phase_plan.phases:
+        final_node = f"{phase_plan.phases[-1]}_phase"
+
     return BuiltPipelineJob(
         job_name=job.name,
         job_definition=job,
-        final_node=order[-1] if order else "bootstrap",
+        final_node=final_node,
         version=topology.version,
     )
 
@@ -542,6 +729,9 @@ class DagsterOrchestrator:
                         },
                         "adapter_request": adapter_request.model_dump(),
                         "payload": dict(payload),
+                        "resume": dict(context.metadata.get("resume", {}))
+                        if isinstance(context.metadata, Mapping)
+                        else {},
                     }
                 }
             }
@@ -664,6 +854,25 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
         }
         adapter_payload = entry.metadata.get("adapter_request", {})
         payload = entry.metadata.get("payload", {})
+        gate_prefix = "gate.pdf_ir_ready"
+        resume_stage = entry.metadata.get(f"{gate_prefix}.resume_stage", "chunk")
+        resume_phase = entry.metadata.get(f"{gate_prefix}.resume_phase")
+        gate_status = entry.metadata.get(f"{gate_prefix}.status")
+        gate_attempts = entry.metadata.get(f"{gate_prefix}.attempts")
+        gate_duration = entry.metadata.get(f"{gate_prefix}.duration_ms")
+        gate_error = entry.metadata.get(f"{gate_prefix}.error")
+        resume_config = {
+            "stage": resume_stage,
+        }
+        if resume_phase:
+            resume_config["phase"] = resume_phase
+        resume_config["gate"] = {
+            "name": "pdf_ir_ready",
+            "status": gate_status,
+            "attempts": gate_attempts,
+            "duration_ms": gate_duration,
+            "error": gate_error,
+        }
         run_config = {
             "ops": {
                 "bootstrap": {
@@ -671,6 +880,7 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                         "context": context_payload,
                         "adapter_request": adapter_payload,
                         "payload": payload,
+                        "resume": resume_config,
                     }
                 }
             }
@@ -681,7 +891,8 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
                 run_config=run_config,
                 tags={
                     "medical_kg.pipeline": entry.pipeline_name or "",
-                    "medical_kg.resume_stage": "chunk",
+                    "medical_kg.resume_stage": resume_stage,
+                    "medical_kg.resume_phase": resume_phase or "",
                 },
             )
         )

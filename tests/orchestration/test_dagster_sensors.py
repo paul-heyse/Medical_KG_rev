@@ -38,6 +38,16 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
     )
     ledger.mark_processing(job_id, stage="gate_pdf_ir_ready")
     ledger.set_pdf_ir_ready(job_id)
+    ledger.update_metadata(
+        job_id,
+        {
+            "gate.pdf_ir_ready.status": "passed",
+            "gate.pdf_ir_ready.resume_stage": "chunk",
+            "gate.pdf_ir_ready.resume_phase": "post-gate",
+            "gate.pdf_ir_ready.attempts": 2,
+            "gate.pdf_ir_ready.duration_ms": 1250,
+        },
+    )
 
     context = build_sensor_context(resources={"job_ledger": ledger})
     results = list(pdf_ir_ready_sensor(context))
@@ -49,3 +59,17 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
     ctx_config = request.run_config["ops"]["bootstrap"]["config"]["context"]
     assert ctx_config["job_id"] == job_id
     assert ctx_config["pipeline_name"] == "pdf-two-phase"
+    resume_config = request.run_config["ops"]["bootstrap"]["config"].get("resume")
+    assert resume_config == {
+        "stage": "chunk",
+        "phase": "post-gate",
+        "gate": {
+            "name": "pdf_ir_ready",
+            "status": "passed",
+            "attempts": 2,
+            "duration_ms": 1250,
+            "error": None,
+        },
+    }
+    assert request.tags["medical_kg.resume_stage"] == "chunk"
+    assert request.tags["medical_kg.resume_phase"] == "post-gate"

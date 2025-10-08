@@ -6,11 +6,10 @@ import asyncio
 import json
 import threading
 import time
-from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
 
 import yaml
 from pydantic import (
@@ -43,15 +42,72 @@ class BackoffStrategy(str, Enum):
     NONE = "none"
 
 
-class GateCondition(BaseModel):
-    """Predicate evaluated against Job Ledger entries to resume a pipeline."""
+class GateConditionOperator(str, Enum):
+    """Supported operators for gate condition predicates."""
+
+    EQUALS = "equals"
+    EXISTS = "exists"
+    CHANGED = "changed"
+    NOT_EQUALS = "not_equals"
+    IN = "in"
+
+
+class GatePredicate(BaseModel):
+    """Single ledger predicate evaluated as part of a gate clause."""
 
     model_config = ConfigDict(extra="forbid")
 
     field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
-    equals: Any
-    timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
-    poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
+    operator: GateConditionOperator = Field(default=GateConditionOperator.EQUALS)
+    value: Any = Field(default=True)
+
+    @model_validator(mode="after")
+    def _validate_value(cls, model: GatePredicate) -> GatePredicate:
+        if model.operator is GateConditionOperator.EXISTS and model.value not in {True, False}:
+            raise ValueError("exists operator expects a boolean value")
+        if model.operator is GateConditionOperator.CHANGED and model.value not in {True, False}:
+            raise ValueError("changed operator expects a boolean value")
+        return model
+
+
+class GateCondition(BaseModel):
+    """Compound gate condition supporting AND/OR clauses."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    all: Sequence[GatePredicate] | None = None
+    any: Sequence[GatePredicate] | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_legacy_format(cls, value: Any) -> Any:
+        if isinstance(value, Mapping) and "field" in value:
+            predicate: dict[str, Any] = {
+                "field": value["field"],
+                "operator": value.get("operator", "equals"),
+            }
+            if "value" in value:
+                predicate["value"] = value["value"]
+            elif "equals" in value:
+                predicate["value"] = value["equals"]
+            return {"all": [predicate]}
+        return value
+
+    @model_validator(mode="after")
+    def _validate_structure(self) -> GateCondition:
+        if not self.all and not self.any:
+            raise ValueError("gate condition requires at least one 'all' or 'any' clause")
+        return self
+
+
+class GateRetryConfig(BaseModel):
+    """Retry configuration for polling gate conditions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_attempts: int = Field(default=1, ge=1, le=20)
+    backoff_seconds: float = Field(default=5.0, ge=0.5, le=300.0)
 
 
 class GateDefinition(BaseModel):
@@ -60,8 +116,19 @@ class GateDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-    condition: GateCondition
     resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    conditions: Sequence[GateCondition] = Field(default_factory=list)
+    timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
+    poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
+    resume_phase: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]+$")
+    description: str | None = None
+    retry: GateRetryConfig | None = None
+
+    @model_validator(mode="after")
+    def _validate_conditions(self) -> GateDefinition:
+        if not self.conditions:
+            raise ValueError("gate definition must include at least one condition clause")
+        return self
 
 
 class StageDefinition(BaseModel):
@@ -74,6 +141,8 @@ class StageDefinition(BaseModel):
     policy: str | None = Field(default=None, alias="policy")
     depends_on: list[str] = Field(default_factory=list, alias="depends_on")
     config: dict[str, Any] = Field(default_factory=dict)
+    phase: str = Field(default="default", alias="phase", pattern=r"^[A-Za-z0-9_-]+$")
+    gate: str | None = Field(default=None, alias="gate", pattern=r"^[A-Za-z0-9_-]+$")
 
     @field_validator("depends_on")
     @classmethod
@@ -86,6 +155,12 @@ class StageDefinition(BaseModel):
             seen.add(item)
             result.append(item)
         return result
+
+    @model_validator(mode="after")
+    def _validate_gate_usage(self) -> StageDefinition:
+        if self.stage_type != "gate" and self.gate is not None:
+            raise ValueError("gate attribute can only be set on gate stages")
+        return self
 
 
 class PipelineMetadata(BaseModel):
@@ -107,6 +182,7 @@ class PipelineTopologyConfig(BaseModel):
     stages: list[StageDefinition]
     gates: list[GateDefinition] = Field(default_factory=list)
     metadata: PipelineMetadata | None = None
+    phase_order: list[str] = Field(default_factory=list, alias="phase_order")
 
     @model_validator(mode="after")
     def _validate_dependencies(self) -> PipelineTopologyConfig:
@@ -115,6 +191,7 @@ class PipelineTopologyConfig(BaseModel):
             duplicates = {name for name in stage_names if stage_names.count(name) > 1}
             raise ValueError(f"duplicate stage names detected: {sorted(duplicates)}")
 
+        stage_map = {stage.name: stage for stage in self.stages}
         stage_set = set(stage_names)
         for stage in self.stages:
             missing = [dep for dep in stage.depends_on if dep not in stage_set]
@@ -127,13 +204,160 @@ class PipelineTopologyConfig(BaseModel):
         if order is None:
             raise ValueError("cycle detected in pipeline dependencies")
 
-        gate_stage_set = {stage.name for stage in self.stages}
+        encountered_phases: list[str] = []
+        for stage in self.stages:
+            if stage.phase not in encountered_phases:
+                encountered_phases.append(stage.phase)
+        if self.phase_order:
+            normalised: list[str] = []
+            for phase in self.phase_order:
+                if phase not in normalised:
+                    normalised.append(phase)
+            missing_phases = [phase for phase in encountered_phases if phase not in normalised]
+            if missing_phases:
+                raise ValueError(
+                    "phase_order is missing phases declared by stages: "
+                    + ", ".join(sorted(missing_phases))
+                )
+            self.phase_order = normalised
+        else:
+            self.phase_order = encountered_phases
+
+        phase_indices = {phase: index for index, phase in enumerate(self.phase_order)}
+        gate_map = {gate.name: gate for gate in self.gates}
+        referenced_gates: set[str] = set()
+
+        for stage in self.stages:
+            stage_phase_index = phase_indices[stage.phase]
+            for dependency in stage.depends_on:
+                dep_stage = stage_map[dependency]
+                if phase_indices[dep_stage.phase] > stage_phase_index:
+                    raise ValueError(
+                        f"stage '{stage.name}' depends on future phase stage '{dependency}'"
+                    )
+
+            if stage.stage_type == "gate":
+                gate_name = stage.gate or stage.config.get("gate") or stage.name
+                if gate_name not in gate_map:
+                    raise ValueError(
+                        f"gate stage '{stage.name}' references unknown gate '{gate_name}'"
+                    )
+                gate_def = gate_map[gate_name]
+                referenced_gates.add(gate_name)
+                stage.config.setdefault("gate", gate_name)
+                stage.config.setdefault("definition", gate_def.model_dump())
+                if gate_def.resume_stage not in stage_map:
+                    raise ValueError(
+                        f"gate '{gate_name}' resume_stage '{gate_def.resume_stage}' is not a stage"
+                    )
+                resume_stage = stage_map[gate_def.resume_stage]
+                resume_phase = gate_def.resume_phase or resume_stage.phase
+                gate_def.resume_phase = resume_phase
+                if resume_phase not in phase_indices:
+                    raise ValueError(
+                        f"gate '{gate_name}' resume_phase '{resume_phase}' is not defined"
+                    )
+                if phase_indices[resume_phase] <= phase_indices[stage.phase]:
+                    raise ValueError(
+                        f"gate '{gate_name}' must resume in a phase after '{stage.phase}'"
+                    )
+
+        unused_gates = set(gate_map) - referenced_gates
+        if unused_gates:
+            raise ValueError(
+                "pipeline declares gate definitions without corresponding gate stages: "
+                + ", ".join(sorted(unused_gates))
+            )
+
         for gate in self.gates:
-            if gate.resume_stage not in gate_stage_set:
+            if gate.resume_stage not in stage_map:
                 raise ValueError(
                     f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
                 )
+            resume_stage = stage_map[gate.resume_stage]
+            resume_phase = gate.resume_phase or resume_stage.phase
+            if resume_phase not in phase_indices:
+                raise ValueError(
+                    f"gate '{gate.name}' references unknown resume_phase '{resume_phase}'"
+                )
+            if phase_indices[resume_phase] <= phase_indices[resume_stage.phase]:
+                raise ValueError(
+                    f"gate '{gate.name}' resume_phase must be after resume_stage phase"
+                )
+
         return self
+
+    def build_phase_plan(self) -> "PipelinePhasePlan":
+        order = _topological_sort({stage.name: stage.depends_on for stage in self.stages}) or []
+        stage_map = {stage.name: stage for stage in self.stages}
+
+        phases: tuple[str, ...] = tuple(
+            phase
+            for phase in self.phase_order
+            if any(stage.phase == phase for stage in self.stages)
+        )
+        phase_to_stages: dict[str, list[str]] = {phase: [] for phase in phases}
+        stage_to_phase: dict[str, str] = {}
+        stage_positions: dict[str, int] = {}
+
+        for stage_name in order:
+            stage = stage_map[stage_name]
+            phase = stage.phase
+            if phase not in phase_to_stages:
+                continue
+            position = len(phase_to_stages[phase])
+            phase_to_stages[phase].append(stage_name)
+            stage_to_phase[stage_name] = phase
+            stage_positions[stage_name] = position
+
+        gate_by_stage: dict[str, GateDefinition] = {}
+        gate_for_phase: dict[str, GateDefinition | None] = {phase: None for phase in phases}
+        gate_map = {gate.name: gate for gate in self.gates}
+        for stage in self.stages:
+            if stage.stage_type != "gate":
+                continue
+            gate_name = stage.gate or stage.config.get("gate") or stage.name
+            gate = gate_map.get(gate_name)
+            if gate is None:
+                continue
+            gate_by_stage[stage.name] = gate
+            resume_stage = stage_map[gate.resume_stage]
+            resume_phase = gate.resume_phase or resume_stage.phase
+            if resume_phase in gate_for_phase:
+                gate_for_phase[resume_phase] = gate
+
+        serialised_phase_stages = {
+            phase: tuple(stages)
+            for phase, stages in phase_to_stages.items()
+        }
+
+        return PipelinePhasePlan(
+            phases=phases,
+            phase_to_stages=serialised_phase_stages,
+            stage_to_phase=stage_to_phase,
+            stage_positions=stage_positions,
+            gate_by_stage=gate_by_stage,
+            gate_for_phase=gate_for_phase,
+        )
+
+
+@dataclass(slots=True)
+class PipelinePhasePlan:
+    """Derived orchestration plan for phase-aware execution."""
+
+    phases: tuple[str, ...]
+    phase_to_stages: dict[str, tuple[str, ...]]
+    stage_to_phase: dict[str, str]
+    stage_positions: dict[str, int]
+    gate_by_stage: dict[str, GateDefinition]
+    gate_for_phase: dict[str, GateDefinition | None]
+    phase_indices: dict[str, int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "phase_indices", {phase: idx for idx, phase in enumerate(self.phases)})
+
+    def phase_index(self, phase: str) -> int:
+        return self.phase_indices[phase]
 
 
 class CircuitBreakerConfig(BaseModel):
@@ -563,11 +787,16 @@ def export_pipeline_schema(path: str | Path) -> None:
 __all__ = [
     "BackoffStrategy",
     "GateCondition",
+    "GateConditionOperator",
     "GateDefinition",
+    "GatePredicate",
+    "GateRetryConfig",
     "PipelineConfigLoader",
+    "PipelinePhasePlan",
     "PipelineTopologyConfig",
     "ResiliencePolicy",
     "ResiliencePolicyConfig",
     "ResiliencePolicyLoader",
+    "StageDefinition",
     "export_pipeline_schema",
 ]

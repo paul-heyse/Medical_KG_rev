@@ -121,6 +121,27 @@ POSTPDF_START_TRIGGERED = Counter(
     "postpdf_start_triggered_total",
     "Number of times post-PDF resume was triggered",
 )
+ORCHESTRATION_GATE_EVALUATIONS = Counter(
+    "orchestration_gate_evaluations_total",
+    "Gate evaluations grouped by outcome",
+    labelnames=("gate", "result"),
+)
+ORCHESTRATION_GATE_TIMEOUTS = Counter(
+    "orchestration_gate_timeouts_total",
+    "Number of gate evaluations that timed out",
+    labelnames=("gate",),
+)
+ORCHESTRATION_GATE_DURATION = Histogram(
+    "orchestration_gate_evaluation_seconds",
+    "Duration of gate evaluations",
+    labelnames=("gate",),
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0),
+)
+ORCHESTRATION_PHASE_TRANSITIONS = Counter(
+    "orchestration_phase_transitions_total",
+    "Pipeline phase transition events",
+    labelnames=("pipeline", "phase", "transition"),
+)
 CHUNKING_CIRCUIT_STATE = Gauge(
     "chunking_circuit_breaker_state",
     "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
@@ -312,6 +333,31 @@ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: flo
     """Observe rate limit wait duration."""
 
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
+
+
+def record_gate_evaluation(gate: str, *, success: bool) -> None:
+    """Track the outcome of a gate evaluation."""
+
+    result = "passed" if success else "failed"
+    ORCHESTRATION_GATE_EVALUATIONS.labels(gate, result).inc()
+
+
+def observe_gate_duration(gate: str, duration_seconds: float) -> None:
+    """Observe how long a gate evaluation took."""
+
+    ORCHESTRATION_GATE_DURATION.labels(gate).observe(duration_seconds)
+
+
+def record_gate_timeout(gate: str) -> None:
+    """Increment timeout counter for the specified gate."""
+
+    ORCHESTRATION_GATE_TIMEOUTS.labels(gate).inc()
+
+
+def record_phase_transition(pipeline: str, phase: str, transition: str) -> None:
+    """Count phase transition events for orchestration pipelines."""
+
+    ORCHESTRATION_PHASE_TRANSITIONS.labels(pipeline, phase, transition).inc()
 
 
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:

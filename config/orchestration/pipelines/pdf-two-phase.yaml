@@ -6,51 +6,77 @@ applicable_sources:
 metadata:
   owner: ingestion-team
   description: PDF ingestion with MinerU gate.
+phase_order:
+  - pre-gate
+  - gate
+  - post-gate
 stages:
   - name: ingest
     type: ingest
     policy: default
+    phase: pre-gate
   - name: download
     type: download
     policy: polite-api
     depends_on:
       - ingest
+    phase: pre-gate
   - name: gate_pdf_ir_ready
     type: gate
     policy: default
     depends_on:
       - download
+    phase: gate
+    gate: pdf_ir_ready
   - name: chunk
     type: chunk
     policy: gpu-bound
     depends_on:
       - gate_pdf_ir_ready
+    phase: post-gate
   - name: embed
     type: embed
     policy: gpu-bound
     depends_on:
       - chunk
+    phase: post-gate
   - name: index
     type: index
     policy: default
     depends_on:
       - embed
+    phase: post-gate
   - name: extract
     type: extract
     policy: gpu-bound
     depends_on:
       - chunk
+    phase: post-gate
   - name: kg
     type: knowledge-graph
     policy: default
     depends_on:
       - extract
       - index
+    phase: post-gate
 gates:
   - name: pdf_ir_ready
     resume_stage: chunk
-    condition:
-      field: pdf_ir_ready
-      equals: true
-      timeout_seconds: 900
-      poll_interval_seconds: 10.0
+    resume_phase: post-gate
+    timeout_seconds: 900
+    poll_interval_seconds: 10.0
+    retry:
+      max_attempts: 6
+      backoff_seconds: 15.0
+    conditions:
+      - all:
+          - field: pdf_downloaded
+            operator: equals
+            value: true
+      - any:
+          - field: pdf_ir_ready
+            operator: equals
+            value: true
+          - field: metadata.pdf_ir_ready
+            operator: equals
+            value: true

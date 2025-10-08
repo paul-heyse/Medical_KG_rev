@@ -23,6 +23,25 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   optional sparse expansion), and the index writer dual writes to OpenSearch and
   FAISS.
 
+### Stage Plugin System
+
+- **StagePlugin base class** – `StagePlugin` in
+  `Medical_KG_rev.orchestration.stages.plugins` exposes typed metadata,
+  dependency declarations, lifecycle hooks (`initialize`, `cleanup`,
+  `health_check`), and helpers (`create_registration`) so plugins can register
+  stage builders with a few lines of code.
+- **Lifecycle management** – `StagePluginManager` keeps a registry of
+  `StagePluginRegistration` instances per stage type, orders them using declared
+  dependencies, and exposes `unregister()`, `describe_plugins()`, and
+  `check_health()` for operational tooling.
+- **Dependency-aware resolution** – Registrations can depend on other plugins by
+  referencing the fully qualified metadata name (e.g., `core-stage.chunk`). The
+  manager topologically sorts registrations before attempting builds, so
+  fallbacks are only invoked after primary providers fail.
+- **Health diagnostics** – Health signals returned from `StagePlugin.health_check`
+  are cached on each registration state and surfaced through
+  `describe_plugins()`, simplifying automation hooks for dashboards and alerts.
+
 ## Pipeline Configuration
 
 - **Topology YAML** – Pipelines are described in
@@ -54,7 +73,7 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
 ## Troubleshooting
 
 - **Stage resolution errors** – Verify the stage `type` in the topology YAML
-  matches the keys registered in `build_default_stage_factory`. Unknown stage
+  matches the stage types advertised by `create_stage_plugin_manager`. Unknown stage
   types raise `StageResolutionError` during job execution.
 - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
   for required fields (attempts, backoff, circuit breaker thresholds). Invalid

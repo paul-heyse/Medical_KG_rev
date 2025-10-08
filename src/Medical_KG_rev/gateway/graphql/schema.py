@@ -286,6 +286,7 @@ class RetrieveInput:
     top_k: int = 5
     filters: JSON = strawberry.field(default_factory=dict)
     rerank: bool = True
+    rerank_model: str | None = None
     rerank_top_k: int = 10
     rerank_overflow: bool = False
     profile: str | None = None

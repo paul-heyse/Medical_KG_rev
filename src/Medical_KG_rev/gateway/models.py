@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from Medical_KG_rev.adapters import AdapterDomain
+from Medical_KG_rev.services.evaluation import EvaluationResult, MetricSummary
 
 
 class ProblemDetail(BaseModel):
@@ -175,7 +177,8 @@ class RetrieveRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
     filters: dict[str, Any] = Field(default_factory=dict)
-    rerank: bool = True
+    rerank: bool | None = None
+    rerank_model: str | None = Field(default=None, min_length=1, max_length=128)
     rerank_top_k: int = Field(default=10, ge=1, le=200)
     rerank_overflow: bool = False
     profile: str | None = None
@@ -197,6 +200,86 @@ class ExtractionRequest(BaseModel):
     tenant_id: str
     document_id: str
     options: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvaluationRelevantDoc(BaseModel):
+    doc_id: str
+    grade: float = Field(ge=0.0, le=3.0)
+
+
+class EvaluationQuery(BaseModel):
+    query_id: str
+    query_text: str
+    query_type: Literal["exact_term", "paraphrase", "complex_clinical"]
+    relevant_docs: Sequence[EvaluationRelevantDoc]
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvaluationRequest(BaseModel):
+    tenant_id: str
+    test_set_name: str | None = None
+    test_set_version: str | None = None
+    queries: Sequence[EvaluationQuery] | None = None
+    top_k: int = Field(default=10, ge=1, le=100)
+    components: Sequence[str] | None = None
+    rerank: bool | None = None
+    rerank_top_k: int = Field(default=50, ge=1, le=500)
+    rerank_overflow: bool = False
+    profile: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    use_cache: bool = True
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "EvaluationRequest":
+        if not self.test_set_name and not self.queries:
+            raise ValueError("Either 'test_set_name' or 'queries' must be provided")
+        return self
+
+
+class MetricSummaryView(BaseModel):
+    mean: float
+    median: float
+    std: float
+    ci_low: float | None = None
+    ci_high: float | None = None
+
+    @classmethod
+    def from_metric(cls, summary: MetricSummary) -> "MetricSummaryView":
+        return cls(
+            mean=summary.mean,
+            median=summary.median,
+            std=summary.std,
+            ci_low=summary.ci_low,
+            ci_high=summary.ci_high,
+        )
+
+
+class EvaluationResponse(BaseModel):
+    dataset: str
+    test_set_version: str
+    metrics: dict[str, MetricSummaryView]
+    latency_ms: MetricSummaryView
+    per_query_type: dict[str, dict[str, float]]
+    per_query: dict[str, dict[str, float]]
+    cache: dict[str, Any]
+    config: dict[str, Any]
+
+    @classmethod
+    def from_result(cls, result: EvaluationResult) -> "EvaluationResponse":
+        metrics = {name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()}
+        latency = MetricSummaryView.from_metric(result.latency)
+        config = json.loads(result.config.to_json())
+        return cls(
+            dataset=result.dataset,
+            test_set_version=result.test_set_version,
+            metrics=metrics,
+            latency_ms=latency,
+            per_query_type={key: dict(values) for key, values in result.per_query_type.items()},
+            per_query={key: dict(values) for key, values in result.per_query.items()},
+            cache={"key": result.cache_key, "hit": result.cache_hit},
+            config=config,
+        )
 
 
 class KnowledgeGraphWriteRequest(BaseModel):

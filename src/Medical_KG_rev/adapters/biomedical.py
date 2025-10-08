@@ -7,6 +7,8 @@ from typing import Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+import structlog
+
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
     BackoffStrategy,
@@ -28,7 +30,11 @@ from Medical_KG_rev.utils.validation import (
     validate_set_id,
 )
 
+from Medical_KG_rev.services.pdf import PdfUrlValidator
+
 from .base import AdapterContext, BaseAdapter
+
+logger = structlog.get_logger(__name__)
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -390,7 +396,12 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
 class OpenAlexAdapter(ResilientHTTPAdapter):
     """Adapter for the OpenAlex works API."""
 
-    def __init__(self, client: HttpClient | None = None) -> None:
+    def __init__(
+        self,
+        client: HttpClient | None = None,
+        *,
+        pdf_validator: PdfUrlValidator | None = None,
+    ) -> None:
         super().__init__(
             name="openalex",
             base_url="https://api.openalex.org",
@@ -398,6 +409,7 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
             retry=_linear_retry_config(4, 0.5),
             client=client,
         )
+        self._pdf_validator = pdf_validator or PdfUrlValidator()
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
         doi = context.parameters.get("doi")
@@ -439,6 +451,35 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                 "is_open_access": payload.get("open_access", {}).get("is_oa"),
                 "cited_by_count": payload.get("cited_by_count"),
             }
+            pdf_url = self._extract_pdf_url(payload)
+            pdf_size: int | None = None
+            pdf_content_type: str | None = None
+            pdf_metadata: dict[str, Any] = {}
+            if pdf_url:
+                try:
+                    validation = self._pdf_validator.validate(pdf_url)
+                except Exception as exc:
+                    logger.warning(
+                        "adapters.openalex.pdf_validation_failed",
+                        url=pdf_url,
+                        openalex_id=work_id,
+                        error=str(exc),
+                    )
+                    validation = None
+                if validation:
+                    pdf_url = validation.url
+                    pdf_size = validation.size
+                    pdf_content_type = validation.content_type
+                    pdf_metadata = {"headers": validation.headers}
+                    if validation.last_modified:
+                        pdf_metadata["last_modified"] = validation.last_modified.isoformat()
+                    metadata["pdf_url"] = validation.url
+            elif payload.get("open_access", {}).get("is_oa"):
+                logger.debug(
+                    "adapters.openalex.missing_pdf",
+                    openalex_id=work_id,
+                    reason="no-best-oa-location",
+                )
             abstract = payload.get("abstract_inverted_index")
             abstract_text = (
                 _flatten_abstract(abstract)
@@ -457,9 +498,39 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
                     title=payload.get("display_name"),
                     sections=[section],
                     metadata=metadata,
+                    pdf_url=pdf_url,
+                    pdf_size=pdf_size,
+                    pdf_content_type=pdf_content_type,
+                    pdf_metadata=pdf_metadata,
                 )
             )
         return documents
+
+    def _extract_pdf_url(self, payload: Mapping[str, Any]) -> str | None:
+        location = payload.get("best_oa_location")
+        if isinstance(location, Mapping):
+            url = (
+                location.get("url_for_pdf")
+                or location.get("pdf_url")
+                or location.get("url")
+            )
+            if url:
+                return str(url)
+        open_access = payload.get("open_access")
+        if isinstance(open_access, Mapping):
+            oa_locations = open_access.get("oa_locations") or []
+            if isinstance(oa_locations, Sequence):
+                for entry in oa_locations:
+                    if not isinstance(entry, Mapping):
+                        continue
+                    url = (
+                        entry.get("url_for_pdf")
+                        or entry.get("pdf_url")
+                        or entry.get("url")
+                    )
+                    if url:
+                        return str(url)
+        return None
 
 
 class UnpaywallAdapter(ResilientHTTPAdapter):

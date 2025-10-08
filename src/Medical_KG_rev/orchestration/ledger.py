@@ -7,6 +7,7 @@ from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, cast
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 ALLOWED_TRANSITIONS = {
@@ -18,6 +19,9 @@ ALLOWED_TRANSITIONS = {
 }
 
 
+_UNSET: Any = object()
+
+
 @dataclass
 class JobTransition:
     from_status: str
@@ -25,6 +29,14 @@ class JobTransition:
     stage: str
     reason: str | None
     timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class PdfHistoryEvent:
+    timestamp: datetime
+    stage: str
+    status: str
+    detail: str | None = None
 
 
 @dataclass
@@ -49,6 +61,16 @@ class JobLedgerEntry:
     retry_count_per_stage: dict[str, int] = field(default_factory=dict)
     pdf_downloaded: bool = False
     pdf_ir_ready: bool = False
+    pdf_url: str | None = None
+    pdf_storage_key: str | None = None
+    pdf_size: int | None = None
+    pdf_content_type: str | None = None
+    pdf_checksum: str | None = None
+    pdf_downloaded_at: datetime | None = None
+    pdf_ir_ready_at: datetime | None = None
+    pdf_error: str | None = None
+    pdf_failure_code: str | None = None
+    pdf_history: list[PdfHistoryEvent] = field(default_factory=list)
 
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_STATUSES
@@ -77,6 +99,16 @@ class JobLedgerEntry:
             retry_count_per_stage=dict(self.retry_count_per_stage),
             pdf_downloaded=self.pdf_downloaded,
             pdf_ir_ready=self.pdf_ir_ready,
+            pdf_url=self.pdf_url,
+            pdf_storage_key=self.pdf_storage_key,
+            pdf_size=self.pdf_size,
+            pdf_content_type=self.pdf_content_type,
+            pdf_checksum=self.pdf_checksum,
+            pdf_downloaded_at=self.pdf_downloaded_at,
+            pdf_ir_ready_at=self.pdf_ir_ready_at,
+            pdf_error=self.pdf_error,
+            pdf_failure_code=self.pdf_failure_code,
+            pdf_history=list(self.pdf_history),
         )
 
 
@@ -157,6 +189,16 @@ class JobLedger:
         pipeline_name: str | None = None,
         pdf_downloaded: bool | None = None,
         pdf_ir_ready: bool | None = None,
+        pdf_url: str | None = None,
+        pdf_storage_key: str | None = None,
+        pdf_size: int | None = None,
+        pdf_content_type: str | None = None,
+        pdf_checksum: str | None = None,
+        pdf_downloaded_at: datetime | None = None,
+        pdf_ir_ready_at: datetime | None = None,
+        pdf_error: str | None = None,
+        pdf_failure_code: str | None | Any = _UNSET,
+        pdf_history_event: PdfHistoryEvent | None = None,
     ) -> JobLedgerEntry:
         if job_id not in self._entries:
             raise JobLedgerError(f"Job {job_id} not found")
@@ -193,12 +235,75 @@ class JobLedger:
             entry.pdf_downloaded = pdf_downloaded
         if pdf_ir_ready is not None:
             entry.pdf_ir_ready = pdf_ir_ready
+        if pdf_url is not None:
+            entry.pdf_url = pdf_url
+        if pdf_storage_key is not None:
+            entry.pdf_storage_key = pdf_storage_key
+        if pdf_size is not None:
+            entry.pdf_size = pdf_size
+        if pdf_content_type is not None:
+            entry.pdf_content_type = pdf_content_type
+        if pdf_checksum is not None:
+            entry.pdf_checksum = pdf_checksum
+        if pdf_downloaded_at is not None:
+            entry.pdf_downloaded_at = pdf_downloaded_at
+        if pdf_ir_ready_at is not None:
+            entry.pdf_ir_ready_at = pdf_ir_ready_at
+        if pdf_error is not None:
+            entry.pdf_error = pdf_error
+        if pdf_failure_code is not _UNSET:
+            entry.pdf_failure_code = cast(str | None, pdf_failure_code)
+        if pdf_history_event is not None:
+            entry.pdf_history.append(pdf_history_event)
         entry.updated_at = datetime.utcnow()
         self._refresh_metrics()
         return entry
 
     def update_metadata(self, job_id: str, metadata: dict[str, object]) -> JobLedgerEntry:
         return self._update(job_id, metadata=metadata)
+
+    def update_pdf_state(
+        self,
+        job_id: str,
+        *,
+        url: str | None = None,
+        storage_key: str | None = None,
+        size: int | None = None,
+        content_type: str | None = None,
+        checksum: str | None = None,
+        downloaded: bool | None = None,
+        downloaded_at: datetime | None = None,
+        ir_ready: bool | None = None,
+        ir_ready_at: datetime | None = None,
+        error: str | None = None,
+        failure_code: str | None | Any = _UNSET,
+        history_status: str | None = None,
+        history_stage: str = "pdf",
+        detail: str | None = None,
+    ) -> JobLedgerEntry:
+        event = None
+        if history_status:
+            event = PdfHistoryEvent(
+                timestamp=datetime.utcnow(),
+                stage=history_stage,
+                status=history_status,
+                detail=detail,
+            )
+        return self._update(
+            job_id,
+            pdf_url=url,
+            pdf_storage_key=storage_key,
+            pdf_size=size,
+            pdf_content_type=content_type,
+            pdf_checksum=checksum,
+            pdf_downloaded=downloaded,
+            pdf_ir_ready=ir_ready,
+            pdf_downloaded_at=downloaded_at,
+            pdf_ir_ready_at=ir_ready_at,
+            pdf_error=error,
+            pdf_failure_code=failure_code,
+            pdf_history_event=event,
+        )
 
     def mark_processing(self, job_id: str, stage: str) -> JobLedgerEntry:
         entry = self._update(
@@ -272,11 +377,114 @@ class JobLedger:
         self._refresh_metrics()
         return entry
 
-    def set_pdf_downloaded(self, job_id: str, value: bool = True) -> JobLedgerEntry:
-        return self._update(job_id, pdf_downloaded=value)
+    def set_pdf_downloaded(
+        self,
+        job_id: str,
+        value: bool = True,
+        *,
+        url: str | None = None,
+        storage_key: str | None = None,
+        size: int | None = None,
+        content_type: str | None = None,
+        checksum: str | None = None,
+    ) -> JobLedgerEntry:
+        timestamp = datetime.utcnow() if value else None
+        status = "downloaded" if value else "reset"
+        return self.update_pdf_state(
+            job_id,
+            url=url,
+            storage_key=storage_key,
+            size=size,
+            content_type=content_type,
+            checksum=checksum,
+            downloaded=value,
+            downloaded_at=timestamp,
+            failure_code=None,
+            history_status=status,
+            detail="PDF downloaded" if value else "PDF download state reset",
+        )
 
-    def set_pdf_ir_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
-        return self._update(job_id, pdf_ir_ready=value)
+    def set_pdf_ir_ready(
+        self,
+        job_id: str,
+        value: bool = True,
+        *,
+        checksum: str | None = None,
+    ) -> JobLedgerEntry:
+        timestamp = datetime.utcnow() if value else None
+        status = "ir-ready" if value else "ir-reset"
+        return self.update_pdf_state(
+            job_id,
+            checksum=checksum,
+            ir_ready=value,
+            ir_ready_at=timestamp,
+            failure_code=None,
+            history_status=status,
+            history_stage="mineru",
+            detail="MinerU processing completed" if value else "MinerU state reset",
+        )
+
+    def record_pdf_failure(
+        self,
+        job_id: str,
+        *,
+        stage: str,
+        reason: str,
+        retryable: bool = False,
+        code: str | None = None,
+    ) -> JobLedgerEntry:
+        status = "retryable-error" if retryable else "error"
+        entry = self.update_pdf_state(
+            job_id,
+            error=reason,
+            failure_code=code,
+            history_status=status,
+            history_stage=stage,
+            detail=reason,
+        )
+        return entry
+
+    def record_pdf_partial(
+        self,
+        job_id: str,
+        *,
+        stage: str,
+        detail: str,
+        retryable: bool = True,
+    ) -> JobLedgerEntry:
+        status = "partial-retryable" if retryable else "partial"
+        return self.update_pdf_state(
+            job_id,
+            history_status=status,
+            history_stage=stage,
+            detail=detail,
+        )
+
+    def rollback_pdf_state(self, job_id: str, *, reason: str | None = None) -> JobLedgerEntry:
+        return self.update_pdf_state(
+            job_id,
+            storage_key=None,
+            size=None,
+            content_type=None,
+            checksum=None,
+            downloaded=False,
+            downloaded_at=None,
+            ir_ready=False,
+            ir_ready_at=None,
+            error=reason,
+            failure_code=None,
+            history_status="rollback",
+            detail=reason or "PDF state rolled back",
+        )
+
+    def clear_pdf_error(self, job_id: str) -> JobLedgerEntry:
+        entry = self.update_pdf_state(
+            job_id,
+            error=None,
+            failure_code=None,
+            history_status="cleared",
+        )
+        return entry
 
     def record_attempt(self, job_id: str) -> int:
         if job_id not in self._entries:

@@ -19,16 +19,16 @@
 
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
-- [ ] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
+- [x] 1.1.1 Identify all files in `src/Medical_KG_rev/orchestration/` to be deleted:
   - [ ] `orchestrator.py` (lines 1-176) - Replace with Dagster jobs
   - [ ] `worker.py` (lines 62-110) - Replace with Dagster ops
   - [ ] `pipeline.py` - Replace with YAML topology configs
   - [ ] `profiles.py` - Replace with per-pipeline YAML configs
-- [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
+- [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/` with bespoke stage logic:
   - [ ] `services/retrieval/indexing_service.py` - Replace with HaystackIndexWriter
   - [ ] `services/embedding/service.py` (bespoke retry logic) - Replace with tenacity decorators
   - [ ] `services/retrieval/chunking.py` (custom splitters) - Replace with HaystackChunker
-- [ ] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
+- [x] 1.1.3 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md` with:
   - File paths to delete
   - Imports to update
   - Tests to delete/replace
@@ -36,11 +36,11 @@
 
 ### 1.2 Dependency Analysis (Pre-Delete Validation)
 
-- [ ] 1.2.1 Run `grep -r "from.*orchestrator import" src/` to find all imports of legacy orchestrator
-- [ ] 1.2.2 Run `grep -r "Orchestrator\(" src/` to find all instantiations
-- [ ] 1.2.3 Run `grep -r "execute_pipeline" src/` to find all calls to legacy API
-- [ ] 1.2.4 Run `grep -r "IngestWorker\|MappingWorker" src/` to find worker usage
-- [ ] 1.2.5 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
+- [x] 1.2.1 Run `grep -r "from.*orchestrator import" src/` to find all imports of legacy orchestrator
+- [x] 1.2.2 Run `grep -r "Orchestrator\(" src/` to find all instantiations
+- [x] 1.2.3 Run `grep -r "execute_pipeline" src/` to find all calls to legacy API
+- [x] 1.2.4 Run `grep -r "IngestWorker\|MappingWorker" src/` to find worker usage
+- [x] 1.2.5 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
@@ -97,10 +97,10 @@
 
 ### 1.6 Test Migration (Delete and Replace)
 
-- [ ] 1.6.1 Delete legacy orchestration tests:
-  - [ ] `tests/orchestration/test_orchestrator.py` (legacy API tests)
-  - [ ] `tests/orchestration/test_workers.py` (worker-specific tests)
-  - [ ] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
+- [x] 1.6.1 Delete legacy orchestration tests:
+  - [x] `tests/orchestration/test_orchestrator.py` (legacy API tests)
+  - [x] `tests/orchestration/test_workers.py` (worker-specific tests)
+  - [x] `tests/orchestration/test_integration.py` (references `execute_pipeline`)
 - [ ] 1.6.2 Create new Dagster tests:
   - [ ] `tests/orchestration/test_dagster_jobs.py` (auto, PDF two-phase)
   - [ ] `tests/orchestration/test_dagster_sensors.py` (pdf_ir_ready_sensor)
@@ -184,7 +184,7 @@
 - [x] 4.5 Create `aiolimiter.AsyncLimiter` factory from policy config
 - [x] 4.6 Implement policy application at stage execution boundary
 - [x] 4.7 Add Prometheus metrics for retry attempts, circuit breaker state changes, rate limit waits
-- [ ] 4.8 Write resilience policy unit tests with respx mocks
+- [x] 4.8 Write resilience policy unit tests with respx mocks
 
 ## 5. Pipeline Topology Definitions
 
@@ -205,30 +205,30 @@
 
 ## 6. Haystack Component Wrappers
 
-- [ ] 6.1 Implement `HaystackChunker` wrapping `DocumentSplitter`:
-  - [ ] 6.1.1 Satisfy `ChunkStage` protocol
-  - [ ] 6.1.2 Convert IR `Document` to Haystack `Document` format
-  - [ ] 6.1.3 Apply semantic chunking with coherence scoring
-  - [ ] 6.1.4 Convert back to IR `Chunk[]` with provenance
-- [ ] 6.2 Implement `HaystackEmbedder` wrapping `OpenAIDocumentEmbedder`:
-  - [ ] 6.2.1 Satisfy `EmbedStage` protocol
-  - [ ] 6.2.2 Point to local vLLM endpoint (Qwen-3 via OpenAI-compatible API)
-  - [ ] 6.2.3 Batch processing with GPU utilization tracking
-  - [ ] 6.2.4 Fail-fast if GPU unavailable
-- [ ] 6.3 Implement `HaystackSparseExpander` for SPLADE:
-  - [ ] 6.3.1 Custom Haystack component for sparse vector generation
-  - [ ] 6.3.2 GPU-backed expansion term generation
-  - [ ] 6.3.3 Fail-fast GPU requirement
-- [ ] 6.4 Implement `HaystackIndexWriter` wrapping `OpenSearchDocumentWriter` + `FAISSDocumentWriter`:
-  - [ ] 6.4.1 Satisfy `IndexStage` protocol
-  - [ ] 6.4.2 Dual write to OpenSearch (BM25 + SPLADE) and FAISS (dense)
-  - [ ] 6.4.3 Tenant-aware index naming
-  - [ ] 6.4.4 Transactional semantics (both succeed or both fail)
-- [ ] 6.5 Implement `HaystackRetriever` for hybrid search:
-  - [ ] 6.5.1 Wrap `OpenSearchBM25Retriever`, `FAISSEmbeddingRetriever`
-  - [ ] 6.5.2 Integrate `RRFFusionRanker` for result merging
-  - [ ] 6.5.3 Maintain existing retrieval API compatibility
-- [ ] 6.6 Write comprehensive Haystack wrapper unit tests with mocks
+- [x] 6.1 Implement `HaystackChunker` wrapping `DocumentSplitter`:
+  - [x] 6.1.1 Satisfy `ChunkStage` protocol
+  - [x] 6.1.2 Convert IR `Document` to Haystack `Document` format
+  - [x] 6.1.3 Apply semantic chunking with coherence scoring
+  - [x] 6.1.4 Convert back to IR `Chunk[]` with provenance
+- [x] 6.2 Implement `HaystackEmbedder` wrapping `OpenAIDocumentEmbedder`:
+  - [x] 6.2.1 Satisfy `EmbedStage` protocol
+  - [x] 6.2.2 Point to local vLLM endpoint (Qwen-3 via OpenAI-compatible API)
+  - [x] 6.2.3 Batch processing with GPU utilization tracking
+  - [x] 6.2.4 Fail-fast if GPU unavailable
+- [x] 6.3 Implement `HaystackSparseExpander` for SPLADE:
+  - [x] 6.3.1 Custom Haystack component for sparse vector generation
+  - [x] 6.3.2 GPU-backed expansion term generation
+  - [x] 6.3.3 Fail-fast GPU requirement
+- [x] 6.4 Implement `HaystackIndexWriter` wrapping `OpenSearchDocumentWriter` + `FAISSDocumentWriter`:
+  - [x] 6.4.1 Satisfy `IndexStage` protocol
+  - [x] 6.4.2 Dual write to OpenSearch (BM25 + SPLADE) and FAISS (dense)
+  - [x] 6.4.3 Tenant-aware index naming
+  - [x] 6.4.4 Transactional semantics (both succeed or both fail)
+- [x] 6.5 Implement `HaystackRetriever` for hybrid search:
+  - [x] 6.5.1 Wrap `OpenSearchBM25Retriever`, `FAISSEmbeddingRetriever`
+  - [x] 6.5.2 Integrate `RRFFusionRanker` for result merging
+  - [x] 6.5.3 Maintain existing retrieval API compatibility
+- [x] 6.6 Write comprehensive Haystack wrapper unit tests with mocks
 - [ ] 6.7 Write integration tests with real OpenSearch + FAISS instances
 
 ## 7. Dagster Job Definitions

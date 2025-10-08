@@ -1,6 +1,6 @@
 name: guideline
 domain: guideline
-chunker_type: simple
+chunker_type: guideline_recommendation
 target_tokens: 350
 overlap_tokens: 0
 respect_boundaries:

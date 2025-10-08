@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .wrappers import langchain_splitter, simple
+from .wrappers import langchain_splitter, llamaindex_parser, simple
+from . import profile_chunkers
 
 
 def register_defaults() -> None:
@@ -15,3 +16,9 @@ def register_defaults() -> None:
         # LangChain dependencies are optional at runtime; environments without
         # the dependency may still rely on the simple chunker.
         pass
+    try:
+        llamaindex_parser.register()
+    except RuntimeError:
+        # LlamaIndex is optional; fallback behaviour is provided.
+        pass
+    profile_chunkers.register()

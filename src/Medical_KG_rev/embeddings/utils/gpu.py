@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import structlog
 
+from Medical_KG_rev.services import GpuNotAvailableError
+
 logger = structlog.get_logger(__name__)
 
 
@@ -37,7 +39,9 @@ def ensure_available(require_gpu: bool, *, operation: str) -> None:
     status = probe()
     if not status.available:
         logger.error("embedding.gpu.missing", operation=operation)
-        raise RuntimeError(f"GPU is required for {operation} but no CUDA device is available")
+        raise GpuNotAvailableError(
+            f"GPU is required for {operation} but no CUDA device is available"
+        )
     logger.debug(
         "embedding.gpu.available",
         operation=operation,

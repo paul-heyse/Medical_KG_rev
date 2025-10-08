@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from inspect import signature
 from importlib import metadata
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
@@ -164,7 +165,19 @@ class StageRegistry:
                 f"Stage '{stage_type}' is already registered"
             )
         self._metadata[stage_type] = registration.metadata
-        self._builders[stage_type] = registration.builder
+        builder = registration.builder
+        try:
+            param_count = len(signature(builder).parameters)  # type: ignore[arg-type]
+        except Exception:
+            param_count = 0
+        if param_count <= 1:
+            original = builder
+
+            def _wrapped(topology: PipelineTopologyConfig | None, definition: StageDefinition):
+                return original(definition)  # type: ignore[misc]
+
+            builder = _wrapped  # type: ignore[assignment]
+        self._builders[stage_type] = builder
         logger.debug(
             "dagster.stage.registry.registered",
             stage_type=stage_type,

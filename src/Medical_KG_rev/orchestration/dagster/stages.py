@@ -472,8 +472,8 @@ def build_default_stage_factory(
 
         for plugin_factory in (
             stage_plugins.register_download_stage,
-            stage_plugins.register_gate_stage,
             stage_plugins.register_mineru_stage,
+            stage_plugins.register_gate_stage,
         ):
             registration = None
             try:

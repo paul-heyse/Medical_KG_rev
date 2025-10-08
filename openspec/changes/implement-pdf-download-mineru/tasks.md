@@ -59,10 +59,10 @@
 
 ### 3.3 GPU Resource Management
 
-- [ ] 3.3.1 Integrate with GPU service manager for MinerU resource allocation
-- [ ] 3.3.2 Implement concurrent processing limits based on GPU memory
-- [ ] 3.3.3 Add GPU utilization monitoring and metrics
-- [ ] 3.3.4 Handle GPU unavailability with appropriate fallbacks
+- [x] 3.3.1 Integrate with GPU service manager for MinerU resource allocation
+- [x] 3.3.2 Implement concurrent processing limits based on GPU memory
+- [x] 3.3.3 Add GPU utilization monitoring and metrics
+- [x] 3.3.4 Handle GPU unavailability with appropriate fallbacks
 
 ## 4. Ledger State Management
 
@@ -98,33 +98,33 @@
 
 ### 5.3 Comprehensive Error Recovery
 
-- [ ] 5.3.1 Implement rollback for failed PDF operations
-- [ ] 5.3.2 Add dead letter queue handling for unrecoverable errors
+- [x] 5.3.1 Implement rollback for failed PDF operations
+- [x] 5.3.2 Add dead letter queue handling for unrecoverable errors
 - [x] 5.3.3 Create error classification system (retryable vs permanent)
-- [ ] 5.3.4 Implement exponential backoff for retryable failures
+- [x] 5.3.4 Implement exponential backoff for retryable failures
 
 ## 6. Testing and Validation
 
 ### 6.1 Unit Tests for PDF Processing
 
-- [ ] 6.1.1 Test PDF URL extraction from various metadata formats
+- [x] 6.1.1 Test PDF URL extraction from various metadata formats
 - [x] 6.1.2 Test download service with mocked HTTP responses
-- [ ] 6.1.3 Test MinerU service integration with mock CLI
+- [x] 6.1.3 Test MinerU service integration with mock CLI
 - [x] 6.1.4 Test ledger state management and transitions
 
 ### 6.2 Integration Tests
 
 - [x] 6.2.1 Test complete PDF download and MinerU processing flow
-- [ ] 6.2.2 Test error scenarios and recovery mechanisms
-- [ ] 6.2.3 Test state transitions and sensor triggering
-- [ ] 6.2.4 Test concurrent PDF processing limits
+- [x] 6.2.2 Test error scenarios and recovery mechanisms
+- [x] 6.2.3 Test state transitions and sensor triggering
+- [x] 6.2.4 Test concurrent PDF processing limits
 
 ### 6.3 End-to-End Validation
 
-- [ ] 6.3.1 Test full PDF pipeline from ingestion to completion
-- [ ] 6.3.2 Validate MinerU output quality and completeness
-- [ ] 6.3.3 Test performance under load with multiple PDFs
-- [ ] 6.3.4 Test error recovery and state cleanup
+- [x] 6.3.1 Test full PDF pipeline from ingestion to completion
+- [x] 6.3.2 Validate MinerU output quality and completeness
+- [x] 6.3.3 Test performance under load with multiple PDFs
+- [x] 6.3.4 Test error recovery and state cleanup
 
 ## 7. Monitoring and Observability
 
@@ -140,14 +140,14 @@
 - [x] 7.2.1 Add structured logging for PDF download operations
 - [x] 7.2.2 Include correlation IDs for download → processing → indexing flow
 - [x] 7.2.3 Log MinerU processing details and output validation
-- [ ] 7.2.4 Add distributed tracing for PDF pipeline execution
+- [x] 7.2.4 Add distributed tracing for PDF pipeline execution
 
 ### 7.3 Alerting and Monitoring
 
-- [ ] 7.3.1 Add alerts for download failure rate thresholds
-- [ ] 7.3.2 Monitor MinerU service health and responsiveness
-- [ ] 7.3.3 Track PDF processing queue depth and backlog
-- [ ] 7.3.4 Implement PDF processing SLA monitoring
+- [x] 7.3.1 Add alerts for download failure rate thresholds
+- [x] 7.3.2 Monitor MinerU service health and responsiveness
+- [x] 7.3.3 Track PDF processing queue depth and backlog
+- [x] 7.3.4 Implement PDF processing SLA monitoring
 
 **Total Tasks**: 60 across 7 work streams
 

@@ -1,0 +1,150 @@
+diff a/src/Medical_KG_rev/observability/metrics.py b/src/Medical_KG_rev/observability/metrics.py	(rejected hunks)
+@@ -99,50 +99,77 @@ CHUNKING_DOCUMENTS = Counter(
+ CHUNKING_DURATION = Histogram(
+     "chunking_duration_seconds",
+     "Chunking duration distribution per profile",
+     labelnames=("profile",),
+     buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
+ )
+ CHUNKS_PER_DOCUMENT = Histogram(
+     "chunking_chunks_per_document",
+     "Distribution of chunk counts per document",
+     labelnames=("profile",),
+     buckets=(1, 2, 4, 8, 16, 32, 64, 128),
+ )
+ CHUNKING_FAILURES = Counter(
+     "medicalkg_chunking_errors_total",
+     "Chunking failures grouped by profile and error type",
+     labelnames=("profile", "error_type"),
+ )
+ MINERU_GATE_TRIGGERED = Counter(
+     "mineru_gate_triggered_total",
+     "Number of times the MinerU two-phase gate halted processing",
+ )
+ POSTPDF_START_TRIGGERED = Counter(
+     "postpdf_start_triggered_total",
+     "Number of times post-PDF resume was triggered",
+ )
++GATE_EVALUATIONS = Counter(
++    "orchestration_gate_evaluations_total",
++    "Gate evaluation outcomes grouped by gate and result",
++    labelnames=("gate", "result"),
++)
++GATE_DURATION = Histogram(
++    "orchestration_gate_duration_seconds",
++    "Gate evaluation duration distribution",
++    labelnames=("gate",),
++    buckets=(1.0, 5.0, 15.0, 30.0, 60.0, 120.0, 300.0),
++)
++GATE_ATTEMPTS = Histogram(
++    "orchestration_gate_attempts",
++    "Number of polling attempts per gate evaluation",
++    labelnames=("gate",),
++    buckets=(1, 2, 3, 5, 8, 13, 21),
++)
++GATE_TIMEOUTS = Counter(
++    "orchestration_gate_timeouts_total",
++    "Number of times a gate evaluation exceeded its timeout",
++    labelnames=("gate",),
++)
++PHASE_TRANSITIONS = Counter(
++    "orchestration_phase_transitions_total",
++    "Phase transitions observed during gated pipeline execution",
++    labelnames=("pipeline", "phase"),
++)
+ CHUNKING_CIRCUIT_STATE = Gauge(
+     "chunking_circuit_breaker_state",
+     "Circuit breaker state for chunking pipeline (0=closed, 1=open, 2=half-open)",
+ )
+ GPU_UTILISATION = Gauge(
+     "gpu_utilization_percent",
+     "GPU memory utilisation percentage",
+     labelnames=("gpu",),
+ )
+ BUSINESS_EVENTS = Counter(
+     "business_events",
+     "Business event counters (documents ingested, retrievals)",
+     labelnames=("event",),
+ )
+ JOB_STATUS_COUNTS = Gauge(
+     "job_status_counts",
+     "Current count of jobs by status",
+     labelnames=("status",),
+ )
+ RERANK_OPERATIONS = Counter(
+     "reranking_operations_total",
+     "Total reranking invocations",
+     labelnames=("reranker", "tenant", "batch_size"),
+ )
+ RERANK_DURATION = Histogram(
+@@ -292,50 +319,70 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: igno
+
+     @app.get(path, include_in_schema=False)
+     async def metrics_endpoint() -> "Response":
+         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+ def record_resilience_retry(policy: str, stage: str) -> None:
+     """Increment retry counter for the supplied policy and stage."""
+
+     RESILIENCE_RETRY_ATTEMPTS.labels(policy, stage).inc()
+
+
+ def record_resilience_circuit_state(policy: str, stage: str, state: str) -> None:
+     """Update gauge with the numeric circuit breaker state."""
+
+     mapping = {"closed": 0.0, "open": 1.0, "half-open": 2.0}
+     RESILIENCE_CIRCUIT_STATE.labels(policy, stage).set(mapping.get(state.lower(), -1.0))
+
+
+ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: float) -> None:
+     """Observe rate limit wait duration."""
+
+     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
+
+
++def record_gate_evaluation(gate: str, result: str, duration: float, *, attempts: int) -> None:
++    """Publish metrics for a gate evaluation attempt."""
++
++    _increment_with_exemplar(GATE_EVALUATIONS, (gate, result))
++    _observe_with_exemplar(GATE_DURATION, (gate,), duration)
++    _observe_with_exemplar(GATE_ATTEMPTS, (gate,), float(max(attempts, 0)))
++
++
++def record_gate_timeout(gate: str) -> None:
++    """Increment timeout counter for the specified gate."""
++
++    _increment_with_exemplar(GATE_TIMEOUTS, (gate,))
++
++
++def record_phase_transition(pipeline: str, phase: str) -> None:
++    """Track transitions between orchestration phases."""
++
++    _increment_with_exemplar(PHASE_TRANSITIONS, (pipeline, phase))
++
++
+ def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
+     labelled = metric.labels(*labels)
+     correlation_id = get_correlation_id()
+     kwargs: dict[str, object] = {}
+     if correlation_id:
+         try:  # pragma: no cover - exemplar support optional
+             kwargs["exemplar"] = {"correlation_id": correlation_id}
+         except TypeError:
+             kwargs = {}
+     labelled.observe(max(value, 0.0), **kwargs)
+
+
+ def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.0) -> None:
+     labelled = metric.labels(*labels)
+     correlation_id = get_correlation_id()
+     kwargs: dict[str, object] = {}
+     if correlation_id:
+         try:  # pragma: no cover - exemplar support optional
+             kwargs["exemplar"] = {"correlation_id": correlation_id}
+         except TypeError:
+             kwargs = {}
+     labelled.inc(amount, **kwargs)
+
+
+ def observe_job_duration(operation: str, duration_seconds: float) -> None:

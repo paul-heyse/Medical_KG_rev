@@ -18,24 +18,33 @@ from Medical_KG_rev.orchestration.dagster.stage_registry import (
     StageMetadata,
     StageRegistration,
 )
+from Medical_KG_rev.orchestration.kafka import KafkaClient
+from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
-from Medical_KG_rev.services.mineru.processing_service import (
+from Medical_KG_rev.services.mineru.service import (
+    MineruGpuUnavailableError,
+    MineruOutOfMemoryError,
+    MineruProcessor,
+)
+from Medical_KG_rev.services.pdf import (
+    DownloadCircuitBreaker,
+    GpuResourceManager,
     MineruProcessingError,
+    MineruProcessingResult,
     MineruProcessingService,
+    PdfDeadLetterQueue,
+    PdfDownloadError,
+    PdfDownloadRequest,
+    PdfDownloadResult,
+    PdfDownloadService,
+    PdfStorageClient,
+    PdfStorageConfig,
+    PdfUrlValidator,
 )
-from Medical_KG_rev.services.pdf import PdfDownloadError, PdfDownloadService, PdfStorageClient
-from Medical_KG_rev.storage.base import StorageError
 from Medical_KG_rev.storage.object_store import (
-    FileSystemObjectStore,
     InMemoryObjectStore,
+    LocalFileObjectStore,
     S3ObjectStore,
-)
-from Medical_KG_rev.utils.http_client import (
-    BackoffStrategy,
-    CircuitBreakerConfig,
-    HttpClient,
-    RateLimitConfig,
-    RetryConfig,
 )
 
 logger = structlog.get_logger(__name__)
@@ -56,7 +65,7 @@ def _count_single(value: Any) -> int:
 
 
 def _handle_download_output(state: dict[str, Any], _: str, output: Any) -> None:
-    state["downloaded_files"] = output
+    state["download_artifact"] = output
 
 
 def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
@@ -72,159 +81,162 @@ def _handle_gate_output(state: dict[str, Any], _: str, output: Any) -> None:  # 
     return None
 
 
+def _handle_mineru_output(state: dict[str, Any], _: str, output: Any) -> None:
+    state["mineru_result"] = output
+    ir_document = None
+    if isinstance(output, MineruProcessingResult):
+        ir_document = getattr(getattr(output.response, "document", None), "ir_document", None)
+    if isinstance(ir_document, Document):
+        state["document"] = ir_document
+
+
+_STORAGE_CACHE: dict[str, PdfStorageClient] = {}
+
+
+def _storage_cache_key(config: Mapping[str, Any]) -> str:
+    storage = config.get("storage") or {}
+    backend = str(storage.get("backend", "memory")).lower()
+    alias = storage.get("alias") or "default"
+    if backend == "local":
+        path = storage.get("path") or "/tmp/medicalkg/pdf"
+        return f"local:{alias}:{path}"
+    if backend == "s3":
+        bucket = storage.get("bucket")
+        return f"s3:{alias}:{bucket}"
+    return f"memory:{alias}"
+
+
+def _get_storage_client(config: Mapping[str, Any]) -> PdfStorageClient:
+    key = _storage_cache_key(config)
+    if key in _STORAGE_CACHE:
+        return _STORAGE_CACHE[key]
+    storage_cfg = config.get("storage") or {}
+    backend_name = str(storage_cfg.get("backend", "memory")).lower()
+    if backend_name == "local":
+        base_path = storage_cfg.get("path") or "/tmp/medicalkg/pdf"
+        backend = LocalFileObjectStore(base_path)
+    elif backend_name == "s3":
+        bucket = storage_cfg.get("bucket")
+        if not bucket:
+            raise ValueError("S3 storage backend requires a 'bucket' value")
+        backend = S3ObjectStore(bucket=str(bucket))
+    else:
+        backend = InMemoryObjectStore()
+    client = PdfStorageClient(
+        backend=backend,
+        config=PdfStorageConfig(
+            base_prefix=str(storage_cfg.get("base_prefix", "pdf")),
+            enable_access_logging=bool(storage_cfg.get("access_logging", True)),
+        ),
+    )
+    _STORAGE_CACHE[key] = client
+    return client
+
+
 @dataclass(slots=True)
-class PdfDownloadRecord:
-    """Represents the outcome of a single PDF download operation."""
-
-    tenant_id: str
-    document_id: str
-    url: str
-    storage_key: str | None
-    size_bytes: int | None
-    content_type: str | None
-    checksum: str | None
-    duration_seconds: float
-    resumed: bool
-    status: str
-    error: str | None = None
-
-
-@dataclass(slots=True)
-class PdfDownloadStage:
-    """Download PDF resources referenced by parsed documents."""
+class DownloadStage:
+    """Download PDFs referenced by documents and persist them to storage."""
 
     name: str
-    service: PdfDownloadService
+    download_service: PdfDownloadService
     storage: PdfStorageClient
+    ledger: JobLedger | None = None
+    dead_letter_queue: PdfDeadLetterQueue | None = None
 
-    def execute(self, ctx: StageContext, document: IrDocument | None) -> list[PdfDownloadRecord]:
+    def bind_runtime(self, *, ledger: JobLedger, kafka: KafkaClient | None = None) -> None:
+        self.ledger = ledger
+        if kafka:
+            self.dead_letter_queue = PdfDeadLetterQueue(kafka)
+
+    def execute(self, ctx: StageContext, upstream: Any) -> PdfDownloadResult | None:
+        document = self._resolve_document(upstream)
         if document is None:
-            return []
-        pdf_url = self._extract_pdf_url(document)
+            logger.warning(
+                "dagster.stage.download.missing_document",
+                stage=self.name,
+                tenant_id=ctx.tenant_id,
+            )
+            return None
+        pdf_url = document.pdf_url or document.metadata.get("pdf_url")
         if not pdf_url:
+            if self.ledger and ctx.job_id:
+                self.ledger.update_pdf_state(
+                    ctx.job_id,
+                    history_status="skipped",
+                    detail="Document does not specify a pdf_url",
+                )
             logger.info(
-                "dagster.stage.download.skip",
+                "dagster.stage.download.skipped",
                 stage=self.name,
-                reason="missing-pdf-url",
                 tenant_id=ctx.tenant_id,
-                doc_id=document.id,
+                document_id=document.id,
             )
-            return []
-        stored = None
+            return None
+        request = PdfDownloadRequest(
+            tenant_id=ctx.tenant_id,
+            document_id=document.id,
+            url=str(pdf_url),
+            correlation_id=ctx.correlation_id,
+            expected_size=document.pdf_size,
+            expected_content_type=document.pdf_content_type,
+            metadata={"source": document.source},
+        )
         try:
-            result = self.service.download(pdf_url, correlation_id=ctx.correlation_id)
-            try:
-                stored = self.storage.store_pdf(
-                    ctx.tenant_id,
-                    document.id,
-                    result.data,
-                    checksum=result.checksum,
-                    content_type=result.content_type,
-                )
-            except StorageError as exc:
-                self.storage.cleanup_document(ctx.tenant_id, document.id)
-                error = f"Failed to persist PDF: {exc}"
-                record_pdf_download_failure(
-                    source=document.source or "unknown",
-                    error_type="storage-error",
-                )
-                logger.error(
-                    "dagster.stage.download.storage_failed",
-                    stage=self.name,
-                    tenant_id=ctx.tenant_id,
-                    doc_id=document.id,
-                    url=pdf_url,
-                    error=str(exc),
-                )
-                return [
-                    PdfDownloadRecord(
-                        tenant_id=ctx.tenant_id,
-                        document_id=document.id,
-                        url=pdf_url,
-                        storage_key=None,
-                        size_bytes=None,
-                        content_type=None,
-                        checksum=None,
-                        duration_seconds=result.duration_seconds,
-                        resumed=result.resumed,
-                        status="failed",
-                        error=error,
-                    )
-                ]
+            result = self.download_service.download(request)
         except PdfDownloadError as exc:
-            error_type = getattr(exc, "error_type", "download-error")
-            record_pdf_download_failure(
-                source=document.source or "unknown", error_type=error_type
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason=str(exc),
+                    retryable=exc.retryable,
+                    code=exc.code,
+                )
+                if not exc.retryable:
+                    self.ledger.rollback_pdf_state(ctx.job_id, reason=str(exc))
+            self.storage.run(
+                self.storage.cleanup_document(ctx.tenant_id, document.id)
             )
-            logger.error(
-                "dagster.stage.download.failed",
-                stage=self.name,
-                tenant_id=ctx.tenant_id,
-                doc_id=document.id,
-                url=pdf_url,
-                error=str(exc),
-                error_type=error_type,
-            )
-            self.storage.cleanup_document(ctx.tenant_id, document.id)
-            return [
-                PdfDownloadRecord(
+            if (
+                self.dead_letter_queue
+                and ctx.job_id
+                and not exc.retryable
+            ):
+                self.dead_letter_queue.publish(
+                    job_id=ctx.job_id,
                     tenant_id=ctx.tenant_id,
                     document_id=document.id,
-                    url=pdf_url,
-                    storage_key=None,
-                    size_bytes=None,
-                    content_type=None,
-                    checksum=None,
-                    duration_seconds=0.0,
-                    resumed=False,
-                    status="failed",
-                    error=str(exc),
+                    stage=self.name,
+                    reason=exc.code or "download_error",
+                    payload={"url": request.url},
                 )
-            ]
-        except Exception as exc:  # pragma: no cover - defensive cleanup
-            if stored:
-                self.storage.delete_pdf(stored.key)
-            self.storage.cleanup_document(ctx.tenant_id, document.id)
             raise
-        if stored is None:
-            raise PdfDownloadError("PDF storage unexpectedly returned no artefact")
-        record_pdf_download_success(
-            source=document.source or "unknown",
-            size_bytes=stored.size_bytes,
-            duration_seconds=result.duration_seconds,
-        )
+        if self.ledger and ctx.job_id:
+            self.ledger.clear_pdf_error(ctx.job_id)
+            self.ledger.set_pdf_downloaded(
+                ctx.job_id,
+                True,
+                url=result.request.url,
+                storage_key=result.storage_key,
+                size=result.size,
+                content_type=result.content_type,
+                checksum=result.checksum,
+            )
         logger.info(
             "dagster.stage.download.completed",
             stage=self.name,
             tenant_id=ctx.tenant_id,
-            doc_id=document.id,
-            url=pdf_url,
-            bytes=stored.size_bytes,
+            document_id=document.id,
+            bytes=result.size,
         )
-        return [
-            PdfDownloadRecord(
-                tenant_id=ctx.tenant_id,
-                document_id=document.id,
-                url=pdf_url,
-                storage_key=stored.key,
-                size_bytes=stored.size_bytes,
-                content_type=stored.content_type,
-                checksum=stored.checksum,
-                duration_seconds=result.duration_seconds,
-                resumed=result.resumed,
-                status="success",
-            )
-        ]
+        return result
 
-    def _extract_pdf_url(self, document: IrDocument) -> str | None:
-        if document.pdf_url:
-            return str(document.pdf_url)
-        metadata_pdf = None
-        if isinstance(document.metadata, Mapping):
-            metadata_pdf = document.metadata.get("pdf")
-        if isinstance(metadata_pdf, Mapping):
-            candidate = metadata_pdf.get("url")
-            if isinstance(candidate, str):
+    def _resolve_document(self, upstream: Any) -> Document | None:
+        if isinstance(upstream, Document):
+            return upstream
+        if isinstance(upstream, Mapping):
+            candidate = upstream.get("document")
+            if isinstance(candidate, Document):
                 return candidate
         return None
 
@@ -273,42 +285,126 @@ class GateStage:
 
 @dataclass(slots=True)
 class MineruStage:
-    """Run MinerU processing on downloaded PDFs."""
+    """Run MinerU over downloaded PDFs and update ledger state."""
 
     name: str
-    service: MineruProcessingService
-    storage: PdfStorageClient
+    processing_service: MineruProcessingService
+    ledger: JobLedger | None = None
+    dead_letter_queue: PdfDeadLetterQueue | None = None
 
-    def execute(self, ctx: StageContext, downloads: list[PdfDownloadRecord]) -> Any:
-        record = next((item for item in downloads if item.status == "success" and item.storage_key), None)
-        if record is None or not record.storage_key:
-            record_pdf_processing_failure(source="mineru", error_type="no-download")
-            raise MineruProcessingError("No successful PDF downloads available for processing")
-        payload = self.storage.fetch_pdf(record.storage_key)
-        try:
-            result = self.service.process_pdf(
-                tenant_id=ctx.tenant_id,
-                document_id=ctx.doc_id or record.document_id,
-                pdf_bytes=payload,
-                correlation_id=ctx.correlation_id,
-                source_label="mineru",
-            )
-        except MineruProcessingError as exc:
-            logger.error(
-                "dagster.stage.mineru.failed",
+    def bind_runtime(self, *, ledger: JobLedger, kafka: KafkaClient | None = None) -> None:
+        self.ledger = ledger
+        if kafka:
+            self.dead_letter_queue = PdfDeadLetterQueue(kafka)
+
+    def execute(self, ctx: StageContext, upstream: Any) -> MineruProcessingResult | None:
+        document = None
+        download_result = None
+        if isinstance(upstream, Mapping):
+            candidate = upstream.get("document")
+            if isinstance(candidate, Document):
+                document = candidate
+            artifact = upstream.get("download_artifact") or upstream.get("downloaded_files")
+            if isinstance(artifact, list):
+                artifact = artifact[0] if artifact else None
+            if isinstance(artifact, PdfDownloadResult):
+                download_result = artifact
+        elif isinstance(upstream, PdfDownloadResult):
+            download_result = upstream
+        if download_result is None:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason="PDF download artifact missing",
+                    retryable=False,
+                    code="missing_artifact",
+                )
+                self.ledger.rollback_pdf_state(ctx.job_id, reason="missing download artifact")
+            if self.dead_letter_queue and ctx.job_id:
+                self.dead_letter_queue.publish(
+                    job_id=ctx.job_id,
+                    tenant_id=ctx.tenant_id,
+                    document_id=document.id if document else "unknown",
+                    stage=self.name,
+                    reason="missing_artifact",
+                    payload={},
+                )
+            logger.warning(
+                "dagster.stage.mineru.missing_artifact",
                 stage=self.name,
                 tenant_id=ctx.tenant_id,
-                doc_id=record.document_id,
-                storage_key=record.storage_key,
-                error=str(exc),
             )
+            return None
+        try:
+            result = self.processing_service.process(
+                tenant_id=ctx.tenant_id,
+                document_id=download_result.request.document_id,
+                storage_key=download_result.storage_key,
+                checksum=download_result.checksum,
+                correlation_id=ctx.correlation_id,
+            )
+        except (MineruOutOfMemoryError, MineruGpuUnavailableError) as exc:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason=str(exc),
+                    retryable=True,
+                    code=type(exc).__name__,
+                )
+                self.ledger.record_pdf_partial(
+                    ctx.job_id,
+                    stage=self.name,
+                    detail=str(exc),
+                    retryable=True,
+                )
             raise
+        except MineruProcessingError as exc:
+            if self.ledger and ctx.job_id:
+                self.ledger.record_pdf_failure(
+                    ctx.job_id,
+                    stage=self.name,
+                    reason=str(exc),
+                    retryable=exc.retryable,
+                    code=exc.code,
+                )
+                if exc.retryable:
+                    self.ledger.record_pdf_partial(
+                        ctx.job_id,
+                        stage=self.name,
+                        detail=str(exc),
+                        retryable=True,
+                    )
+                else:
+                    self.ledger.rollback_pdf_state(ctx.job_id, reason=str(exc))
+            if (
+                self.dead_letter_queue
+                and ctx.job_id
+                and not exc.retryable
+            ):
+                self.dead_letter_queue.publish(
+                    job_id=ctx.job_id,
+                    tenant_id=ctx.tenant_id,
+                    document_id=download_result.request.document_id,
+                    stage=self.name,
+                    reason=exc.code or "mineru_error",
+                    payload={"storage_key": download_result.storage_key},
+                )
+            raise
+        if self.ledger and ctx.job_id:
+            self.ledger.clear_pdf_error(ctx.job_id)
+            self.ledger.set_pdf_ir_ready(
+                ctx.job_id,
+                True,
+                checksum=result.checksum,
+            )
         logger.info(
             "dagster.stage.mineru.completed",
             stage=self.name,
             tenant_id=ctx.tenant_id,
-            doc_id=record.document_id,
-            blocks=len(result.ir_document.sections),
+            document_id=download_result.request.document_id,
+            duration=round(result.duration_seconds, 3),
         )
         return result
 
@@ -389,18 +485,76 @@ def register_download_stage() -> StageRegistration:
 
     def _builder(definition: StageDefinition) -> PdfDownloadStage:
         config = definition.config or {}
-        storage = _resolve_storage_client(config)
-        http_client = _create_http_client(config)
-        service = PdfDownloadService(http_client)
-        return PdfDownloadStage(name=definition.name, service=service, storage=storage)
+        storage = _get_storage_client(config)
+        validator_cfg = config.get("validator") or {}
+        validator = PdfUrlValidator(
+            timeout=float(validator_cfg.get("timeout", 15.0)),
+            max_attempts=int(validator_cfg.get("max_attempts", 3)),
+        )
+        breaker_cfg = config.get("circuit_breaker") or {}
+        circuit_breaker = DownloadCircuitBreaker(
+            failure_threshold=int(breaker_cfg.get("failure_threshold", 5)),
+            recovery_timeout=float(breaker_cfg.get("recovery_timeout_seconds", 300.0)),
+        )
+        download_service = PdfDownloadService(
+            storage=storage,
+            validator=validator,
+            timeout=float(config.get("timeout", 60.0)),
+            max_attempts=int(config.get("max_attempts", 3)),
+            chunk_size=int(config.get("chunk_size", 512 * 1024)),
+            circuit_breaker=circuit_breaker,
+            failure_alert_threshold=float(config.get("failure_alert_threshold", 0.5)),
+            failure_window_seconds=float(config.get("failure_window_seconds", 300.0)),
+            backoff_initial=float(config.get("backoff_initial", 1.0)),
+            backoff_max=float(config.get("backoff_max", 10.0)),
+        )
+        return DownloadStage(
+            name=definition.name,
+            download_service=download_service,
+            storage=storage,
+        )
 
     metadata = StageMetadata(
         stage_type="download",
-        state_key="downloaded_files",
+        state_key="download_artifact",
         output_handler=_handle_download_output,
-        output_counter=_sequence_length,
-        description="Downloads PDF resources for downstream MinerU processing",
+        output_counter=lambda output: 1 if output else 0,
+        description="Downloads PDF resources referenced by documents",
         dependencies=("parse",),
+    )
+    return StageRegistration(metadata=metadata, builder=_builder)
+
+
+def register_mineru_stage() -> StageRegistration:
+    """Register the MinerU processing stage plugin."""
+
+    def _builder(definition: StageDefinition) -> MineruStage:
+        config = definition.config or {}
+        storage = _get_storage_client(config)
+        gpu_cfg = config.get("gpu") or {}
+        gpu_manager = GpuResourceManager(
+            max_concurrent=gpu_cfg.get("max_concurrent"),
+            gpu_memory_mb=gpu_cfg.get("memory_mb"),
+        )
+        processor = MineruProcessor()
+        processing_cfg = config.get("processing") or {}
+        processing_service = MineruProcessingService(
+            processor=processor,
+            storage=storage,
+            gpu_manager=gpu_manager,
+            timeout=float(processing_cfg.get("timeout", config.get("timeout", 300.0))),
+            sla_seconds=float(processing_cfg.get("sla_seconds", 240.0)),
+            enable_state_recovery=bool(processing_cfg.get("stateful_recovery", True)),
+        )
+        return MineruStage(name=definition.name, processing_service=processing_service)
+
+    metadata = StageMetadata(
+        stage_type="mineru",
+        state_key="mineru_result",
+        output_handler=_handle_mineru_output,
+        output_counter=lambda output: 1 if output else 0,
+        description="Processes downloaded PDFs with MinerU to produce structured output",
+        dependencies=("download", "parse"),
     )
     return StageRegistration(metadata=metadata, builder=_builder)
 

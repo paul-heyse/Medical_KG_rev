@@ -76,7 +76,7 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 **REPLACE**:
 
 - Custom recursive splitters → `langchain_text_splitters.RecursiveCharacterTextSplitter`
-- Custom sentence splitters → `scispacy.sentence` or `syntok.segment`
+- Custom sentence splitters → Hugging Face tokenizer-backed segmenter or `syntok.segment`
 - Custom tokenizers → `transformers.AutoTokenizer` (aligned with Qwen3)
 - Bespoke XML parsing → `unstructured.partition_xml`
 
@@ -118,12 +118,10 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4  # Biomedical sentence segmentation
-en-core-sci-sm @ https://s3-us-west-2.amazonaws.com/ai2-s3-scispacy/releases/en_core_sci_sm-0.5.4/en_core_sci_sm-0.5.4.tar.gz
+transformers>=4.38.0  # Hugging Face tokenizers for segmentation and Qwen3 alignment
 syntok>=1.4.4  # Fast sentence splitter
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0  # OpenAI tokenizer
-transformers>=4.38.0  # HF tokenizers for Qwen3 alignment
 ```
 
 ### Migration Path

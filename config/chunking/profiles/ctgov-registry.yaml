@@ -1,0 +1,18 @@
+name: ctgov-registry
+domain: registry
+chunker_type: ctgov_registry
+target_tokens: 300
+overlap_tokens: 0
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: syntok
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+metadata:
+  intent_hints:
+    Eligibility Criteria: eligibility
+    Outcome Measures: outcome
+    Adverse Events: ae
+    Results: results

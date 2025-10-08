@@ -36,7 +36,7 @@ respect_boundaries:
   - heading  # Never split across IMRaD sections
   - figure_caption
   - table
-sentence_splitter: scispacy  # Biomedical-aware
+sentence_splitter: huggingface  # Biomedical-aware tokenizer configured via MEDICAL_KG_SENTENCE_MODEL
 preserve_tables_as_html: true
 filters:
   - drop_boilerplate
@@ -117,7 +117,7 @@ overlap_tokens: 30
 respect_boundaries:
   - loinc_section  # LOINC-coded sections
   - table
-sentence_splitter: scispacy
+sentence_splitter: huggingface
 preserve_tables_as_html: true
 filters:
   - drop_boilerplate
@@ -490,12 +490,11 @@ FILTER_REGISTRY = {
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
 llama-index-core>=0.10.0
-scispacy>=0.5.4
-en-core-sci-sm @ https://s3-us-west-2.amazonaws.com/ai2-s3-scispacy/releases/en_core_sci_sm-0.5.4/en_core_sci_sm-0.5.4.tar.gz
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0
 transformers>=4.38.0
+pydantic>=2.6.0
 ```
 
 ---

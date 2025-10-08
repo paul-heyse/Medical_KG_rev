@@ -1,0 +1,16 @@
+name: guideline
+domain: guideline
+chunker_type: guideline_recommendation
+target_tokens: 350
+overlap_tokens: 0
+respect_boundaries:
+  - section
+  - table
+sentence_splitter: syntok
+preserve_tables_as_html: true
+filters:
+  - drop_boilerplate
+metadata:
+  intent_hints:
+    Recommendations: recommendation
+    Evidence Summary: evidence

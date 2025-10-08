@@ -178,6 +178,7 @@ class RetrieveRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=50)
     filters: dict[str, Any] = Field(default_factory=dict)
     rerank: bool | None = None
+    rerank_model: str | None = Field(default=None, min_length=1, max_length=128)
     rerank_top_k: int = Field(default=10, ge=1, le=200)
     rerank_overflow: bool = False
     profile: str | None = None

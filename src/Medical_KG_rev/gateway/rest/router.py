@@ -449,6 +449,7 @@ async def search(
     query: str = Query(..., min_length=1),
     top_k: int = Query(5, ge=1, le=50),
     rerank: bool = Query(True),
+    rerank_model: str | None = Query(default=None, min_length=1, max_length=128),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="GET /v1/search")
     ),
@@ -460,6 +461,7 @@ async def search(
         top_k=top_k,
         filters={},
         rerank=rerank,
+        rerank_model=rerank_model,
     )
     result: RetrievalResult = service.retrieve(request_model)
     odata = ODataParams.from_request(http_request)

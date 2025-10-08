@@ -463,43 +463,43 @@
 - [x] 4.2.8 Write reranking integration tests
   - **Cases**: Enabled, disabled, fallback
 
-- [ ] 4.2.9 Performance benchmark: Reranking latency
+- [x] 4.2.9 Performance benchmark: Reranking latency
   - **Metric**: P95 latency for reranking top-100
   - **Target**: <150ms
 
-- [ ] 4.2.10 A/B test: Reranking impact on nDCG@10
+- [x] 4.2.10 A/B test: Reranking impact on nDCG@10
   - **Setup**: 50-query test set, compare with/without reranking
   - **Decision**: Enable if +5% nDCG improvement
 
 ### 4.3 Reranking Models & Configuration (8 tasks)
 
-- [ ] 4.3.1 Download BGE-reranker-base model
+- [x] 4.3.1 Download BGE-reranker-base model
   - **Source**: HuggingFace `BAAI/bge-reranker-base`
   - **Cache**: Store in model cache directory
 
-- [ ] 4.3.2 Test alternative reranker models
+- [x] 4.3.2 Test alternative reranker models
   - **Models**: ms-marco-MiniLM-L-12-v2, colbert-reranker
   - **Metric**: Compare nDCG@10 on test set
 
-- [ ] 4.3.3 Create reranker model registry
+- [x] 4.3.3 Create reranker model registry
   - **Config**: `config/retrieval/reranking_models.yaml`
   - **Default**: BGE-reranker-base
 
-- [ ] 4.3.4 Add model selection API parameter
+- [x] 4.3.4 Add model selection API parameter
   - **Endpoint**: `/v1/search?rerank=true&rerank_model=bge-reranker-base`
 
-- [ ] 4.3.5 Implement model caching
+- [x] 4.3.5 Implement model caching
   - **Strategy**: Load model once on startup, cache in memory
   - **GPU**: Keep model on GPU for fast inference
 
-- [ ] 4.3.6 Add model versioning
+- [x] 4.3.6 Add model versioning
   - **Track**: Model version in response metadata
   - **Migration**: Support multiple model versions simultaneously
 
-- [ ] 4.3.7 Write model loading tests
+- [x] 4.3.7 Write model loading tests
   - **Cases**: Valid model, invalid model, GPU unavailable
 
-- [ ] 4.3.8 Document reranking model selection guide
+- [x] 4.3.8 Document reranking model selection guide
   - **Guide**: When to use BGE vs ms-marco vs colbert
   - **Trade-offs**: Latency vs quality
 

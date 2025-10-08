@@ -49,6 +49,7 @@ from ..services.evaluation import (
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
+from ..services.reranking import ModelDownloadError, ModelHandle, RerankerModelRegistry
 from ..services.retrieval.router import (
     RetrievalRouter,
     RetrievalStrategy,
@@ -111,6 +112,7 @@ class GatewayService:
     workers: list[WorkerBase] = field(default_factory=list)
     chunker: ChunkingService = field(default_factory=ChunkingService)
     reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
+    reranker_models: RerankerModelRegistry = field(default_factory=RerankerModelRegistry)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
@@ -122,12 +124,21 @@ class GatewayService:
     test_set_manager: TestSetManager = field(default_factory=TestSetManager)
     _evaluation_runner: EvaluationRunner | None = field(default=None, init=False, repr=False)
     _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
+    _default_reranker_model: ModelHandle | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         self._ensure_pipeline_components()
+        try:
+            self._default_reranker_model = self.reranker_models.ensure()
+        except ModelDownloadError as exc:
+            logger.warning(
+                "gateway.rerank.model_cache_failed",
+                error=str(exc),
+            )
+            self._default_reranker_model = None
 
     def _ensure_pipeline_components(self) -> None:
         if self.config_manager is None:
@@ -528,6 +539,50 @@ class GatewayService:
                 "allow_overflow": request.rerank_overflow,
             },
         }
+        rerank_override = overrides["rerank"]
+        rerank_override["requested_model"] = request.rerank_model
+        model_handle = self._default_reranker_model
+        fallback_reason: str | None = None
+        if request.rerank_model:
+            try:
+                model_handle = self.reranker_models.ensure(request.rerank_model)
+            except KeyError:
+                fallback_reason = "unknown_model"
+                logger.warning(
+                    "gateway.rerank.unknown_model",
+                    requested=request.rerank_model,
+                )
+                model_handle = self._default_reranker_model
+            except ModelDownloadError as exc:
+                fallback_reason = "download_failed"
+                logger.warning(
+                    "gateway.rerank.download_failed",
+                    requested=request.rerank_model,
+                    error=str(exc),
+                )
+                model_handle = self._default_reranker_model
+        if model_handle is not None:
+            rerank_override.setdefault("reranker_id", model_handle.model.reranker_id)
+            rerank_override["model_key"] = model_handle.model.key
+            rerank_override["model_version"] = model_handle.model.version
+        if fallback_reason and model_handle is not None:
+            rerank_override["fallback"] = fallback_reason
+            rerank_override["fallback_model"] = model_handle.model.key
+        if model_handle is not None:
+            metadata.setdefault("reranking", {})
+            metadata["reranking"].update(
+                {
+                    "model": {
+                        "key": model_handle.model.key,
+                        "model_id": model_handle.model.model_id,
+                        "version": model_handle.model.version,
+                        "provider": model_handle.model.provider,
+                    },
+                    "requested_model": request.rerank_model,
+                }
+            )
+            if fallback_reason:
+                metadata["reranking"]["fallback"] = fallback_reason
         context = PipelineContext(
             tenant_id=request.tenant_id,
             operation="retrieve",
@@ -573,6 +628,16 @@ class GatewayService:
                 for name, duration in result_context.stage_timings.items()
             }
         }
+        if model_handle is not None:
+            rerank_metrics["model"] = {
+                "key": model_handle.model.key,
+                "model_id": model_handle.model.model_id,
+                "version": model_handle.model.version,
+                "provider": model_handle.model.provider,
+            }
+            rerank_metrics["requested_model"] = request.rerank_model
+            if fallback_reason:
+                rerank_metrics["fallback"] = fallback_reason
         result = RetrievalResult(
             query=request.query,
             documents=documents,

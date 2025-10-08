@@ -21,6 +21,9 @@ from Medical_KG_rev.services.reranking import (
     RerankCacheManager,
     RerankerFactory,
     RerankingEngine,
+    RerankerModelRegistry,
+    ModelHandle,
+    ModelDownloadError,
     ScoredDocument,
 )
 from Medical_KG_rev.services.reranking.errors import RerankingError
@@ -70,6 +73,7 @@ class RetrievalService:
         router: RetrievalRouter | None = None,
         namespace_map: Mapping[str, str] | None = None,
         rerank_policy: TenantRerankPolicy | None = None,
+        model_registry: RerankerModelRegistry | None = None,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -81,6 +85,8 @@ class RetrievalService:
         self._rerank_policy = rerank_policy or TenantRerankPolicy.from_file(
             DEFAULT_POLICY_PATH
         )
+        self._model_registry = model_registry or RerankerModelRegistry()
+        self._model_handles: dict[str, ModelHandle] = {}
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
@@ -125,10 +131,18 @@ class RetrievalService:
         )
         self._candidate_pool = max(100, pipeline_settings.retrieve_candidates)
         self.reranker = reranker or CrossEncoderReranker()
-        self._default_reranker = (
+        configured_model_key: str | None = None
+        if reranking_settings and reranking_settings.model.model:
+            configured_model_key = reranking_settings.model.model
+        self._default_model_key = self._resolve_model_key(configured_model_key)
+        self._default_model_handle = self._ensure_model(self._default_model_key)
+        configured_reranker = (
             reranking_settings.model.reranker_id
-            if reranking_settings
-            else "cross_encoder:bge"
+            if reranking_settings and reranking_settings.model.reranker_id
+            else None
+        )
+        self._default_reranker = (
+            configured_reranker or self._default_model_handle.model.reranker_id
         )
 
     def search(
@@ -141,6 +155,7 @@ class RetrievalService:
         embedding_kind: str | None = None,
         *,
         reranker_id: str | None = None,
+        rerank_model: str | None = None,
         context: SecurityContext | None = None,
         explain: bool = False,
     ) -> list[RetrievalResult]:
@@ -167,7 +182,10 @@ class RetrievalService:
         decision = self._rerank_policy.decide(
             security_context.tenant_id, query, rerank
         )
-        reranker_key = reranker_id or self._default_reranker
+        model_handle, model_key, requested_model, model_fallback = self._resolve_model(
+            rerank_model
+        )
+        reranker_key = reranker_id or model_handle.model.reranker_id or self._default_reranker
         metrics: dict[str, object]
         rerank_applied = decision.enabled
         try:
@@ -216,6 +234,20 @@ class RetrievalService:
         rerank_metadata.update(decision.as_metadata())
         rerank_metadata.setdefault("requested", rerank)
         rerank_metadata["applied"] = rerank_applied
+        model_meta = {
+            "key": model_key,
+            "model_id": model_handle.model.model_id,
+            "version": model_handle.model.version,
+            "provider": model_handle.model.provider,
+            "requires_gpu": model_handle.model.requires_gpu,
+        }
+        if requested_model:
+            rerank_metadata["requested_model"] = requested_model
+        if model_fallback:
+            rerank_metadata["fallback_model"] = model_key
+            rerank_metadata.setdefault("warnings", []).append("model_fallback")
+        rerank_metadata["model"] = model_meta
+        rerank_metadata.setdefault("reranker_id", reranker_key)
         metrics["reranking"] = rerank_metadata
 
         results: list[RetrievalResult] = []
@@ -397,6 +429,52 @@ class RetrievalService:
                 )
             )
         return results
+
+    # ------------------------------------------------------------------
+    def _resolve_model_key(self, identifier: str | None) -> str:
+        if not identifier:
+            return self._default_model_key
+        try:
+            return self._model_registry.resolve_key(identifier)
+        except KeyError:
+            logger.warning(
+                "retrieval.rerank_model.unknown",
+                requested=identifier,
+            )
+            return self._default_model_key
+
+    def _ensure_model(self, key: str) -> ModelHandle:
+        handle = self._model_handles.get(key)
+        if handle is not None:
+            return handle
+        try:
+            handle = self._model_registry.ensure(key)
+        except ModelDownloadError as exc:
+            logger.warning(
+                "retrieval.rerank_model.ensure_failed",
+                model=key,
+                error=str(exc),
+            )
+            model = self._model_registry.get(key)
+            cache_dir = getattr(self._model_registry, "cache_dir", None)
+            cache_root = cache_dir if cache_dir else DEFAULT_POLICY_PATH.parent
+            handle = ModelHandle(model=model, path=model.cache_path(cache_root))
+        self._model_handles[key] = handle
+        return handle
+
+    def _resolve_model(
+        self, identifier: str | None
+    ) -> tuple[ModelHandle, str, str | None, bool]:
+        key = self._resolve_model_key(identifier)
+        fallback = bool(identifier) and key == self._default_model_key and (
+            identifier != self._default_model_key
+        )
+        handle = self._ensure_model(key)
+        if handle is not self._default_model_handle and key not in self._model_handles:
+            self._model_handles[key] = handle
+        if identifier and key != identifier:
+            fallback = True
+        return handle, key, identifier, fallback
 
     def _resolve_namespace(self, embedding_kind: str | None) -> str:
         if embedding_kind and embedding_kind in self._namespace_map:

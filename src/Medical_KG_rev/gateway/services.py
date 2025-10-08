@@ -36,9 +36,11 @@ from ..orchestration.dagster import (
     PipelineConfigLoader,
     ResiliencePolicyLoader,
     StageFactory,
+    build_stage_factory,
     create_stage_plugin_manager,
     submit_to_dagster,
 )
+from ..orchestration.dagster.stages import create_default_pipeline_resource
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
@@ -118,6 +120,12 @@ class GatewayError(RuntimeError):
 
 def _build_stage_factory(
     manager: AdapterPluginManager | None = None,
+    ledger: JobLedger | None = None,
+) -> StageFactory:
+    adapter_manager = manager or get_plugin_manager()
+    job_ledger = ledger or JobLedger()
+    pipeline_resource = create_default_pipeline_resource()
+    return build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
     *,
     job_ledger: JobLedger | None = None,
 ) -> StageFactory:
@@ -155,6 +163,7 @@ class GatewayService:
 
     def __post_init__(self) -> None:
         if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(self.adapter_manager, self.ledger)
             self.stage_factory = _build_stage_factory(
                 self.adapter_manager,
                 job_ledger=self.ledger,
@@ -1410,6 +1419,8 @@ def get_gateway_service() -> GatewayService:
         adapter_manager = get_plugin_manager()
         _pipeline_loader = PipelineConfigLoader()
         _resilience_loader = ResiliencePolicyLoader()
+        pipeline_resource = create_default_pipeline_resource()
+        _stage_factory = build_stage_factory(adapter_manager, pipeline_resource, _ledger)
         stage_plugin_manager = create_stage_plugin_manager(
             adapter_manager,
             job_ledger=_ledger,
@@ -1419,6 +1430,21 @@ def get_gateway_service() -> GatewayService:
             _pipeline_loader,
             _resilience_loader,
             _stage_factory,
+            plugin_manager=adapter_manager,
+            job_ledger=_ledger,
+            pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

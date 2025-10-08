@@ -43,6 +43,17 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
+from Medical_KG_rev.orchestration.stages.plugin_manager import (
+    StagePluginContext,
+    StagePluginExecutionError,
+    StagePluginManager,
+    StagePluginNotAvailable,
+)
+from Medical_KG_rev.orchestration.stages.plugins.builtin import (
+    CoreStagePlugin,
+    PdfTwoPhasePlugin,
+)
+from Medical_KG_rev.orchestration.state.cache import PipelineStateCache
 from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
 from Medical_KG_rev.orchestration.stages.plugins import (
     StagePluginBuildError,
@@ -60,6 +71,20 @@ class StageResolutionError(RuntimeError):
 
 @dataclass(slots=True)
 class StageFactory:
+    """Resolve orchestration stages using the plugin manager."""
+
+    plugins: StagePluginManager
+
+    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+        try:
+            instance = self.plugins.create_stage(stage)
+        except StagePluginNotAvailable as exc:  # pragma: no cover - defensive guard
+            raise StageResolutionError(
+                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+            ) from exc
+        except StagePluginExecutionError as exc:  # pragma: no cover - defensive guard
+            raise StageResolutionError(
+                f"Stage plugin failed for '{stage.name}' ({stage.stage_type})"
     """Resolve orchestration stages through the plugin manager."""
 
     plugin_manager: StagePluginManager
@@ -82,6 +107,27 @@ class StageFactory:
             stage_type=stage.stage_type,
         )
         return instance
+
+
+def build_stage_factory(
+    adapter_manager: AdapterPluginManager,
+    pipeline_resource: HaystackPipelineResource,
+    job_ledger: JobLedger,
+) -> StageFactory:
+    """Initialise the stage plugin manager and return a bound factory."""
+
+    context = StagePluginContext(
+        resources={
+            "adapter_manager": adapter_manager,
+            "haystack_pipeline": pipeline_resource,
+            "job_ledger": job_ledger,
+        }
+    )
+    manager = StagePluginManager(context)
+    manager.register(CoreStagePlugin())
+    manager.register(PdfTwoPhasePlugin())
+    manager.load_entrypoints()
+    return StageFactory(manager)
 
 
 @op(
@@ -266,6 +312,8 @@ def _make_stage_op(
             duration_ms=duration_ms,
             output_count=output_count,
         )
+        cache_key = job_id or stage_ctx.correlation_id or stage_name
+        context.resources.state_cache.store(cache_key, state.snapshot())
         snapshot_b64 = state.serialise_base64()
         if job_id:
             try:
@@ -435,6 +483,7 @@ class DagsterOrchestrator:
         self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
         self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
         self.openlineage = openlineage_emitter or OpenLineageEmitter()
+        self.state_cache = PipelineStateCache(max_entries=256, ttl_seconds=1800)
         self._resource_defs: dict[str, ResourceDefinition] = {
             "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
             "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
@@ -444,6 +493,7 @@ class DagsterOrchestrator:
             "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
             "kafka": ResourceDefinition.hardcoded_resource(self.kafka_client),
             "openlineage": ResourceDefinition.hardcoded_resource(self.openlineage),
+            "state_cache": ResourceDefinition.hardcoded_resource(self.state_cache),
         }
         self._jobs: dict[str, BuiltPipelineJob] = {}
         self._definitions: Definitions | None = None
@@ -671,6 +721,11 @@ def build_default_orchestrator() -> DagsterOrchestrator:
     adapter_manager = get_plugin_manager()
     pipeline_resource = create_default_pipeline_resource()
     job_ledger = JobLedger()
+    stage_factory = build_stage_factory(adapter_manager, pipeline_resource, job_ledger)
+    logger.info(
+        "dagster.stage_plugins.initialised",
+        stage_types=stage_factory.plugins.available_stage_types(),
+    )
     stage_plugin_manager = create_stage_plugin_manager(
         adapter_manager,
         pipeline_resource,

@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import base64
 import copy
+import orjson
+import structlog
 import time
 import zlib
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
 import structlog
@@ -39,6 +41,10 @@ from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.observability.metrics import PIPELINE_STATE_SERIALISATIONS
+from attrs import define, field as attrs_field
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 
 RawPayload = dict[str, Any]
@@ -126,7 +132,7 @@ class GraphWriteReceipt:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@pydantic_dataclass(config=ConfigDict(validate_assignment=True))
 class StageContext:
     """Immutable context shared across stage boundaries."""
 
@@ -134,7 +140,7 @@ class StageContext:
     job_id: str | None = None
     doc_id: str | None = None
     correlation_id: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     pipeline_name: str | None = None
     pipeline_version: str | None = None
 
@@ -181,16 +187,16 @@ class StageContext:
         )
 
 
-@dataclass(slots=True)
+@define(slots=True)
 class StageResultSnapshot:
     """Aggregated metadata describing a stage execution."""
 
     stage: str
     stage_type: str
-    attempts: int | None = None
-    duration_ms: int | None = None
-    output_count: int | None = None
-    error: str | None = None
+    attempts: int | None = attrs_field(default=None)
+    duration_ms: int | None = attrs_field(default=None)
+    output_count: int | None = attrs_field(default=None)
+    error: str | None = attrs_field(default=None)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -203,6 +209,23 @@ class StageResultSnapshot:
         }
 
 
+@define(slots=True, frozen=True)
+class DownloadArtifact:
+    """Represents a downloaded PDF artefact available for downstream stages."""
+
+    document_id: str
+    tenant_id: str
+    uri: str
+    metadata: dict[str, Any] = attrs_field(factory=dict)
+
+
+@define(slots=True, frozen=True)
+class GateDecision:
+    """Represents the outcome of a gate stage evaluation."""
+
+    name: str
+    ready: bool
+    metadata: dict[str, Any] = attrs_field(factory=dict)
 @dataclass(slots=True)
 class PdfGateState:
     """Represents the progress of the PDF two-phase pipeline gate."""
@@ -236,6 +259,8 @@ class PipelineStateSnapshot:
     claims: tuple[Claim, ...]
     index_receipt: IndexReceipt | None
     graph_receipt: GraphWriteReceipt | None
+    downloads: tuple[DownloadArtifact, ...]
+    gate_decisions: dict[str, GateDecision]
     pdf_assets: tuple[PdfAsset, ...]
     gate_status: dict[str, bool]
     metadata: dict[str, Any]
@@ -250,6 +275,14 @@ class PipelineStateValidationError(ValueError):
     def __init__(self, message: str, *, rule: str | None = None) -> None:
         super().__init__(message)
         self.rule = rule
+
+
+class PipelineGateNotReady(RuntimeError):
+    """Raised when a gate stage determines processing must pause."""
+
+    def __init__(self, message: str, *, gate: str) -> None:
+        super().__init__(message)
+        self.gate = gate
 
 
 @dataclass(slots=True)
@@ -267,6 +300,8 @@ class PipelineState:
     claims: tuple[Claim, ...] = ()
     index_receipt: IndexReceipt | None = None
     graph_receipt: GraphWriteReceipt | None = None
+    downloads: tuple[DownloadArtifact, ...] = ()
+    gate_decisions: dict[str, GateDecision] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     stage_results: dict[str, StageResultSnapshot] = field(default_factory=dict)
     pdf_assets: tuple[PdfAsset, ...] = ()
@@ -332,6 +367,10 @@ class PipelineState:
         clone.claims = tuple(copy.deepcopy(self.claims))
         clone.index_receipt = copy.deepcopy(self.index_receipt)
         clone.graph_receipt = copy.deepcopy(self.graph_receipt)
+        clone.downloads = tuple(copy.deepcopy(self.downloads))
+        clone.gate_decisions = {
+            name: copy.deepcopy(decision) for name, decision in self.gate_decisions.items()
+        }
         clone.metadata = copy.deepcopy(self.metadata)
         clone.stage_results = {
             name: copy.deepcopy(result) for name, result in self.stage_results.items()
@@ -370,6 +409,11 @@ class PipelineState:
 
         snapshot = self.snapshot(include_stage_results=include_stage_results)
         self._checkpoints[self._checkpoint_label(label)] = snapshot
+        logger.debug(
+            "pipeline_state.checkpoint_created",
+            label=self._checkpoint_label(label),
+            tenant_id=self._tenant_id,
+        )
         return snapshot
 
     def get_checkpoint(self, label: str | None = None) -> PipelineStateSnapshot | None:
@@ -391,6 +435,11 @@ class PipelineState:
         snapshot = self.get_checkpoint(label)
         if snapshot is not None:
             self.restore(snapshot, restore_stage_results=restore_stage_results)
+            logger.debug(
+                "pipeline_state.checkpoint_restored",
+                label=self._checkpoint_label(label),
+                tenant_id=self._tenant_id,
+            )
         return snapshot
 
     def clear_checkpoint(self, label: str | None = None) -> None:
@@ -492,6 +541,21 @@ class PipelineState:
         self.graph_receipt = receipt
         self._mark_dirty()
 
+    def set_downloads(self, artifacts: Sequence[DownloadArtifact]) -> None:
+        self.downloads = tuple(artifacts)
+        self._mark_dirty()
+
+    def require_downloads(self) -> tuple[DownloadArtifact, ...]:
+        if not self.downloads:
+            raise ValueError("PipelineState does not contain download artefacts")
+        return self.downloads
+
+    def record_gate_decision(self, decision: GateDecision) -> None:
+        self.gate_decisions[decision.name] = decision
+        self._mark_dirty()
+
+    def get_gate_decision(self, name: str) -> GateDecision | None:
+        return self.gate_decisions.get(name)
     def has_pdf_assets(self) -> bool:
         return bool(self.pdf_assets)
 
@@ -535,6 +599,8 @@ class PipelineState:
 
         if stage_type in {"parse", "ir-validation"}:
             self.require_payloads()
+        elif stage_type == "download":
+            self.require_payloads()
         elif stage_type == "chunk":
             self.require_document()
         elif stage_type == "embed":
@@ -548,6 +614,8 @@ class PipelineState:
             # state must contain the tuple marker.
             if self.entities is None or self.claims is None:
                 raise ValueError("PipelineState requires extraction outputs before KG stage")
+        elif stage_type == "gate":
+            self.require_downloads()
         elif stage_type == "download":
             self.require_document()
         elif stage_type == "gate":
@@ -568,6 +636,8 @@ class PipelineState:
             "index": "index_receipt",
             "extract": "extraction",
             "knowledge-graph": "graph_receipt",
+            "download": "downloads",
+            "gate": "gate_decisions",
             "pdf-download": "metadata",
             "pdf-ir-gate": "metadata",
             "download": "pdf_assets",
@@ -613,6 +683,16 @@ class PipelineState:
             if not isinstance(output, GraphWriteReceipt):
                 raise TypeError("Knowledge graph stage must return a GraphWriteReceipt")
             self.set_graph_receipt(output)
+        elif stage_type == "download":
+            if not isinstance(output, Sequence) or not all(
+                isinstance(item, DownloadArtifact) for item in output
+            ):
+                raise TypeError("Download stage must return DownloadArtifact instances")
+            self.set_downloads(output)
+        elif stage_type == "gate":
+            if not isinstance(output, GateDecision):
+                raise TypeError("Gate stage must return a GateDecision")
+            self.record_gate_decision(output)
         elif stage_type == "pdf-download":
             metadata = output if isinstance(output, Mapping) else None
             self.mark_pdf_downloaded(metadata=metadata)
@@ -632,6 +712,12 @@ class PipelineState:
 
         self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
         self._mark_dirty()
+        logger.debug(
+            "pipeline_state.stage_output_applied",
+            stage=stage_name,
+            stage_type=stage_type,
+            tenant_id=self._tenant_id,
+        )
 
     def infer_output_count(self, stage_type: str, output: Any) -> int:
         if output is None:
@@ -653,6 +739,8 @@ class PipelineState:
             return output.nodes_written
         if stage_type == "download" and isinstance(output, Sequence):
             return len(output)
+        if stage_type == "gate" and isinstance(output, GateDecision):
+            return int(output.ready)
         if stage_type == "gate" and isinstance(output, bool):
             return 1
         return 1
@@ -798,6 +886,10 @@ class PipelineState:
             claims=tuple(copy.deepcopy(self.claims)),
             index_receipt=copy.deepcopy(self.index_receipt),
             graph_receipt=copy.deepcopy(self.graph_receipt),
+            downloads=tuple(copy.deepcopy(self.downloads)),
+            gate_decisions={
+                name: copy.deepcopy(decision) for name, decision in self.gate_decisions.items()
+            },
             pdf_assets=tuple(copy.deepcopy(self.pdf_assets)),
             gate_status=dict(self.gate_status),
             metadata=copy.deepcopy(self.metadata),
@@ -826,6 +918,10 @@ class PipelineState:
         self.claims = tuple(copy.deepcopy(snapshot.claims))
         self.index_receipt = copy.deepcopy(snapshot.index_receipt)
         self.graph_receipt = copy.deepcopy(snapshot.graph_receipt)
+        self.downloads = tuple(copy.deepcopy(snapshot.downloads))
+        self.gate_decisions = {
+            name: copy.deepcopy(decision) for name, decision in snapshot.gate_decisions.items()
+        }
         self.pdf_assets = tuple(copy.deepcopy(snapshot.pdf_assets))
         self.gate_status = dict(snapshot.gate_status)
         self.metadata = copy.deepcopy(snapshot.metadata)
@@ -877,6 +973,8 @@ class PipelineState:
             "metadata": copy.deepcopy(self.metadata),
             "index_receipt": self.index_receipt.metadata if self.index_receipt else None,
             "graph_receipt": self.graph_receipt.metadata if self.graph_receipt else None,
+            "download_count": len(self.downloads),
+            "gate_status": {name: decision.ready for name, decision in self.gate_decisions.items()},
             "gate_status": dict(self.gate_status),
         }
         if self.pdf_assets:
@@ -902,6 +1000,15 @@ class PipelineState:
         if use_cache:
             self._serialised_cache = copy.deepcopy(payload)
             self._dirty = False
+        serialised = copy.deepcopy(snapshot)
+        PIPELINE_STATE_SERIALISATIONS.inc()
+        logger.debug(
+            "pipeline_state.serialised",
+            tenant_id=self._tenant_id,
+            payload_count=len(self.payloads),
+            stage_count=len(self.stage_results),
+        )
+        return serialised
         else:
             self._serialised_cache = None
             self._cache.payload = copy.deepcopy(snapshot)
@@ -963,6 +1070,7 @@ class PipelineState:
             or f"state-{id(self)}"
         )
 
+        return orjson.dumps(self.serialise()).decode("utf-8")
     def to_model(self) -> PipelineStateModel:
         """Return the Pydantic representation for the current state."""
         if not self._dirty and self._cache.json_bytes is not None:
@@ -1086,6 +1194,12 @@ class PipelineState:
             entries["entity_count"] = (len(self.entities), len(other.entities))
         if len(self.claims) != len(other.claims):
             entries["claim_count"] = (len(self.claims), len(other.claims))
+        if len(self.downloads) != len(other.downloads):
+            entries["download_count"] = (len(self.downloads), len(other.downloads))
+        self_gates = {name: decision.ready for name, decision in self.gate_decisions.items()}
+        other_gates = {name: decision.ready for name, decision in other.gate_decisions.items()}
+        if self_gates != other_gates:
+            entries["gate_status"] = (self_gates, other_gates)
         if len(self.pdf_assets) != len(other.pdf_assets):
             entries["pdf_asset_count"] = (len(self.pdf_assets), len(other.pdf_assets))
         if self.gate_status != other.gate_status:
@@ -1123,6 +1237,9 @@ class PipelineState:
         else:
             recovered = payload
 
+        if not isinstance(recovered, Mapping):
+            recovered = {}
+
         state = cls.initialise(
             context=context,
             adapter_request=adapter_request,
@@ -1143,6 +1260,12 @@ class PipelineState:
                         output_count=payload_data.get("output_count"),
                         error=payload_data.get("error"),
                     )
+        gates = recovered.get("gate_status")
+        if isinstance(gates, Mapping):
+            for name, ready in gates.items():
+                state.gate_decisions[str(name)] = GateDecision(
+                    name=str(name), ready=bool(ready)
+                )
         pdf_payload = recovered.get("pdf_assets")
         if isinstance(pdf_payload, Sequence):
             state.set_pdf_assets(pdf_payload)
@@ -1384,16 +1507,35 @@ class KGStage(Protocol):
     def execute(self, ctx: StageContext, state: PipelineState) -> GraphWriteReceipt: ...
 
 
+@runtime_checkable
+class DownloadStage(Protocol):
+    """Download raw assets required for downstream processing."""
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]: ...
+
+
+@runtime_checkable
+class GateStage(Protocol):
+    """Enforce conditional progression based on external readiness signals."""
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision: ...
+
+
 __all__ = [
     "ChunkStage",
     "EmbedStage",
     "EmbeddingBatch",
     "EmbeddingVector",
+    "DownloadArtifact",
+    "GateDecision",
     "ExtractStage",
     "GraphWriteReceipt",
     "IngestStage",
     "IndexReceipt",
     "IndexStage",
+    "DownloadStage",
+    "GateStage",
+    "PipelineGateNotReady",
     "PipelineState",
     "PipelineStateSnapshot",
     "PipelineStateValidationError",

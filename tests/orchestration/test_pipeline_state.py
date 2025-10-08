@@ -15,6 +15,8 @@ from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
     EmbeddingVector,
+    DownloadArtifact,
+    GateDecision,
     GraphWriteReceipt,
     IndexReceipt,
     PipelineState,
@@ -57,6 +59,16 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     payloads = [{"id": "p1"}]
     state.apply_stage_output("ingest", "ingest", payloads)
     assert state.require_payloads() == tuple(payloads)
+
+    artifacts = [
+        DownloadArtifact(document_id="doc-1", tenant_id="tenant", uri="s3://bucket/a.pdf")
+    ]
+    state.apply_stage_output("download", "download", artifacts)
+    assert state.require_downloads()[0].uri.endswith("a.pdf")
+
+    gate_decision = GateDecision(name="pdf_gate", ready=True)
+    state.apply_stage_output("gate", "pdf_gate", gate_decision)
+    assert state.get_gate_decision("pdf_gate").ready is True
 
     document = _build_document()
     state.apply_stage_output("parse", "parse", document)
@@ -113,6 +125,8 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     assert snapshot["payload_count"] == 1
     assert snapshot["chunk_count"] == 1
     assert snapshot["embedding_count"] == 1
+    assert snapshot["download_count"] == 1
+    assert snapshot["gate_status"]["pdf_gate"] is True
     assert snapshot["stage_results"]["index"]["output_count"] == 1
     assert snapshot["pdf_asset_count"] == 1
     assert snapshot["gate_status"]["pdf_gate"] is True
@@ -203,9 +217,27 @@ def test_diff_reports_changes_between_states() -> None:
             )
         ],
     )
+    mutated.apply_stage_output(
+        "download",
+        "download",
+        [
+            DownloadArtifact(
+                document_id="d1",
+                tenant_id="tenant",
+                uri="s3://bucket/doc.pdf",
+            )
+        ],
+    )
+
     diff = mutated.diff(baseline)
     assert diff["payload_count"] == (1, 0)
     assert diff["chunk_count"] == (1, 0)
+    assert diff["download_count"] == (1, 0)
+    assert "gate_status" not in diff
+
+    mutated.record_gate_decision(GateDecision(name="pdf_gate", ready=False))
+    diff = mutated.diff(baseline)
+    assert diff["gate_status"] == ({"pdf_gate": False}, {})
     assert "pipeline_version" not in diff
 
 

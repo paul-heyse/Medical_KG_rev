@@ -695,6 +695,104 @@ class PdfGateState:
         self.metadata.update(dict(values))
 
 
+@dataclass(slots=True)
+class StagePerformanceSample:
+    """Profiled metrics captured during stage lifecycle notifications."""
+
+    stage: str
+    stage_type: str
+    duration_ms: int
+    measured_ms: int
+    attempts: int
+    output_count: int
+    timestamp: float
+
+
+@dataclass(slots=True)
+class PipelineStateLifecycleHook:
+    """Callback hooks executed when stages progress."""
+
+    on_started: Callable[["PipelineState", str, str], None] | None = None
+    on_completed: Callable[[
+        "PipelineState",
+        str,
+        str,
+        int,
+        int,
+        int,
+    ], None] | None = None
+    on_failed: Callable[["PipelineState", str, str, BaseException], None] | None = None
+
+
+@dataclass(slots=True)
+class PipelineStateProfiler:
+    """Collects lightweight profiling statistics for pipeline stages."""
+
+    samples: list[StagePerformanceSample] = field(default_factory=list)
+    _inflight: dict[str, float] = field(default_factory=dict, init=False, repr=False)
+
+    def on_stage_started(self, _state: "PipelineState", stage: str, stage_type: str) -> None:
+        self._inflight[stage] = time.perf_counter()
+
+    def on_stage_completed(
+        self,
+        _state: "PipelineState",
+        stage: str,
+        stage_type: str,
+        duration_ms: int,
+        attempts: int,
+        output_count: int,
+    ) -> None:
+        start = self._inflight.pop(stage, None)
+        measured_ms = duration_ms
+        if start is not None:
+            measured_ms = int((time.perf_counter() - start) * 1000)
+        self.samples.append(
+            StagePerformanceSample(
+                stage=stage,
+                stage_type=stage_type,
+                duration_ms=duration_ms,
+                measured_ms=measured_ms,
+                attempts=attempts,
+                output_count=output_count,
+                timestamp=time.time(),
+            )
+        )
+
+    def on_stage_failed(
+        self,
+        _state: "PipelineState",
+        stage: str,
+        _stage_type: str,
+        _error: BaseException,
+    ) -> None:
+        self._inflight.pop(stage, None)
+
+    def summary(self) -> dict[str, Any]:
+        totals: dict[str, dict[str, Any]] = {}
+        for sample in self.samples:
+            entry = totals.setdefault(
+                sample.stage,
+                {
+                    "stage_type": sample.stage_type,
+                    "count": 0,
+                    "duration_ms": 0,
+                    "measured_ms": 0,
+                    "attempts": 0,
+                    "outputs": 0,
+                },
+            )
+            entry["count"] += 1
+            entry["duration_ms"] += sample.duration_ms
+            entry["measured_ms"] += sample.measured_ms
+            entry["attempts"] += sample.attempts
+            entry["outputs"] += sample.output_count
+        return {
+            "total_stages": len(self.samples),
+            "stages": totals,
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class PipelineStateSnapshot:
     """Immutable snapshot used for state rollback and diagnostics."""
@@ -795,8 +893,15 @@ class PipelineState:
     _cache: _StateCache = field(default_factory=_StateCache, init=False, repr=False)
     _tenant_id: str = field(init=False, repr=False)
     _checkpoints: dict[str, PipelineStateSnapshot] = field(default_factory=dict, init=False, repr=False)
+    _lifecycle_hooks: list[PipelineStateLifecycleHook] = field(
+        default_factory=list, init=False, repr=False
+    )
+    _profiler: PipelineStateProfiler = field(default_factory=PipelineStateProfiler, init=False, repr=False)
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
+    _STAGE_DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
+        "parse": ("ingest",),
+        "ir-validation": ("parse",),
     _DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
         "parse": ("ingest",),
         "ir-validation": ("ingest", "parse"),
@@ -805,6 +910,9 @@ class PipelineState:
         "index": ("embed",),
         "extract": ("parse",),
         "knowledge-graph": ("extract",),
+        "download": ("ingest",),
+        "gate": ("download",),
+    }
         "pdf-download": ("ingest",),
         "pdf-gate": ("pdf-download",),
     }
@@ -836,6 +944,13 @@ class PipelineState:
             except ValidationError as exc:  # pragma: no cover - defensive guard
                 raise PipelineStateValidationError(str(exc)) from exc
         self._tenant_id = self.context.tenant_id
+        self.register_lifecycle_hook(
+            PipelineStateLifecycleHook(
+                on_started=self._profiler.on_stage_started,
+                on_completed=self._profiler.on_stage_completed,
+                on_failed=self._profiler.on_stage_failed,
+            )
+        )
 
     @classmethod
     def initialise(
@@ -853,6 +968,12 @@ class PipelineState:
             payload=dict(payload or {}),
             job_id=context.job_id,
         )
+
+    @classmethod
+    def required_stage_types(cls, stage_type: str) -> tuple[str, ...]:
+        """Return the upstream stage types required before executing ``stage_type``."""
+
+        return cls._STAGE_DEPENDENCIES.get(stage_type, ())
 
     # ------------------------------------------------------------------
     # Accessors
@@ -911,6 +1032,49 @@ class PipelineState:
             label: copy.deepcopy(snapshot) for label, snapshot in self._checkpoints.items()
         }
         return clone
+
+    def register_lifecycle_hook(self, hook: PipelineStateLifecycleHook) -> None:
+        """Register a lifecycle hook that observes stage progress."""
+
+        self._lifecycle_hooks.append(hook)
+
+    def notify_stage_started(self, stage: str, stage_type: str) -> None:
+        for hook in self._lifecycle_hooks:
+            if hook.on_started:
+                hook.on_started(self, stage, stage_type)
+
+    def notify_stage_completed(
+        self,
+        stage: str,
+        stage_type: str,
+        *,
+        duration_ms: int,
+        attempts: int,
+        output_count: int,
+    ) -> None:
+        for hook in self._lifecycle_hooks:
+            if hook.on_completed:
+                hook.on_completed(
+                    self,
+                    stage,
+                    stage_type,
+                    duration_ms,
+                    attempts,
+                    output_count,
+                )
+
+    def notify_stage_failed(self, stage: str, stage_type: str, error: BaseException) -> None:
+        for hook in self._lifecycle_hooks:
+            if hook.on_failed:
+                hook.on_failed(self, stage, stage_type, error)
+
+    def profiling_summary(self) -> dict[str, Any]:
+        """Return aggregated profiling metrics recorded for the pipeline run."""
+
+        return self._profiler.summary()
+
+    def profiling_samples(self) -> tuple[StagePerformanceSample, ...]:
+        return tuple(self._profiler.samples)
 
     @property
     def tenant_id(self) -> str:

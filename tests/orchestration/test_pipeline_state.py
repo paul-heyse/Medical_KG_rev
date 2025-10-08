@@ -21,8 +21,10 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     GraphWriteReceipt,
     IndexReceipt,
     PipelineState,
+    PipelineStateLifecycleHook,
     PipelineStateSnapshot,
     PipelineStateValidationError,
+    StagePerformanceSample,
     StageContext,
     StageResultSnapshot,
 )
@@ -421,3 +423,63 @@ def test_validate_transition_requires_pdf_assets_for_gate() -> None:
         [{"asset_id": "pdf-1", "uri": "s3://bucket/file.pdf"}],
     )
     state.validate_transition("gate")
+
+
+def test_pipeline_state_lifecycle_hooks_and_profiling() -> None:
+    state = _sample_state()
+    events: list[tuple[str, str]] = []
+
+    def _on_started(_state: PipelineState, stage: str, stage_type: str) -> None:
+        events.append(("started", f"{stage}:{stage_type}"))
+
+    def _on_completed(
+        _state: PipelineState,
+        stage: str,
+        stage_type: str,
+        duration_ms: int,
+        attempts: int,
+        output_count: int,
+    ) -> None:
+        events.append(("completed", f"{stage}:{duration_ms}:{attempts}:{output_count}"))
+
+    def _on_failed(
+        _state: PipelineState,
+        stage: str,
+        stage_type: str,
+        error: BaseException,
+    ) -> None:
+        events.append(("failed", f"{stage}:{stage_type}:{error}"))
+
+    hook = PipelineStateLifecycleHook(
+        on_started=_on_started,
+        on_completed=_on_completed,
+        on_failed=_on_failed,
+    )
+    state.register_lifecycle_hook(hook)
+
+    state.notify_stage_started("chunk", "chunk")
+    state.notify_stage_completed(
+        "chunk",
+        "chunk",
+        duration_ms=25,
+        attempts=2,
+        output_count=3,
+    )
+    state.notify_stage_failed("chunk", "chunk", RuntimeError("boom"))
+
+    assert events[0][0] == "started"
+    assert events[1][0] == "completed"
+    assert events[2][0] == "failed"
+
+    summary = state.profiling_summary()
+    assert summary["total_stages"] == 1
+    assert summary["stages"]["chunk"]["outputs"] == 3
+    samples = state.profiling_samples()
+    assert len(samples) == 1
+    assert isinstance(samples[0], StagePerformanceSample)
+
+
+def test_required_stage_types_surface_dependencies() -> None:
+    assert PipelineState.required_stage_types("embed") == ("chunk",)
+    assert PipelineState.required_stage_types("index") == ("embed",)
+    assert PipelineState.required_stage_types("unknown") == ()

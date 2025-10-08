@@ -32,6 +32,7 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
+    derive_stage_execution_order,
 )
 from Medical_KG_rev.orchestration.dagster.stages import (
     HaystackPipelineResource,
@@ -43,6 +44,7 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
+from Medical_KG_rev.orchestration.dagster.types import PIPELINE_STATE_DAGSTER_TYPE
 from Medical_KG_rev.orchestration.stages.plugin_manager import (
     StagePluginContext,
     StagePluginExecutionError,
@@ -143,7 +145,7 @@ def build_stage_factory(
 
 @op(
     name="bootstrap",
-    out=Out(PipelineState),
+    out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
     config_schema={
         "context": dict,
         "adapter_request": dict,
@@ -191,8 +193,8 @@ def _make_stage_op(
 
     @op(
         name=stage_name,
-        ins={"state": In(PipelineState)},
-        out=Out(PipelineState),
+        ins={"state": In(dagster_type=PIPELINE_STATE_DAGSTER_TYPE)},
+        out=Out(dagster_type=PIPELINE_STATE_DAGSTER_TYPE),
         required_resource_keys={
             "stage_factory",
             "resilience_policies",
@@ -272,6 +274,7 @@ def _make_stage_op(
                 state.ensure_dependencies(stage_name, dependencies)
             state.validate_transition(stage_type)
             state.create_checkpoint(checkpoint_label)
+            state.notify_stage_started(stage_name, stage_type)
             result = wrapped(stage_ctx, state)
         except Exception as exc:
             attempts = execution_state.get("attempts") or 1
@@ -282,6 +285,7 @@ def _make_stage_op(
                 stage_type=stage_type,
             )
             state.clear_checkpoint(checkpoint_label)
+            state.notify_stage_failed(stage_name, stage_type, exc)
             snapshot_b64 = state.serialise_base64()
             if job_id:
                 try:
@@ -321,6 +325,13 @@ def _make_stage_op(
             stage_type=stage_type,
             attempts=attempts,
             duration_ms=duration_ms,
+            output_count=output_count,
+        )
+        state.notify_stage_completed(
+            stage_name,
+            stage_type,
+            duration_ms=duration_ms,
+            attempts=attempts,
             output_count=output_count,
         )
         cache_key = job_id or stage_ctx.correlation_id or stage_name
@@ -376,26 +387,7 @@ def _make_stage_op(
 
 
 def _topological_order(stages: list[StageDefinition]) -> list[str]:
-    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
-    resolved: list[str] = []
-    temporary: set[str] = set()
-    permanent: set[str] = set()
-
-    def visit(node: str) -> None:
-        if node in permanent:
-            return
-        if node in temporary:
-            raise ValueError(f"Cycle detected involving stage '{node}'")
-        temporary.add(node)
-        for dep in graph.get(node, set()):
-            visit(dep)
-        temporary.remove(node)
-        permanent.add(node)
-        resolved.append(node)
-
-    for stage in graph:
-        visit(stage)
-    return resolved
+    return derive_stage_execution_order(stages)
 
 
 @dataclass(slots=True)

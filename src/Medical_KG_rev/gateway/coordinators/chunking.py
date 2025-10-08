@@ -15,6 +15,9 @@ from Medical_KG_rev.chunking.exceptions import (
     ProfileNotFoundError,
     TokenizerMismatchError,
 )
+from Medical_KG_rev.gateway.models import DocumentChunk, ProblemDetail
+from Medical_KG_rev.observability.metrics import record_chunking_failure
+from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions, ChunkingService
 from Medical_KG_rev.gateway.models import DocumentChunk
 from Medical_KG_rev.observability.metrics import record_chunking_failure
 from Medical_KG_rev.services.retrieval.chunking import ChunkCommand, ChunkingService

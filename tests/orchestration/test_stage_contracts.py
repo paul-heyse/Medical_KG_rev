@@ -2,6 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
+pytest.importorskip("pydantic")
+
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
@@ -63,45 +65,45 @@ def test_default_stage_factory_complies_with_protocols(stage_context, adapter_re
     manager = StubPluginManager()
     registry = build_default_stage_factory(manager)
 
-    ingest = registry["ingest"](
+    ingest = registry.get_builder("ingest")(
         _definition("ingest", "ingest", {"adapter": "clinical-trials", "strict": False})
     )
     assert isinstance(ingest, IngestStage)
     payloads = ingest.execute(stage_context, adapter_request)
     assert payloads and isinstance(payloads[0], dict)
 
-    parse = registry["parse"](_definition("parse", "parse"))
+    parse = registry.get_builder("parse")(_definition("parse", "parse"))
     assert isinstance(parse, ParseStage)
     document = parse.execute(stage_context, payloads)
 
-    validator = registry["ir-validation"](_definition("ir-validation", "ir_validation"))
+    validator = registry.get_builder("ir-validation")(_definition("ir-validation", "ir_validation"))
     assert isinstance(validator, ParseStage)
     validated = validator.execute(stage_context, document)
     assert validated is document
 
-    chunker = registry["chunk"](_definition("chunk", "chunk"))
+    chunker = registry.get_builder("chunk")(_definition("chunk", "chunk"))
     assert isinstance(chunker, ChunkStage)
     chunks = chunker.execute(stage_context, document)
     assert chunks and chunks[0].doc_id == document.id
 
-    embedder = registry["embed"](_definition("embed", "embed"))
+    embedder = registry.get_builder("embed")(_definition("embed", "embed"))
     assert isinstance(embedder, EmbedStage)
     batch = embedder.execute(stage_context, chunks)
     assert isinstance(batch, EmbeddingBatch)
     assert batch.vectors
 
-    indexer = registry["index"](_definition("index", "index"))
+    indexer = registry.get_builder("index")(_definition("index", "index"))
     assert isinstance(indexer, IndexStage)
     receipt = indexer.execute(stage_context, batch)
     assert isinstance(receipt, IndexReceipt)
     assert receipt.chunks_indexed == len(batch.vectors)
 
-    extractor = registry["extract"](_definition("extract", "extract"))
+    extractor = registry.get_builder("extract")(_definition("extract", "extract"))
     assert isinstance(extractor, ExtractStage)
     entities, claims = extractor.execute(stage_context, document)
     assert entities == [] and claims == []
 
-    kg_stage = registry["knowledge-graph"](_definition("knowledge-graph", "kg"))
+    kg_stage = registry.get_builder("knowledge-graph")(_definition("knowledge-graph", "kg"))
     assert isinstance(kg_stage, KGStage)
     graph_receipt = kg_stage.execute(stage_context, entities, claims)
     assert isinstance(graph_receipt, GraphWriteReceipt)

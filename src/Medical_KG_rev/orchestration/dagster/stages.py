@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Sequence
+from typing import Any, Mapping
 from uuid import uuid4
 
 import structlog
@@ -15,6 +16,11 @@ from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+from Medical_KG_rev.orchestration.dagster.stage_registry import (
+    StageMetadata,
+    StageRegistry,
+    StageRegistryError,
+)
 from Medical_KG_rev.orchestration.haystack.components import (
     HaystackChunker,
     HaystackEmbedder,
@@ -34,6 +40,79 @@ from Medical_KG_rev.orchestration.stages.contracts import (
 from Medical_KG_rev.orchestration.stages.contracts import RawPayload
 
 logger = structlog.get_logger(__name__)
+
+
+def _sequence_length(output: Any) -> int:
+    if isinstance(output, Sequence) and not isinstance(output, (str, bytes)):
+        return len(output)
+    return 0
+
+
+def _count_single(output: Any) -> int:
+    return 1 if output is not None else 0
+
+
+def _count_embed(output: Any) -> int:
+    vectors = getattr(output, "vectors", None)
+    if isinstance(vectors, Sequence):
+        return len(vectors)
+    return 0
+
+
+def _count_index(output: Any) -> int:
+    indexed = getattr(output, "chunks_indexed", None)
+    if isinstance(indexed, int):
+        return max(indexed, 0)
+    return 0
+
+
+def _count_extract(output: Any) -> int:
+    if not isinstance(output, tuple) or len(output) != 2:
+        return 0
+    entities, claims = output
+    entity_count = _sequence_length(entities)
+    claim_count = _sequence_length(claims)
+    return entity_count + claim_count
+
+
+def _count_graph(output: Any) -> int:
+    nodes = getattr(output, "nodes_written", None)
+    if isinstance(nodes, int):
+        return max(nodes, 0)
+    return 0
+
+
+def _handle_ingest(state: dict[str, Any], _: str, output: Any) -> None:
+    state["payloads"] = output
+
+
+def _handle_document(state: dict[str, Any], _: str, output: Any) -> None:
+    state["document"] = output
+
+
+def _handle_chunks(state: dict[str, Any], _: str, output: Any) -> None:
+    state["chunks"] = output
+
+
+def _handle_embedding_batch(state: dict[str, Any], _: str, output: Any) -> None:
+    state["embedding_batch"] = output
+
+
+def _handle_index_receipt(state: dict[str, Any], _: str, output: Any) -> None:
+    state["index_receipt"] = output
+
+
+def _handle_extract(state: dict[str, Any], _: str, output: Any) -> None:
+    entities: Any = []
+    claims: Any = []
+    if isinstance(output, tuple) and len(output) == 2:
+        entities, claims = output
+    state["entities"] = list(entities) if isinstance(entities, Sequence) else entities
+    state["claims"] = list(claims) if isinstance(claims, Sequence) else claims
+
+
+def _handle_graph_receipt(state: dict[str, Any], _: str, output: Any) -> None:
+    state["graph_receipt"] = output
 
 
 class AdapterIngestStage(IngestStage):
@@ -250,8 +329,8 @@ def create_default_pipeline_resource() -> HaystackPipelineResource:
 def build_default_stage_factory(
     manager: AdapterPluginManager,
     pipeline: HaystackPipelineResource | None = None,
-) -> dict[str, Callable[[StageDefinition], object]]:
-    """Return builder mappings for standard Dagster stage types."""
+) -> StageRegistry:
+    """Build the default stage registry with built-in metadata and builders."""
 
     pipeline = pipeline or create_default_pipeline_resource()
     splitter = pipeline.splitter
@@ -300,14 +379,110 @@ def build_default_stage_factory(
     def _kg_builder(_: StageDefinition) -> KGStage:
         return NoOpKnowledgeGraphStage()
 
-    registry: dict[str, Callable[[StageDefinition], object]] = {
-        "ingest": _ingest_builder,
-        "parse": _parse_builder,
-        "ir-validation": _validation_builder,
-        "chunk": _chunk_builder,
-        "embed": _embed_builder,
-        "index": _index_builder,
-        "extract": _extract_builder,
-        "knowledge-graph": _kg_builder,
-    }
+    registry = StageRegistry()
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="ingest",
+            state_key="payloads",
+            output_handler=_handle_ingest,
+            output_counter=_sequence_length,
+            description="Fetches raw payloads from an adapter",
+        ),
+        builder=_ingest_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="parse",
+            state_key="document",
+            output_handler=_handle_document,
+            output_counter=_count_single,
+            description="Parses raw payloads into an IR document",
+            dependencies=("ingest",),
+        ),
+        builder=_parse_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="ir-validation",
+            state_key="document",
+            output_handler=_handle_document,
+            output_counter=_count_single,
+            description="Validates parsed documents before downstream stages",
+            dependencies=("parse",),
+        ),
+        builder=_validation_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="chunk",
+            state_key="chunks",
+            output_handler=_handle_chunks,
+            output_counter=_sequence_length,
+            description="Splits documents into retrieval-ready chunks",
+            dependencies=("parse", "ir-validation"),
+        ),
+        builder=_chunk_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="embed",
+            state_key="embedding_batch",
+            output_handler=_handle_embedding_batch,
+            output_counter=_count_embed,
+            description="Generates embeddings for document chunks",
+            dependencies=("chunk",),
+        ),
+        builder=_embed_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="index",
+            state_key="index_receipt",
+            output_handler=_handle_index_receipt,
+            output_counter=_count_index,
+            description="Writes embeddings to downstream indexes",
+            dependencies=("embed",),
+        ),
+        builder=_index_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="extract",
+            state_key=("entities", "claims"),
+            output_handler=_handle_extract,
+            output_counter=_count_extract,
+            description="Extracts biomedical entities and claims",
+            dependencies=("parse",),
+        ),
+        builder=_extract_builder,
+    )
+    registry.register_stage(
+        metadata=StageMetadata(
+            stage_type="knowledge-graph",
+            state_key="graph_receipt",
+            output_handler=_handle_graph_receipt,
+            output_counter=_count_graph,
+            description="Persists extracted facts into the knowledge graph",
+            dependencies=("extract",),
+        ),
+        builder=_kg_builder,
+    )
+    try:
+        from Medical_KG_rev.orchestration import stage_plugins
+
+        for plugin_factory in (stage_plugins.register_download_stage, stage_plugins.register_gate_stage):
+            registration = None
+            try:
+                registration = plugin_factory()
+                registry.register(registration)
+            except StageRegistryError as exc:
+                stage_type = registration.metadata.stage_type if registration else getattr(plugin_factory, "__name__", "unknown")
+                logger.debug(
+                    "dagster.stage.registry.plugin_skipped",
+                    stage_type=stage_type,
+                    error=str(exc),
+                )
+    except Exception as exc:  # pragma: no cover - defensive guard
+        logger.warning("dagster.stage.registry.plugin_init_failed", error=str(exc))
+    registry.load_plugins()
     return registry

@@ -34,6 +34,13 @@ from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
+from .boosting import (
+    ClinicalIntent,
+    ClinicalIntentAnalysis,
+    ClinicalIntentAnalyzer,
+    DEFAULT_INTENT_BOOSTS,
+    infer_document_intents,
+)
 from .faiss_index import FAISSIndex
 from .hybrid import HybridComponentSettings, HybridSearchCoordinator
 from .opensearch_client import OpenSearchClient
@@ -80,6 +87,8 @@ class RetrievalService:
         model_registry: RerankerModelRegistry | None = None,
         hybrid_coordinator: HybridSearchCoordinator | None = None,
         hybrid_settings: HybridComponentSettings | None = None,
+        intent_analyzer: ClinicalIntentAnalyzer | None = None,
+        clinical_threshold: float = 0.6,
     ) -> None:
         self.opensearch = opensearch
         self.faiss = faiss
@@ -96,6 +105,10 @@ class RetrievalService:
         self._hybrid = hybrid_coordinator or self._build_hybrid_coordinator(
             hybrid_settings
         )
+        self._intent_analyzer = intent_analyzer or ClinicalIntentAnalyzer(
+            threshold=clinical_threshold
+        )
+        self._clinical_threshold = float(clinical_threshold)
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
@@ -140,11 +153,19 @@ class RetrievalService:
         )
         self._candidate_pool = max(100, pipeline_settings.retrieve_candidates)
         self.reranker = reranker or CrossEncoderReranker()
+
+        base_model_key = self._model_registry.resolve_key(None)
+        self._default_model_key = base_model_key
+        self._default_model_handle = self._ensure_model(base_model_key)
+
         configured_model_key: str | None = None
         if reranking_settings and reranking_settings.model.model:
             configured_model_key = reranking_settings.model.model
-        self._default_model_key = self._resolve_model_key(configured_model_key)
-        self._default_model_handle = self._ensure_model(self._default_model_key)
+        if configured_model_key:
+            resolved_key = self._resolve_model_key(configured_model_key)
+            if resolved_key != self._default_model_key:
+                self._default_model_key = resolved_key
+                self._default_model_handle = self._ensure_model(resolved_key)
         configured_reranker = (
             reranking_settings.model.reranker_id
             if reranking_settings and reranking_settings.model.reranker_id
@@ -167,6 +188,10 @@ class RetrievalService:
         rerank_model: str | None = None,
         context: SecurityContext | None = None,
         explain: bool = False,
+        clinical_intent: str
+        | ClinicalIntent
+        | Sequence[str | ClinicalIntent]
+        | None = None,
     ) -> list[RetrievalResult]:
         security_context = context or (
             self._context_factory()
@@ -174,11 +199,13 @@ class RetrievalService:
             else SecurityContext(subject="system", tenant_id="system", scopes={"*"})
         )
         namespace = self._resolve_namespace(embedding_kind)
+        filters_payload = dict(filters or {})
+        override_from_filters = filters_payload.pop("clinical_intent", None)
         component_k = max(k, self._candidate_pool)
         component_results, component_errors, component_timings = self._execute_components(
             index=index,
             query=query,
-            filters=filters or {},
+            filters=filters_payload,
             namespace=namespace,
             top_k=component_k,
             context=security_context,
@@ -187,6 +214,15 @@ class RetrievalService:
             component: self._materialise_documents(results, security_context, strategy=component)
             for component, results in component_results.items()
         }
+
+        override_intents = self._intent_analyzer.resolve_overrides(
+            clinical_intent or override_from_filters
+        )
+        boosting_metadata = self._apply_clinical_boosting(
+            query=query,
+            candidates=candidate_lists,
+            override=override_intents,
+        )
 
         decision = self._rerank_policy.decide(
             security_context.tenant_id, query, rerank
@@ -241,6 +277,8 @@ class RetrievalService:
         metrics["components"]["errors"] = list(component_errors)
         if component_timings:
             metrics["components"]["timings_ms"] = dict(component_timings)
+        if boosting_metadata:
+            metrics.setdefault("boosting", {})["clinical_summary"] = boosting_metadata
         rerank_metadata = dict(metrics.get("reranking", {}))
         rerank_metadata.update(decision.as_metadata())
         rerank_metadata.setdefault("requested", rerank)
@@ -268,9 +306,17 @@ class RetrievalService:
             metadata.setdefault("components", {})
             metadata["components"].setdefault("errors", list(component_errors))
             if component_timings:
-                metadata["components"].setdefault("timings_ms", dict(component_timings))
+                timings_ms = dict(component_timings)
+                metadata["components"].setdefault("timings_ms", timings_ms)
+                metadata.setdefault("timing", timings_ms)
             if rerank_metadata:
                 metadata.setdefault("reranking", rerank_metadata)
+            if boosting_metadata:
+                boost_meta = metadata.setdefault("boosting", {})
+                boost_meta["clinical_summary"] = boosting_metadata
+                clinical_details = boost_meta.get("clinical")
+                if clinical_details and "clinical_details" not in boost_meta:
+                    boost_meta["clinical_details"] = clinical_details
             result = RetrievalResult(
                 id=document.doc_id,
                 text=document.content,
@@ -284,6 +330,94 @@ class RetrievalService:
                 metadata.setdefault("pipeline_metrics", metrics)
             results.append(result)
         return results
+
+    # ------------------------------------------------------------------
+    def _apply_clinical_boosting(
+        self,
+        *,
+        query: str,
+        candidates: Mapping[str, list[ScoredDocument]],
+        override: Sequence[ClinicalIntent],
+    ) -> dict[str, object]:
+        if not self._intent_analyzer:
+            return {}
+        analysis: ClinicalIntentAnalysis = self._intent_analyzer.analyse(
+            query,
+            override=override,
+        )
+        if not analysis.intents:
+            return {
+                "applied": False,
+                "intents": analysis.as_dict()["intents"],
+                "override": [intent.value for intent in analysis.override],
+                "threshold": self._clinical_threshold,
+            }
+        eligible_scores = [
+            score
+            for score in analysis.intents
+            if score.confidence >= self._clinical_threshold or analysis.override
+        ]
+        if not eligible_scores:
+            return {
+                "applied": False,
+                "intents": analysis.as_dict()["intents"],
+                "override": [intent.value for intent in analysis.override],
+                "threshold": self._clinical_threshold,
+                "reason": "below_threshold",
+            }
+        applied_components: dict[str, int] = {}
+        for component, documents in candidates.items():
+            if component not in {"bm25", "splade"}:
+                continue
+            for document in documents:
+                base_score = document.strategy_scores.get(component, 0.0)
+                if base_score <= 0:
+                    continue
+                inferred = infer_document_intents(document.metadata)
+                matched = [
+                    score for score in eligible_scores if score.intent in inferred
+                ]
+                if not matched:
+                    continue
+                multiplier = 1.0
+                details: list[dict[str, object]] = []
+                for match in matched:
+                    boost = DEFAULT_INTENT_BOOSTS.get(match.intent, 1.5)
+                    intent_multiplier = 1.0 + (boost - 1.0) * match.confidence
+                    multiplier *= intent_multiplier
+                    details.append(
+                        {
+                            "intent": match.intent.value,
+                            "confidence": match.confidence,
+                            "base_multiplier": boost,
+                            "applied_multiplier": intent_multiplier,
+                        }
+                    )
+                boosted = base_score * multiplier
+                document.strategy_scores[component] = boosted
+                boost_meta = document.metadata.setdefault("boosting", {})
+                clinical_meta = boost_meta.setdefault("clinical", [])
+                clinical_meta.append(
+                    {
+                        "component": component,
+                        "base_score": base_score,
+                        "boosted_score": boosted,
+                        "multiplier": multiplier,
+                        "details": details,
+                    }
+                )
+                applied_components[component] = applied_components.get(component, 0) + 1
+            documents.sort(
+                key=lambda doc: doc.strategy_scores.get(component, 0.0),
+                reverse=True,
+            )
+        return {
+            "applied": bool(applied_components),
+            "intents": analysis.as_dict()["intents"],
+            "override": [intent.value for intent in analysis.override],
+            "threshold": self._clinical_threshold,
+            "components": applied_components,
+        }
 
     # ------------------------------------------------------------------
     def _execute_components(
@@ -593,4 +727,3 @@ class RetrievalService:
 
 
 __all__ = ["RetrievalResult", "RetrievalService"]
-

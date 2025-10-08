@@ -8,6 +8,12 @@ endpoint: http://vllm-embeddings:8001/v1
 parameters:
   timeout: 60
   max_tokens: 8192
+  candidate_batch_sizes:
+    - 32
+    - 64
+    - 128
+  gpu_memory_fraction: 0.9
+  gpu_memory_reserve_mb: 2048
 pooling: mean
 normalize: true
 batch_size: 64

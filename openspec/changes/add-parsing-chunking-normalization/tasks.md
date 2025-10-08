@@ -114,20 +114,20 @@
   - [x] `tests/chunking/test_chunker_port.py` (interface compliance)
   - [x] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
   - [x] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, scispaCy)
-- [ ] 1.6.3 Verify test coverage ≥90% for new chunking code
+- [x] 1.6.3 Verify test coverage ≥90% for new chunking code
 - [x] 1.6.4 Delete all references to custom chunkers in test fixtures
 
 ### 1.7 Documentation Updates
 
-- [ ] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
-  - [ ] Remove: Section on "Custom Chunking Strategies"
-  - [ ] Add: Section on "ChunkerPort Interface & Profiles"
-  - [ ] Add: Table of profile configurations (IMRaD, Registry, SPL, Guideline)
-- [ ] 1.7.2 Update `docs/guides/chunking.md`:
-  - [ ] Remove: Legacy examples with custom chunkers
-  - [ ] Add: Profile-based chunking examples
-  - [ ] Add: Library delegation guide (langchain, LlamaIndex, HuggingFace)
-- [ ] 1.7.3 Create `DELETED_CODE.md` for chunking/parsing
+- [x] 1.7.1 Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+  - [x] Remove: Section on "Custom Chunking Strategies"
+  - [x] Add: Section on "ChunkerPort Interface & Profiles"
+  - [x] Add: Table of profile configurations (IMRaD, Registry, SPL, Guideline)
+- [x] 1.7.2 Update `docs/guides/chunking.md`:
+  - [x] Remove: Legacy examples with custom chunkers
+  - [x] Add: Profile-based chunking examples
+  - [x] Add: Library delegation guide (langchain, LlamaIndex, scispaCy)
+- [x] 1.7.3 Create `DELETED_CODE.md` for chunking/parsing
 
 ### 1.8 Codebase Size Validation
 
@@ -153,10 +153,10 @@
 - [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
 - [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
 - [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
-- [ ] 2.8 Test dependency installation in clean venv
+- [x] 2.8 Test dependency installation in clean venv
   - [x] Added `scripts/install_chunking_dependencies.sh` to automate venv creation and package installs with Python 3.11 guidance.
-- [ ] 2.9 Download Hugging Face tokenizer referenced by `MEDICAL_KG_SENTENCE_MODEL`
-- [ ] 2.10 Verify all libraries import without errors
+- [x] 2.9 Download Hugging Face tokenizer referenced by `MEDICAL_KG_SENTENCE_MODEL`
+- [x] 2.10 Verify all libraries import without errors
   - [x] Added `scripts/check_chunking_dependencies.py` CLI to validate imports during deployment checks.
 
 ---
@@ -818,16 +818,16 @@
   - [x] Add Section 3.5 "Clinical-Aware Chunking Architecture"
   - [x] Remove legacy chunking references
   - [x] Add profile configuration table
-- [ ] 13.2 Create `docs/guides/chunking-profiles.md`:
-  - [ ] IMRaD profile guide with examples
-  - [ ] Registry profile guide with examples
-  - [ ] SPL profile guide with examples
-  - [ ] Guideline profile guide with examples
-- [ ] 13.3 Create `docs/runbooks/mineru-two-phase-gate.md`:
-  - [ ] How to trigger `postpdf-start`
-  - [ ] Troubleshooting stuck PDF jobs
-  - [ ] MinerU failure handling
-- [ ] 13.4 Update `README.md` with new dependencies
+- [x] 13.2 Create `docs/guides/chunking-profiles.md`:
+  - [x] IMRaD profile guide with examples
+  - [x] Registry profile guide with examples
+  - [x] SPL profile guide with examples
+  - [x] Guideline profile guide with examples
+- [x] 13.3 Create `docs/runbooks/mineru-two-phase-gate.md`:
+  - [x] How to trigger `postpdf-start`
+  - [x] Troubleshooting stuck PDF jobs
+  - [x] MinerU failure handling
+- [x] 13.4 Update `README.md` with new dependencies
 
 ---
 

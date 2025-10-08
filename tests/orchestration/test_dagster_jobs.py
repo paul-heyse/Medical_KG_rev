@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import functools
 from datetime import UTC, datetime
 import importlib.util
 import pathlib
@@ -285,11 +286,22 @@ def orchestrator() -> DagsterOrchestrator:
 
     loader = PipelineConfigLoader("config/orchestration/pipelines")
     policies = ResiliencePolicyLoader("config/orchestration/resilience.yaml")
+    policies.load(force=True)
 
-    def _noop_apply(self, name: str, stage: str, func):  # type: ignore[override]
-        return func
+    applied_stages: list[str] = []
+    original_apply = policies.apply
 
-    policies.apply = _noop_apply.__get__(policies, ResiliencePolicyLoader)  # type: ignore[attr-defined]
+    def _tracking_apply(self, name: str, stage: str, func):  # type: ignore[override]
+        applied_stages.append(stage)
+        wrapped = original_apply(name, stage, func)
+
+        @functools.wraps(func)
+        def _instrumented(*args, **kwargs):
+            return wrapped(*args, **kwargs)
+
+        return _instrumented
+
+    policies.apply = _tracking_apply.__get__(policies, ResiliencePolicyLoader)  # type: ignore[attr-defined]
     orchestrator = DagsterOrchestrator(loader, policies, stage_factory)
 
     # Attach stubs for introspection in the test
@@ -304,6 +316,7 @@ def orchestrator() -> DagsterOrchestrator:
         "knowledge-graph": kg,
     }
     orchestrator._execution_log = execution_log
+    orchestrator._applied_policies = applied_stages
     return orchestrator
 
 
@@ -341,3 +354,14 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
 
     call_order = list(getattr(orchestrator, "_execution_log", ()))
     assert call_order[:3] == ["ingest", "parse", "ir-validation"]
+    expected_stages = {
+        "ingest",
+        "parse",
+        "ir-validation",
+        "chunk",
+        "embed",
+        "index",
+        "extract",
+        "knowledge-graph",
+    }
+    assert set(getattr(orchestrator, "_applied_policies", [])) == expected_stages

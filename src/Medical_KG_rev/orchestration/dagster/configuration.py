@@ -396,16 +396,22 @@ class ResiliencePolicyLoader:
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
             if limiter is not None:
                 start = time.perf_counter()
-                loop = asyncio.new_event_loop()
                 try:
-                    loop.run_until_complete(limiter.acquire())
-                finally:
-                    loop.close()
+                    asyncio.run(limiter.acquire())
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    try:
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(limiter.acquire())
+                    finally:
+                        asyncio.set_event_loop(None)
+                        loop.close()
                 waited = time.perf_counter() - start
                 if waited:
                     record_resilience_rate_limit_wait(name, stage, waited)
             call = func
             if circuit_breaker is not None:
+
                 def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
                     return circuit_breaker.call(call, *inner_args, **inner_kwargs)
 

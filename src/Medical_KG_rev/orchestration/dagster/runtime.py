@@ -26,7 +26,16 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
     StageDefinition,
 )
 from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
-from Medical_KG_rev.orchestration.stages.contracts import StageContext
+from Medical_KG_rev.orchestration.stages.contracts import (
+    ChunkStage,
+    EmbedStage,
+    ExtractStage,
+    IngestStage,
+    IndexStage,
+    KGStage,
+    ParseStage,
+    StageContext,
+)
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -158,10 +167,40 @@ def _make_stage_op(
         required_resource_keys={"stage_factory", "resilience_policies"},
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
-        stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
+        stage_obj = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 
-        execute = getattr(stage, "execute")
+        if stage_type == "ingest":
+            if not isinstance(stage_obj, IngestStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement IngestStage")
+            execute = stage_obj.execute
+        elif stage_type in {"parse", "ir-validation"}:
+            if not isinstance(stage_obj, ParseStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement ParseStage")
+            execute = stage_obj.execute
+        elif stage_type == "chunk":
+            if not isinstance(stage_obj, ChunkStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement ChunkStage")
+            execute = stage_obj.execute
+        elif stage_type == "embed":
+            if not isinstance(stage_obj, EmbedStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement EmbedStage")
+            execute = stage_obj.execute
+        elif stage_type == "index":
+            if not isinstance(stage_obj, IndexStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement IndexStage")
+            execute = stage_obj.execute
+        elif stage_type == "extract":
+            if not isinstance(stage_obj, ExtractStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement ExtractStage")
+            execute = stage_obj.execute
+        elif stage_type == "knowledge-graph":
+            if not isinstance(stage_obj, KGStage):
+                raise TypeError(f"Stage '{stage_name}' does not implement KGStage")
+            execute = stage_obj.execute
+        else:  # pragma: no cover - guard for future expansion
+            execute = getattr(stage_obj, "execute")
+
         wrapped = policy_loader.apply(policy_name, stage_name, execute)
 
         stage_ctx: StageContext = state["context"]

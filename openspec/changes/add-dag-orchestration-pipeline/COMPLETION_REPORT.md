@@ -79,6 +79,14 @@ $ openspec validate add-dag-orchestration-pipeline --strict
 - ✅ No orphaned scenarios or malformed requirements
 - ✅ All delta files properly structured
 
+### Static Type Checking
+
+```bash
+$ mypy src/
+```
+
+- ⚠️ Blocked by missing type information for optional observability dependencies (`opentelemetry`, `prometheus_client`). Results captured for tracking; no functional regressions observed.
+
 ### Content Quality Checks
 
 - ✅ **Proposal clarity**: Clear problem statement, solution approach, impact analysis

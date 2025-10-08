@@ -1,172 +1,199 @@
-"""Shared HTTP client with retry, backoff and rate limiting."""
-
 from __future__ import annotations
 
 import asyncio
-import threading
-import time
-from collections.abc import AsyncIterator, Iterable, Iterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from enum import Enum
+import time
 
 import httpx
+from aiolimiter import AsyncLimiter
 from opentelemetry import trace
+from pybreaker import CircuitBreaker, CircuitBreakerError
+from tenacity import AsyncRetrying, RetryCallState, Retrying, retry_if_exception_type, stop_after_attempt
+from tenacity.wait import wait_exponential, wait_fixed, wait_incrementing
+
+
+class BackoffStrategy(str, Enum):
+    """Supported retry backoff strategies for the HTTP clients."""
+
+    EXPONENTIAL = "exponential"
+    FIXED = "fixed"
+    LINEAR = "linear"
 
 
 @dataclass(frozen=True)
-class RetryConfig:
-    attempts: int = 3
-    backoff_factor: float = 0.5
-    status_forcelist: Iterable[int] = (429, 500, 502, 503, 504)
+class HTTPResilienceConfig:
+    """Configuration describing retry, circuit breaker, and rate limiting."""
+
+    max_attempts: int = 3
     timeout: float = 10.0
+    backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL
+    backoff_initial: float = 0.5
+    backoff_max: float = 30.0
+    backoff_jitter: bool = True
+    retry_statuses: tuple[int, ...] = (429, 500, 502, 503, 504)
+    circuit_failure_threshold: int = 5
+    circuit_reset_timeout: float = 60.0
+    rate_limit_per_second: float | None = None
+    rate_limit_capacity: int | None = None
 
 
-class CircuitBreakerOpen(RuntimeError):
-    """Raised when a request is attempted while the circuit is open."""
+class RetryAfterError(Exception):
+    """Raised to signal that a response requested a Retry-After delay."""
+
+    def __init__(self, response: httpx.Response, retry_after: float) -> None:
+        super().__init__(f"Retry after {retry_after:.2f}s")
+        self.response = response
+        self.retry_after = max(retry_after, 0.0)
 
 
-class CircuitBreaker:
-    """Simple circuit breaker implementation."""
+def _build_wait_strategy(config: HTTPResilienceConfig):
+    if config.backoff_strategy is BackoffStrategy.FIXED:
+        wait = wait_fixed(max(config.backoff_initial, 0.0))
+    elif config.backoff_strategy is BackoffStrategy.LINEAR:
+        wait = wait_incrementing(
+            start=max(config.backoff_initial, 0.0),
+            increment=max(config.backoff_initial, 0.0) or 0.1,
+            max=max(config.backoff_max, 0.0) or None,
+        )
+    else:
+        wait = wait_exponential(
+            multiplier=max(config.backoff_initial, 0.0) or 0.1,
+            max=max(config.backoff_max, 0.0) or None,
+        )
+    if config.backoff_jitter and hasattr(wait, "with_jitter"):
+        wait = wait.with_jitter(0.1)  # type: ignore[attr-defined]
 
-    def __init__(self, failure_threshold: int = 5, recovery_time: float = 60.0) -> None:
-        self._failure_threshold = failure_threshold
-        self._recovery_time = recovery_time
-        self._state_lock = threading.Lock()
-        self._failure_count = 0
-        self._opened_at: float | None = None
+    def _wait(retry_state: RetryCallState) -> float:
+        value = float(wait(retry_state))
+        exc = retry_state.outcome.exception() if retry_state.outcome else None
+        if isinstance(exc, RetryAfterError):
+            return max(value, exc.retry_after)
+        return value
 
-    def before_request(self) -> None:
-        with self._state_lock:
-            if self._opened_at is None:
-                return
-            if time.monotonic() - self._opened_at >= self._recovery_time:
-                self._opened_at = None
-                self._failure_count = 0
-                return
-            raise CircuitBreakerOpen("Circuit breaker is open")
-
-    def record_success(self) -> None:
-        with self._state_lock:
-            self._failure_count = 0
-            self._opened_at = None
-
-    def record_failure(self) -> None:
-        with self._state_lock:
-            self._failure_count += 1
-            if self._failure_count >= self._failure_threshold:
-                self._opened_at = time.monotonic()
+    return _wait
 
 
-class SyncRateLimiter:
-    """Synchronous token bucket rate limiter."""
-
-    def __init__(self, rate_per_second: float, burst: int | None = None) -> None:
-        if rate_per_second <= 0:
-            raise ValueError("rate_per_second must be greater than zero")
-        self.rate = rate_per_second
-        self.capacity = burst or max(1, int(rate_per_second))
-        self._tokens = float(self.capacity)
-        self._updated = time.monotonic()
-        self._lock = threading.Lock()
-
-    def acquire(self) -> None:
-        with self._lock:
-            self._refill()
-            while self._tokens < 1:
-                wait_time = max(1.0 / self.rate, 0.01)
-                time.sleep(wait_time)
-                self._refill()
-            self._tokens -= 1
-
-    def _refill(self) -> None:
-        now = time.monotonic()
-        elapsed = now - self._updated
-        self._updated = now
-        self._tokens = min(self.capacity, self._tokens + elapsed * self.rate)
+def _create_async_limiter(config: HTTPResilienceConfig) -> AsyncLimiter | None:
+    if not config.rate_limit_per_second or config.rate_limit_per_second <= 0:
+        return None
+    capacity = int(config.rate_limit_capacity or max(1, round(config.rate_limit_per_second)))
+    period = max(capacity / config.rate_limit_per_second, 1e-6)
+    return AsyncLimiter(max_rate=capacity, time_period=period)
 
 
-class RateLimiter:
-    """Token bucket style rate limiter."""
+async def _call_with_breaker(
+    breaker: CircuitBreaker,
+    func,
+    *args,
+    **kwargs,
+):
+    with breaker._lock:  # type: ignore[attr-defined]
+        state = breaker.state
+        state.before_call(func, *args, **kwargs)
+        for listener in breaker.listeners:
+            listener.before_call(breaker, func, *args, **kwargs)
+    try:
+        result = await func(*args, **kwargs)
+    except Exception as exc:  # pragma: no cover - state transitions tested elsewhere
+        with breaker._lock:  # type: ignore[attr-defined]
+            breaker.state._handle_error(exc)
+        raise
+    else:
+        with breaker._lock:  # type: ignore[attr-defined]
+            breaker.state._handle_success()
+        return result
 
-    def __init__(self, rate_per_second: float, burst: int | None = None) -> None:
-        self.rate = rate_per_second
-        self.capacity = burst or max(1, int(rate_per_second))
-        self._tokens = self.capacity
-        self._updated = time.monotonic()
-        self._lock = asyncio.Lock()
 
-    async def acquire(self) -> None:
-        async with self._lock:
-            await self._refill()
-            while self._tokens < 1:
-                wait_time = max(1.0 / self.rate, 0.01)
-                await asyncio.sleep(wait_time)
-                await self._refill()
-            self._tokens -= 1
+class SyncLimiter:
+    """Synchronous facade around :class:`aiolimiter.AsyncLimiter`."""
 
-    async def _refill(self) -> None:
-        now = time.monotonic()
-        elapsed = now - self._updated
-        self._updated = now
-        self._tokens = min(self.capacity, self._tokens + elapsed * self.rate)
+    def __init__(self, limiter: AsyncLimiter) -> None:
+        self._limiter = limiter
+
+    def acquire(self) -> float:
+        start = time.perf_counter()
+        try:
+            asyncio.run(self._limiter.acquire())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self._limiter.acquire())
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+        return time.perf_counter() - start
 
 
 class HttpClient:
-    """Wrapper around ``httpx.Client`` with retry logic."""
+    """Wrapper around :class:`httpx.Client` with resilience helpers."""
 
     def __init__(
         self,
         base_url: str | None = None,
-        retry: RetryConfig | None = None,
+        *,
+        resilience: HTTPResilienceConfig | None = None,
         transport: httpx.BaseTransport | None = None,
-        rate_limiter: SyncRateLimiter | None = None,
-        circuit_breaker: CircuitBreaker | None = None,
+        client: httpx.Client | None = None,
     ) -> None:
-        client_kwargs: dict[str, object] = {
-            "timeout": retry.timeout if retry else 10.0,
-            "transport": transport,
-        }
+        self._config = resilience or HTTPResilienceConfig()
+        client_kwargs: dict[str, object] = {"timeout": self._config.timeout, "transport": transport}
         if base_url:
             client_kwargs["base_url"] = base_url
-        self._client = httpx.Client(**client_kwargs)
-        self._retry = retry or RetryConfig()
+        self._client = client or httpx.Client(**client_kwargs)
+        self._retry_statuses = set(self._config.retry_statuses)
         self._tracer = trace.get_tracer(__name__)
-        self._rate_limiter = rate_limiter
-        self._circuit_breaker = circuit_breaker
+        self._wait_strategy = _build_wait_strategy(self._config)
+        limiter = _create_async_limiter(self._config)
+        self._limiter = SyncLimiter(limiter) if limiter is not None else None
+        self._breaker = (
+            CircuitBreaker(
+                fail_max=self._config.circuit_failure_threshold,
+                reset_timeout=self._config.circuit_reset_timeout,
+            )
+            if self._config.circuit_failure_threshold > 0
+            else None
+        )
 
     def request(self, method: str, url: str, **kwargs) -> httpx.Response:
-        for attempt in range(1, self._retry.attempts + 1):
-            if self._rate_limiter:
-                self._rate_limiter.acquire()
-            if self._circuit_breaker:
-                self._circuit_breaker.before_request()
+        retrying = Retrying(
+            stop=stop_after_attempt(self._config.max_attempts),
+            wait=self._wait_strategy,
+            retry=retry_if_exception_type((RetryAfterError, httpx.HTTPError)),
+            reraise=True,
+        )
+
+        def _perform_request() -> httpx.Response:
+            if self._limiter is not None:
+                self._limiter.acquire()
             with self._tracer.start_as_current_span("http.request") as span:
                 span.set_attribute("http.method", method)
                 span.set_attribute("http.url", url)
-                try:
-                    response = self._client.request(method, url, **kwargs)
-                except httpx.HTTPError:
-                    if self._circuit_breaker:
-                        self._circuit_breaker.record_failure()
-                    if attempt == self._retry.attempts:
-                        raise
-                    time.sleep(self._retry.backoff_factor * attempt)
-                    continue
-                if response.status_code in self._retry.status_forcelist:
-                    if self._circuit_breaker:
-                        self._circuit_breaker.record_failure()
-                    retry_after = _compute_retry_after(response)
-                    if attempt == self._retry.attempts:
-                        response.raise_for_status()
-                    sleep_time = max(retry_after, self._retry.backoff_factor * attempt)
-                    time.sleep(sleep_time)
-                    continue
-                if self._circuit_breaker:
-                    self._circuit_breaker.record_success()
-                return response
-        raise RuntimeError("Exhausted retry attempts")
+                response = self._client.request(method, url, **kwargs)
+            if response.status_code in self._retry_statuses:
+                raise RetryAfterError(response, _compute_retry_after(response))
+            response.raise_for_status()
+            return response
+
+        def _send() -> httpx.Response:
+            if self._breaker is not None:
+                return self._breaker.call(_perform_request)
+            return _perform_request()
+
+        try:
+            for attempt in retrying:
+                with attempt:
+                    return _send()
+        except RetryAfterError as exc:
+            exc.response.raise_for_status()
+        finally:
+            retrying.statistics.clear()
+        raise RuntimeError("Unexpected retry exit")
 
     def close(self) -> None:
         self._client.close()
@@ -177,6 +204,85 @@ class HttpClient:
             yield self
         finally:
             self.close()
+
+
+class AsyncHttpClient:
+    """Async variant of :class:`HttpClient` with matching semantics."""
+
+    def __init__(
+        self,
+        base_url: str | None = None,
+        *,
+        resilience: HTTPResilienceConfig | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._config = resilience or HTTPResilienceConfig()
+        client_kwargs: dict[str, object] = {"timeout": self._config.timeout, "transport": transport}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self._client = client or httpx.AsyncClient(**client_kwargs)
+        self._retry_statuses = set(self._config.retry_statuses)
+        self._tracer = trace.get_tracer(__name__)
+        self._wait_strategy = _build_wait_strategy(self._config)
+        self._limiter = _create_async_limiter(self._config)
+        self._breaker = (
+            CircuitBreaker(
+                fail_max=self._config.circuit_failure_threshold,
+                reset_timeout=self._config.circuit_reset_timeout,
+            )
+            if self._config.circuit_failure_threshold > 0
+            else None
+        )
+
+    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        retrying = AsyncRetrying(
+            stop=stop_after_attempt(self._config.max_attempts),
+            wait=self._wait_strategy,
+            retry=retry_if_exception_type((RetryAfterError, httpx.HTTPError)),
+            reraise=True,
+        )
+
+        async def _send() -> httpx.Response:
+            async def _perform() -> httpx.Response:
+                with self._tracer.start_as_current_span("http.request") as span:
+                    span.set_attribute("http.method", method)
+                    span.set_attribute("http.url", url)
+                    response = await self._client.request(method, url, **kwargs)
+                if response.status_code in self._retry_statuses:
+                    raise RetryAfterError(response, _compute_retry_after(response))
+                response.raise_for_status()
+                return response
+
+            if self._breaker is not None:
+                guarded = lambda: _call_with_breaker(self._breaker, _perform)
+            else:
+                guarded = _perform
+
+            if self._limiter is not None:
+                async with self._limiter:
+                    return await guarded()
+            return await guarded()
+
+        try:
+            async for attempt in retrying:
+                with attempt:
+                    return await _send()
+        except RetryAfterError as exc:
+            exc.response.raise_for_status()
+        finally:
+            retrying.statistics.clear()
+        raise RuntimeError("Unexpected retry exit")
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    @asynccontextmanager
+    async def lifespan(self) -> AsyncIterator[AsyncHttpClient]:
+        try:
+            yield self
+        finally:
+            await self.aclose()
 
 
 def _compute_retry_after(response: httpx.Response) -> float:
@@ -197,55 +303,12 @@ def _compute_retry_after(response: httpx.Response) -> float:
         return max(delta, 0.0)
 
 
-class AsyncHttpClient:
-    """Async variant with rate limiting support."""
-
-    def __init__(
-        self,
-        base_url: str | None = None,
-        retry: RetryConfig | None = None,
-        rate_limiter: RateLimiter | None = None,
-        transport: httpx.AsyncBaseTransport | None = None,
-    ) -> None:
-        client_kwargs: dict[str, object] = {
-            "timeout": retry.timeout if retry else 10.0,
-            "transport": transport,
-        }
-        if base_url:
-            client_kwargs["base_url"] = base_url
-        self._client = httpx.AsyncClient(**client_kwargs)
-        self._retry = retry or RetryConfig()
-        self._tracer = trace.get_tracer(__name__)
-        self._rate_limiter = rate_limiter
-
-    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
-        for attempt in range(1, self._retry.attempts + 1):
-            if self._rate_limiter:
-                await self._rate_limiter.acquire()
-            with self._tracer.start_as_current_span("http.request") as span:
-                span.set_attribute("http.method", method)
-                span.set_attribute("http.url", url)
-                try:
-                    response = await self._client.request(method, url, **kwargs)
-                except httpx.HTTPError:
-                    if attempt == self._retry.attempts:
-                        raise
-                    await asyncio.sleep(self._retry.backoff_factor * attempt)
-                    continue
-                if response.status_code in self._retry.status_forcelist:
-                    if attempt == self._retry.attempts:
-                        response.raise_for_status()
-                    await asyncio.sleep(self._retry.backoff_factor * attempt)
-                    continue
-                return response
-        raise RuntimeError("Exhausted retry attempts")
-
-    async def aclose(self) -> None:
-        await self._client.aclose()
-
-    @asynccontextmanager
-    async def lifespan(self) -> AsyncIterator[AsyncHttpClient]:
-        try:
-            yield self
-        finally:
-            await self.aclose()
+__all__ = [
+    "AsyncHttpClient",
+    "BackoffStrategy",
+    "CircuitBreakerError",
+    "HTTPResilienceConfig",
+    "HttpClient",
+    "RetryAfterError",
+    "SyncLimiter",
+]

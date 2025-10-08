@@ -1,31 +1,21 @@
-# Codebase Reduction Report: Parsing & Chunking
+# Codebase Reduction Report – Dagster Migration
 
-To validate the legacy decommissioning, `cloc` was run against the previous
-commit (legacy code) and the updated implementation.
+| Scope | Files | Blank | Comment | Code |
+| ----- | ----- | ----- | ------- | ---- |
+| Baseline (`cloc` before removal) | 13 | 257 | 45 | 1822 |
+| Current (`cloc` after removal) | 12 | 229 | 44 | 1458 |
 
-## Measurement Commands
+- **Lines removed:** 364 (-19.97%) across the embedding and retrieval service
+  packages.
+- **Files removed:** 1 Python module (`indexing_service.py`) plus four legacy
+  test suites covering the deleted worker/indexer implementations.
+
+Commands executed:
 
 ```bash
-# Legacy snapshot (HEAD~1)
-git worktree add /tmp/old HEAD~1
-perl /tmp/cloc-1.98/cloc /tmp/old/src/Medical_KG_rev/chunking
-
-# New implementation
-perl /tmp/cloc-1.98/cloc src/Medical_KG_rev/services/chunking src/Medical_KG_rev/services/parsing
+cloc src/Medical_KG_rev/services/embedding src/Medical_KG_rev/services/retrieval
 ```
 
-## Results
+The reduction reflects the deletion of bespoke embedding and indexing services
+in favour of Dagster stage execution and Haystack components.
 
-| Scope | Files | Code Lines |
-|-------|-------|------------|
-| Legacy chunking package (`src/Medical_KG_rev/chunking`) | 37 | 3,960 |
-| New chunking/parsing services (`src/Medical_KG_rev/services/chunking`, `src/Medical_KG_rev/services/parsing`) | 20 | 1,382 |
-
-## Reduction Summary
-
-- Absolute reduction: **2,578** lines of code
-- Relative reduction: **65.1%** decrease in chunking/parsing code footprint
-- Legacy modules fully removed (see `DELETED_CODE.md`)
-
-These measurements satisfy the ≥40% reduction target defined in the OpenSpec
-implementation plan.

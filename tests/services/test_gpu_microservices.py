@@ -189,25 +189,6 @@ def test_mineru_processor_respects_batch_size(microservice_modules):
     assert batch.duration_seconds >= 0.0
 
 
-def test_embedding_worker_batches_models(microservice_modules):
-    registry = microservice_modules.embedding.EmbeddingModelRegistry(
-        microservice_modules.gpu_manager.GpuManager()
-    )
-    worker = microservice_modules.embedding.EmbeddingWorker(registry)
-    request = microservice_modules.embedding.EmbeddingRequest(
-        tenant_id="tenant-1",
-        chunk_ids=["c1", "c2"],
-        texts=["First text", "Second text"],
-        normalize=True,
-        batch_size=1,
-    )
-    response = worker.run(request)
-    assert len(response.vectors) == 4
-    dims = {vector.dimension for vector in response.vectors}
-    assert 64 in dims and 128 in dims
-    assert registry.get("splade") is registry.get("splade")
-
-
 def test_extraction_service_validates_spans(microservice_modules):
     service = microservice_modules.extraction.ExtractionService(
         microservice_modules.gpu_manager.GpuManager()

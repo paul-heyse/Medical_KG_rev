@@ -569,86 +569,35 @@ assert qwen3.parameters["endpoint"] == "http://vllm-embedding:8001/v1"
 - `embedding.requests.v1`: Embedding job requests
 - `extraction.requests.v1`: Extraction job requests
 
-#### 6.2 Pipeline Stages (Implemented)
+#### 6.2 Dagster Job Definitions (Implemented)
 
-**Auto Pipeline (Fast Sources):**
-
-1. **Adapter Plugin Discovery** → Dynamic adapter selection via Pluggy
-2. **Document IR Creation** → Structured document representation
-3. **Chunking** → Semantic text segmentation with coherence scoring
-4. **Embedding** → SPLADE + dense vector generation (GPU-accelerated)
-5. **Indexing** → OpenSearch (sparse) + FAISS (dense) storage
-6. **KG Construction** → Entity extraction and graph building with provenance
-
-**Two-Phase Pipeline (PDF-Bound):**
-
-1. **Metadata Fetch** → Preliminary document creation
-2. **PDF Retrieval** → Full-text retrieval via Unpaywall/CORE
-3. **GPU Parsing** → MinerU PDF structure extraction with OCR
-4. **Post-PDF Processing** → Chunking, embedding, indexing with layout-aware segmentation
+- **Topology-driven orchestration** – Pipeline structure lives in
+  `config/orchestration/pipelines/*.yaml`. Each stage lists its `type`,
+  dependencies, and resilience policy. `PipelineConfigLoader` validates the YAML
+  and returns immutable models used by the runtime.
+- **Stage resolution** – `Medical_KG_rev.orchestration.dagster.stages` exposes
+  `build_default_stage_factory`, wiring Haystack chunkers, embedders, and index
+  writers into the stage contracts defined in
+  `Medical_KG_rev.orchestration.stages.contracts`.
+- **Dagster jobs** – `Medical_KG_rev.orchestration.dagster.runtime` builds
+  Dagster graphs from the topology. Ops wrap stage execution with resilience
+  policies and persist outputs in the run state for downstream consumers.
+- **Sensors** – The PDF two-phase pipeline uses a ledger-backed sensor to resume
+  post-PDF stages when `pdf_ir_ready=true`. Sensor definitions live alongside
+  the job wiring in the runtime module.
 
 #### 6.3 Job State Management (Implemented)
 
-**Ledger-Based Tracking:**
-
-```python
-# src/Medical_KG_rev/services/ingestion/ledger.py
-class JobLedgerEntry(BaseModel):
-    """Structured job state tracking."""
-    job_id: str
-    doc_key: str
-    tenant_id: str
-    status: JobStatus
-    stage: str
-    retries: int = 0
-    error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    adapter_name: str  # Plugin name for traceability
-    adapter_version: str  # Plugin version for debugging
-```
-
-**Orchestration with Plugin Framework:**
-
-```python
-class Orchestrator:
-    def __init__(self, plugin_manager: AdapterPluginManager):
-        self.plugin_manager = plugin_manager
-        self.ledger = JobLedger()
-
-    async def ingest(self, request: IngestionRequest) -> str:
-        # Discover adapter via plugin manager
-        adapter = self.plugin_manager.get_adapter(request.source)
-
-        # Create execution pipeline
-        pipeline = adapter.pipeline
-
-        # Track job state throughout lifecycle
-        job_id = await self.ledger.create_job(
-            doc_key=request.identifier,
-            tenant_id=request.tenant_id,
-            adapter_name=adapter.metadata.name,
-            adapter_version=adapter.metadata.version
-        )
-
-        try:
-            # Execute pipeline stages with state tracking
-            state = await pipeline.execute(request)
-
-            # Update ledger with completion
-            await self.ledger.update_job(job_id, status=JobStatus.COMPLETED)
-
-        except Exception as e:
-            # Update ledger with failure and retry logic
-            await self.ledger.update_job(
-                job_id,
-                status=JobStatus.FAILED,
-                error_message=str(e),
-                retries=current_retries + 1
-            )
-            raise
-```
+- **Ledger updates** – The ledger records `pipeline_name`, `current_stage`, and
+  per-stage retry counts. Dagster ops call the ledger resource after each
+  execution step so the gateway can stream real-time status via SSE.
+- **Gateway integration** – `GatewayService` submits work to Dagster via
+  `submit_to_dagster` for asynchronous jobs, while synchronous APIs (chunk and
+  embed) resolve stages directly with `StageFactory` for low latency.
+- **Telemetry hooks** – Resilience policies emit Prometheus metrics for retry
+  attempts, circuit breaker transitions, and rate limiting delays. CloudEvents
+  and OpenLineage emitters consume the same metadata to publish structured
+  events.
 
 ### 7. Knowledge Graph and Storage
 

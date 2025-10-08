@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm-server-config
+  namespace: medical-kg
+data:
+  model_name: "Qwen/Qwen2.5-VL-7B-Instruct"
+  max_model_len: "32768"
+  gpu_memory_utilization: "0.92"
+  tensor_parallel_size: "1"
+  port: "8000"

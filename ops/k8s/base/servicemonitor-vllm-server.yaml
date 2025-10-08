@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vllm-server
+  namespace: medical-kg
+  labels:
+    app: vllm-server
+spec:
+  selector:
+    matchLabels:
+      app: vllm-server
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

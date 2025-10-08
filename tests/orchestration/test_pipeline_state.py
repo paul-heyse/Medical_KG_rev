@@ -7,6 +7,8 @@ from typing import Iterable
 
 import pytest
 
+pytest.importorskip("pydantic")
+
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
@@ -19,6 +21,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     PipelineStateSnapshot,
     PipelineStateValidationError,
     StageContext,
+    StageResultSnapshot,
 )
 
 
@@ -127,6 +130,14 @@ def test_serialise_caches_until_mutation() -> None:
     assert state.is_dirty() is True
 
 
+def test_serialise_json_uses_cache() -> None:
+    state = _sample_state()
+    snapshot = state.serialise_json()
+    assert snapshot
+    cached = state.serialise_json()
+    assert cached == snapshot
+
+
 def test_pipeline_state_recover_handles_compressed_payload() -> None:
     state = _sample_state({"foo": "bar"})
     state.apply_stage_output("ingest", "ingest", [{"foo": 1}])
@@ -150,6 +161,23 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     assert "ingest" in recovered.stage_results
     assert recovered.has_pdf_assets()
     assert recovered.gate_status["pdf_gate"] is False
+
+
+def test_dependencies_require_completed_stage() -> None:
+    state = _sample_state()
+    state.stage_results["parse"] = StageResultSnapshot(stage="parse", stage_type="parse")
+    with pytest.raises(ValueError):
+        state.ensure_dependencies("chunk", ["ingest"])
+    state.stage_results["ingest"] = StageResultSnapshot(stage="ingest", stage_type="ingest")
+    assert state.dependencies_satisfied(["ingest"]) is True
+    state.ensure_dependencies("chunk", ["ingest"])
+
+
+def test_to_model_generates_valid_payload() -> None:
+    state = _sample_state()
+    model = state.to_model()
+    assert model.context.tenant_id == "tenant"
+    assert model.payload_count == 0
 
 
 def test_diff_reports_changes_between_states() -> None:
@@ -179,6 +207,17 @@ def test_diff_reports_changes_between_states() -> None:
     assert diff["payload_count"] == (1, 0)
     assert diff["chunk_count"] == (1, 0)
     assert "pipeline_version" not in diff
+
+
+def test_pdf_gate_serialises_state() -> None:
+    state = _sample_state()
+    state.apply_stage_output("pdf-download", "download", {"url": "http://example"})
+    assert state.pdf_gate.downloaded is True
+    state.apply_stage_output("pdf-ir-gate", "gate", {"status": "ready"})
+    assert state.pdf_gate.ir_ready is True
+    payload = state.serialise()
+    assert payload["pdf_gate"]["downloaded"] is True
+    assert payload["pdf_gate"]["ir_ready"] is True
 
 
 def test_custom_validation_rules_raise_errors() -> None:

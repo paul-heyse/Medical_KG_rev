@@ -43,6 +43,7 @@ from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
+from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
 from Medical_KG_rev.orchestration.stages.plugins import (
     StagePluginBuildError,
     StagePluginLookupError,
@@ -145,6 +146,10 @@ def _make_stage_op(
     def _stage_op(context, state: PipelineState) -> PipelineState:
         stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
+        persister = PipelineStatePersister(metadata_store=ledger)
+        dependencies = stage_definition.depends_on
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -206,6 +211,8 @@ def _make_stage_op(
         checkpoint_label = stage_name
 
         try:
+            if dependencies:
+                state.ensure_dependencies(stage_name, dependencies)
             state.validate_transition(stage_type)
             state.create_checkpoint(checkpoint_label)
             result = wrapped(stage_ctx, state)
@@ -219,6 +226,16 @@ def _make_stage_op(
             )
             state.clear_checkpoint(checkpoint_label)
             snapshot_b64 = state.serialise_base64()
+            if job_id:
+                try:
+                    snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+                except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                    logger.warning(
+                        "dagster.stage.snapshot_persist_failed",
+                        job_id=job_id,
+                        stage=stage_name,
+                        error=str(persist_exc),
+                    )
             emitter.emit_failed(
                 stage_ctx,
                 stage_name,
@@ -250,6 +267,16 @@ def _make_stage_op(
             output_count=output_count,
         )
         snapshot_b64 = state.serialise_base64()
+        if job_id:
+            try:
+                snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+            except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "dagster.stage.snapshot_persist_failed",
+                    job_id=job_id,
+                    stage=stage_name,
+                    error=str(persist_exc),
+                )
         state.clear_checkpoint(checkpoint_label)
 
         if job_id:
@@ -262,6 +289,10 @@ def _make_stage_op(
                     f"state.{stage_name}.snapshot": snapshot_b64,
                 },
             )
+            if stage_type == "pdf-download":
+                ledger.set_pdf_downloaded(job_id)
+            elif stage_type == "pdf-ir-gate":
+                ledger.set_pdf_ir_ready(job_id)
         emitter.emit_completed(
             stage_ctx,
             stage_name,

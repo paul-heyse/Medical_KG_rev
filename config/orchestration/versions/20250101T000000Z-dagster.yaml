@@ -1,0 +1,10 @@
+version: "2025-01-01"
+pipelines:
+  - name: auto
+    file: pipelines/auto.yaml
+  - name: clinical-trials
+    file: pipelines/clinical-trials.yaml
+  - name: pdf-two-phase
+    file: pipelines/pdf-two-phase.yaml
+  - name: pmc-fulltext
+    file: pipelines/pmc-fulltext.yaml

@@ -59,6 +59,50 @@ Without MinerU's advanced capabilities, we lose critical information from PDFs, 
 - **BREAKING**: gRPC `ProcessPDFRequest` payload structure changed to support batch processing
 - **BREAKING**: `ProcessPDFResponse` now includes structured tables, figures, and equations
 
+### Service Architecture
+
+**Deployment Model**: MinerU runs as a **separate gRPC microservice in Docker** with GPU access, not embedded in the Python application.
+
+**Rationale**:
+
+- **GPU Isolation**: CUDA drivers, model loading, and GPU memory management isolated from application code
+- **Fail-Fast Enforcement**: Service-level GPU checks prevent silent CPU fallbacks
+- **Resource Control**: Independent scaling and GPU allocation per service
+- **Process Isolation**: MinerU CLI subprocess management contained within service boundaries
+
+**Docker Deployment**:
+
+```dockerfile
+# docker/mineru/Dockerfile
+FROM nvidia/cuda:12.8-runtime-ubuntu22.04
+
+# Install MinerU with GPU support
+RUN pip install mineru[gpu]>=2.5.4
+
+# Pre-download models
+RUN python -c "from mineru import download_models; download_models()"
+
+# gRPC service entrypoint
+CMD ["python", "-m", "Medical_KG_rev.services.mineru.grpc_server"]
+```
+
+**Client Integration**: Orchestration pipeline makes gRPC calls to the MinerU service:
+
+```python
+# Python client code (orchestration side)
+import grpc
+from proto import mineru_service_pb2_grpc
+
+channel = grpc.insecure_channel('mineru-service:8003')
+stub = mineru_service_pb2_grpc.MinerUServiceStub(channel)
+
+response = stub.ProcessPDF(
+    ProcessPDFRequest(pdf_url="s3://bucket/document.pdf")
+)
+```
+
+**Health Checks**: Service exposes gRPC health check endpoint that verifies GPU availability before accepting work.
+
 ### Configuration Changes
 
 New configuration section in `config/settings.yaml`:

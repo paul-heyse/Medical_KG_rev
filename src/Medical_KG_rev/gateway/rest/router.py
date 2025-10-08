@@ -21,6 +21,8 @@ from ..models import (
     ChunkRequest,
     EmbedRequest,
     EntityLinkRequest,
+    EvaluationRequest,
+    EvaluationResponse,
     ExtractionRequest,
     IngestionRequest,
     JobStatus,
@@ -360,12 +362,20 @@ async def embed_text(
 ) -> JSONResponse:
     request = _ensure_tenant(request, security)  # type: ignore[assignment]
     embeddings = service.embed(request)
-    meta = {"total": len(embeddings), "model": request.model}
+    meta = {
+        "total": len(embeddings),
+        "model": request.model,
+        "namespace": request.namespace,
+    }
     get_audit_trail().record(
         context=security,
         action="embed",
         resource="embedding",
-        metadata={"inputs": len(request.inputs), "model": request.model},
+        metadata={
+            "inputs": len(request.inputs),
+            "model": request.model,
+            "namespace": request.namespace,
+        },
     )
     return json_api_response(embeddings, meta=meta)
 
@@ -394,6 +404,24 @@ async def retrieve(
         "errors": [error.model_dump(mode="json") for error in result.errors],
     }
     return json_api_response(result, meta=meta)
+
+
+@router.post("/evaluate", status_code=200)
+async def evaluate(
+    request: EvaluationRequest,
+    security: SecurityContext = Depends(
+        secure_endpoint(scopes=[Scopes.EVALUATE_WRITE], endpoint="POST /v1/evaluate")
+    ),
+    service: GatewayService = Depends(get_gateway_service),
+) -> JSONResponse:
+    request = _ensure_tenant(request, security)  # type: ignore[assignment]
+    try:
+        result = service.evaluate_retrieval(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response = EvaluationResponse.from_result(result)
+    meta = {"cache": response.cache, "test_set_version": response.test_set_version}
+    return json_api_response(response, meta=meta)
 
 
 @router.post("/pipelines/query", status_code=200)
@@ -429,6 +457,7 @@ async def search(
     query: str = Query(..., min_length=1),
     top_k: int = Query(5, ge=1, le=50),
     rerank: bool = Query(True),
+    rerank_model: str | None = Query(default=None, min_length=1, max_length=128),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="GET /v1/search")
     ),
@@ -440,6 +469,7 @@ async def search(
         top_k=top_k,
         filters={},
         rerank=rerank,
+        rerank_model=rerank_model,
     )
     result: RetrievalResult = service.retrieve(request_model)
     odata = ODataParams.from_request(http_request)

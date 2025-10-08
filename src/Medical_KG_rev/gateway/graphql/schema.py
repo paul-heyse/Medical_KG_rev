@@ -83,8 +83,12 @@ def _problem_to_type(problem) -> ProblemDetailType:
 def _embedding_to_type(vector: EmbeddingVector) -> EmbeddingVectorType:
     return EmbeddingVectorType(
         id=vector.id,
-        vector=vector.vector,
         model=vector.model,
+        namespace=vector.namespace,
+        kind=vector.kind,
+        dimension=vector.dimension,
+        vector=list(vector.vector or []),
+        terms=vector.terms,
         metadata=vector.metadata,
     )
 
@@ -213,8 +217,12 @@ class ProblemDetailType:
 @strawberry.type
 class EmbeddingVectorType:
     id: str
-    vector: list[float]
     model: str
+    namespace: str
+    kind: str
+    dimension: int
+    vector: list[float]
+    terms: dict[str, float] | None
     metadata: JSON
 
 
@@ -276,6 +284,7 @@ class EmbedInput:
     tenant_id: str
     inputs: list[str]
     model: str
+    namespace: str
     normalize: bool = True
 
 
@@ -286,6 +295,7 @@ class RetrieveInput:
     top_k: int = 5
     filters: JSON = strawberry.field(default_factory=dict)
     rerank: bool = True
+    rerank_model: str | None = None
     rerank_top_k: int = 10
     rerank_overflow: bool = False
     profile: str | None = None

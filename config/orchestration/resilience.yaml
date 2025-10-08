@@ -1,0 +1,33 @@
+policies:
+  default:
+    max_attempts: 3
+    timeout_seconds: 30
+    backoff:
+      strategy: exponential
+      initial: 0.5
+      maximum: 30.0
+      jitter: true
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout: 60.0
+  gpu-bound:
+    max_attempts: 1
+    timeout_seconds: 60
+    backoff:
+      strategy: none
+      initial: 0.0
+      maximum: 0.0
+      jitter: false
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout: 60.0
+  polite-api:
+    max_attempts: 10
+    timeout_seconds: 10
+    backoff:
+      strategy: linear
+      initial: 1.0
+      maximum: 10.0
+      jitter: false
+    rate_limit:
+      rate_limit_per_second: 5.0

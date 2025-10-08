@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 from time import perf_counter
 from typing import Any
 
@@ -18,33 +17,28 @@ from Medical_KG_rev.chunking.exceptions import (
 )
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
+from ..adapters.plugins.models import AdapterRequest
 
+from ..chunking.models import Chunk
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
+    HaystackRetriever,
     JobLedger,
     JobLedgerEntry,
-    Orchestrator,
-    ParallelExecutor,
-    PipelineConfigManager,
-    PipelineContext,
-    PipelineProfile,
-    ProfileDetector,
-    ProfileManager,
-    QueryPipelineBuilder,
-    StrategySpec,
 )
-from ..orchestration.kafka import KafkaClient
-from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
+from ..orchestration.dagster import (
+    DagsterOrchestrator,
+    PipelineConfigLoader,
+    ResiliencePolicyLoader,
+    StageFactory,
+    build_default_stage_factory,
+    submit_to_dagster,
+)
+from ..orchestration.dagster.configuration import StageDefinition
+from ..orchestration.stages.contracts import EmbeddingBatch, StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
-from ..services.retrieval.reranker import CrossEncoderReranker
-from ..services.retrieval.router import (
-    RetrievalRouter,
-    RetrievalStrategy,
-    RouterMatch,
-    RoutingRequest,
-)
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
@@ -89,167 +83,38 @@ class GatewayError(RuntimeError):
         self.detail = detail
 
 
+def _build_stage_factory(manager: AdapterPluginManager | None = None) -> StageFactory:
+    registry = build_default_stage_factory(manager or get_plugin_manager())
+    return StageFactory(registry)
+
+
 @dataclass
 class GatewayService:
     """Coordinates business logic shared across protocols."""
 
+    _PIPELINE_NAME = "gateway-direct"
+    _PIPELINE_VERSION = "v1"
+
     events: EventStreamManager
-    orchestrator: Orchestrator
+    orchestrator: DagsterOrchestrator
     ledger: JobLedger
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
-    workers: list[WorkerBase] = field(default_factory=list)
-    chunker: ChunkingService = field(default_factory=ChunkingService)
-    reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
+    stage_factory: StageFactory | None = None
+    chunker: ChunkingService | None = None
+    retriever: HaystackRetriever = field(default_factory=HaystackRetriever)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
-    config_manager: PipelineConfigManager | None = None
-    profile_manager: ProfileManager | None = None
-    profile_detector: ProfileDetector | None = None
-    query_pipeline_builder: QueryPipelineBuilder | None = None
-    retrieval_router: RetrievalRouter | None = None
-    _parallel_executor: ParallelExecutor | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(self.adapter_manager)
+        if self.chunker is None:
+            self.chunker = ChunkingService(stage_factory=self.stage_factory)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def __post_init__(self) -> None:
-        self._ensure_pipeline_components()
-
-    def _ensure_pipeline_components(self) -> None:
-        if self.config_manager is None:
-            self.config_manager = PipelineConfigManager(Path("config/orchestration/pipelines.yaml"))
-        if self._parallel_executor is None:
-            self._parallel_executor = ParallelExecutor(max_workers=4)
-        if self.profile_manager is None:
-            config = self.config_manager.config
-            self.profile_manager = ProfileManager(config, config.profiles)
-        if self.profile_detector is None:
-            profiles = self.profile_manager.list_profiles()
-            default_profile = profiles[0] if profiles else "default"
-            self.profile_detector = ProfileDetector(
-                self.profile_manager,
-                default_profile=default_profile,
-            )
-        if self.retrieval_router is None:
-            max_workers = getattr(self._parallel_executor, "max_workers", 4)
-            self.retrieval_router = RetrievalRouter(max_workers=max(1, max_workers))
-        if self.query_pipeline_builder is None:
-            self.query_pipeline_builder = self._build_query_builder()
-
-    def _refresh_pipeline_components(self) -> None:
-        if not self.config_manager:
-            return
-        updated = self.config_manager.reload()
-        if not updated:
-            return
-        self.profile_manager = ProfileManager(updated, updated.profiles)
-        profiles = self.profile_manager.list_profiles()
-        default_profile = (
-            self.profile_detector.default_profile
-            if self.profile_detector and self.profile_detector.default_profile in profiles
-            else (profiles[0] if profiles else "default")
-        )
-        max_workers = getattr(self._parallel_executor, "max_workers", 4)
-        self.retrieval_router = RetrievalRouter(max_workers=max(1, max_workers))
-        self.profile_detector = ProfileDetector(self.profile_manager, default_profile=default_profile)
-        self.query_pipeline_builder = self._build_query_builder()
-
-    def _build_query_builder(self) -> QueryPipelineBuilder:
-        assert self.config_manager is not None
-        assert self.profile_manager is not None
-        assert self._parallel_executor is not None
-        return QueryPipelineBuilder(
-            config_manager=self.config_manager,
-            profile_manager=self.profile_manager,
-            parallel_executor=self._parallel_executor,
-            strategies=self._strategy_registry(),
-            rerank_runner=self._rerank_candidates,
-        )
-
-    def _strategy_registry(self) -> dict[str, StrategySpec]:
-        assert self.retrieval_router is not None
-        return {
-            "bm25": StrategySpec.from_router(
-                self.retrieval_router,
-                self._synthetic_strategy("bm25", 0.92),
-                timeout_ms=50,
-            ),
-            "dense": StrategySpec.from_router(
-                self.retrieval_router,
-                self._synthetic_strategy("dense", 0.88),
-                timeout_ms=60,
-            ),
-            "splade": StrategySpec.from_router(
-                self.retrieval_router,
-                self._synthetic_strategy("splade", 0.86),
-                timeout_ms=60,
-            ),
-        }
-
-    def _executor_for_profile(self, profile: PipelineProfile):
-        if self.query_pipeline_builder is None:
-            self.query_pipeline_builder = self._build_query_builder()
-        return self.query_pipeline_builder.executor_for_profile(profile)
-
-    def _resolve_profile(
-        self, explicit: str | None, metadata: Mapping[str, Any]
-    ) -> PipelineProfile:
-        if self.profile_detector is not None:
-            return self.profile_detector.detect(explicit=explicit, metadata=metadata)
-        if self.profile_manager is None:
-            raise KeyError(explicit or "default")
-        if explicit:
-            return self.profile_manager.get(explicit)
-        profiles = self.profile_manager.list_profiles()
-        default_name = profiles[0] if profiles else "default"
-        return self.profile_manager.get(default_name)
-
-    def _synthetic_strategy(self, name: str, base_score: float) -> RetrievalStrategy:
-        def handler(request: RoutingRequest) -> list[RouterMatch]:
-            query = request.query or ""
-            metadata = request.context if isinstance(request.context, Mapping) else {}
-            profile = str(metadata.get("profile") or metadata.get("dataset") or "default")
-            limit = max(1, int(request.top_k))
-            matches: list[RouterMatch] = []
-            for index in range(1, limit + 1):
-                score = max(base_score - (index - 1) * 0.05, 0.0)
-                doc_id = f"{name}-{profile}-{index}"
-                matches.append(
-                    RouterMatch(
-                        id=doc_id,
-                        score=score,
-                        metadata={
-                            "title": f"{name.upper()} result {index}",
-                            "summary": f"Synthetic {name} result for '{query}'",
-                            "source": name,
-                            "profile": profile,
-                        },
-                    )
-                )
-            return matches
-
-        return RetrievalStrategy(name=name, handler=handler)
-
-    def _rerank_candidates(
-        self,
-        context: PipelineContext,
-        candidates: Sequence[dict[str, Any]],
-        options: Mapping[str, Any],
-    ) -> list[dict[str, Any]]:
-        reranked: list[dict[str, Any]] = []
-        query = str(context.data.get("query", ""))
-        top_n = int(options.get("rerank_candidates", min(len(candidates), 100)))
-        for rank, candidate in enumerate(candidates[:top_n], start=1):
-            updated = dict(candidate)
-            document = dict(candidate.get("document", {}))
-            document.setdefault("summary", f"Candidate for '{query}'")
-            document.setdefault("source", document.get("source", "hybrid"))
-            updated["document"] = document
-            updated["score"] = float(candidate.get("score", 0.0)) + (top_n - rank) * 0.01
-            reranked.append(updated)
-        return reranked
-
     def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
         payload = problem.to_response()
         extensions = payload.pop("extra", {})
@@ -308,6 +173,185 @@ class GatewayService:
         self.ledger.mark_failed(job_id, stage="error", reason=reason)
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
 
+    def _resolve_stage(self, stage_type: str) -> object:
+        if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(self.adapter_manager)
+        definition = StageDefinition(name=f"gateway-{stage_type}", type=stage_type)
+        return self.stage_factory.resolve(self._PIPELINE_NAME, definition)
+
+    def _submit_dagster_job(
+        self,
+        *,
+        dataset: str,
+        request: IngestionRequest,
+        item: Mapping[str, Any],
+        metadata: dict[str, Any],
+    ) -> OperationStatus:
+        pipeline_name = self._resolve_pipeline(dataset, item)
+        topology = self.orchestrator.pipeline_loader.load(pipeline_name)
+        document_id = str(item.get("id") or uuid.uuid4().hex)
+        doc_key = f"{dataset}:{document_id}"
+        job_id = f"job-{uuid.uuid4().hex[:12]}"
+        entry = self.ledger.idempotent_create(
+            job_id=job_id,
+            doc_key=doc_key,
+            tenant_id=request.tenant_id,
+            pipeline=pipeline_name,
+            metadata={"dataset": dataset, "item": item, **metadata},
+        )
+        duplicate = entry.job_id != job_id
+        if duplicate:
+            error = BatchError(
+                code="duplicate",
+                message="Document already queued",
+                details={"dataset": dataset},
+            )
+            return OperationStatus(
+                job_id=entry.job_id,
+                status="failed",
+                message=f"Duplicate job for {dataset}",
+                metadata={
+                    "dataset": dataset,
+                    "pipeline": entry.pipeline,
+                    "doc_key": entry.doc_key,
+                    "duplicate": True,
+                },
+                http_status=409,
+                error=error,
+            )
+
+        correlation_id = uuid.uuid4().hex
+        context = StageContext(
+            tenant_id=request.tenant_id,
+            doc_id=document_id,
+            correlation_id=correlation_id,
+            metadata={"dataset": dataset, **metadata},
+            pipeline_name=pipeline_name,
+            pipeline_version=topology.version,
+        )
+
+        domain = self._ingest_domain(topology) or AdapterDomain.BIOMEDICAL
+        adapter_request = AdapterRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=correlation_id,
+            domain=domain,
+            parameters={"dataset": dataset, "item": item},
+        )
+        payload = {"dataset": dataset, "item": item, "metadata": metadata}
+
+        self.ledger.mark_processing(job_id, stage="bootstrap")
+        self.events.publish(
+            JobEvent(
+                job_id=job_id,
+                type="jobs.started",
+                payload={"pipeline": pipeline_name, "dataset": dataset},
+            )
+        )
+
+        error: BatchError | None = None
+        status = "completed"
+        message = f"Executed pipeline {pipeline_name}"
+        result_metadata: dict[str, Any] = {}
+        http_status = 202
+
+        try:
+            run_result = submit_to_dagster(
+                self.orchestrator,
+                pipeline=pipeline_name,
+                context=context,
+                adapter_request=adapter_request,
+                payload=payload,
+            )
+            result_metadata = {"state": run_result.state}
+            if run_result.success:
+                self.ledger.mark_completed(job_id, metadata=result_metadata)
+                self.events.publish(
+                    JobEvent(
+                        job_id=job_id,
+                        type="jobs.completed",
+                        payload={"pipeline": pipeline_name},
+                    )
+                )
+            else:
+                status = "failed"
+                message = f"Pipeline {pipeline_name} reported failure"
+                error = BatchError(
+                    code="pipeline-failed",
+                    message="Dagster job reported failure",
+                    details={"pipeline": pipeline_name},
+                )
+                self.ledger.mark_failed(
+                    job_id,
+                    stage=pipeline_name,
+                    reason="dagster-failure",
+                    metadata=result_metadata,
+                )
+                self.events.publish(
+                    JobEvent(
+                        job_id=job_id,
+                        type="jobs.failed",
+                        payload={"pipeline": pipeline_name},
+                    )
+                )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            status = "failed"
+            message = f"Pipeline {pipeline_name} execution raised an exception"
+            error = BatchError(
+                code="dagster-error",
+                message=str(exc),
+                details={"pipeline": pipeline_name},
+            )
+            self.ledger.mark_failed(
+                job_id,
+                stage=pipeline_name,
+                reason=str(exc),
+                metadata={"exception": str(exc)},
+            )
+            self.events.publish(
+                JobEvent(
+                    job_id=job_id,
+                    type="jobs.failed",
+                    payload={"pipeline": pipeline_name, "error": str(exc)},
+                )
+            )
+
+        return OperationStatus(
+            job_id=job_id,
+            status=status,
+            message=message,
+            metadata={
+                "dataset": dataset,
+                "pipeline": pipeline_name,
+                "doc_key": doc_key,
+                "duplicate": False,
+                **result_metadata,
+            },
+            http_status=http_status,
+            error=error,
+        )
+
+    def _resolve_pipeline(self, dataset: str, item: Mapping[str, Any]) -> str:
+        dataset_key = dataset.lower()
+        available = self.orchestrator.available_pipelines()
+        for name in available:
+            topology = self.orchestrator.pipeline_loader.load(name)
+            if dataset_key in {source.lower() for source in topology.applicable_sources}:
+                return topology.name
+        if str(item.get("document_type", "")).lower() == "pdf":
+            return "pdf-two-phase"
+        return "auto"
+
+    def _ingest_domain(self, topology) -> AdapterDomain | None:
+        for stage in topology.stages:
+            if stage.stage_type == "ingest":
+                domain = stage.config.get("domain")
+                if domain:
+                    try:
+                        return AdapterDomain(domain)
+                    except Exception:  # pragma: no cover - validation guard
+                        return None
+        return None
+
     def ingest(self, dataset: str, request: IngestionRequest) -> BatchOperationResult:
         started = perf_counter()
         statuses: list[OperationStatus] = []
@@ -315,43 +359,13 @@ class GatewayService:
             metadata = dict(request.metadata)
             if request.profile:
                 metadata.setdefault("profile", request.profile)
-            entry = self.orchestrator.submit_job(
-                tenant_id=request.tenant_id,
+            status = self._submit_dagster_job(
                 dataset=dataset,
+                request=request,
                 item=item,
-                priority=request.priority,
                 metadata=metadata,
             )
-            duplicate = bool(entry.metadata.get("duplicate"))
-            message = (
-                f"Duplicate job for {dataset}" if duplicate else f"Queued pipeline {entry.pipeline}"
-            )
-            error = None
-            http_status = 202
-            status_value = entry.status
-            if duplicate:
-                http_status = 409
-                status_value = "failed"
-                error = BatchError(
-                    code="duplicate",
-                    message="Document already queued",
-                    details={"dataset": dataset},
-                )
-            statuses.append(
-                OperationStatus(
-                    job_id=entry.job_id,
-                    status=status_value,
-                    message=message,
-                    metadata={
-                        "dataset": dataset,
-                        "pipeline": entry.pipeline,
-                        "doc_key": entry.doc_key,
-                        "duplicate": duplicate,
-                    },
-                    http_status=http_status,
-                    error=error,
-                )
-            )
+            statuses.append(status)
         result = build_batch_result(statuses)
         duration = perf_counter() - started
         observe_job_duration("ingest", duration)
@@ -363,28 +377,34 @@ class GatewayService:
         job_id = self._new_job(request.tenant_id, "chunk")
         options_payload = request.options if isinstance(request.options, dict) else {}
         raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
-        if raw_text is not None and not raw_text.strip():
+        if not isinstance(raw_text, str) or not raw_text.strip():
             detail = ProblemDetail(
                 title="Invalid document payload",
                 status=400,
                 type="https://httpstatuses.com/400",
-                detail="Text payload must be a non-empty string",
+                detail="Chunking requests must include a non-empty 'text' field in options",
                 instance=f"/v1/chunk/{request.document_id}",
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail)
-        sample_text = raw_text or (
-            "Population: Adults with hypertension. Intervention: ACE inhibitor administered daily. "
-            "Comparison: Placebo. Outcome: Reduced systolic blood pressure at 12 weeks."
-        )
+        metadata = {
+            key: value
+            for key, value in options_payload.items()
+            if key != "text"
+        }
         options = ChunkingOptions(
             strategy=request.strategy,
             max_tokens=request.chunk_size,
             overlap=request.overlap,
+            metadata=metadata,
         )
+        chunker = self.chunker or ChunkingService(stage_factory=self.stage_factory)
         try:
-            raw_chunks = self.chunker.chunk(
-                request.tenant_id, request.document_id, sample_text, options
+            raw_chunks = chunker.chunk(
+                request.tenant_id,
+                request.document_id,
+                raw_text,
+                options,
             )
         except InvalidDocumentError as exc:
             detail = ProblemDetail(
@@ -402,7 +422,7 @@ class GatewayService:
                 status=422,
                 type="https://httpstatuses.com/422",
                 detail=str(exc),
-                extensions={"valid_strategies": self.chunker.available_strategies()},
+                extensions={"valid_strategies": chunker.available_strategies()},
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
@@ -473,135 +493,147 @@ class GatewayService:
 
     def embed(self, request: EmbedRequest) -> Sequence[EmbeddingVector]:
         job_id = self._new_job(request.tenant_id, "embed")
-        embeddings: list[EmbeddingVector] = []
+        stage = self._resolve_stage("embed")
+        context = StageContext(
+            tenant_id=request.tenant_id,
+            correlation_id=uuid.uuid4().hex,
+            metadata={"model": request.model, "normalize": request.normalize},
+            pipeline_name=self._PIPELINE_NAME,
+            pipeline_version=self._PIPELINE_VERSION,
+        )
+        chunks: list[Chunk] = []
         for index, text in enumerate(request.inputs):
-            vector = [round(math.sin(i + len(text)) % 1, 4) for i in range(8)]
-            embeddings.append(
-                EmbeddingVector(
-                    id=f"emb-{index}",
-                    vector=vector,
-                    model=request.model,
-                    metadata={"length": len(text), "normalized": request.normalize},
+            if not isinstance(text, str) or not text.strip():
+                detail = ProblemDetail(
+                    title="Invalid embedding input",
+                    status=400,
+                    type="https://httpstatuses.com/400",
+                    detail="Embedding inputs must be non-empty strings",
+                )
+                self._fail_job(job_id, detail.detail or detail.title)
+                raise GatewayError(detail)
+            body = text.strip()
+            chunk_id = f"{job_id}:chunk:{index}"
+            doc_id = f"{job_id}:doc"
+            chunks.append(
+                Chunk(
+                    chunk_id=chunk_id,
+                    doc_id=doc_id,
+                    tenant_id=request.tenant_id,
+                    body=body,
+                    title_path=(),
+                    section=None,
+                    start_char=0,
+                    end_char=len(body),
+                    granularity="document",
+                    chunker="gateway.manual",
+                    chunker_version="1.0.0",
+                    meta={"input_index": index, "job_id": job_id},
                 )
             )
-        self.ledger.update_metadata(job_id, {"embeddings": len(embeddings)})
-        self._complete_job(job_id, payload={"embeddings": len(embeddings)})
-        return embeddings
-
-    def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
-        self._ensure_pipeline_components()
-        self._refresh_pipeline_components()
-        started = perf_counter()
-        job_id = self._new_job(request.tenant_id, "retrieve")
-        metadata: dict[str, Any] = {"filters": request.filters, **request.metadata}
-        if request.profile:
-            metadata["profile"] = request.profile
         try:
-            profile = self._resolve_profile(request.profile, metadata)
-        except KeyError as exc:
+            batch: EmbeddingBatch = stage.execute(context, chunks)
+        except Exception as exc:
             detail = ProblemDetail(
-                title="Unknown profile",
-                status=400,
-                type="https://httpstatuses.com/400",
+                title="Embedding failed",
+                status=502,
+                type="https://httpstatuses.com/502",
                 detail=str(exc),
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
-        overrides: dict[str, dict[str, Any]] = {
-            "final": {"top_k": request.top_k, "explain": request.explain},
-            "rerank": {
-                "enabled": request.rerank,
-                "rerank_candidates": request.rerank_top_k,
-                "allow_overflow": request.rerank_overflow,
-            },
-        }
-        context = PipelineContext(
-            tenant_id=request.tenant_id,
-            operation="retrieve",
-            data={
-                "query": request.query,
-                "filters": request.filters,
-                "metadata": metadata,
-                "profile": profile.name,
-                "config": overrides,
-                "explain": request.explain,
-                "top_k": request.top_k,
-            },
-        )
-        executor = self._executor_for_profile(profile)
-        pipeline_name = getattr(executor.executor, "pipeline", profile.query)
-        result_context = executor.run(context)
+        embeddings: list[EmbeddingVector] = []
+        for vector in batch.vectors:
+            values = list(vector.values)
+            if request.normalize and values:
+                magnitude = math.sqrt(sum(value * value for value in values))
+                if magnitude > 0:
+                    values = [value / magnitude for value in values]
+            metadata = dict(vector.metadata)
+            metadata.setdefault("model", batch.model)
+            metadata.setdefault("pipeline", f"{self._PIPELINE_NAME}:{self._PIPELINE_VERSION}")
+            embeddings.append(
+                EmbeddingVector(
+                    id=vector.id,
+                    vector=values,
+                    model=batch.model,
+                    metadata=metadata,
+                )
+            )
+        payload = {"embeddings": len(embeddings), "model": batch.model}
+        self.ledger.update_metadata(job_id, payload)
+        self._complete_job(job_id, payload=payload)
+        if embeddings:
+            record_business_event("embeddings_generated", request.tenant_id)
+        return embeddings
 
+    def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
+        started = perf_counter()
+        job_id = self._new_job(request.tenant_id, "retrieve")
+        filters = dict(request.filters or {})
+        metadata = dict(request.metadata)
+        if request.profile:
+            metadata['profile'] = request.profile
+        try:
+            results = self.retriever.retrieve(request.query, filters=filters or None)
+        except Exception as exc:
+            detail = ProblemDetail(
+                title="Retrieval failed",
+                status=502,
+                type="https://httpstatuses.com/502",
+                detail=str(exc),
+            )
+            self._fail_job(job_id, detail.detail or detail.title)
+            raise GatewayError(detail) from exc
         documents: list[DocumentSummary] = []
-        for item in result_context.data.get("results", [])[: request.top_k]:
-            document_payload = dict(item.get("document", {}))
-            doc_id = str(document_payload.get("id") or item.get("id"))
-            metadata_payload = {
-                key: value
-                for key, value in document_payload.items()
-                if key not in {"id", "title", "summary", "source"}
-            }
+        for index, item in enumerate(results[: request.top_k]):
+            meta = dict(item.get('meta') or {})
+            doc_id = str(item.get('id') or meta.pop('id', None) or f"retrieved-{index}")
+            title = meta.pop('title', None) or doc_id
+            summary = meta.pop('summary', None)
+            source = meta.pop('source', None) or 'hybrid'
+            score = float(item.get('score') or meta.pop('score', 0.0) or 0.0)
+            content = item.get('content')
+            if content and 'content' not in meta:
+                meta['content'] = content
             documents.append(
                 DocumentSummary(
                     id=doc_id,
-                    title=str(document_payload.get("title", doc_id)),
-                    score=float(item.get("score", 0.0)),
-                    summary=document_payload.get("summary"),
-                    source=document_payload.get("source", pipeline_name),
-                    metadata=metadata_payload,
-                    explain=item.get("strategies") if request.explain else None,
+                    title=title,
+                    score=score,
+                    summary=summary,
+                    source=source,
+                    metadata=meta,
+                    explain=item.get('explain') if request.explain else None,
                 )
             )
-
-        errors = [self._convert_problem(problem) for problem in result_context.errors]
-        rerank_metrics = {
-            "stage_timings_ms": {
-                name: round(duration * 1000, 3)
-                for name, duration in result_context.stage_timings.items()
-            }
-        }
+        retrieval_duration = perf_counter() - started
+        observe_job_duration('retrieve', retrieval_duration)
+        record_business_event('retrieval_requests', request.tenant_id)
+        if documents:
+            record_business_event('documents_retrieved', request.tenant_id)
+        stage_timings = {'retrieve': round(retrieval_duration, 6)}
         result = RetrievalResult(
             query=request.query,
             documents=documents,
             total=len(documents),
-            rerank_metrics=rerank_metrics,
-            pipeline_version=result_context.data.get("pipeline_version") or context.pipeline_version,
-            partial=result_context.partial,
-            degraded=result_context.data.get("degraded", False),
-            errors=errors,
-            stage_timings={
-                name: round(duration, 6)
-                for name, duration in result_context.stage_timings.items()
-            },
+            rerank_metrics={'stage_timings_ms': {name: round(value * 1000, 3) for name, value in stage_timings.items()}},
+            pipeline_version='haystack-hybrid/v1',
+            partial=False,
+            degraded=False,
+            errors=[],
+            stage_timings=stage_timings,
         )
-
-        duration = perf_counter() - started
-        observe_job_duration("retrieve", duration)
-        record_business_event("retrieval_requests", request.tenant_id)
-        if result.total:
-            record_business_event("documents_retrieved", request.tenant_id)
-
         ledger_metadata = {
-            "documents": result.total,
-            "pipeline_version": result.pipeline_version,
-            "partial": result.partial,
-            "degraded": result.degraded,
+            'documents': result.total,
+            'pipeline_version': result.pipeline_version,
+            'filters': filters,
+            'metadata': metadata,
         }
-        if result_context.degradation_events:
-            ledger_metadata["degradation_events"] = list(result_context.degradation_events)
-
-        if not result.documents and errors:
-            problem = errors[0]
-            self._fail_job(job_id, problem.detail or problem.title)
-            raise GatewayError(problem)
-
         self.ledger.update_metadata(job_id, ledger_metadata)
-        if result.partial:
-            partial_payload = dict(ledger_metadata)
-            partial_payload["status"] = "partial"
-            self._complete_job(job_id, payload=partial_payload)
-        else:
-            self._complete_job(job_id, payload=ledger_metadata)
+        if result.total == 0 and request.rerank:
+            ledger_metadata['status'] = 'no-results'
+        self._complete_job(job_id, payload=ledger_metadata)
         return result
 
     def entity_link(self, request: EntityLinkRequest) -> Sequence[EntityLinkResult]:
@@ -857,9 +889,7 @@ class GatewayService:
         entry = self.ledger.get(job_id)
         if not entry or entry.tenant_id != tenant_id:
             return None
-        updated = self.orchestrator.cancel_job(job_id, reason=reason)
-        if not updated:
-            return None
+        updated = self.ledger.mark_cancelled(job_id, reason=reason)
         return self._to_job_status(updated)
 
     # ------------------------------------------------------------------
@@ -907,26 +937,32 @@ class GatewayService:
 
 
 _service: GatewayService | None = None
-_kafka: KafkaClient | None = None
 _ledger: JobLedger | None = None
-_orchestrator: Orchestrator | None = None
-_workers: list[WorkerBase] = []
+_orchestrator: DagsterOrchestrator | None = None
+_pipeline_loader: PipelineConfigLoader | None = None
+_resilience_loader: ResiliencePolicyLoader | None = None
+_stage_factory: StageFactory | None = None
 
 
 def get_gateway_service() -> GatewayService:
-    global _service, _kafka, _ledger, _orchestrator, _workers
+    global _service, _ledger, _orchestrator, _pipeline_loader, _resilience_loader, _stage_factory
     if _service is None:
         events = EventStreamManager()
-        _kafka = KafkaClient()
-        _kafka.create_topics(
-            ["ingest.requests.v1", "ingest.results.v1", "mapping.events.v1", "ingest.deadletter.v1"]
-        )
         _ledger = JobLedger()
-        _orchestrator = Orchestrator(_kafka, _ledger, events)
-        _service = GatewayService(events=events, orchestrator=_orchestrator, ledger=_ledger)
-        _workers = [
-            IngestWorker(_orchestrator, _kafka, _ledger, events),
-            MappingWorker(_kafka, _ledger, events),
-        ]
-        _service.workers.extend(_workers)
+        adapter_manager = get_plugin_manager()
+        _pipeline_loader = PipelineConfigLoader()
+        _resilience_loader = ResiliencePolicyLoader()
+        stage_builders = build_default_stage_factory(adapter_manager)
+        _stage_factory = StageFactory(stage_builders)
+        _orchestrator = DagsterOrchestrator(
+            _pipeline_loader,
+            _resilience_loader,
+            _stage_factory,
+        )
+        _service = GatewayService(
+            events=events,
+            orchestrator=_orchestrator,
+            ledger=_ledger,
+            adapter_manager=adapter_manager,
+        )
     return _service

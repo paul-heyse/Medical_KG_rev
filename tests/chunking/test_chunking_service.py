@@ -9,8 +9,6 @@ from Medical_KG_rev.chunking.exceptions import ChunkingUnavailableError, Invalid
 from Medical_KG_rev.chunking.registry import ChunkerRegistry
 from Medical_KG_rev.chunking.factory import ChunkerFactory
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
-from Medical_KG_rev.services.retrieval.chunking import ChunkingOptions as RetrievalOptions
-from Medical_KG_rev.services.retrieval.chunking import ChunkingService as RetrievalChunkingService
 
 
 @pytest.fixture()
@@ -78,17 +76,6 @@ def test_section_chunker(simple_config: Path) -> None:
     assert {chunk.granularity for chunk in chunks} == {"section"}
     assert chunks[0].chunk_id.startswith(f"{document.id}:section_aware:section:")
     assert chunks[0].meta["token_count"] > 0
-
-
-def test_retrieval_service_alias_mapping(simple_config: Path) -> None:
-    service = RetrievalChunkingService(config_path=simple_config)
-    options = RetrievalOptions(strategy="section", max_tokens=256)
-    chunks = service.chunk("tenant-1", "doc-legacy", "Heading\n\nBody text.", options)
-    assert chunks, "legacy retrieval chunking should return chunks"
-    assert chunks[0].granularity == "section"
-    assert chunks[0].chunker == "section_aware"
-
-
 def test_chunk_page_number_propagated(simple_config: Path) -> None:
     base = build_document().sections[0]
     blocks = [

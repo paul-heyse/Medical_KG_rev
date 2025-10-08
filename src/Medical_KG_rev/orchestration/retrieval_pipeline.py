@@ -13,6 +13,7 @@ from Medical_KG_rev.observability.metrics import (
     observe_query_stage_latency,
     record_query_operation,
 )
+from Medical_KG_rev.services.retrieval.routing import QueryIntent
 from Medical_KG_rev.utils.errors import ProblemDetail
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -272,8 +273,20 @@ class FusionOrchestrator(ConfigurableStage):
         method = str(options.get("method", "rrf")).lower()
         weights = options.get("weights") or options.get("strategy_weights") or {}
         normalization = options.get("normalization")
-        fused = _fuse_candidates(
+        intent_info = _intent_info(context)
+        boosted_candidates, boost_applied, multiplier = _boost_table_candidates(
             candidates,
+            intent=intent_info.get("detected"),
+            confidence=float(intent_info.get("confidence", context.data.get("tabular_confidence", 0.0)) or 0.0),
+        )
+        if boost_applied:
+            intent_info["boost_applied"] = True
+            intent_info["boost_multiplier"] = multiplier
+        else:
+            intent_info.setdefault("boost_applied", False)
+        context.data["intent"] = intent_info
+        fused = _fuse_candidates(
+            boosted_candidates,
             method=method,
             weights=weights,
             normalization=normalization,
@@ -326,6 +339,88 @@ def _fuse_candidates(
             }
         )
     return fused
+
+
+def _boost_table_candidates(
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    intent: str | QueryIntent | None,
+    confidence: float,
+) -> tuple[list[dict[str, Any]], bool, float]:
+    try:
+        intent_enum = QueryIntent(intent) if intent else QueryIntent.NARRATIVE
+    except ValueError:
+        intent_enum = QueryIntent.NARRATIVE
+    confidence = max(0.0, min(float(confidence or 0.0), 1.0))
+    apply_boost = intent_enum == QueryIntent.TABULAR or confidence >= 0.65
+    multiplier = 1.0 + (2.0 * confidence) if apply_boost and confidence > 0 else 1.0
+    boosted: list[dict[str, Any]] = []
+    boost_applied = False
+    for entry in candidates:
+        updated_entry = dict(entry)
+        results: list[dict[str, Any]] = []
+        for item in entry.get("results", []):
+            record = dict(item)
+            document, metadata = _normalise_document(record.get("document"))
+            is_table = _is_table_metadata(metadata)
+            base_score = float(record.get("score", 0.0))
+            if is_table and apply_boost:
+                boosted_score = base_score * multiplier
+                metadata.setdefault("boosts", {})["tabular_intent"] = {
+                    "multiplier": round(multiplier, 3),
+                    "confidence": round(confidence, 3),
+                }
+                metadata.setdefault("is_table", True)
+                record["score"] = boosted_score
+                boost_applied = True
+            else:
+                record["score"] = base_score
+            record["document"] = document
+            results.append(record)
+        updated_entry["results"] = results
+        boosted.append(updated_entry)
+    return boosted, boost_applied, multiplier
+
+
+def _normalise_document(document: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    payload = dict(document) if isinstance(document, Mapping) else {}
+    metadata = payload.get("metadata")
+    if isinstance(metadata, Mapping):
+        metadata_dict = dict(metadata)
+    else:
+        metadata_dict = {}
+    payload["metadata"] = metadata_dict
+    return payload, metadata_dict
+
+
+def _is_table_metadata(metadata: Mapping[str, Any] | None) -> bool:
+    if not isinstance(metadata, Mapping):
+        return False
+    if bool(metadata.get("is_table")):
+        return True
+    if str(metadata.get("segment_type", "")).lower() == "table":
+        return True
+    if str(metadata.get("intent_hint", "")).lower() in {"ae", "adverse_events", "table"}:
+        return True
+    if "table_html" in metadata:
+        return True
+    return False
+
+
+def _intent_info(context: PipelineContext) -> dict[str, Any]:
+    intent = context.data.get("intent")
+    if isinstance(intent, Mapping):
+        return dict(intent)
+    detected = context.data.get("query_intent")
+    try:
+        detected_intent = QueryIntent(detected) if detected else QueryIntent.NARRATIVE
+    except ValueError:
+        detected_intent = QueryIntent.NARRATIVE
+    confidence = float(context.data.get("tabular_confidence", 0.0) or 0.0)
+    return {
+        "detected": detected_intent.value,
+        "confidence": confidence,
+    }
 
 
 @dataclass(slots=True)

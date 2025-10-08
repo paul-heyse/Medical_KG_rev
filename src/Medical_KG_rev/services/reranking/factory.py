@@ -19,6 +19,9 @@ class RerankerFactory:
     """Registry + factory to create reranker instances on demand."""
 
     _constructors: Dict[str, Callable[[], RerankerPort]] = field(default_factory=dict)
+    _instances: Dict[tuple[str, tuple[Any, ...] | None], RerankerPort] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         if not self._constructors:
@@ -47,13 +50,34 @@ class RerankerFactory:
 
     def register(self, name: str, factory: Callable[[], RerankerPort]) -> None:
         self._constructors[name] = factory
+        self._instances = {
+            key: instance for key, instance in self._instances.items() if key[0] != name
+        }
+
+    def clear_cache(self) -> None:
+        """Evict cached reranker instances (useful for tests)."""
+
+        self._instances.clear()
 
     def resolve(self, name: str | None, config: RerankerConfig | None = None) -> RerankerPort:
         key = name or "cross_encoder:bge"
         constructor = self._constructors.get(key)
         if constructor is None:
             raise UnknownRerankerError(key, self.available)
-        reranker = constructor()
+        config_signature: tuple[Any, ...] | None = None
+        if config is not None:
+            config_signature = (
+                getattr(config, "batch_size", None),
+                getattr(config, "precision", None),
+                getattr(config, "device", None),
+                getattr(config, "quantization", None),
+                getattr(config, "requires_gpu", None),
+            )
+        cache_key = (key, config_signature)
+        reranker = self._instances.get(cache_key)
+        if reranker is None:
+            reranker = constructor()
+            self._instances[cache_key] = reranker
         if config is not None:
             # Basic configuration hooks where supported
             if hasattr(reranker, "batch_size") and config.batch_size:

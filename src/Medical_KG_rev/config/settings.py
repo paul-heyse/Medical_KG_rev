@@ -109,8 +109,6 @@ class MineruWorkerSettings(BaseModel):
                 raise ValueError(
                     "Device id list must cover all configured MinerU workers"
                 )
-        if self.batch_size > self.count:
-            raise ValueError("Batch size cannot exceed configured worker count")
         return self
 
     @property

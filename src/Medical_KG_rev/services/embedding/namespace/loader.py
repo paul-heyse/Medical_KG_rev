@@ -15,7 +15,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback when PyYAML is unavai
 from Medical_KG_rev.config.embeddings import EmbeddingsConfiguration, NamespaceDefinition
 
 from .registry import EmbeddingNamespaceRegistry
-from .schema import EmbeddingKind, NamespaceConfig
+from .schema import EmbeddingKind, NamespaceConfig, NamespaceConfigFile
 
 DEFAULT_NAMESPACE_DIR = Path(__file__).resolve().parents[4] / "config" / "embedding" / "namespaces"
 
@@ -55,6 +55,17 @@ def load_namespace_configs(
 
     namespace_dir = directory or Path(os.environ.get("MK_EMBEDDING_NAMESPACE_DIR", DEFAULT_NAMESPACE_DIR))
     configs: dict[str, NamespaceConfig] = {}
+    aggregated_path = namespace_dir.parent / "namespaces.yaml"
+    if aggregated_path.exists():
+        raw_mapping = _load_mapping(aggregated_path.read_text())
+        if hasattr(NamespaceConfigFile, "model_validate"):
+            file_model = NamespaceConfigFile.model_validate(raw_mapping)  # type: ignore[attr-defined]
+            configs.update({name: config for name, config in file_model.namespaces.items()})
+        else:
+            namespaces = raw_mapping.get("namespaces", raw_mapping)
+            for key, value in (namespaces or {}).items():
+                config = NamespaceConfig(**value)
+                configs[str(key)] = config
     if namespace_dir.exists():
         for path in sorted(namespace_dir.glob("*.y*ml")):
             raw = _load_mapping(path.read_text())

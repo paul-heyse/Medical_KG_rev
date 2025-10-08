@@ -43,7 +43,12 @@ class StorageRouter:
             target.handler(record)
             return
         # Default to buffering for inspection/testing when no backend handler provided.
-        self._buffers[target.name].append(record)
+        key = self._buffer_key(target.name, record.tenant_id)
+        self._buffers[key].append(record)
 
-    def buffered(self, name: str) -> Sequence[EmbeddingRecord]:
-        return list(self._buffers.get(name, ()))
+    def buffered(self, name: str, tenant_id: str | None = None) -> Sequence[EmbeddingRecord]:
+        return list(self._buffers.get(self._buffer_key(name, tenant_id), ()))
+
+    def _buffer_key(self, target_name: str, tenant_id: str | None) -> str:
+        tenant = tenant_id or "unknown"
+        return f"{target_name}:{tenant}"

@@ -66,6 +66,11 @@ REQUEST_COUNTER = Counter(
     "Total HTTP requests served by the gateway",
     labelnames=("method", "path", "status"),
 )
+CROSS_TENANT_ACCESS_ATTEMPTS = Counter(
+    "medicalkg_cross_tenant_access_attempts_total",
+    "Attempted cross-tenant accesses (blocked)",
+    labelnames=("source_tenant", "target_tenant"),
+)
 REQUEST_LATENCY = Histogram(
     "api_request_duration_seconds",
     "HTTP request latency distribution",

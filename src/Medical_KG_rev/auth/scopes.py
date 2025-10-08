@@ -9,6 +9,7 @@ class Scopes:
     INGEST_WRITE = "ingest:write"
     JOBS_READ = "jobs:read"
     JOBS_WRITE = "jobs:write"
+    EMBED_READ = "embed:read"
     EMBED_WRITE = "embed:write"
     RETRIEVE_READ = "kg:read"
     KG_WRITE = "kg:write"
@@ -22,6 +23,7 @@ SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.INGEST_WRITE: "Submit ingestion jobs",
     Scopes.JOBS_READ: "Read job status",
     Scopes.JOBS_WRITE: "Cancel or mutate jobs",
+    Scopes.EMBED_READ: "Read embedding metadata and namespace catalogs",
     Scopes.EMBED_WRITE: "Generate embeddings",
     Scopes.RETRIEVE_READ: "Search the knowledge graph",
     Scopes.KG_WRITE: "Write to the knowledge graph",

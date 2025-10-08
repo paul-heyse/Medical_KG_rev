@@ -18,14 +18,12 @@ ENV MODEL_ID=${MODEL_ID} \
 # models/${MODEL_SOURCE_DIR}. They are mounted read-only inside the container so
 # that runtime environments do not mutate shared checkpoints.
 COPY models/${MODEL_SOURCE_DIR} ${MODEL_PATH}
+COPY config/embedding/vllm.yaml /config/vllm.yaml
 
 CMD [
-  "vllm",
-  "serve",
-  "${MODEL_PATH}",
-  "--host", "0.0.0.0",
-  "--port", "8001",
-  "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}",
-  "--max-model-len", "${MAX_MODEL_LEN}",
-  "--served-model-name", "${MODEL_ID}"
+  "python",
+  "-m",
+  "vllm.entrypoints.openai.api_server",
+  "--config",
+  "/config/vllm.yaml"
 ]

@@ -139,3 +139,27 @@ def test_namespace_config_round_trip(tmp_path: Path) -> None:
     config = registry.get("single_vector.roundtrip.32.v1")
     assert config.parameters["max_tokens"] == 1024
     assert config.to_embedder_config("single_vector.roundtrip.32.v1").parameters["endpoint"] == "http://localhost:8100/v1"
+
+
+def test_load_namespace_configs_from_aggregated_file(tmp_path: Path) -> None:
+    directory = tmp_path / "namespaces"
+    directory.mkdir()
+    aggregated = tmp_path / "namespaces.yaml"
+    aggregated.write_text(
+        json.dumps(
+            {
+                "namespaces": {
+                    "single_vector.demo.8.v1": {
+                        "name": "demo",
+                        "kind": "single_vector",
+                        "model_id": "demo/model",
+                        "provider": "demo-provider",
+                        "dim": 8,
+                    }
+                }
+            }
+        )
+    )
+    configs = load_namespace_configs(directory)
+    assert "single_vector.demo.8.v1" in configs
+    assert configs["single_vector.demo.8.v1"].model_id == "demo/model"

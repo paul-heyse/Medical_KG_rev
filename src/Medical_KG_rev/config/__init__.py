@@ -3,8 +3,47 @@
 from __future__ import annotations
 
 from .domains import DomainConfig, DomainRegistry
+from .pyserini_config import (
+    DEFAULT_PYSERINI_CONFIG,
+    PyseriniConfig,
+    PyseriniExpansionConfig,
+    PyseriniExpansionSideConfig,
+    PyseriniModelConfig,
+    PyseriniOpenSearchConfig,
+    PyseriniServiceConfig,
+    load_pyserini_config,
+)
+from .vllm_config import (
+    DEFAULT_VLLM_CONFIG,
+    VLLMBatchingConfig,
+    VLLMConfig,
+    VLLMHealthCheckConfig,
+    VLLMLoggingConfig,
+    VLLMModelConfig,
+    VLLMServiceConfig,
+    load_vllm_config,
+)
 
-__all__ = ["DomainConfig", "DomainRegistry"]
+__all__ = [
+    "DomainConfig",
+    "DomainRegistry",
+    "DEFAULT_VLLM_CONFIG",
+    "VLLMConfig",
+    "VLLMModelConfig",
+    "VLLMServiceConfig",
+    "VLLMBatchingConfig",
+    "VLLMHealthCheckConfig",
+    "VLLMLoggingConfig",
+    "load_vllm_config",
+    "DEFAULT_PYSERINI_CONFIG",
+    "PyseriniConfig",
+    "PyseriniServiceConfig",
+    "PyseriniModelConfig",
+    "PyseriniExpansionConfig",
+    "PyseriniExpansionSideConfig",
+    "PyseriniOpenSearchConfig",
+    "load_pyserini_config",
+]
 
 try:  # pragma: no cover - optional settings dependency
     from .settings import (  # type: ignore[import-not-found]

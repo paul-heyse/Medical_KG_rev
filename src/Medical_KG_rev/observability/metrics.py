@@ -21,7 +21,12 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
     Request = Any  # type: ignore[assignment]
     Response = Any  # type: ignore[assignment]
 
-from Medical_KG_rev.config.settings import AppSettings
+try:  # pragma: no cover - optional dependency during tests
+    from Medical_KG_rev.config.settings import AppSettings
+except Exception:  # pragma: no cover - fallback when pydantic unavailable
+    class AppSettings:  # type: ignore[override]
+        metrics: Any
+        observability: Any
 from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
@@ -72,10 +77,55 @@ GPU_UTILISATION = Gauge(
     "GPU memory utilisation percentage",
     labelnames=("gpu",),
 )
+MINERU_VLLM_REQUEST_DURATION = Histogram(
+    "mineru_vllm_request_duration_seconds",
+    "Duration of vLLM API requests",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+MINERU_VLLM_CLIENT_FAILURES = Counter(
+    "mineru_vllm_client_failures_total",
+    "Total number of vLLM client failures",
+    labelnames=("error_type",),
+)
+MINERU_VLLM_CLIENT_RETRIES = Counter(
+    "mineru_vllm_client_retries_total",
+    "Total number of vLLM client retry attempts",
+    labelnames=("retry_number",),
+)
+MINERU_VLLM_CIRCUIT_BREAKER_STATE = Gauge(
+    "mineru_vllm_circuit_breaker_state",
+    "Circuit breaker state for vLLM client (0=closed, 1=half_open, 2=open)",
+)
 BUSINESS_EVENTS = Counter(
     "business_events",
     "Business event counters (documents ingested, retrievals)",
     labelnames=("event",),
+)
+EMBEDDING_DURATION = Histogram(
+    "medicalkg_embedding_duration_seconds",
+    "Embedding generation duration",
+    labelnames=("namespace", "provider"),
+    buckets=(0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0),
+)
+EMBEDDING_OUTPUT = Counter(
+    "medicalkg_embeddings_generated_total",
+    "Total embeddings produced",
+    labelnames=("namespace", "provider"),
+)
+EMBEDDING_FAILURES = Counter(
+    "medicalkg_embedding_failures_total",
+    "Embedding failures grouped by provider",
+    labelnames=("namespace", "provider", "error_type"),
+)
+EMBEDDING_CACHE_HITS = Counter(
+    "medicalkg_embedding_cache_hits_total",
+    "Embedding cache hits by namespace",
+    labelnames=("namespace",),
+)
+EMBEDDING_CACHE_MISSES = Counter(
+    "medicalkg_embedding_cache_misses_total",
+    "Embedding cache misses by namespace",
+    labelnames=("namespace",),
 )
 JOB_STATUS_COUNTS = Gauge(
     "job_status_counts",
@@ -112,12 +162,6 @@ RERANK_GPU = Gauge(
     "reranking_gpu_utilization_percent",
     "GPU utilisation while reranking",
     labelnames=("reranker",),
-)
-PIPELINE_STAGE_DURATION = Histogram(
-    "retrieval_pipeline_stage_duration_seconds",
-    "Latency per stage of the retrieval pipeline",
-    labelnames=("stage",),
-    buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0),
 )
 RERANK_CACHE_HIT = Gauge(
     "reranking_cache_hit_rate",
@@ -256,6 +300,39 @@ def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: flo
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
 
 
+def record_embedding_timing(namespace: str, provider: str, duration_seconds: float) -> None:
+    """Observe embedding generation duration for a namespace/provider pair."""
+
+    EMBEDDING_DURATION.labels(namespace, provider).observe(duration_seconds)
+
+
+def record_embedding_success(namespace: str, provider: str, produced: int) -> None:
+    """Increment embedding output counter when embeddings are produced."""
+
+    if produced:
+        EMBEDDING_OUTPUT.labels(namespace, provider).inc(produced)
+
+
+def record_embedding_failure(namespace: str, provider: str, error_type: str) -> None:
+    """Record embedding failures grouped by provider and error type."""
+
+    EMBEDDING_FAILURES.labels(namespace, provider, error_type).inc()
+
+
+def record_embedding_cache_hit(namespace: str, hits: int) -> None:
+    """Record cache hits for embeddings."""
+
+    if hits:
+        EMBEDDING_CACHE_HITS.labels(namespace).inc(hits)
+
+
+def record_embedding_cache_miss(namespace: str, misses: int) -> None:
+    """Record cache misses for embeddings."""
+
+    if misses:
+        EMBEDDING_CACHE_MISSES.labels(namespace).inc(misses)
+
+
 def _observe_with_exemplar(metric, labels: tuple[str, ...], value: float) -> None:
     labelled = metric.labels(*labels)
     correlation_id = get_correlation_id()
@@ -375,21 +452,6 @@ def record_chunk_size(profile: str, granularity: str, size: int) -> None:
     CHUNK_SIZE.labels(profile=profile, granularity=granularity).observe(size)
 
 
-def observe_query_latency(strategy: str, duration: float) -> None:
-    """Observe query latency."""
-    QUERY_LATENCY.labels(strategy=strategy).observe(duration)
-
-
-def observe_query_stage_latency(stage: str, duration: float) -> None:
-    """Observe query stage latency."""
-    QUERY_STAGE_LATENCY.labels(stage=stage).observe(duration)
-
-
-def record_query_operation(strategy: str, tenant_id: str, status: str) -> None:
-    """Record query operation."""
-    QUERY_OPERATIONS.labels(strategy=strategy, status=status).inc()
-
-
 def record_dead_letter_event(queue: str, reason: str) -> None:
     """Record dead letter event."""
     DEAD_LETTER_EVENTS.labels(queue=queue, reason=reason).inc()
@@ -480,26 +542,6 @@ TIMEOUT_BREACHES = Counter(
 ORCHESTRATION_CIRCUIT_STATE = Gauge(
     "orchestration_circuit_state",
     "Orchestration circuit breaker state (0=closed, 1=half-open, 2=open)",
-)
-
-QUERY_LATENCY = Histogram(
-    "query_latency_seconds",
-    "Query latency distribution",
-    labelnames=("strategy",),
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
-)
-
-QUERY_STAGE_LATENCY = Histogram(
-    "query_stage_latency_seconds",
-    "Query stage latency distribution",
-    labelnames=("stage",),
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0],
-)
-
-QUERY_OPERATIONS = Counter(
-    "query_operations_total",
-    "Total number of query operations",
-    labelnames=("strategy", "status"),
 )
 
 DEAD_LETTER_EVENTS = Counter(

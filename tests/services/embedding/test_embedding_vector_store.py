@@ -4,42 +4,40 @@ from __future__ import annotations
 
 import pytest
 
-from Medical_KG_rev.embeddings.namespace import NamespaceManager, NamespaceConfig as EmbeddingNamespaceConfig
+from Medical_KG_rev.embeddings.namespace import NamespaceManager
+from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRecord
+from Medical_KG_rev.embeddings.utils.tokenization import TokenizerCache
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.services.embedding.service import (
     EmbeddingModelRegistry,
     EmbeddingRequest,
     EmbeddingWorker,
 )
+from Medical_KG_rev.services.embedding.cache import InMemoryEmbeddingCache
 from Medical_KG_rev.services.vector_store.models import NamespaceConfig, IndexParams
 from Medical_KG_rev.services.vector_store.registry import NamespaceRegistry
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 
 class DummyEmbedder:
+    def __init__(self) -> None:
+        self.calls = 0
+
     def embed_documents(self, request):  # type: ignore[override]
-        class Record:
-            def __init__(self) -> None:
-                self.id = "chunk-1"
-                self.model_id = "test"
-                self.namespace = request.namespace
-                self.kind = "single_vector"
-                self.vectors = [
-                    [float(i) / 100 for i in range(128)]
-                ]
-                self.terms = None
-                self.metadata = {"foo": "bar"}
-                self.dim = 128
-
-        return [Record()]
-
-
-class StubEmbedderFactory:
-    def __init__(self, worker: EmbeddingWorker) -> None:
-        self.worker = worker
-
-    def get(self, config):  # type: ignore[override]
-        return DummyEmbedder()
+        self.calls += 1
+        return [
+            EmbeddingRecord(
+                id=request.ids[0] if request.ids else "chunk-1",
+                tenant_id=request.tenant_id,
+                namespace=request.namespace,
+                model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
+                model_version="v1",
+                kind="single_vector",
+                dim=4096,
+                vectors=[[float(i) / 100 for i in range(4096)]],
+                metadata={"foo": "bar", "provider": "vllm"},
+            )
+        ]
 
 
 class StubVectorStore:
@@ -72,102 +70,75 @@ class StubVectorStore:
 @pytest.fixture()
 def embedding_worker(monkeypatch: pytest.MonkeyPatch):
     namespace_manager = NamespaceManager()
-    namespace_manager._namespaces[  # type: ignore[attr-defined]
-        "single_vector.bge_small_en.384.v1"
-    ] = EmbeddingNamespaceConfig(
-        name="single_vector.bge_small_en.384.v1",
+    fake_config = EmbedderConfig(
+        name="qwen3",
+        provider="vllm",
         kind="single_vector",
-        expected_dim=128,
-        model_id="test",
+        namespace="single_vector.qwen3.4096.v1",
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        embedder_name="test",
+        dim=2,
+        parameters={"max_tokens": 8192, "endpoint": "http://localhost:8001/v1"},
+        requires_gpu=False,
     )
-    namespace_manager._namespaces[  # type: ignore[attr-defined]
-        "default"
-    ] = EmbeddingNamespaceConfig(
-        name="default",
-        kind="single_vector",
-        expected_dim=128,
-        model_id="fake-model",
-        model_version="v1",
-        embedder_name="fake",
-    )
+    namespace_manager.register(fake_config)
     registry = NamespaceRegistry()
     vector_store_adapter = StubVectorStore()
     service = VectorStoreService(vector_store_adapter, registry)
-    class FakeConfig:
-        def __init__(self) -> None:
-            self.name = "fake"
-            self.namespace = "default"
-            self.requires_gpu = False
-            self.kind = "single_vector"
-            self.model_id = "fake-model"
-            self.model_version = "v1"
-            self.dim = 128
+    worker = EmbeddingWorker(
+        namespace_manager=namespace_manager,
+        vector_store=service,
+        cache=InMemoryEmbeddingCache(),
+    )
+    worker.namespace_manager.register(fake_config)
 
-    worker = EmbeddingWorker(namespace_manager=namespace_manager, vector_store=service)
-    fake_config = FakeConfig()
-
-    monkeypatch.setattr(worker, "_resolve_configs", lambda request: [fake_config])
-    monkeypatch.setattr(worker, "factory", StubEmbedderFactory(worker))
+    dummy = DummyEmbedder()
+    monkeypatch.setattr(EmbeddingWorker, "_resolve_configs", lambda self, request: [fake_config])
+    monkeypatch.setattr(EmbeddingModelRegistry, "get", lambda self, config: dummy)
+    monkeypatch.setattr(TokenizerCache, "ensure_within_limit", lambda *args, **kwargs: None)
     service.ensure_namespace(
         context=SecurityContext(subject="tester", tenant_id="tenant", scopes={"index:write"}),
         config=NamespaceConfig(
-            name="default",
-            params=IndexParams(dimension=128),
+            name=fake_config.namespace,
+            params=IndexParams(dimension=2),
         ),
     )
-    assert registry.get(tenant_id="tenant", namespace="default")
-    return worker, vector_store_adapter
+    assert registry.get(tenant_id="tenant", namespace=fake_config.namespace)
+    return worker, vector_store_adapter, fake_config, dummy
 
 
 def test_worker_upserts_vectors(embedding_worker) -> None:
-    worker, vector_store = embedding_worker
+    worker, vector_store, config, embedder = embedding_worker
     request = EmbeddingRequest(
         tenant_id="tenant",
         chunk_ids=["chunk-1"],
         texts=["sample"],
     )
     response = worker.run(request)
-    assert response.vectors[0].metadata["storage_target"]
+    assert response.vectors[0].metadata["storage_target"] == "faiss"
     assert vector_store.records[0]["vector_id"] == "chunk-1"
-    assert vector_store.records[0]["namespace"] == "default"
+    assert vector_store.records[0]["namespace"] == config.namespace
+    assert embedder.calls == 1
 
 
 def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
     namespace_manager = NamespaceManager()
-    namespace_manager._namespaces[  # type: ignore[attr-defined]
-        "default"
-    ] = EmbeddingNamespaceConfig(
-        name="default",
+    fake_config = EmbedderConfig(
+        name="qwen3",
+        provider="vllm",
         kind="single_vector",
-        expected_dim=128,
-        model_id="fake-model",
+        namespace="single_vector.qwen3.4096.v1",
+        model_id="Qwen/Qwen2.5-Embedding-8B-Instruct",
         model_version="v1",
-        embedder_name="fake",
+        dim=2,
+        parameters={"max_tokens": 8192, "endpoint": "http://localhost:8001/v1"},
+        requires_gpu=False,
     )
 
     worker = EmbeddingWorker(namespace_manager=namespace_manager, vector_store=None)
+    worker.namespace_manager.register(fake_config)
+    monkeypatch.setattr(TokenizerCache, "ensure_within_limit", lambda *args, **kwargs: None)
 
-    fake_config = type(
-        "Config",
-        (),
-        {
-            "name": "fake",
-            "namespace": "default",
-            "requires_gpu": False,
-            "kind": "single_vector",
-            "model_id": "fake-model",
-            "model_version": "v1",
-            "dim": 128,
-        },
-    )()
-
-    monkeypatch.setattr(
-        EmbeddingModelRegistry,
-        "resolve",
-        lambda self, *, models=None, namespaces=None: [fake_config],
-    )
     monkeypatch.setattr(
         EmbeddingModelRegistry,
         "get",
@@ -176,12 +147,10 @@ def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
 
     captured: dict[str, object | None] = {}
 
-    original = EmbeddingModelRegistry.resolve
-
     def tracking_resolve(self, *, models=None, namespaces=None):  # type: ignore[override]
         captured["models"] = models
         captured["namespaces"] = namespaces
-        return original(self, models=models, namespaces=namespaces)
+        return [fake_config]
 
     monkeypatch.setattr(EmbeddingModelRegistry, "resolve", tracking_resolve)
 
@@ -189,9 +158,70 @@ def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
         tenant_id="tenant",
         chunk_ids=["chunk-1"],
         texts=["sample"],
-        namespaces=["default"],
+        namespaces=[fake_config.namespace],
     )
     worker.run(request)
 
-    assert captured["namespaces"] == ["default"]
+    assert captured["namespaces"] == [fake_config.namespace]
     assert captured["models"] is None
+
+
+def test_worker_uses_cache_hits(embedding_worker) -> None:
+    worker, _, config, embedder = embedding_worker
+    record = EmbeddingRecord(
+        id="chunk-1",
+        tenant_id="tenant",
+        namespace=config.namespace,
+        model_id=config.model_id,
+        model_version=config.model_version,
+        kind=config.kind,
+        dim=config.dim,
+        vectors=[[0.5 for _ in range(config.dim or 0)]],
+        metadata={"provider": config.provider},
+    )
+    worker.cache.set(record)
+
+    request = EmbeddingRequest(
+        tenant_id="tenant",
+        chunk_ids=["chunk-1"],
+        texts=["sample"],
+    )
+    response = worker.run(request)
+
+    assert embedder.calls == 0
+    assert response.vectors[0].id == "chunk-1"
+
+
+def test_worker_persists_named_vectors(monkeypatch: pytest.MonkeyPatch, embedding_worker) -> None:
+    worker, vector_store, config, embedder = embedding_worker
+
+    def multi_vector_response(request):  # type: ignore[override]
+        return [
+            EmbeddingRecord(
+                id=request.ids[0] if request.ids else "chunk-1",
+                tenant_id=request.tenant_id,
+                namespace=request.namespace,
+                model_id=config.model_id,
+                model_version=config.model_version,
+                kind=config.kind,
+                dim=config.dim,
+                vectors=[[0.1, 0.2], [0.3, 0.4]],
+                metadata={"provider": config.provider},
+            )
+        ]
+
+    monkeypatch.setattr(DummyEmbedder, "embed_documents", multi_vector_response)
+    worker.run(EmbeddingRequest(tenant_id="tenant", chunk_ids=["chunk-1"], texts=["sample"]))
+    stored = vector_store.records[0]
+    assert stored["named_vectors"]["segment_1"] == [0.3, 0.4]
+
+
+def test_worker_skips_empty_records(monkeypatch: pytest.MonkeyPatch, embedding_worker) -> None:
+    worker, vector_store, config, embedder = embedding_worker
+
+    def empty_response(request):  # type: ignore[override]
+        return []
+
+    monkeypatch.setattr(DummyEmbedder, "embed_documents", empty_response)
+    worker.run(EmbeddingRequest(tenant_id="tenant", chunk_ids=["chunk-1"], texts=["sample"]))
+    assert vector_store.records == []

@@ -1,48 +1,88 @@
-# GPU Microservices Deployment Guide
+# MinerU Vision-Language Deployment
 
-This document outlines how to deploy the MinerU, Embedding, and Extraction GPU microservices.
+This document describes how the MinerU PDF parsing service integrates with the dedicated
+vLLM vision-language model when operating in split-container mode.
 
-## Prerequisites
+## Architecture Overview
 
-- NVIDIA GPU with supported CUDA drivers (12.1+)
-- Docker 24+ with the NVIDIA Container Toolkit configured
-- Access to the project container registry
-
-## Building the Image
-
-```bash
-docker build -f ops/Dockerfile.gpu -t medicalkg/gpu-services:latest .
+```
+┌──────────────────────────────────────────┐
+│             MinerU Workers               │
+│  • 8 CPU containers (2 vCPU / 4GiB)      │
+│  • mineru CLI in HTTP client mode        │
+│  • Connect to vLLM via Service DNS       │
+└──────────────────────────────────────────┘
+                    │
+                    │  HTTP (OpenAI-compatible)
+                    ▼
+┌──────────────────────────────────────────┐
+│                vLLM Server               │
+│  • Model: Qwen/Qwen2.5-VL-7B-Instruct    │
+│  • GPU memory utilisation target: 92 %   │
+│  • Exposes /v1/chat/completions + /health│
+└──────────────────────────────────────────┘
 ```
 
-## Running Locally
+### Key Characteristics
+
+- **Split responsibility** – MinerU workers no longer load GPU models. They stream requests to the
+  vLLM OpenAI-compatible API and focus exclusively on PDF orchestration.
+- **Hot model sharing** – A single vLLM instance batches requests from all workers, dramatically
+  improving GPU utilisation and throughput.
+- **Resilience** – The worker HTTP client provides connection pooling, retries, and circuit-breaker
+  protection. Metrics are exported for end-to-end visibility.
+
+## Local Development
+
+### Start the vLLM Server
 
 ```bash
-docker run --gpus all \
-  -e CUDA_VISIBLE_DEVICES=0 \
-  -p 7000:7000 -p 7001:7001 -p 7002:7002 \
-  medicalkg/gpu-services:latest
+docker compose -f docker-compose.vllm.yml up -d vllm-server
+curl http://localhost:8000/health
 ```
 
-The container exposes the following gRPC endpoints:
+### Start MinerU Workers
 
-- `7000`: MinerU PDF processing
-- `7001`: Embedding generation
-- `7002`: LLM extraction
+```bash
+docker compose up -d mineru-worker
+```
 
-## Health and Readiness
+Workers require the following environment variables:
 
-The container health check executes `python -m Medical_KG_rev.scripts.healthcheck --service gpu`.
-This fails fast when CUDA devices are unavailable or misconfigured.
+- `VLLM_SERVER_URL` – defaults to `http://vllm-server:8000`
+- `MINERU_BACKEND` – must be `vlm-http-client`
 
-Each gRPC service registers a [gRPC Health Checking Protocol](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) endpoint.
-Clients should poll the health service before submitting work.
+## Kubernetes Deployment
 
-## Observability
+The base manifests under `ops/k8s/base/` deploy the vLLM server and the CPU-only MinerU worker
+pool. Apply them via Kustomize or plain `kubectl`:
 
-- Prometheus metrics exported via the default registry (`gpu_service_utilization_percent`, `gpu_service_memory_megabytes`)
-- OpenTelemetry spans emitted for each RPC via `UnaryUnaryTracingInterceptor`
+```bash
+kubectl apply -k ops/k8s/base
+```
 
-## Shutdown
+Resources:
 
-The launcher script (`Medical_KG_rev.scripts.serve_gpu`) listens for `SIGTERM`/`SIGINT` and
-performs graceful shutdown of all running gRPC servers.
+- `deployment-vllm-server.yaml` – GPU-backed vLLM instance (RTX 5090)
+- `deployment-mineru-workers.yaml` – 8 replicas, no GPU requests
+- `networkpolicy-vllm-server.yaml` – restricts access to MinerU workers only
+- `servicemonitor-vllm-server.yaml` – scrapes Prometheus metrics from the vLLM pod
+
+## Health Monitoring
+
+- **vLLM** – `GET /health` returns HTTP 200 when the model is ready.
+- **Prometheus** – scrape `/metrics` from both vLLM and worker pods for
+  `mineru_vllm_*` and `vllm_*` series.
+- **Alerts** – `ops/monitoring/alerts-vllm.yml` defines high latency and circuit breaker alerts.
+
+## Graceful Shutdown
+
+Scale the worker deployment to zero before restarting the vLLM server to avoid open requests:
+
+```bash
+kubectl scale deployment/mineru-workers --replicas=0 -n medical-kg
+kubectl rollout restart deployment/vllm-server -n medical-kg
+kubectl scale deployment/mineru-workers --replicas=8 -n medical-kg
+```
+
+Monitor pod status and Prometheus metrics throughout the restart to confirm healthy recovery.

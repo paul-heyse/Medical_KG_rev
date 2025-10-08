@@ -254,7 +254,7 @@ Chunking error handling SHALL include profile validation, tokenizer alignment ch
 
 **Reason**: Custom chunkers created maintenance burden, duplicated proven library functionality, and lacked community support.
 
-**Migration**: All custom chunker logic has been replaced with LangChain, LlamaIndex, scispaCy, and syntok wrappers. Existing chunks remain valid; new ingestion uses library-based implementations.
+**Migration**: All custom chunker logic has been replaced with LangChain, LlamaIndex, HuggingFace, and syntok wrappers. Existing chunks remain valid; new ingestion uses library-based implementations.
 
 ---
 

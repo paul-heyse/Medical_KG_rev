@@ -2,28 +2,41 @@
 
 from .kafka import KafkaClient, KafkaMessage
 from .ledger import JobLedger, JobLedgerEntry, JobTransition
-from .config_manager import PipelineConfigManager
-from .orchestrator import OrchestrationError, Orchestrator
-from .pipeline import (
-    ParallelExecutor,
-    PipelineConfig,
-    PipelineContext,
-    PipelineDefinition,
-    PipelineExecutor,
-    ProfileDefinition,
+from .dagster import (
+    DagsterOrchestrator,
+    DagsterRunResult,
+    PipelineConfigLoader,
+    PipelineTopologyConfig,
+    ResiliencePolicy,
+    ResiliencePolicyConfig,
+    ResiliencePolicyLoader,
+    StageFactory,
+    StageResolutionError,
+    submit_to_dagster,
+)
+from .haystack import (
+    HaystackChunker,
+    HaystackEmbedder,
+    HaystackIndexWriter,
+    HaystackRetriever,
+    HaystackSparseExpander,
+)
+from .stages import StageFailure, StageRegistry
+from .stages.contracts import (
+    ChunkStage,
+    EmbedStage,
+    EmbeddingBatch,
+    EmbeddingVector,
+    ExtractStage,
+    GraphWriteReceipt,
+    IngestStage,
+    IndexReceipt,
+    IndexStage,
+    KGStage,
+    ParseStage,
+    StageContext,
 )
 from .profiles import PipelineProfile, ProfileDetector, ProfileManager
-from .query_builder import QueryPipelineBuilder, Runner
-from .retrieval_pipeline import (
-    ConfigurableStage,
-    FinalSelectorOrchestrator,
-    FusionOrchestrator,
-    QueryPipelineExecutor,
-    RerankCache,
-    RerankOrchestrator,
-    RetrievalOrchestrator,
-    StrategySpec,
-)
 from .stages import StageRegistry
 from .worker import (
     ChunkingWorker,
@@ -39,14 +52,12 @@ from .worker import (
 __all__ = [
     "ChunkingWorker",
     "EmbeddingPipelineWorker",
-    "ConfigurableStage",
-    "FinalSelectorOrchestrator",
-    "FusionOrchestrator",
     "IngestWorker",
     "IndexingWorker",
     "JobLedger",
     "JobLedgerEntry",
     "JobTransition",
+    "KGStage",
     "KafkaClient",
     "KafkaMessage",
     "MappingWorker",
@@ -61,16 +72,9 @@ __all__ = [
     "ProfileDefinition",
     "ProfileDetector",
     "ProfileManager",
-    "QueryPipelineBuilder",
-    "QueryPipelineExecutor",
-    "Runner",
-    "RerankCache",
-    "RerankOrchestrator",
     "StageRegistry",
     "OrchestrationError",
     "Orchestrator",
-    "RetrievalOrchestrator",
-    "StrategySpec",
     "RetryPolicy",
     "WorkerBase",
 ]

@@ -1,29 +1,28 @@
-# Clinical-Aware Parsing, Chunking & Normalization
+# Clinical-Aware Parsing, Chunking & Normalization - Change Proposal
 
-## Quick Reference
-
-This proposal replaces fragmented, bespoke chunking/parsing with a unified, library-based architecture that respects clinical document structure and enforces GPU-only policies.
-
-### Key Changes
-
-- **ChunkerPort Interface**: Single protocol for all chunking strategies (replaces 8 custom chunkers)
-- **Profile-Based Chunking**: Declarative YAML profiles for IMRaD, Registry, SPL, Guideline domains
-- **Library Delegation**: LangChain, LlamaIndex, scispaCy, syntok replace custom implementations (43% code reduction)
-- **MinerU Two-Phase Gate**: Explicit `postpdf-start` trigger after PDF OCR (no automatic resume)
-- **Complete Provenance**: Every chunk has `doc_id`, `char_offsets`, `section_label`, `intent_hint`, `page_bbox`
-
-### Breaking Changes
-
-- ❌ `ChunkingService.chunk_document()` now requires `profile` parameter
-- ❌ Chunks now require `section_label`, `intent_hint`, `char_offsets` (non-optional)
-- ❌ PDF processing requires explicit `postpdf-start` call (no auto-resume)
-- ❌ Table chunks preserve HTML by default (rectangularize opt-in only)
+**Change ID**: `add-parsing-chunking-normalization`
+**Status**: Ready for Review
+**Created**: 2025-10-08
+**Validation**: ✅ PASS (`openspec validate --strict`)
 
 ---
 
-## Profile Examples
+## Quick Reference
 
-### IMRaD Profile (PMC Articles)
+| Metric | Value |
+|--------|-------|
+| **Files Created** | 8 (ChunkerPort, profiles/, wrappers/) |
+| **Files Deleted** | 6 (custom chunkers, parsers) |
+| **Lines Added** | ~480 |
+| **Lines Removed** | ~850 |
+| **Net Reduction** | -370 lines (-43%) |
+| **Tasks** | 240+ across 14 work streams |
+| **Timeline** | 6 weeks |
+| **Breaking Changes** | 4 |
+
+---
+
+## Overview
 
 ```yaml
 # config/chunking/profiles/pmc-imrad.yaml
@@ -51,61 +50,28 @@ metadata:
     Discussion: narrative
 ```
 
-**Usage**:
+### Key Innovations
 
-```python
-from Medical_KG_rev.services.chunking.port import chunk_document
-
-chunks = chunk_document(document, profile="pmc-imrad")
-# Returns list[Chunk] with:
-# - section_label="Methods", "Results", etc.
-# - intent_hint="narrative" or "outcome"
-# - char_offsets for span grounding
-# - No mid-sentence splits across IMRaD boundaries
-```
+1. **ChunkerPort Interface** - Single abstraction for all chunking strategies
+2. **Profile-Based Chunking** - Declarative domain rules (IMRaD, Registry, SPL, Guideline)
+3. **Library Delegation** - Replace 8 custom chunkers with LangChain/LlamaIndex/scispaCy
+4. **MinerU Two-Phase Gate** - Explicit PDF workflow with no CPU fallbacks
+5. **Span Provenance** - Every chunk has doc_id, char offsets, section labels, intent hints
 
 ---
 
-### Registry Profile (CT.gov Studies)
+## Problem Statement
 
-```yaml
-# config/chunking/profiles/ctgov-registry.yaml
-name: ctgov-registry
-domain: registry
-chunker_type: langchain_recursive
-target_tokens: 300
-overlap_tokens: 0  # No overlap for atomic units
-respect_boundaries:
-  - eligibility_criteria
-  - outcome_measure
-  - adverse_event_table
-  - results_section
-sentence_splitter: syntok  # Fast, sufficient for structured data
-preserve_tables_as_html: true
-filters:
-  - drop_boilerplate
-metadata:
-  section_label_source: registry_section
-  intent_hints:
-    EligibilityCriteria: eligibility
-    OutcomeMeasure: outcome
-    AdverseEventsTable: ae
-    ResultsSection: results
-```
+Current codebase has **fragmented, source-specific parsing/chunking logic** causing:
 
-**Usage**:
-
-```python
-chunks = chunk_document(ct_gov_study, profile="ctgov-registry")
-# Returns atomic units:
-# - Eligibility criteria as single chunk (intent_hint="eligibility")
-# - Each outcome measure separate (intent_hint="outcome")
-# - AE tables atomic with effect pairs together (intent_hint="ae")
-```
+- **Maintainability Crisis**: 8+ custom chunkers with overlapping logic
+- **Quality Issues**: Mid-sentence splits, fractured tables, misaligned sections
+- **Provenance Gaps**: Inconsistent offsets, missing section labels
+- **GPU Policy Violations**: PDF processing lacks clear MinerU gate, silent CPU fallbacks
 
 ---
 
-### SPL Profile (Drug Labels)
+## Solution Architecture
 
 ```yaml
 # config/chunking/profiles/spl-label.yaml
@@ -134,353 +100,239 @@ metadata:
 **Usage**:
 
 ```python
-chunks = chunk_document(spl_label, profile="spl-label")
-# Returns chunks with LOINC-coded section labels:
-# - section_label="LOINC:34089-3 Indications"
-# - section_label="LOINC:34084-4 Adverse Reactions"
-# - Enables mapping to RxNorm/MedDRA via LOINC codes
+class ChunkerPort(Protocol):
+    """Unified interface for all chunking strategies."""
+
+    def chunk(self, document: Document, profile: str) -> list[Chunk]:
+        """Chunk document according to named profile."""
+        ...
 ```
 
----
+**Runtime Registry** - Discovers chunker implementations by profile name
 
-### Guideline Profile
+### Profile-Based Chunking
 
 ```yaml
-# config/chunking/profiles/guideline.yaml
-name: guideline
-domain: guideline
+# config/chunking/profiles/pmc-imrad.yaml
+name: pmc-imrad
+domain: literature
 chunker_type: langchain_recursive
-target_tokens: 350
-overlap_tokens: 0  # Recommendations are atomic
-respect_boundaries:
-  - recommendation_unit  # Statement + strength + grade
-  - evidence_table
-sentence_splitter: syntok
+target_tokens: 450
+overlap_tokens: 50
+respect_boundaries: [heading, figure_caption, table]
+sentence_splitter: scispacy
 preserve_tables_as_html: true
-filters:
-  - drop_boilerplate
-metadata:
-  section_label_source: recommendation_id
-  intent_hints:
-    Recommendation: recommendation
-    EvidenceTable: evidence
 ```
 
-**Usage**:
+**4 Profiles**:
 
-```python
-chunks = chunk_document(guideline, profile="guideline")
-# Returns recommendation units:
-# - Each recommendation (statement + strength + grade) as single chunk
-# - Evidence tables attached to recommendations
-# - intent_hint="recommendation" enables facet summaries
+- **IMRaD** (PMC JATS): Heading-aware, preserve figures
+- **Registry** (CT.gov): Atomic outcomes, eligibility, AEs
+- **SPL** (DailyMed): LOINC-coded sections
+- **Guideline**: Isolate recommendation units
+
+### Library Integration
+
+| Functionality | Library | Purpose |
+|---------------|---------|---------|
+| Text Splitting | langchain-text-splitters | Structure-aware segmentation |
+| Coherence | LlamaIndex node parsers | Sentence/semantic windows |
+| Biomedical Sentences | scispaCy + syntok | Domain-aware segmentation |
+| Tokenization | transformers / tiktoken | Qwen3 alignment |
+| XML/HTML Parsing | unstructured | Safety net for oddball docs |
+
+### MinerU Two-Phase Gate
+
+```
+PDF Download → MinerU (GPU) → pdf_ir_ready → HALT
+                                            ↓
+                              postpdf-start (manual trigger)
+                                            ↓
+                             Chunking → Embedding → Index
 ```
 
----
-
-## MinerU Two-Phase Gate
-
-### Flow Diagram
-
-```
-1. Submit PDF Job
-   ↓
-2. Download PDF → ledger: pdf_downloaded=true
-   ↓
-3. MinerU Processing (GPU-only)
-   ├─ Success → ledger: pdf_ir_ready=true → HALT
-   └─ Failure → ledger: status=mineru_failed → ABORT (no CPU fallback)
-   ↓
-4. Manual Inspection (optional quality check)
-   ↓
-5. Trigger postpdf-start
-   ├─ Manual: POST /v1/jobs/{job_id}/postpdf-start
-   └─ Auto: Dagster sensor after 5 min delay
-   ↓
-6. Resume Pipeline: Chunking → Embedding → Indexing
-```
-
-### API Usage
-
-```bash
-# Submit PDF job
-curl -X POST https://api.medical-kg.example.com/v1/ingest/pmc \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "data": {
-      "type": "IngestionRequest",
-      "attributes": {
-        "identifiers": ["PMC8675309"],
-        "include_pdf": true
-      }
-    }
-  }'
-
-# Response: job_id="job-abc123"
-
-# Wait for MinerU to complete (poll ledger)
-curl https://api.medical-kg.example.com/v1/jobs/job-abc123
-
-# Response: status="pdf_ir_ready", waiting for postpdf-start
-
-# Trigger postpdf-start (manual or automated)
-curl -X POST https://api.medical-kg.example.com/v1/jobs/job-abc123/postpdf-start \
-  -H "Authorization: Bearer $TOKEN"
-
-# Response: status="chunking", postpdf_start_triggered_at="2025-10-07T14:30:00Z"
-```
-
-### Dagster Auto-Trigger Configuration
-
-```yaml
-# config/orchestration/sensors/pdf_ir_ready_sensor.yaml
-name: pdf_ir_ready_sensor
-poll_interval_seconds: 30
-auto_trigger_delay_minutes: 5  # Auto-trigger after 5 min wait
-trigger_source: auto_sensor
-```
-
----
-
-## Library Integration
-
-### LangChain Recursive Character Splitter
-
-**Use Case**: Default for structure-aware segmentation
-
-```python
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B")
-
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=450 * 4,  # Approximate tokens→chars
-    chunk_overlap=50 * 4,
-    length_function=lambda text: len(tokenizer.encode(text)),
-    separators=["\n\n", "\n", ". ", " ", ""]
-)
-
-chunks = splitter.split_text(document.text)
-```
-
-**Replaces**: `CustomSplitter`, `RecursiveSplitter` (8 custom implementations)
-
----
-
-### LlamaIndex Sentence Window Node Parser
-
-**Use Case**: Coherence-sensitive chunking for clinical narratives
-
-```python
-from llama_index.node_parser import SentenceWindowNodeParser
-
-parser = SentenceWindowNodeParser(
-    window_size=3,  # 3 sentences per window
-    window_metadata_key="window",
-    original_text_metadata_key="original_sentence"
-)
-
-nodes = parser.get_nodes_from_documents([document])
-```
-
-**Replaces**: `SemanticSplitter`, `CoherenceSplitter`
-
----
-
-### scispaCy Biomedical Sentence Segmentation
-
-**Use Case**: Biomedical-aware sentence boundaries for IMRaD literature
-
-```python
-import spacy
-
-nlp = spacy.load("en_core_sci_sm")
-
-def segment_sentences(text: str) -> list[tuple[int, int, str]]:
-    doc = nlp(text)
-    return [
-        (sent.start_char, sent.end_char, sent.text)
-        for sent in doc.sents
-    ]
-```
-
-**Handles**: "Fig. 1", "et al.", "p<0.001" without false sentence splits
-
-**Replaces**: `BiomedicalSentenceSplitter`
-
----
-
-### syntok Fast Sentence Splitter
-
-**Use Case**: High-throughput batches (10x faster than scispaCy)
-
-```python
-from syntok import segmenter
-
-def segment_sentences_fast(text: str) -> list[tuple[int, int, str]]:
-    sentences = []
-    for paragraph in segmenter.process(text):
-        for sentence in paragraph:
-            tokens = [token.value for token in sentence]
-            sent_text = " ".join(tokens)
-            # Offset tracking implementation
-            sentences.append((start_char, end_char, sent_text))
-    return sentences
-```
-
-**Replaces**: `SimpleSentenceSplitter`
-
----
-
-### unstructured XML/HTML Parser
-
-**Use Case**: JATS XML, SPL XML, HTML guidelines
-
-```python
-from unstructured.partition.xml import partition_xml
-from unstructured.partition.html import partition_html
-
-# JATS XML
-elements = partition_xml(filename="article.xml")
-ir_document = map_elements_to_ir(elements)
-
-# SPL XML
-elements = partition_xml(filename="label.xml")
-loinc_sections = extract_loinc_codes(elements)
-
-# HTML Guidelines
-elements = partition_html(filename="guideline.html")
-recommendations = extract_recommendations(elements)
-```
-
-**Replaces**: `XMLParser`, `JATSParser`, `SPLParser`, `HTMLParser`
+**No CPU Fallback** - MinerU fails fast if GPU unavailable
 
 ---
 
 ## Chunk Schema
 
-### Pydantic Model
-
 ```python
-from pydantic import BaseModel, Field
-from typing import Any
-
-class Chunk(BaseModel):
-    """A chunk with complete provenance."""
-
-    # Identity
-    chunk_id: str = Field(description="Unique chunk identifier")
-    doc_id: str = Field(description="Source document ID")
-
-    # Content
-    text: str = Field(description="Chunk text")
-    char_offsets: tuple[int, int] = Field(description="Start/end chars in source")
-
-    # Clinical Structure
-    section_label: str = Field(description="IMRaD section, LOINC code, or registry section")
-    intent_hint: str = Field(description="narrative, eligibility, outcome, ae, dose, recommendation")
-
-    # PDF Provenance (optional)
-    page_bbox: dict | None = Field(default=None, description="Page + bounding box")
-
-    # Metadata
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="source_system, chunking_profile, chunker_version, created_at"
-    )
-
-    # Table Handling
-    is_unparsed_table: bool = Field(default=False, description="HTML preserved?")
-    table_html: str | None = Field(default=None, description="Original HTML if unparsed")
+@dataclass
+class Chunk:
+    chunk_id: str
+    doc_id: str
+    text: str
+    char_offsets: tuple[int, int]  # Start, end positions
+    section_label: Optional[str]   # IMRaD section, LOINC code
+    intent_hint: Optional[str]     # eligibility, outcome, ae, dose
+    page_bbox: Optional[tuple[int, float, float, float, float]]  # page, x, y, w, h
+    table_html: Optional[str]      # Preserved HTML if table
+    is_unparsed_table: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
 ```
 
-### Example Chunk (IMRaD)
+---
 
-```json
+## Breaking Changes
+
+1. **ChunkingService.chunk_document()** - Now requires `profile: str` parameter
+2. **Chunk Schema** - `section_label`, `intent_hint`, `char_offsets` now required
+3. **PDF Processing** - Requires explicit `postpdf-start` call (no auto-resume)
+4. **Table Chunks** - Preserve HTML by default, rectangularize only when confident
+
+---
+
+## Migration Path (Hard Cutover)
+
+### Week 1-2: Implementation
+
+- Build ChunkerPort + profiles
+- Integrate libraries (LangChain, LlamaIndex, scispaCy)
+- **Delete legacy chunkers in same commits**
+
+### Week 3-4: Testing
+
+- Validate all 4 profiles (IMRaD, Registry, SPL, Guideline)
+- Test MinerU two-phase gate
+- Verify chunk quality (offsets, section labels, table fidelity)
+
+### Week 5-6: Production
+
+- Deploy with complete replacement (no legacy code)
+- Monitor chunk quality metrics
+- Emergency rollback: revert entire feature branch
+
+---
+
+## Performance Targets
+
+### Chunking Latency (P95)
+
+| Profile | Target | Throughput |
+|---------|--------|------------|
+| pmc-imrad | <2s | 30 docs/min |
+| ctgov-registry | <1s | 60 docs/min |
+| spl-loinc | <1.5s | 40 docs/min |
+| guideline | <1s | 60 docs/min |
+
+### MinerU Performance
+
+- **Latency**: P95 <30s per PDF (20-30 pages)
+- **Throughput**: 2-3 PDFs/second (GPU)
+- **Success Rate**: >95%
+- **GPU Utilization**: 60-80%
+
+### Quality Metrics
+
+- **Token Overflow Rate**: <1% across all profiles
+- **Section Label Coverage**: >90% of chunks
+- **Table Preservation Rate**: 100% when uncertainty high
+
+---
+
+## API Changes
+
+### REST
+
+```http
+POST /v1/ingest/clinicaltrials
+Content-Type: application/vnd.api+json
+
 {
-  "chunk_id": "pmc:PMC8675309:chunk-42",
-  "doc_id": "pmc:PMC8675309",
-  "text": "We observed a significant reduction in HbA1c levels (7.2% to 6.1%, p<0.001) after 12 weeks of treatment. The treatment group showed superior glycemic control compared to placebo.",
-  "char_offsets": [14502, 14680],
-  "section_label": "Results",
-  "intent_hint": "outcome",
-  "page_bbox": {
-    "page": 5,
-    "bbox": [120, 450, 480, 520]
-  },
-  "metadata": {
-    "source_system": "pmc",
-    "chunking_profile": "pmc-imrad",
-    "chunker_version": "langchain-v0.2.0",
-    "created_at": "2025-10-07T14:30:00Z"
-  },
-  "is_unparsed_table": false,
-  "table_html": null
+  "data": {
+    "type": "IngestionRequest",
+    "attributes": {
+      "identifiers": ["NCT04267848"],
+      "chunking_profile": "ctgov-registry",
+      "options": {
+        "preserve_tables_html": true,
+        "sentence_splitter": "scispacy"
+      }
+    }
+  }
 }
 ```
 
-### Example Chunk (Registry, AE Table)
+### GraphQL
 
-```json
-{
-  "chunk_id": "ctgov:NCT04267848:chunk-15",
-  "doc_id": "ctgov:NCT04267848",
-  "text": "Adverse Event: Nausea | Treatment Group: 23/100 (23%) | Placebo Group: 8/98 (8%) | Risk Ratio: 2.8 (95% CI: 1.3-6.1)",
-  "char_offsets": [8920, 9050],
-  "section_label": "AdverseEventsTable",
-  "intent_hint": "ae",
-  "page_bbox": null,
-  "metadata": {
-    "source_system": "ctgov",
-    "chunking_profile": "ctgov-registry",
-    "chunker_version": "langchain-v0.2.0",
-    "created_at": "2025-10-07T14:32:00Z"
-  },
-  "is_unparsed_table": true,
-  "table_html": "<table><tr><th>Adverse Event</th><th>Treatment</th><th>Placebo</th><th>Risk Ratio</th></tr>...</table>"
+```graphql
+mutation IngestClinicalTrial($input: IngestionInput!) {
+  startIngestion(input: $input) {
+    jobId
+    chunkingProfile
+    estimatedChunks
+  }
 }
 ```
 
 ---
 
-## Filter Chain
+## Monitoring & Observability
 
-### Available Filters
-
-1. **drop_boilerplate**: Remove headers, footers, "Page X of Y"
-2. **exclude_references**: Drop "References" section
-3. **deduplicate_page_furniture**: Remove repeated running headers
-4. **preserve_tables_html**: Keep HTML when rectangularization confidence <0.8
-
-### Configuration
-
-```yaml
-# In profile YAML
-filters:
-  - drop_boilerplate
-  - exclude_references
-  - deduplicate_page_furniture
-  - preserve_tables_html
-```
-
-### Implementation
+### Prometheus Metrics
 
 ```python
-def apply_filters(chunks: list[Chunk], filters: list[str]) -> list[Chunk]:
-    """Apply filter chain."""
-    for filter_name in filters:
-        chunks = FILTER_REGISTRY[filter_name](chunks)
-    return chunks
+CHUNKING_DURATION = Histogram(
+    "medicalkg_chunking_duration_seconds",
+    "Chunking duration per profile",
+    ["profile", "source"]
+)
 
-# Filter registry
-FILTER_REGISTRY = {
-    "drop_boilerplate": drop_boilerplate_filter,
-    "exclude_references": exclude_references_filter,
-    "deduplicate_page_furniture": deduplicate_page_furniture_filter,
-    "preserve_tables_html": preserve_tables_html_filter,
+TOKEN_OVERFLOW_RATE = Counter(
+    "medicalkg_chunk_token_overflow_total",
+    "Token budget overflows",
+    ["profile"]
+)
+
+MINERU_FAILURES = Counter(
+    "medicalkg_mineru_failures_total",
+    "MinerU processing failures",
+    ["error_type"]
+)
+```
+
+### CloudEvents
+
+```json
+{
+  "type": "com.medical-kg.chunking.completed",
+  "data": {
+    "profile": "pmc-imrad",
+    "chunk_count": 45,
+    "duration_seconds": 1.2,
+    "token_overflows": 0
+  }
 }
 ```
+
+### Grafana Dashboards
+
+- Chunking Latency by Profile (P50, P95, P99)
+- Token Overflow Rate (% of chunks)
+- Table Preservation Rate (%)
+- MinerU Success Rate (%)
+- Profile Usage Distribution
+- Section Label Coverage (%)
+
+---
+
+## Testing Strategy
+
+### Test Coverage
+
+- **Unit Tests**: 50+ (ChunkerPort, profiles, libraries, filters)
+- **Integration Tests**: 21 (end-to-end per profile, PDF two-phase)
+- **Performance Tests**: Latency benchmarks, load tests, soak tests
+- **Contract Tests**: REST/GraphQL/gRPC API compatibility
+- **Table Tests**: HTML preservation, rectangularization decisions
+
+### Quality Validation
+
+- Chunk offsets accuracy (manual inspection of 100 chunks)
+- Section labels match expected structure (IMRaD/LOINC/registry)
+- No mid-sentence splits (sample 100 chunks)
+- Table HTML preserved when uncertainty high
 
 ---
 
@@ -499,65 +351,103 @@ pydantic>=2.6.0
 
 ---
 
-## Codebase Reduction
+## Rollback Procedures
 
-### Before
+### Trigger Conditions
 
-| Component | Files | Lines |
-|-----------|-------|-------|
-| Custom chunkers | 6 | 420 |
-| Custom parsers | 3 | 415 |
-| Sentence splitters | 1 | 140 |
-| **Total** | **10** | **975** |
+**Automated**:
 
-### After
+- Token overflow rate >10% for >15 minutes
+- Chunking latency P95 >5s for >10 minutes
+- Section label coverage <80% for >15 minutes
 
-| Component | Files | Lines |
-|-----------|-------|-------|
-| ChunkerPort interface | 1 | 50 |
-| Profile system | 3 | 120 |
-| Library wrappers | 5 | 310 |
-| **Total** | **9** | **480** |
+**Manual**:
 
-### Reduction
+- Critical quality issues (mid-sentence splits, corrupted tables)
+- Downstream extraction failures
 
-- **Lines Removed**: 975
-- **Lines Added**: 480
-- **Net Reduction**: 495 lines (51% reduction)
-- **Files Reduced**: 10 → 9
-
----
-
-## Migration Checklist
-
-- [ ] Install dependencies: `pip install -r requirements.txt`
-- [ ] Download scispaCy model: `python -m spacy download en_core_sci_sm`
-- [ ] Create profile YAMLs in `config/chunking/profiles/`
-- [ ] Run ledger migration: `python scripts/migrate_ledger_for_pdf_gate.py`
-- [ ] Update gateway endpoints to accept `chunking_profile` parameter
-- [ ] Test all 4 profiles end-to-end (IMRaD, Registry, SPL, Guideline)
-- [ ] Test MinerU two-phase gate with 3 PDF sources
-- [ ] Deploy to production (no legacy code remains)
-- [ ] Monitor chunk quality metrics for 48 hours
-
----
-
-## Validation
+### Rollback Steps
 
 ```bash
-# Validate proposal
-cd /home/paul/Medical_KG_rev
-openspec validate add-parsing-chunking-normalization --strict
+# 1. Revert feature branch
+git revert <feature-branch-commit-sha>
 
-# Expected: Change is valid
+# 2. Redeploy previous version
+kubectl rollout undo deployment/chunking-service
+
+# 3. Validate restoration (5 minutes)
+# Check metrics return to baseline
+
+# RTO: 5 minutes (target)
 ```
 
 ---
 
-## Status
+## Benefits
 
-**Created**: 2025-10-07
-**Status**: Ready for implementation
-**Timeline**: 6 weeks (2 weeks build, 2 weeks testing, 2 weeks deployment)
-**Breaking Changes**: 4 (ChunkingService API, Chunk schema, PDF gate, table handling)
-**Affected Capabilities**: 4 (chunking, parsing, orchestration, storage)
+✅ **Maintainability**: Single ChunkerPort interface, library delegation
+✅ **Clinical Fidelity**: Profile-based chunking respects domain structure
+✅ **Provenance**: Complete tracking (doc_id, offsets, section labels, intent)
+✅ **GPU Policy**: Explicit MinerU gate, no CPU fallbacks
+✅ **Span-Grounded**: Precise offsets enable downstream extraction
+✅ **Code Reduction**: 43% reduction in parsing/chunking code
+
+---
+
+## Risks & Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| Profile tuning complexity | Start conservative, tune based on metrics |
+| scispaCy overhead | Use syntok for high-volume, scispaCy when needed |
+| MinerU gate training | Document workflow in runbook, add Dagster shortcuts |
+| Token overflow | Monitor metrics, tune profile token budgets |
+
+---
+
+## Files Modified
+
+### Created
+
+- `src/Medical_KG_rev/services/chunking/port.py` (ChunkerPort interface)
+- `src/Medical_KG_rev/services/chunking/profiles/` (4 profile YAML files)
+- `src/Medical_KG_rev/services/chunking/wrappers/` (library wrappers)
+- `tests/chunking/test_profiles.py` (profile tests)
+
+### Deleted
+
+- `src/Medical_KG_rev/services/chunking/custom_splitters.py` (420 lines)
+- `src/Medical_KG_rev/services/parsing/pdf_parser.py` (180 lines)
+- `src/Medical_KG_rev/services/parsing/xml_parser.py` (95 lines)
+- `src/Medical_KG_rev/services/parsing/sentence_splitters.py` (140 lines)
+
+### Modified
+
+- `src/Medical_KG_rev/gateway/rest/routes/ingestion.py` (add chunking_profile param)
+- `src/Medical_KG_rev/orchestration/orchestrator.py` (PDF two-phase gate)
+- All adapter `split_document()` calls → delegate to ChunkerPort
+
+---
+
+## Next Steps
+
+1. ✅ **Review & Approval** - Stakeholder review of this proposal
+2. ⏳ **Implementation** - 6 weeks (Week 1-2: build, Week 3-4: test, Week 5-6: deploy)
+3. ⏳ **Validation** - Monitor metrics for 2 weeks post-deployment
+4. ⏳ **Iteration** - Tune profiles based on downstream quality
+
+---
+
+## Document Index
+
+- **proposal.md** - Why, what changes, impact, benefits
+- **tasks.md** - 240+ implementation tasks across 14 work streams
+- **design.md** - Technical decisions, alternatives, architecture
+- **specs/chunking/spec.md** - 6 ADDED, 2 MODIFIED, 3 REMOVED requirements
+- **specs/parsing/spec.md** - 4 ADDED, 1 MODIFIED, 2 REMOVED requirements
+- **specs/orchestration/spec.md** - 2 MODIFIED requirements (PDF gate)
+- **specs/storage/spec.md** - 2 MODIFIED requirements (chunk schema)
+
+---
+
+**Status**: ✅ Ready for stakeholder review and approval

@@ -1,0 +1,26 @@
+version: v1
+queries:
+  - query_id: Q1
+    query_text: glycemic control in type 2 diabetes
+    query_type: complex_clinical
+    relevant_docs:
+      - doc_id: DOC-001
+        grade: 3
+      - doc_id: DOC-010
+        grade: 1
+  - query_id: Q2
+    query_text: adverse events of metformin
+    query_type: exact_term
+    relevant_docs:
+      - doc_id: DOC-002
+        grade: 2
+      - doc_id: DOC-011
+        grade: 1
+  - query_id: Q3
+    query_text: hypertension management guidelines
+    query_type: paraphrase
+    relevant_docs:
+      - doc_id: DOC-003
+        grade: 3
+      - doc_id: DOC-012
+        grade: 2

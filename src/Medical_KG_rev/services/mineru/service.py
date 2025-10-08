@@ -11,6 +11,10 @@ from importlib import metadata as importlib_metadata
 
 import structlog
 
+from Medical_KG_rev.chunking.exceptions import (
+    MineruGpuUnavailableError as ChunkingMineruGpuUnavailableError,
+    MineruOutOfMemoryError as ChunkingMineruOutOfMemoryError,
+)
 from Medical_KG_rev.config.settings import MineruSettings, get_settings
 from Medical_KG_rev.storage.object_store import FigureStorageClient
 
@@ -38,8 +42,20 @@ from .vllm_client import VLLMClient, VLLMClientError
 logger = structlog.get_logger(__name__)
 
 
-class MineruOutOfMemoryError(MineruCliError):
+class MineruOutOfMemoryError(MineruCliError, ChunkingMineruOutOfMemoryError):
     """Raised when MinerU CLI indicates an out-of-memory failure."""
+
+    def __init__(self) -> None:
+        ChunkingMineruOutOfMemoryError.__init__(self)
+        MineruCliError.__init__(self, str(self))
+
+
+class MineruGpuUnavailableError(MineruCliError, ChunkingMineruGpuUnavailableError):
+    """Raised when MinerU cannot access a healthy GPU backend."""
+
+    def __init__(self) -> None:
+        ChunkingMineruGpuUnavailableError.__init__(self)
+        MineruCliError.__init__(self, str(self))
 
 
 class MineruProcessor:
@@ -188,7 +204,7 @@ class MineruProcessor:
         reason = "oom" if self._looks_like_oom(str(exc)) else "cli-error"
         MINERU_CLI_FAILURES_TOTAL.labels(reason=reason).inc()
         if reason == "oom":
-            raise MineruOutOfMemoryError(str(exc)) from exc
+            raise MineruOutOfMemoryError() from exc
         return True
 
     def _ensure_mineru_version(self) -> str | None:
@@ -306,9 +322,7 @@ class MineruProcessor:
             finally:
                 loop.close()
         if not healthy:
-            raise RuntimeError(
-                f"vLLM server unavailable at {self._settings.vllm_server.base_url}"
-            )
+            raise MineruGpuUnavailableError()
 
     @property
     def vllm_client(self) -> VLLMClient:
@@ -393,5 +407,6 @@ __all__ = [
     "MineruRequest",
     "MineruBatchResponse",
     "MineruOutOfMemoryError",
+    "MineruGpuUnavailableError",
     "MineruGrpcService",
 ]

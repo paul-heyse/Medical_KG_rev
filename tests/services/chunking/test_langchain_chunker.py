@@ -27,6 +27,10 @@ class _FakeTokenizer:
     def encode(self, text: str) -> list[int]:
         return text.split()
 
+    @classmethod
+    def from_pretrained(cls, model_id: str):
+        return cls(model_id)
+
 
 def _document() -> Document:
     return Document(

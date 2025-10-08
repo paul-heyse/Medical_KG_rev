@@ -66,6 +66,11 @@ REQUEST_COUNTER = Counter(
     "Total HTTP requests served by the gateway",
     labelnames=("method", "path", "status"),
 )
+CROSS_TENANT_ACCESS_ATTEMPTS = Counter(
+    "medicalkg_cross_tenant_access_attempts_total",
+    "Attempted cross-tenant accesses (blocked)",
+    labelnames=("source_tenant", "target_tenant"),
+)
 REQUEST_LATENCY = Histogram(
     "api_request_duration_seconds",
     "HTTP request latency distribution",
@@ -85,6 +90,36 @@ CHUNK_SIZE = Histogram(
     "chunk_size_characters",
     "Distribution of chunk sizes by granularity",
     labelnames=("profile", "granularity"),
+)
+CHUNKING_DOCUMENTS = Counter(
+    "chunking_documents_total",
+    "Total documents processed by the chunking pipeline",
+    labelnames=("profile",),
+)
+CHUNKING_DURATION = Histogram(
+    "chunking_duration_seconds",
+    "Chunking duration distribution per profile",
+    labelnames=("profile",),
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
+)
+CHUNKS_PER_DOCUMENT = Histogram(
+    "chunking_chunks_per_document",
+    "Distribution of chunk counts per document",
+    labelnames=("profile",),
+    buckets=(1, 2, 4, 8, 16, 32, 64, 128),
+)
+CHUNKING_FAILURES = Counter(
+    "medicalkg_chunking_errors_total",
+    "Chunking failures grouped by profile and error type",
+    labelnames=("profile", "error_type"),
+)
+MINERU_GATE_TRIGGERED = Counter(
+    "mineru_gate_triggered_total",
+    "Number of times the MinerU two-phase gate halted processing",
+)
+POSTPDF_START_TRIGGERED = Counter(
+    "postpdf_start_triggered_total",
+    "Number of times post-PDF resume was triggered",
 )
 CHUNKING_CIRCUIT_STATE = Gauge(
     "chunking_circuit_breaker_state",
@@ -305,6 +340,35 @@ def _increment_with_exemplar(metric, labels: tuple[str, ...], amount: float = 1.
 
 def observe_job_duration(operation: str, duration_seconds: float) -> None:
     JOB_DURATION.labels(operation=operation).observe(max(duration_seconds, 0.0))
+
+
+
+def record_chunking_document(profile: str, duration_seconds: float, chunks: int) -> None:
+    """Record metrics for a completed chunking operation."""
+
+    labels = (profile or "unknown",)
+    _increment_with_exemplar(CHUNKING_DOCUMENTS, labels)
+    _observe_with_exemplar(CHUNKING_DURATION, labels, max(duration_seconds, 0.0))
+    _observe_with_exemplar(CHUNKS_PER_DOCUMENT, labels, float(max(chunks, 0)))
+
+
+def record_chunking_failure(profile: str | None, error_type: str) -> None:
+    """Increment chunking failure counter for the supplied error type."""
+
+    labels = (profile or "unknown", error_type)
+    _increment_with_exemplar(CHUNKING_FAILURES, labels)
+
+
+def increment_mineru_gate_triggered() -> None:
+    """Increment the MinerU gate triggered counter."""
+
+    MINERU_GATE_TRIGGERED.inc()
+
+
+def increment_postpdf_start_triggered() -> None:
+    """Increment the post-PDF start triggered counter."""
+
+    POSTPDF_START_TRIGGERED.inc()
 
 
 

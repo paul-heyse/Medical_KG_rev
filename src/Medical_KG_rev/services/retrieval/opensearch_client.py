@@ -30,7 +30,13 @@ class OpenSearchClient:
         self._templates[template.name] = template
 
     def index(self, index: str, doc_id: str, body: Mapping[str, object]) -> None:
-        self._indices[index][doc_id] = _IndexedDocument(doc_id=doc_id, body=dict(body))
+        stored = dict(body)
+        metadata = stored.get("metadata")
+        if isinstance(metadata, Mapping):
+            profile = metadata.get("chunking_profile")
+            if profile and "chunking_profile" not in stored:
+                stored["chunking_profile"] = profile
+        self._indices[index][doc_id] = _IndexedDocument(doc_id=doc_id, body=stored)
 
     def bulk_index(
         self, index: str, documents: Sequence[Mapping[str, object]], id_field: str

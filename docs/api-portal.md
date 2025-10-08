@@ -20,6 +20,10 @@ This lightweight developer portal provides quick access to the REST, GraphQL, gR
 - Proto definitions under [`src/Medical_KG_rev/proto`](../src/Medical_KG_rev/proto)
 - Buf configuration: [`buf.yaml`](../buf.yaml)
 - Code generation: `buf generate`
+- `EmbeddingService.Embed` requires `inputs`, `namespace`, and the authenticated
+  `tenant_id`.
+- Use `EmbeddingService.ListNamespaces` and
+  `EmbeddingService.ValidateTexts` to mirror the REST namespace APIs.
 - Health check service exposed via `grpc.health.v1`
 
 ## AsyncAPI (SSE)
@@ -35,13 +39,17 @@ This lightweight developer portal provides quick access to the REST, GraphQL, gR
 
 ## Authentication Guide
 
-All protocols expect a tenant-aware request. Include the `tenant_id` field in request bodies. For SSE streaming, add the `X-API-Key` header with `public-demo-key`.
+All protocols expect a tenant-aware request. REST, gRPC, and SOAP payloads must
+include the `tenant_id` field. GraphQL derives the tenant from authentication
+context when omitted. For SSE streaming, add the `X-API-Key` header with
+`public-demo-key`.
 
 ## Example Workflow
 
 1. **Ingest:** Submit documents via REST `/v1/ingest/clinicaltrials`
 2. **Chunk:** Call GraphQL `chunk` mutation to segment documents
-3. **Embed:** Generate embeddings via gRPC `EmbeddingService`
+3. **Embed:** Generate embeddings via gRPC `EmbeddingService` or GraphQL
+   `embed` mutation (namespaces are derived from the authenticated tenant).
 4. **Extract:** Use REST `/v1/extract/pico` to obtain structured claims
 5. **Write:** Persist relationships via GraphQL `write_kg` mutation
 6. **Stream:** Monitor job status with SSE `/v1/jobs/{job_id}/events`

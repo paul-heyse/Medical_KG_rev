@@ -147,4 +147,9 @@
     "figures": 0,
     "equations": 0
   }
+    {"document_id": "doc-basic", "blocks": 4, "tables": 0, "figures": 0, "equations": 0},
+    {"document_id": "doc-table", "blocks": 3, "tables": 3, "figures": 0, "equations": 0},
+    {"document_id": "doc-multi", "blocks": 3, "tables": 0, "figures": 0, "equations": 0}
+  ],
+  "totals": {"blocks": 10, "tables": 3, "figures": 0, "equations": 0}
 }

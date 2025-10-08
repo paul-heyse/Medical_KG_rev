@@ -33,6 +33,11 @@ def live_vllm_client() -> VLLMClient:
         run_async(client.close())
 
 
+class _HealthyVLLMClient:
+    async def health_check(self) -> bool:  # pragma: no cover - async helper
+        return True
+
+
 @pytest.fixture
 def simulated_processor() -> MineruProcessor:
     """Provide a MinerU processor wired to the simulated CLI and live vLLM client."""
@@ -50,6 +55,10 @@ def simulated_processor() -> MineruProcessor:
         run_async(client.close())
         pytest.skip("vLLM server not healthy for MinerU pipeline test")
 
+    """Provide a MineruProcessor wired to the simulated CLI and healthy vLLM client."""
+
+    settings = MineruSettings()
+    cli = SimulatedMineruCli(settings)
     processor = MineruProcessor(
         settings=settings,
         cli=cli,
@@ -61,3 +70,6 @@ def simulated_processor() -> MineruProcessor:
         yield processor
     finally:
         run_async(client.close())
+        vllm_client=_HealthyVLLMClient(),
+    )
+    return processor

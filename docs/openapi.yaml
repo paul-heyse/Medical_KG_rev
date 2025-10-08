@@ -111,9 +111,51 @@ paths:
                 type: object
                 properties:
                   data:
+                    $ref: '#/components/schemas/EmbeddingResponse'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+  /v1/namespaces:
+    get:
+      summary: List available embedding namespaces
+      responses:
+        '200':
+          description: Namespace catalog
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                properties:
+                  data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EmbeddingVector'
+                      $ref: '#/components/schemas/NamespaceInfo'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+  /v1/namespaces/{namespace}/validate:
+    post:
+      summary: Validate texts against namespace token limits
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NamespaceValidationRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NamespaceValidationResponse'
                   meta:
                     $ref: '#/components/schemas/Meta'
   /v1/retrieve:
@@ -381,20 +423,27 @@ components:
           type: integer
     EmbedRequest:
       type: object
-      required: [tenant_id, inputs, model, namespace]
+      required: [tenant_id, texts, namespace]
       properties:
         tenant_id:
           type: string
-        inputs:
+        texts:
           type: array
           items:
             type: string
-        model:
-          type: string
         namespace:
           type: string
+        options:
+          $ref: '#/components/schemas/EmbeddingOptions'
+    EmbeddingOptions:
+      type: object
+      properties:
         normalize:
           type: boolean
+          default: true
+        model:
+          type: string
+          nullable: true
     EmbeddingVector:
       type: object
       properties:
@@ -408,16 +457,102 @@ components:
           type: string
         dimension:
           type: integer
+          nullable: true
         vector:
           type: array
+          nullable: true
           items:
             type: number
         terms:
           type: object
+          nullable: true
           additionalProperties:
             type: number
         metadata:
           type: object
+    EmbeddingMetadata:
+      type: object
+      properties:
+        provider:
+          type: string
+        dimension:
+          type: integer
+          nullable: true
+        duration_ms:
+          type: number
+          nullable: true
+        model:
+          type: string
+          nullable: true
+    EmbeddingResponse:
+      type: object
+      properties:
+        namespace:
+          type: string
+        embeddings:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmbeddingVector'
+        metadata:
+          $ref: '#/components/schemas/EmbeddingMetadata'
+    NamespaceInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        kind:
+          type: string
+        dimension:
+          type: integer
+          nullable: true
+        max_tokens:
+          type: integer
+          nullable: true
+        enabled:
+          type: boolean
+        allowed_tenants:
+          type: array
+          items:
+            type: string
+        allowed_scopes:
+          type: array
+          items:
+            type: string
+    NamespaceValidationRequest:
+      type: object
+      required: [tenant_id, texts]
+      properties:
+        tenant_id:
+          type: string
+        texts:
+          type: array
+          items:
+            type: string
+    NamespaceValidationResult:
+      type: object
+      properties:
+        text_index:
+          type: integer
+        token_count:
+          type: integer
+        exceeds_budget:
+          type: boolean
+        warning:
+          type: string
+          nullable: true
+    NamespaceValidationResponse:
+      type: object
+      properties:
+        namespace:
+          type: string
+        valid:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamespaceValidationResult'
           additionalProperties: true
     RetrieveRequest:
       type: object

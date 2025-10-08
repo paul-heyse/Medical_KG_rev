@@ -45,6 +45,11 @@ if BaseModel is not None:
         normalize: bool = True
         batch_size: int = 32
         requires_gpu: bool = False
+        max_tokens: int | None = None
+        tokenizer: str | None = None
+        enabled: bool = True
+        allowed_scopes: list[str] = Field(default_factory=lambda: ["embed:read", "embed:write"])
+        allowed_tenants: list[str] = Field(default_factory=lambda: ["all"])
 
         model_config = {"frozen": True}
 
@@ -69,6 +74,9 @@ if BaseModel is not None:
                 parameters=param_map,
             )
 
+    class NamespaceConfigFile(BaseModel):
+        namespaces: dict[str, NamespaceConfig] = Field(default_factory=dict)
+
 else:
 
     @dataclass(slots=True, frozen=True)
@@ -87,6 +95,11 @@ else:
         normalize: bool = True
         batch_size: int = 32
         requires_gpu: bool = False
+        max_tokens: int | None = None
+        tokenizer: str | None = None
+        enabled: bool = True
+        allowed_scopes: list[str] = field(default_factory=lambda: ["embed:read", "embed:write"])
+        allowed_tenants: list[str] = field(default_factory=lambda: ["all"])
 
         def __post_init__(self) -> None:
             value = self.kind.value if isinstance(self.kind, EmbeddingKind) else str(self.kind)
@@ -112,5 +125,9 @@ else:
                 parameters=param_map,
             )
 
+    @dataclass(slots=True)
+    class NamespaceConfigFile:  # type: ignore[no-redef]
+        namespaces: dict[str, NamespaceConfig] = field(default_factory=dict)
 
-__all__ = ["EmbeddingKind", "NamespaceConfig"]
+
+__all__ = ["EmbeddingKind", "NamespaceConfig", "NamespaceConfigFile"]

@@ -177,6 +177,8 @@ def test_pipeline_state_recover_handles_compressed_payload() -> None:
     assert recovered.schema_version == payload["version"]
     assert recovered.metadata == state.metadata
     assert "ingest" in recovered.stage_results
+    assert recovered.has_pdf_assets()
+    assert recovered.gate_status["pdf_gate"] is False
     assert recovered.serialise()["pdf"] == payload["pdf"]
     assert recovered.has_pdf_assets()
     assert recovered.gate_status["pdf_gate"] is False

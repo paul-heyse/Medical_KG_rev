@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import Any
 
 import structlog
+from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
 from aiolimiter import AsyncLimiter
 from pybreaker import CircuitBreaker
 
@@ -52,6 +53,14 @@ from ..services.embedding.persister import (
 from ..services.embedding.registry import EmbeddingModelRegistry
 from ..services.embedding.telemetry import EmbeddingTelemetry, StandardEmbeddingTelemetry
 from ..services.retrieval.chunking import ChunkingService
+from ..services.retrieval.chunking_command import ChunkCommand
+from .chunking import ChunkingErrorTranslator
+from ..utils.errors import ProblemDetail as PipelineProblemDetail
+from ..validation import UCUMValidator
+from ..validation.fhir import FHIRValidationError, FHIRValidator
+from Medical_KG_rev.embeddings.ports import (
+    EmbeddingRecord,
+    EmbeddingRequest as AdapterEmbeddingRequest,
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
@@ -150,6 +159,7 @@ class GatewayService:
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
     stage_factory: StageFactory | None = None
     chunker: ChunkingService | None = None
+    chunking_error_translator: ChunkingErrorTranslator | None = None
     retriever: HaystackRetriever = field(default_factory=HaystackRetriever)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
@@ -168,10 +178,18 @@ class GatewayService:
     def __post_init__(self) -> None:
         self.job_lifecycle = JobLifecycleManager(self.ledger, self.events)
         if self.stage_factory is None:
+            self.stage_factory = _build_stage_factory(
+                self.adapter_manager,
+                job_ledger=self.ledger,
+            )
             self.stage_factory = _build_stage_factory(self.adapter_manager, self.ledger)
             
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
+        if self.chunking_error_translator is None:
+            self.chunking_error_translator = ChunkingErrorTranslator(
+                available_strategies=self.chunker.available_strategies,
+            )
         if self.namespace_registry is None:
             self.namespace_registry = self.embedding_registry.namespace_registry
         if self.embedding_telemetry is None:
@@ -512,6 +530,54 @@ class GatewayService:
         return result
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
+        job_id = self._new_job(request.tenant_id, "chunk")
+        options_payload = request.options if isinstance(request.options, dict) else {}
+        raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
+        metadata = {
+            key: value
+            for key, value in options_payload.items()
+            if key != "text"
+        }
+        chunker = self.chunker or ChunkingService(stage_factory=self.stage_factory)
+        translator = self.chunking_error_translator or ChunkingErrorTranslator(
+            available_strategies=chunker.available_strategies,
+        )
+        command: ChunkCommand | None = None
+        try:
+            command = ChunkCommand.from_request(
+                request,
+                text=raw_text,
+                metadata=metadata,
+            ).with_context(job_id=job_id, endpoint="gateway")
+            raw_chunks = chunker.chunk(command)
+        except Exception as exc:
+            try:
+                translated = translator.translate(exc, command=command)
+            except Exception:
+                message = str(exc) or "Runtime error during chunking"
+                self._fail_job(job_id, message)
+                raise
+            self._fail_job(job_id, translated.detail.detail or translated.detail.title)
+            raise GatewayError(translated.detail) from exc
+        chunks: list[DocumentChunk] = []
+        for index, chunk in enumerate(raw_chunks):
+            metadata = dict(chunk.meta)
+            metadata.setdefault("granularity", chunk.granularity)
+            metadata.setdefault("chunker", chunk.chunker)
+            chunks.append(
+                DocumentChunk(
+                    document_id=request.document_id,
+                    chunk_index=index,
+                    content=chunk.body,
+                    metadata=metadata,
+                    token_count=metadata.get("token_count", 0),
+                )
+            )
+        self.ledger.update_metadata(job_id, {"chunks": len(chunks)})
+        self._complete_job(job_id, payload={"chunks": len(chunks)})
+        return chunks
+
+    def embed(self, request: EmbedRequest) -> EmbeddingResponse:
         if self.chunking_coordinator is None:
             raise RuntimeError("Chunking coordinator not initialised")
 
@@ -1322,6 +1388,18 @@ def get_gateway_service() -> GatewayService:
             plugin_manager=adapter_manager,
             job_ledger=_ledger,
             pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

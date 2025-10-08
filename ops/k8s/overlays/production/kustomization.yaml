@@ -11,6 +11,9 @@ images:
   - name: ghcr.io/example/medical-kg-worker:latest
     newName: ghcr.io/example/medical-kg-worker
     newTag: latest
+  - name: registry.example.com/medical-kg/vllm-embedding:latest
+    newName: ghcr.io/example/vllm-embedding
+    newTag: latest
 
 patches:
   - target:

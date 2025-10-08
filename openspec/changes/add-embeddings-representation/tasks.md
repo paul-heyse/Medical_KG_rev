@@ -44,36 +44,36 @@
 
 #### 1.1.2 Dependency Graph Analysis
 
-- [ ] **1.1.2a** Map dependencies of legacy embedding code:
+ - [x] **1.1.2a** Map dependencies of legacy embedding code:
   - Which orchestration stages depend on `BGEEmbedder`?
   - Which API endpoints expose embedding functionality?
   - Which storage layers expect legacy embedding formats?
 
-- [ ] **1.1.2b** Identify circular dependencies or tight coupling:
+ - [x] **1.1.2b** Identify circular dependencies or tight coupling:
 
   ```bash
   pydeps src/Medical_KG_rev/services/embedding/ --show-deps
   ```
 
-- [ ] **1.1.2c** Document external library usage by legacy code:
+ - [x] **1.1.2c** Document external library usage by legacy code:
   - `sentence-transformers` (used by `bge_embedder.py`)
   - `transformers` (used by `splade_embedder.py`)
   - Custom batching logic (used by `manual_batching.py`)
 
 #### 1.1.3 Test Coverage Audit
 
-- [ ] **1.1.3a** List all tests covering legacy embedding code:
+- [x] **1.1.3a** List all tests covering legacy embedding code:
 
   ```bash
   rg "BGEEmbedder|SPLADEEmbedder|ManualBatcher" tests/ --type py
   ```
 
-- [ ] **1.1.3b** Categorize tests:
+- [x] **1.1.3b** Categorize tests:
   - Unit tests (mock-heavy, test specific embedder logic)
   - Integration tests (test embedding + storage pipeline)
   - Contract tests (test API schema compliance)
 
-- [ ] **1.1.3c** Identify tests to migrate vs delete:
+- [x] **1.1.3c** Identify tests to migrate vs delete:
   - Tests of embedder internals → DELETE (vLLM/Pyserini handle this)
   - Tests of embedding API contracts → MIGRATE (rewrite for vLLM client)
   - Tests of storage integration → MIGRATE (update for FAISS/OpenSearch)
@@ -86,22 +86,22 @@
 
 **Goal**: Prove vLLM OpenAI-compatible API replaces all `BGEEmbedder` functionality
 
-- [ ] **1.2.1a** Map `BGEEmbedder` methods to vLLM endpoints:
+- [x] **1.2.1a** Map `BGEEmbedder` methods to vLLM endpoints:
   - `embed(texts: list[str]) -> np.ndarray` → `POST /v1/embeddings` with `input=[...]`
   - `embed_query(text: str) -> np.ndarray` → `POST /v1/embeddings` with `input="..."`
   - Batching logic → vLLM handles batching internally
 
-- [ ] **1.2.1b** Validate vLLM covers edge cases:
+- [x] **1.2.1b** Validate vLLM covers edge cases:
   - Empty text → vLLM returns error (acceptable)
   - Text exceeding token limit → vLLM returns error (acceptable, aligns with fail-fast)
   - Unicode handling → vLLM tokenizer handles NFKC normalization
 
-- [ ] **1.2.1c** Performance parity validation:
+- [x] **1.2.1c** Performance parity validation:
   - Benchmark: `BGEEmbedder` throughput vs vLLM throughput
   - Target: vLLM ≥5x faster (100-200 emb/sec → 1000+ emb/sec)
   - GPU memory: vLLM should use ≤16GB for Qwen3-Embedding-8B
 
-- [ ] **1.2.1d** Document delegation:
+- [x] **1.2.1d** Document delegation:
   - Create table: Legacy Method → vLLM Endpoint → Notes
   - Example:
 
@@ -119,16 +119,16 @@
   - `expand_query(text: str) -> dict[str, float]` → Same method, different usage
   - Top-K pruning → Pyserini handles via `k` parameter
 
-- [ ] **1.2.2b** Validate Pyserini covers edge cases:
+- [x] **1.2.2b** Validate Pyserini covers edge cases:
   - Empty text → Pyserini returns empty dict (acceptable)
   - Long text → Pyserini truncates to SPLADE model limit (acceptable)
   - Special characters → Pyserini tokenizer handles
 
-- [ ] **1.2.2c** Performance parity validation:
+- [x] **1.2.2c** Performance parity validation:
   - Benchmark: `SPLADEEmbedder` throughput vs Pyserini throughput
   - Target: Pyserini ≥2x faster (custom implementation slower due to overhead)
 
-- [ ] **1.2.2d** Document delegation:
+- [x] **1.2.2d** Document delegation:
   - Create table: Legacy Method → Pyserini Method → Notes
 
 #### 1.2.3 Tokenization Delegation
@@ -139,19 +139,19 @@
   - Approximate counting (`len(text) / 4`) → DELETED (inaccurate)
   - `transformers.AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B")` → NEW standard
 
-- [ ] **1.2.3b** Validate tokenizer accuracy:
+- [x] **1.2.3b** Validate tokenizer accuracy:
   - Test: Count tokens for 100 sample texts
   - Compare: Approximate vs exact tokenizer
   - Result: Exact tokenizer catches 15% of overflows missed by approximation
 
-- [ ] **1.2.3c** Document delegation:
+- [x] **1.2.3c** Document delegation:
   - "All token counting now uses `transformers.AutoTokenizer` aligned with Qwen3"
 
 #### 1.2.4 Batching Delegation
 
 **Goal**: Prove vLLM handles batching (no `manual_batching.py` needed)
 
-- [ ] **1.2.4a** Validate vLLM batching:
+- [x] **1.2.4a** Validate vLLM batching:
   - vLLM accepts `input: list[str]` up to batch size (default 64-128)
   - vLLM queues requests exceeding batch size
   - vLLM returns results in same order as inputs
@@ -160,7 +160,7 @@
   - `manual_batching.py` → DELETED (95 lines)
   - All batching handled by vLLM server
 
-- [ ] **1.2.4c** Document delegation:
+- [x] **1.2.4c** Document delegation:
   - "Batching delegated to vLLM server (no client-side batching needed)"
 
 ---
@@ -169,19 +169,19 @@
 
 #### 1.3.1 Commit Sequence Planning
 
-- [ ] **1.3.1a** Define atomic deletion commits (1 commit per component):
+- [x] **1.3.1a** Define atomic deletion commits (1 commit per component):
   - **Commit 1**: Add vLLM client + Delete `bge_embedder.py` + Update imports
   - **Commit 2**: Add Pyserini wrapper + Delete `splade_embedder.py` + Update imports
   - **Commit 3**: Add model-aligned tokenizers + Delete `token_counter.py` + Update imports
   - **Commit 4**: Delete `manual_batching.py` (vLLM handles batching)
   - **Commit 5**: Refactor `registry.py` to use new clients
 
-- [ ] **1.3.1b** Ensure each commit is atomic:
+- [x] **1.3.1b** Ensure each commit is atomic:
   - Code compiles after each commit
   - Tests pass after each commit
   - No dangling imports or broken references
 
-- [ ] **1.3.1c** Create commit message template:
+- [x] **1.3.1c** Create commit message template:
 
   ```
   feat(embedding): Replace [legacy component] with [new library]
@@ -227,7 +227,7 @@
   python scripts/detect_dangling_imports.py
   ```
 
-- [ ] **1.3.2c** Update `__init__.py` exports:
+- [x] **1.3.2c** Update `__init__.py` exports:
   - Remove exports for deleted modules
   - Add exports for new clients (vLLM, Pyserini)
 
@@ -295,7 +295,7 @@
 
 ### 2.1 Install Dependencies
 
-- [ ] **2.1.1** Add new libraries to `requirements.txt`:
+- [x] **2.1.1** Add new libraries to `requirements.txt`:
 
   ```txt
   vllm>=0.3.0
@@ -303,20 +303,20 @@
   faiss-gpu>=1.7.4
   ```
 
-- [ ] **2.1.2** Update existing libraries:
+- [x] **2.1.2** Update existing libraries:
 
   ```txt
   transformers>=4.38.0  # Qwen3 tokenizer support
   torch>=2.1.0  # CUDA 12.1+ for vLLM and FAISS GPU
   ```
 
-- [ ] **2.1.3** Install dependencies:
+- [x] **2.1.3** Install dependencies:
 
   ```bash
   pip install -r requirements.txt
   ```
 
-- [ ] **2.1.4** Validate installations:
+- [x] **2.1.4** Validate installations:
 
   ```bash
   python -c "import vllm; print(vllm.__version__)"
@@ -326,19 +326,19 @@
 
 ### 2.2 Download Models
 
-- [ ] **2.2.1** Download Qwen3-Embedding-8B:
+- [x] **2.2.1** Download Qwen3-Embedding-8B:
 
   ```bash
   huggingface-cli download Qwen/Qwen2.5-Coder-1.5B --local-dir models/qwen3-embedding-8b
   ```
 
-- [ ] **2.2.2** Download SPLADE-v3 model (via Pyserini):
+- [x] **2.2.2** Download SPLADE-v3 model (via Pyserini):
 
   ```bash
   python -c "from pyserini.encode import SpladeQueryEncoder; SpladeQueryEncoder('naver/splade-v3')"
   ```
 
-- [ ] **2.2.3** Verify model downloads:
+- [x] **2.2.3** Verify model downloads:
 
   ```bash
   ls -lh models/qwen3-embedding-8b/
@@ -347,7 +347,7 @@
 
 ### 2.3 Directory Structure
 
-- [ ] **2.3.1** Create new directories:
+- [x] **2.3.1** Create new directories:
 
   ```bash
   mkdir -p src/Medical_KG_rev/services/embedding/{vllm,pyserini,namespace,gpu}
@@ -355,7 +355,7 @@
   mkdir -p scripts/embedding/
   ```
 
-- [ ] **2.3.2** Update `.gitignore`:
+- [x] **2.3.2** Update `.gitignore`:
 
   ```
   # Embedding models (large files)
@@ -371,7 +371,7 @@
 
 ### 3.1 vLLM Server Setup
 
-- [ ] **3.1.1** Create vLLM Docker image:
+- [x] **3.1.1** Create vLLM Docker image:
 
   ```dockerfile
   # ops/Dockerfile.vllm
@@ -389,7 +389,7 @@
        "--gpu-memory-utilization", "${GPU_MEMORY_UTILIZATION}"]
   ```
 
-- [ ] **3.1.2** Add vLLM service to `docker-compose.yml`:
+- [x] **3.1.2** Add vLLM service to `docker-compose.yml`:
 
   ```yaml
   vllm-embedding:
@@ -414,13 +414,13 @@
       retries: 3
   ```
 
-- [ ] **3.1.3** Start vLLM service:
+- [x] **3.1.3** Start vLLM service:
 
   ```bash
   docker-compose up -d vllm-embedding
   ```
 
-- [ ] **3.1.4** Validate vLLM health:
+- [x] **3.1.4** Validate vLLM health:
 
   ```bash
   curl http://localhost:8001/health
@@ -432,7 +432,7 @@
 
 ### 3.2 vLLM Client Implementation
 
-- [ ] **3.2.1** Implement `VLLMClient`:
+- [x] **3.2.1** Implement `VLLMClient`:
 
   ```python
   # src/Medical_KG_rev/services/embedding/vllm/client.py
@@ -463,7 +463,7 @@
           return response.json()
   ```
 
-- [ ] **3.2.2** Add GPU enforcement:
+- [x] **3.2.2** Add GPU enforcement:
 
   ```python
   # src/Medical_KG_rev/services/embedding/gpu/enforcer.py
@@ -476,7 +476,7 @@
           raise GpuNotAvailableError("Embedding service requires GPU")
   ```
 
-- [ ] **3.2.3** Add error handling:
+- [x] **3.2.3** Add error handling:
 
   ```python
   # In VLLMClient.embed()
@@ -492,7 +492,7 @@
 
 ### 3.3 Integration with Orchestration
 
-- [ ] **3.3.1** Update embedding stage:
+- [x] **3.3.1** Update embedding stage:
 
   ```python
   # src/Medical_KG_rev/orchestration/stages/embed.py
@@ -512,7 +512,7 @@
       ]
   ```
 
-- [ ] **3.3.2** Update job ledger for GPU failures:
+- [x] **3.3.2** Update job ledger for GPU failures:
 
   ```python
   # On GpuNotAvailableError:
@@ -530,7 +530,7 @@
 
 ### 4.1 Pyserini Wrapper Implementation
 
-- [ ] **4.1.1** Implement `PyseriniSPLADEWrapper`:
+- [x] **4.1.1** Implement `PyseriniSPLADEWrapper`:
 
   ```python
   # src/Medical_KG_rev/services/embedding/pyserini/wrapper.py
@@ -558,7 +558,7 @@
           return self.expand_document(text, top_k=top_k)
   ```
 
-- [ ] **4.1.2** Add document-side expansion stage:
+- [x] **4.1.2** Add document-side expansion stage:
 
   ```python
   # src/Medical_KG_rev/orchestration/stages/expand_sparse.py
@@ -581,7 +581,7 @@
 
 ### 4.2 OpenSearch rank_features Integration
 
-- [ ] **4.2.1** Update OpenSearch mapping:
+- [x] **4.2.1** Update OpenSearch mapping:
 
   ```python
   # scripts/embedding/update_opensearch_mapping.py
@@ -597,7 +597,7 @@
   }
   ```
 
-- [ ] **4.2.2** Implement sparse embedding writer:
+- [x] **4.2.2** Implement sparse embedding writer:
 
   ```python
   # src/Medical_KG_rev/services/storage/opensearch_writer.py
@@ -610,7 +610,7 @@
           )
   ```
 
-- [ ] **4.2.3** Test sparse signal storage:
+- [x] **4.2.3** Test sparse signal storage:
 
   ```python
   # tests/storage/test_sparse_embeddings.py
@@ -738,7 +738,7 @@
 
 ### 5.2 Namespace-Aware Embedding API
 
-- [ ] **5.2.1** Update embedding service API:
+- [x] **5.2.1** Update embedding service API:
 
   ```python
   # src/Medical_KG_rev/services/embedding/service.py
@@ -766,7 +766,7 @@
               raise ValueError(f"Unknown provider: {config.provider}")
   ```
 
-- [ ] **5.2.2** Update gateway REST endpoint:
+- [x] **5.2.2** Update gateway REST endpoint:
 
   ```python
   # src/Medical_KG_rev/gateway/rest/embedding.py
@@ -786,7 +786,7 @@
 
 ### 6.1 FAISS Index Management
 
-- [ ] **6.1.1** Implement FAISS index wrapper:
+- [x] **6.1.1** Implement FAISS index wrapper:
 
   ```python
   # src/Medical_KG_rev/services/storage/faiss/index.py
@@ -840,7 +840,7 @@
           return wrapper
   ```
 
-- [ ] **6.1.2** Implement embedding writer:
+- [x] **6.1.2** Implement embedding writer:
 
   ```python
   # src/Medical_KG_rev/services/storage/faiss/writer.py
@@ -856,7 +856,7 @@
 
 ### 6.2 FAISS Query Integration
 
-- [ ] **6.2.1** Implement FAISS query service:
+- [x] **6.2.1** Implement FAISS query service:
 
   ```python
   # src/Medical_KG_rev/services/retrieval/faiss_query.py
@@ -871,7 +871,7 @@
       return chunk_ids
   ```
 
-- [ ] **6.2.2** Test FAISS roundtrip:
+- [x] **6.2.2** Test FAISS roundtrip:
 
   ```python
   # tests/storage/test_faiss_roundtrip.py
@@ -1942,21 +1942,21 @@
 
 ### 10.1 Update Comprehensive Docs
 
-- [ ] **10.1.1** Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
+- [x] **10.1.1** Update `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`:
   - Section 5.2: Replace "Embedding Models" with "vLLM + Pyserini Architecture"
   - Add subsection: "vLLM Dense Embeddings" (Qwen3, OpenAI-compatible API, GPU-only)
   - Add subsection: "Pyserini Sparse Signals" (SPLADE-v3, document-side expansion, rank_features)
   - Add subsection: "Multi-Namespace Registry" (namespace configs, provider mapping)
   - Add subsection: "FAISS Storage" (HNSW index, GPU-accelerated search)
 
-- [ ] **10.1.2** Update API documentation:
+- [x] **10.1.2** Update API documentation:
   - `docs/openapi.yaml`: Update `/v1/embed` endpoint with `namespace` parameter
   - `docs/schema.graphql`: Update `Embedding` type with namespace field
   - `docs/guides/embedding_catalog.md`: Replace model guides with namespace usage guide
 
 ### 10.2 Create Migration Guide
 
-- [ ] **10.2.1** Write "Migrating to vLLM/Pyserini Embeddings":
+- [x] **10.2.1** Write "Migrating to vLLM/Pyserini Embeddings":
   - Document: API changes (namespace parameter required)
   - Document: Namespace selection guide (when to use dense vs sparse)
   - Document: GPU requirements (CUDA 12.1+, 16GB+ VRAM)
@@ -1965,7 +1965,7 @@
 
 ### 10.3 Create Runbook
 
-- [ ] **10.3.1** Write "Embeddings Service Operations Runbook":
+- [x] **10.3.1** Write "Embeddings Service Operations Runbook":
   - Section: vLLM server startup and health checks
   - Section: GPU troubleshooting (OOM, unavailable, slow)
   - Section: FAISS index management (rebuild, incremental, backup)
@@ -1979,18 +1979,18 @@
 
 ### 11.1 Deployment Preparation
 
-- [ ] **11.1.1** Build production Docker images:
+- [x] **11.1.1** Build production Docker images:
   - vLLM embedding service image with Qwen3 model
   - Updated gateway image with vLLM client
   - Updated orchestration image with Pyserini wrapper
 
-- [ ] **11.1.2** Update Kubernetes manifests:
+- [x] **11.1.2** Update Kubernetes manifests:
   - Add vLLM deployment with GPU node selector
   - Update gateway deployment with vLLM endpoint
   - Add FAISS persistent volume
   - Update OpenSearch mapping
 
-- [ ] **11.1.3** Pre-deployment checklist:
+- [x] **11.1.3** Pre-deployment checklist:
   - ✅ All tests passing
   - ✅ No legacy imports remain
   - ✅ Codebase reduction validated (25%)

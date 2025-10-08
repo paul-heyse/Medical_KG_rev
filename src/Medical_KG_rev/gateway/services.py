@@ -18,13 +18,13 @@ from Medical_KG_rev.chunking.exceptions import (
 )
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
+from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
     JobLedger,
     JobLedgerEntry,
-    Orchestrator,
     ParallelExecutor,
     PipelineConfigManager,
     PipelineContext,
@@ -34,8 +34,15 @@ from ..orchestration import (
     QueryPipelineBuilder,
     StrategySpec,
 )
-from ..orchestration.kafka import KafkaClient
-from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
+from ..orchestration.dagster import (
+    DagsterOrchestrator,
+    PipelineConfigLoader,
+    ResiliencePolicyLoader,
+    StageFactory,
+    build_default_stage_factory,
+    submit_to_dagster,
+)
+from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..services.retrieval.reranker import CrossEncoderReranker
@@ -94,10 +101,9 @@ class GatewayService:
     """Coordinates business logic shared across protocols."""
 
     events: EventStreamManager
-    orchestrator: Orchestrator
+    orchestrator: DagsterOrchestrator
     ledger: JobLedger
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
-    workers: list[WorkerBase] = field(default_factory=list)
     chunker: ChunkingService = field(default_factory=ChunkingService)
     reranker: CrossEncoderReranker = field(default_factory=CrossEncoderReranker)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
@@ -308,6 +314,179 @@ class GatewayService:
         self.ledger.mark_failed(job_id, stage="error", reason=reason)
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
 
+    def _submit_dagster_job(
+        self,
+        *,
+        dataset: str,
+        request: IngestionRequest,
+        item: Mapping[str, Any],
+        metadata: dict[str, Any],
+    ) -> OperationStatus:
+        pipeline_name = self._resolve_pipeline(dataset, item)
+        topology = self.orchestrator.pipeline_loader.load(pipeline_name)
+        document_id = str(item.get("id") or uuid.uuid4().hex)
+        doc_key = f"{dataset}:{document_id}"
+        job_id = f"job-{uuid.uuid4().hex[:12]}"
+        entry = self.ledger.idempotent_create(
+            job_id=job_id,
+            doc_key=doc_key,
+            tenant_id=request.tenant_id,
+            pipeline=pipeline_name,
+            metadata={"dataset": dataset, "item": item, **metadata},
+        )
+        duplicate = entry.job_id != job_id
+        if duplicate:
+            error = BatchError(
+                code="duplicate",
+                message="Document already queued",
+                details={"dataset": dataset},
+            )
+            return OperationStatus(
+                job_id=entry.job_id,
+                status="failed",
+                message=f"Duplicate job for {dataset}",
+                metadata={
+                    "dataset": dataset,
+                    "pipeline": entry.pipeline,
+                    "doc_key": entry.doc_key,
+                    "duplicate": True,
+                },
+                http_status=409,
+                error=error,
+            )
+
+        correlation_id = uuid.uuid4().hex
+        context = StageContext(
+            tenant_id=request.tenant_id,
+            doc_id=document_id,
+            correlation_id=correlation_id,
+            metadata={"dataset": dataset, **metadata},
+            pipeline_name=pipeline_name,
+            pipeline_version=topology.version,
+        )
+
+        domain = self._ingest_domain(topology) or AdapterDomain.BIOMEDICAL
+        adapter_request = AdapterRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=correlation_id,
+            domain=domain,
+            parameters={"dataset": dataset, "item": item},
+        )
+        payload = {"dataset": dataset, "item": item, "metadata": metadata}
+
+        self.ledger.mark_processing(job_id, stage="bootstrap")
+        self.events.publish(
+            JobEvent(
+                job_id=job_id,
+                type="jobs.started",
+                payload={"pipeline": pipeline_name, "dataset": dataset},
+            )
+        )
+
+        error: BatchError | None = None
+        status = "completed"
+        message = f"Executed pipeline {pipeline_name}"
+        result_metadata: dict[str, Any] = {}
+        http_status = 202
+
+        try:
+            run_result = submit_to_dagster(
+                self.orchestrator,
+                pipeline=pipeline_name,
+                context=context,
+                adapter_request=adapter_request,
+                payload=payload,
+            )
+            result_metadata = {"state": run_result.state}
+            if run_result.success:
+                self.ledger.mark_completed(job_id, metadata=result_metadata)
+                self.events.publish(
+                    JobEvent(
+                        job_id=job_id,
+                        type="jobs.completed",
+                        payload={"pipeline": pipeline_name},
+                    )
+                )
+            else:
+                status = "failed"
+                message = f"Pipeline {pipeline_name} reported failure"
+                error = BatchError(
+                    code="pipeline-failed",
+                    message="Dagster job reported failure",
+                    details={"pipeline": pipeline_name},
+                )
+                self.ledger.mark_failed(
+                    job_id,
+                    stage=pipeline_name,
+                    reason="dagster-failure",
+                    metadata=result_metadata,
+                )
+                self.events.publish(
+                    JobEvent(
+                        job_id=job_id,
+                        type="jobs.failed",
+                        payload={"pipeline": pipeline_name},
+                    )
+                )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            status = "failed"
+            message = f"Pipeline {pipeline_name} execution raised an exception"
+            error = BatchError(
+                code="dagster-error",
+                message=str(exc),
+                details={"pipeline": pipeline_name},
+            )
+            self.ledger.mark_failed(
+                job_id,
+                stage=pipeline_name,
+                reason=str(exc),
+                metadata={"exception": str(exc)},
+            )
+            self.events.publish(
+                JobEvent(
+                    job_id=job_id,
+                    type="jobs.failed",
+                    payload={"pipeline": pipeline_name, "error": str(exc)},
+                )
+            )
+
+        return OperationStatus(
+            job_id=job_id,
+            status=status,
+            message=message,
+            metadata={
+                "dataset": dataset,
+                "pipeline": pipeline_name,
+                "doc_key": doc_key,
+                "duplicate": False,
+                **result_metadata,
+            },
+            http_status=http_status,
+            error=error,
+        )
+
+    def _resolve_pipeline(self, dataset: str, item: Mapping[str, Any]) -> str:
+        dataset_key = dataset.lower()
+        available = self.orchestrator.available_pipelines()
+        for name in available:
+            topology = self.orchestrator.pipeline_loader.load(name)
+            if dataset_key in {source.lower() for source in topology.applicable_sources}:
+                return topology.name
+        if str(item.get("document_type", "")).lower() == "pdf":
+            return "pdf-two-phase"
+        return "auto"
+
+    def _ingest_domain(self, topology) -> AdapterDomain | None:
+        for stage in topology.stages:
+            if stage.stage_type == "ingest":
+                domain = stage.config.get("domain")
+                if domain:
+                    try:
+                        return AdapterDomain(domain)
+                    except Exception:  # pragma: no cover - validation guard
+                        return None
+        return None
+
     def ingest(self, dataset: str, request: IngestionRequest) -> BatchOperationResult:
         started = perf_counter()
         statuses: list[OperationStatus] = []
@@ -315,43 +494,13 @@ class GatewayService:
             metadata = dict(request.metadata)
             if request.profile:
                 metadata.setdefault("profile", request.profile)
-            entry = self.orchestrator.submit_job(
-                tenant_id=request.tenant_id,
+            status = self._submit_dagster_job(
                 dataset=dataset,
+                request=request,
                 item=item,
-                priority=request.priority,
                 metadata=metadata,
             )
-            duplicate = bool(entry.metadata.get("duplicate"))
-            message = (
-                f"Duplicate job for {dataset}" if duplicate else f"Queued pipeline {entry.pipeline}"
-            )
-            error = None
-            http_status = 202
-            status_value = entry.status
-            if duplicate:
-                http_status = 409
-                status_value = "failed"
-                error = BatchError(
-                    code="duplicate",
-                    message="Document already queued",
-                    details={"dataset": dataset},
-                )
-            statuses.append(
-                OperationStatus(
-                    job_id=entry.job_id,
-                    status=status_value,
-                    message=message,
-                    metadata={
-                        "dataset": dataset,
-                        "pipeline": entry.pipeline,
-                        "doc_key": entry.doc_key,
-                        "duplicate": duplicate,
-                    },
-                    http_status=http_status,
-                    error=error,
-                )
-            )
+            statuses.append(status)
         result = build_batch_result(statuses)
         duration = perf_counter() - started
         observe_job_duration("ingest", duration)
@@ -857,9 +1006,7 @@ class GatewayService:
         entry = self.ledger.get(job_id)
         if not entry or entry.tenant_id != tenant_id:
             return None
-        updated = self.orchestrator.cancel_job(job_id, reason=reason)
-        if not updated:
-            return None
+        updated = self.ledger.mark_cancelled(job_id, reason=reason)
         return self._to_job_status(updated)
 
     # ------------------------------------------------------------------
@@ -907,26 +1054,32 @@ class GatewayService:
 
 
 _service: GatewayService | None = None
-_kafka: KafkaClient | None = None
 _ledger: JobLedger | None = None
-_orchestrator: Orchestrator | None = None
-_workers: list[WorkerBase] = []
+_orchestrator: DagsterOrchestrator | None = None
+_pipeline_loader: PipelineConfigLoader | None = None
+_resilience_loader: ResiliencePolicyLoader | None = None
+_stage_factory: StageFactory | None = None
 
 
 def get_gateway_service() -> GatewayService:
-    global _service, _kafka, _ledger, _orchestrator, _workers
+    global _service, _ledger, _orchestrator, _pipeline_loader, _resilience_loader, _stage_factory
     if _service is None:
         events = EventStreamManager()
-        _kafka = KafkaClient()
-        _kafka.create_topics(
-            ["ingest.requests.v1", "ingest.results.v1", "mapping.events.v1", "ingest.deadletter.v1"]
-        )
         _ledger = JobLedger()
-        _orchestrator = Orchestrator(_kafka, _ledger, events)
-        _service = GatewayService(events=events, orchestrator=_orchestrator, ledger=_ledger)
-        _workers = [
-            IngestWorker(_orchestrator, _kafka, _ledger, events),
-            MappingWorker(_kafka, _ledger, events),
-        ]
-        _service.workers.extend(_workers)
+        adapter_manager = get_plugin_manager()
+        _pipeline_loader = PipelineConfigLoader()
+        _resilience_loader = ResiliencePolicyLoader()
+        stage_builders = build_default_stage_factory(adapter_manager)
+        _stage_factory = StageFactory(stage_builders)
+        _orchestrator = DagsterOrchestrator(
+            _pipeline_loader,
+            _resilience_loader,
+            _stage_factory,
+        )
+        _service = GatewayService(
+            events=events,
+            orchestrator=_orchestrator,
+            ledger=_ledger,
+            adapter_manager=adapter_manager,
+        )
     return _service

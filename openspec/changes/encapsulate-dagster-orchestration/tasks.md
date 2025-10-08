@@ -36,6 +36,10 @@
 - [ ] 3.8 Implement pipeline configuration hot-reloading capabilities
 - [ ] 3.9 Add pipeline dependency resolution and ordering logic
 - [ ] 3.10 Create pipeline debugging and introspection utilities
+- [ ] 3.11 Implement PDF download stage integration with JobLedger.set_pdf_downloaded
+- [ ] 3.12 Add PDF gate stage integration with JobLedger.pdf_ir_ready sensor logic
+- [ ] 3.13 Create stage factory extensions for download and gate stage implementations
+- [ ] 3.14 Add PDF pipeline instantiation support for pdf-two-phase topology
 
 ## 4. Domain Resolution Encapsulation
 

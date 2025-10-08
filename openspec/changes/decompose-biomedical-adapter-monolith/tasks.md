@@ -44,11 +44,15 @@
 - [ ] 4.3 Create adapters/crossref/ package structure
 - [ ] 4.4 Create adapters/pmc/ package structure
 - [ ] 4.5 Create remaining adapter packages as needed
-- [ ] 4.6 Implement OpenAlexAdapter with work metadata extraction
-- [ ] 4.7 Implement UnpaywallAdapter with OA status resolution
-- [ ] 4.8 Implement CrossrefAdapter with DOI registration data
-- [ ] 4.9 Implement PMCAdapter with full-text article access
-- [ ] 4.10 Create adapter-specific configuration and validation
+- [ ] 4.6 Implement OpenAlexAdapter with work metadata extraction and PDF asset retrieval
+- [ ] 4.7 Add PDF detection logic to identify works with available full-text PDFs
+- [ ] 4.8 Implement PDF download functionality using pyalex client integration
+- [ ] 4.9 Add document_type="pdf" flagging for works with downloadable PDFs
+- [ ] 4.10 Create PDF persistence logic to store downloaded assets for MinerU processing
+- [ ] 4.11 Implement UnpaywallAdapter with OA status resolution
+- [ ] 4.12 Implement CrossrefAdapter with DOI registration data
+- [ ] 4.13 Implement PMCAdapter with full-text article access
+- [ ] 4.14 Create adapter-specific configuration and validation
 
 ## 5. Plugin Manager Integration
 

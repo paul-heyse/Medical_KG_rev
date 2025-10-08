@@ -49,6 +49,10 @@
 - [ ] 4.8 Implement batch ingestion support with parallel processing
 - [ ] 4.9 Add ingestion quota management and rate limiting integration
 - [ ] 4.10 Create ingestion metrics collection and performance optimization
+- [ ] 4.11 Add PDF document detection logic for OpenAlex adapter responses
+- [ ] 4.12 Implement document_type="pdf" flagging for works with downloadable PDFs
+- [ ] 4.13 Add pipeline routing logic to direct PDF documents to pdf-two-phase topology
+- [ ] 4.14 Create PDF-specific job lifecycle management for two-phase processing
 
 ## 5. EmbeddingCoordinator Implementation
 

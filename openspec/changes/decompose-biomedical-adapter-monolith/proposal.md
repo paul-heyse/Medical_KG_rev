@@ -2,6 +2,8 @@
 
 The `adapters/biomedical.py` file defines OpenAlex, Unpaywall, Crossref, and numerous other adapters in a single monolithic file. Each class reimplements HTTP fetching, response parsing, and metadata shaping despite the presence of a full adapter plugin manager. This creates maintenance challenges, code duplication, and makes it difficult to reuse common patterns like pagination, DOI normalization, and open access link resolution.
 
+**Critical Barrier**: The OpenAlex adapter currently stops at abstract-level metadata and never pulls PDF assets or sets document_type="pdf". It also bypasses the pyalex client entirely, so there is nothing that produces a PDF payload to hand to MinerU or chunking. This prevents end-to-end testing of the PDF processing pipeline.
+
 ## What Changes
 
 - **Split into dedicated modules**: Break the biomedical adapter monolith into separate packages (`adapters/openalex/`, `adapters/unpaywall/`, etc.)

@@ -4,6 +4,8 @@ The `GatewayService` class currently serves as a monolithic service locator that
 
 The existing helper methods (`_new_job`, `_complete_job`, `_fail_job`) demonstrate reusable patterns for job lifecycle management that are currently duplicated across workflow methods. By extracting these patterns into a dedicated `JobLifecycleManager`, we can eliminate duplication while providing a clean interface for job state transitions and event streaming.
 
+**Critical Barrier**: Gateway routing keeps OpenAlex traffic on the generic auto topology because the PDF flow is only declared for PMC sources. Unless items are hand-edited to flag document_type="pdf", OpenAlex jobs will never reach the MinerU-gated pipeline, preventing end-to-end PDF processing testing.
+
 ## What Changes
 
 - **Split into focused coordinators**: Decompose `GatewayService` into use-case-specific coordinators (`IngestionCoordinator`, `EmbeddingCoordinator`, `RetrievalCoordinator`) that each encapsulate domain logic, ledger updates, and error mapping for their respective workflows

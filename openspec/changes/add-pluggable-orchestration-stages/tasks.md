@@ -57,11 +57,16 @@
 - [ ] 5.3 Move AdapterParseStage to plugin architecture
 - [ ] 5.4 Move IRValidationStage to plugin architecture
 - [ ] 5.5 Move chunking, embedding, and indexing stages to plugins
-- [ ] 5.6 Update stage dependency chains for plugin-based execution
-- [ ] 5.7 Migrate stage configuration to plugin-based metadata
-- [ ] 5.8 Update stage error handling for plugin isolation
-- [ ] 5.9 Implement stage plugin performance optimizations
-- [ ] 5.10 Add stage plugin monitoring and debugging interfaces
+- [ ] 5.6 Create DownloadStage plugin for PDF asset retrieval and persistence
+- [ ] 5.7 Create GateStage plugin for conditional pipeline progression based on ledger state
+- [ ] 5.8 Update stage factory to include download and gate stage implementations
+- [ ] 5.9 Add PDF download logic to update JobLedger.set_pdf_downloaded
+- [ ] 5.10 Add PDF gate logic to check JobLedger.pdf_ir_ready and control pipeline flow
+- [ ] 5.11 Update stage dependency chains for plugin-based execution
+- [ ] 5.12 Migrate stage configuration to plugin-based metadata
+- [ ] 5.13 Update stage error handling for plugin isolation
+- [ ] 5.14 Implement stage plugin performance optimizations
+- [ ] 5.15 Add stage plugin monitoring and debugging interfaces
 
 ## 6. Testing & Validation
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Any
 
@@ -19,9 +19,13 @@ from Medical_KG_rev.chunking.exceptions import (
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
-from ..chunking.models import Chunk
 from ..kg import ShaclValidator, ValidationError
-from ..observability.metrics import observe_job_duration, record_business_event
+from ..auth.scopes import Scopes
+from ..observability.metrics import (
+    CROSS_TENANT_ACCESS_ATTEMPTS,
+    observe_job_duration,
+    record_business_event,
+)
 from ..orchestration import (
     HaystackRetriever,
     JobLedger,
@@ -35,13 +39,16 @@ from ..orchestration.dagster import (
     build_default_stage_factory,
     submit_to_dagster,
 )
-from ..orchestration.dagster.configuration import StageDefinition
-from ..orchestration.stages.contracts import EmbeddingBatch, StageContext
+from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
+from ..services.embedding.namespace.access import validate_namespace_access
+from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
+from ..services.embedding.registry import EmbeddingModelRegistry
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
+from Medical_KG_rev.embeddings.ports import EmbeddingRequest as AdapterEmbeddingRequest
 from .models import (
     AdapterConfigSchemaView,
     AdapterHealthView,
@@ -51,8 +58,11 @@ from .models import (
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
+    EmbeddingMetadata,
+    EmbeddingResponse,
     EmbeddingVector,
     EmbedRequest,
+    EmbeddingOptions,
     EntityLinkRequest,
     EntityLinkResult,
     ExtractionRequest,
@@ -63,6 +73,9 @@ from .models import (
     JobStatus,
     KnowledgeGraphWriteRequest,
     KnowledgeGraphWriteResult,
+    NamespaceInfo,
+    NamespaceValidationResponse,
+    NamespaceValidationResult,
     OperationStatus,
     ProblemDetail,
     RetrievalResult,
@@ -105,12 +118,16 @@ class GatewayService:
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
+    embedding_registry: EmbeddingModelRegistry = field(default_factory=EmbeddingModelRegistry)
+    namespace_registry: EmbeddingNamespaceRegistry | None = None
 
     def __post_init__(self) -> None:
         if self.stage_factory is None:
             self.stage_factory = _build_stage_factory(self.adapter_manager)
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
+        if self.namespace_registry is None:
+            self.namespace_registry = self.embedding_registry.namespace_registry
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -172,12 +189,6 @@ class GatewayService:
         logger.warning("gateway.job.failed", job_id=job_id, reason=reason)
         self.ledger.mark_failed(job_id, stage="error", reason=reason)
         self.events.publish(JobEvent(job_id=job_id, type="jobs.failed", payload={"reason": reason}))
-
-    def _resolve_stage(self, stage_type: str) -> object:
-        if self.stage_factory is None:
-            self.stage_factory = _build_stage_factory(self.adapter_manager)
-        definition = StageDefinition(name=f"gateway-{stage_type}", type=stage_type)
-        return self.stage_factory.resolve(self._PIPELINE_NAME, definition)
 
     def _submit_dagster_job(
         self,
@@ -491,49 +502,91 @@ class GatewayService:
         self._complete_job(job_id, payload={"chunks": len(chunks)})
         return chunks
 
-    def embed(self, request: EmbedRequest) -> Sequence[EmbeddingVector]:
-        job_id = self._new_job(request.tenant_id, "embed")
-        stage = self._resolve_stage("embed")
-        context = StageContext(
+    def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.namespace_registry is None:
+            raise RuntimeError("Namespace registry not initialised")
+
+        started = perf_counter()
+        options = request.options or EmbeddingOptions()
+        namespace = request.namespace
+        config = self.namespace_registry.get(namespace)
+
+        access = validate_namespace_access(
+            self.namespace_registry,
+            namespace=namespace,
             tenant_id=request.tenant_id,
-            correlation_id=uuid.uuid4().hex,
-            metadata={"model": request.model, "normalize": request.normalize},
-            pipeline_name=self._PIPELINE_NAME,
-            pipeline_version=self._PIPELINE_VERSION,
+            required_scope=Scopes.EMBED_WRITE,
         )
-        chunks: list[Chunk] = []
-        for index, text in enumerate(request.inputs):
+        if not access.allowed:
+            if access.reason and "Tenant" in access.reason:
+                allowed = ",".join(sorted(self.namespace_registry.get_allowed_tenants(namespace)))
+                CROSS_TENANT_ACCESS_ATTEMPTS.labels(
+                    source_tenant=request.tenant_id,
+                    target_tenant=allowed or "restricted",
+                ).inc()
+            detail = ProblemDetail(
+                title="Namespace access denied",
+                status=403,
+                type="https://httpstatuses.com/403",
+                detail=access.reason or "Access to namespace not permitted",
+            )
+            raise GatewayError(detail)
+
+        job_id = self._new_job(request.tenant_id, "embed")
+        correlation_id = uuid.uuid4().hex
+        model_name = options.model or config.model_id
+
+        texts: list[str] = []
+        ids: list[str] = []
+        metadata_payload: list[dict[str, Any]] = []
+        for index, text in enumerate(request.texts):
             if not isinstance(text, str) or not text.strip():
                 detail = ProblemDetail(
                     title="Invalid embedding input",
                     status=400,
                     type="https://httpstatuses.com/400",
-                    detail="Embedding inputs must be non-empty strings",
+                    detail="Embedding texts must be non-empty strings",
                 )
                 self._fail_job(job_id, detail.detail or detail.title)
                 raise GatewayError(detail)
             body = text.strip()
             chunk_id = f"{job_id}:chunk:{index}"
-            doc_id = f"{job_id}:doc"
-            chunks.append(
-                Chunk(
-                    chunk_id=chunk_id,
-                    doc_id=doc_id,
-                    tenant_id=request.tenant_id,
-                    body=body,
-                    title_path=(),
-                    section=None,
-                    start_char=0,
-                    end_char=len(body),
-                    granularity="document",
-                    chunker="gateway.manual",
-                    chunker_version="1.0.0",
-                    meta={"input_index": index, "job_id": job_id},
-                )
+            texts.append(body)
+            ids.append(chunk_id)
+            metadata_payload.append(
+                {
+                    "input_index": index,
+                    "job_id": job_id,
+                    "namespace": namespace,
+                    "tenant_id": request.tenant_id,
+                }
             )
+
+        if not texts:
+            payload = {"embeddings": 0, "model": model_name, "namespace": namespace}
+            self.ledger.update_metadata(job_id, payload)
+            self._complete_job(job_id, payload=payload)
+            metadata = EmbeddingMetadata(
+                provider=config.provider,
+                dimension=config.dim,
+                duration_ms=0.0,
+                model=model_name,
+            )
+            return EmbeddingResponse(namespace=namespace, embeddings=(), metadata=metadata)
+
+        embedder = self.embedding_registry.get(namespace)
+        adapter_request = AdapterEmbeddingRequest(
+            tenant_id=request.tenant_id,
+            namespace=namespace,
+            texts=texts,
+            ids=ids,
+            correlation_id=correlation_id,
+            metadata=metadata_payload,
+        )
+
         try:
-            batch: EmbeddingBatch = stage.execute(context, chunks)
-        except Exception as exc:
+            records = embedder.embed_documents(adapter_request)
+        except Exception as exc:  # pragma: no cover - network/library error
             detail = ProblemDetail(
                 title="Embedding failed",
                 status=502,
@@ -542,30 +595,190 @@ class GatewayService:
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
+
         embeddings: list[EmbeddingVector] = []
-        for vector in batch.vectors:
-            values = list(vector.values)
-            if request.normalize and values:
+        storage_router = getattr(self.embedding_registry, "storage_router", None)
+        duration_ms = (perf_counter() - started) * 1000
+
+        for record in records:
+            meta = {**record.metadata}
+            meta.setdefault("tenant_id", request.tenant_id)
+            meta.setdefault("namespace", namespace)
+            meta.setdefault("provider", config.provider)
+            meta.setdefault("model", config.model_id)
+            meta.setdefault("model_version", config.model_version)
+            meta.setdefault("normalized", options.normalize or meta.get("normalized", False))
+            meta.setdefault("pipeline", f"{self._PIPELINE_NAME}:{self._PIPELINE_VERSION}")
+            meta.setdefault("correlation_id", correlation_id)
+            storage_meta = self._storage_metadata(record.kind, request.tenant_id, namespace)
+            if storage_meta:
+                meta.setdefault("storage", storage_meta)
+            if record.kind == "multi_vector" and record.vectors:
+                meta.setdefault("vectors", [list(vector) for vector in record.vectors])
+            updated_record = replace(record, metadata=meta)
+            if storage_router is not None:
+                storage_router.persist(updated_record)
+
+            values: list[float] = []
+            if updated_record.vectors:
+                values = list(updated_record.vectors[0])
+            if options.normalize and values and updated_record.kind != "sparse":
                 magnitude = math.sqrt(sum(value * value for value in values))
                 if magnitude > 0:
                     values = [value / magnitude for value in values]
-            metadata = dict(vector.metadata)
-            metadata.setdefault("model", batch.model)
-            metadata.setdefault("pipeline", f"{self._PIPELINE_NAME}:{self._PIPELINE_VERSION}")
+            terms = dict(updated_record.terms or {}) if updated_record.kind == "sparse" else None
+            dimension = updated_record.dim or (len(values) if values else 0)
             embeddings.append(
                 EmbeddingVector(
-                    id=vector.id,
-                    vector=values,
-                    model=batch.model,
-                    metadata=metadata,
+                    id=updated_record.id,
+                    model=model_name,
+                    namespace=namespace,
+                    kind=updated_record.kind,
+                    dimension=dimension,
+                    vector=values if updated_record.kind != "sparse" else None,
+                    terms=terms,
+                    metadata=meta,
                 )
             )
-        payload = {"embeddings": len(embeddings), "model": batch.model}
+
+        payload = {
+            "embeddings": len(embeddings),
+            "model": model_name,
+            "namespace": namespace,
+            "provider": config.provider,
+            "tenant_id": request.tenant_id,
+        }
         self.ledger.update_metadata(job_id, payload)
         self._complete_job(job_id, payload=payload)
         if embeddings:
             record_business_event("embeddings_generated", request.tenant_id)
-        return embeddings
+
+        metadata = EmbeddingMetadata(
+            provider=config.provider,
+            dimension=config.dim,
+            duration_ms=duration_ms,
+            model=model_name,
+        )
+        return EmbeddingResponse(
+            namespace=namespace,
+            embeddings=embeddings,
+            metadata=metadata,
+        )
+
+    def _storage_metadata(self, kind: str, tenant_id: str, namespace: str) -> dict[str, Any]:
+        sanitized_namespace = namespace.replace(".", "-")
+        if kind in {"single_vector", "multi_vector"}:
+            faiss_index = f"/data/faiss/{tenant_id}/{sanitized_namespace}.index"
+            neo4j_label = f"Embedding::{sanitized_namespace}::{tenant_id}"
+            return {
+                "faiss_index": faiss_index,
+                "neo4j_label": neo4j_label,
+                "filter": {"tenant_id": tenant_id},
+            }
+        if kind == "sparse":
+            index_name = f"embeddings-sparse-{sanitized_namespace}".replace("--", "-")
+            return {
+                "opensearch_index": f"{index_name}-{tenant_id}",
+                "rank_features_field": "splade_terms",
+                "filter": {"term": {"tenant_id": tenant_id}},
+            }
+        if kind == "neural_sparse":
+            index_name = f"embeddings-neural-{sanitized_namespace}".replace("--", "-")
+            return {
+                "opensearch_index": f"{index_name}-{tenant_id}",
+                "neural_field": "neural_embedding",
+                "filter": {"term": {"tenant_id": tenant_id}},
+            }
+        return {}
+
+    def list_namespaces(
+        self,
+        *,
+        tenant_id: str,
+        scope: str = Scopes.EMBED_READ,
+    ) -> list[NamespaceInfo]:
+        if self.namespace_registry is None:
+            raise RuntimeError("Namespace registry not initialised")
+        entries = self.namespace_registry.list_enabled(tenant_id=tenant_id, scope=scope)
+        return [
+            NamespaceInfo(
+                id=namespace,
+                provider=config.provider,
+                kind=config.kind.value,
+                dimension=config.dim,
+                max_tokens=config.max_tokens,
+                enabled=config.enabled,
+                allowed_tenants=list(config.allowed_tenants),
+                allowed_scopes=list(config.allowed_scopes),
+            )
+            for namespace, config in entries
+        ]
+
+    def validate_namespace_texts(
+        self,
+        *,
+        tenant_id: str,
+        namespace: str,
+        texts: Sequence[str],
+    ) -> NamespaceValidationResponse:
+        if self.namespace_registry is None:
+            raise RuntimeError("Namespace registry not initialised")
+        access = validate_namespace_access(
+            self.namespace_registry,
+            namespace=namespace,
+            tenant_id=tenant_id,
+            required_scope=Scopes.EMBED_READ,
+        )
+        if not access.allowed:
+            detail = ProblemDetail(
+                title="Namespace access denied",
+                status=403,
+                type="https://httpstatuses.com/403",
+                detail=access.reason or "Access to namespace not permitted",
+            )
+            raise GatewayError(detail)
+
+        max_tokens = self.namespace_registry.get_max_tokens(namespace)
+        if max_tokens is None:
+            detail = ProblemDetail(
+                title="Namespace lacks token budget",
+                status=400,
+                type="https://httpstatuses.com/400",
+                detail=f"Namespace '{namespace}' does not declare max_tokens",
+            )
+            raise GatewayError(detail)
+
+        try:
+            tokenizer = self.namespace_registry.get_tokenizer(namespace)
+        except (ValueError, RuntimeError) as exc:
+            detail = ProblemDetail(
+                title="Tokenizer unavailable",
+                status=502,
+                type="https://httpstatuses.com/502",
+                detail=str(exc),
+            )
+            raise GatewayError(detail) from exc
+
+        results: list[NamespaceValidationResult] = []
+        for index, text in enumerate(texts):
+            encoded = tokenizer.encode(text or "", add_special_tokens=False)
+            token_count = len(encoded)
+            exceeds = token_count > max_tokens
+            warning = f"Exceeds {max_tokens} tokens" if exceeds else None
+            results.append(
+                NamespaceValidationResult(
+                    text_index=index,
+                    token_count=token_count,
+                    exceeds_budget=exceeds,
+                    warning=warning,
+                )
+            )
+
+        return NamespaceValidationResponse(
+            namespace=namespace,
+            valid=all(not item.exceeds_budget for item in results),
+            results=results,
+        )
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
         started = perf_counter()

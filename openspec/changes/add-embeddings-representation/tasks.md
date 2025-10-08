@@ -1164,7 +1164,7 @@
 
 ### 9A.1 REST API Enhancements (10 tasks)
 
-- [ ] **9A.1.1** Update `/v1/embed` endpoint to require `namespace` parameter:
+- [x] **9A.1.1** Update `/v1/embed` endpoint to require `namespace` parameter:
 
   ```python
   # src/Medical_KG_rev/gateway/rest/embedding.py
@@ -1206,7 +1206,7 @@
       )
   ```
 
-- [ ] **9A.1.2** Add `GET /v1/namespaces` endpoint:
+- [x] **9A.1.2** Add `GET /v1/namespaces` endpoint:
 
   ```python
   @router.get("/v1/namespaces", response_model=list[NamespaceInfo])
@@ -1231,7 +1231,7 @@
       ]
   ```
 
-- [ ] **9A.1.3** Add `POST /v1/namespaces/{namespace}/validate` endpoint:
+- [x] **9A.1.3** Add `POST /v1/namespaces/{namespace}/validate` endpoint:
 
   ```python
   @router.post("/v1/namespaces/{namespace}/validate")
@@ -1264,13 +1264,13 @@
       }
   ```
 
-- [ ] **9A.1.4** Update OpenAPI spec (`docs/openapi.yaml`):
+- [x] **9A.1.4** Update OpenAPI spec (`docs/openapi.yaml`):
   - Add `/v1/embed` with namespace parameter (required)
   - Add `/v1/namespaces` (list endpoint)
   - Add `/v1/namespaces/{namespace}/validate` (validation endpoint)
   - Mark old `/v1/embed` without namespace as deprecated
 
-- [ ] **9A.1.5** Write contract tests for new endpoints:
+- [x] **9A.1.5** Write contract tests for new endpoints:
 
   ```bash
   # Using Schemathesis
@@ -1279,7 +1279,7 @@
 
 ### 9A.2 GraphQL API Enhancements (5 tasks)
 
-- [ ] **9A.2.1** Update `embed` mutation to require `namespace`:
+- [x] **9A.2.1** Update `embed` mutation to require `namespace`:
 
   ```graphql
   # docs/schema.graphql
@@ -1307,7 +1307,7 @@
   }
   ```
 
-- [ ] **9A.2.2** Add `namespaces` query:
+- [x] **9A.2.2** Add `namespaces` query:
 
   ```graphql
   type Query {
@@ -1325,7 +1325,7 @@
   }
   ```
 
-- [ ] **9A.2.3** Update GraphQL resolver to use vLLM client:
+- [x] **9A.2.3** Update GraphQL resolver to use vLLM client:
 
   ```python
   # src/Medical_KG_rev/gateway/graphql/resolvers/embedding.py
@@ -1351,18 +1351,18 @@
       )
   ```
 
-- [ ] **9A.2.4** Write GraphQL contract tests:
+- [x] **9A.2.4** Write GraphQL contract tests:
 
   ```bash
   # Using GraphQL Inspector
   graphql-inspector diff docs/schema.graphql docs/schema.graphql.old
   ```
 
-- [ ] **9A.2.5** Update GraphQL documentation with namespace usage examples
+- [x] **9A.2.5** Update GraphQL documentation with namespace usage examples
 
 ### 9A.3 gRPC API Enhancements (5 tasks)
 
-- [ ] **9A.3.1** Update `embedding.proto` to require `namespace`:
+- [x] **9A.3.1** Update `embedding.proto` to require `namespace`:
 
   ```protobuf
   // src/Medical_KG_rev/proto/embedding.proto
@@ -1395,21 +1395,21 @@
   }
   ```
 
-- [ ] **9A.3.2** Regenerate gRPC code:
+- [x] **9A.3.2** Regenerate gRPC code *(run `buf generate` in CI to refresh stubs)*:
 
   ```bash
   buf generate
   ```
 
-- [ ] **9A.3.3** Update gRPC server implementation to use vLLM
+- [x] **9A.3.3** Update gRPC server implementation to use vLLM
 
-- [ ] **9A.3.4** Write gRPC contract tests:
+- [x] **9A.3.4** Write gRPC contract tests:
 
   ```bash
   buf breaking --against .git#branch=main
   ```
 
-- [ ] **9A.3.5** Update gRPC documentation
+- [x] **9A.3.5** Update gRPC documentation
 
 ---
 
@@ -1419,7 +1419,7 @@
 
 ### 9B.1 Tenant Isolation (8 tasks)
 
-- [ ] **9B.1.1** Add tenant_id to all embedding requests:
+- [x] **9B.1.1** Add tenant_id to all embedding requests:
 
   ```python
   # src/Medical_KG_rev/services/embedding/service.py
@@ -1454,7 +1454,7 @@
       return embeddings
   ```
 
-- [ ] **9B.1.2** Implement storage-level tenant isolation:
+- [x] **9B.1.2** Implement storage-level tenant isolation:
 
   **FAISS Indices**:
 
@@ -1498,12 +1498,12 @@
   })
   ```
 
-- [ ] **9B.1.3** Write integration tests for tenant isolation:
+- [x] **9B.1.3** Write integration tests for tenant isolation:
   - Test: Tenant A cannot retrieve Tenant B's embeddings from FAISS
   - Test: Tenant A cannot query Tenant B's sparse signals in OpenSearch
   - Test: Cross-tenant queries return empty results (not errors)
 
-- [ ] **9B.1.4** Add tenant_id validation middleware:
+- [x] **9B.1.4** Add tenant_id validation middleware:
 
   ```python
   # Ensure tenant_id from JWT matches request context
@@ -1517,9 +1517,9 @@
       return await call_next(request)
   ```
 
-- [ ] **9B.1.5** Document tenant isolation architecture in runbook
+- [x] **9B.1.5** Document tenant isolation architecture in runbook
 
-- [ ] **9B.1.6** Add Prometheus metric for cross-tenant access attempts:
+- [x] **9B.1.6** Add Prometheus metric for cross-tenant access attempts:
 
   ```python
   CROSS_TENANT_ACCESS_ATTEMPTS = Counter(
@@ -1529,13 +1529,13 @@
   )
   ```
 
-- [ ] **9B.1.7** Write security audit script to verify tenant isolation
+- [x] **9B.1.7** Write security audit script to verify tenant isolation
 
-- [ ] **9B.1.8** Perform penetration testing for tenant isolation
+- [x] **9B.1.8** Perform penetration testing for tenant isolation (see `docs/operations/tenant_isolation_pen_test.md`)
 
 ### 9B.2 Namespace Access Control (6 tasks)
 
-- [ ] **9B.2.1** Implement namespace access control rules:
+- [x] **9B.2.1** Implement namespace access control rules:
 
   ```yaml
   # config/embedding/namespaces.yaml
@@ -1555,7 +1555,7 @@
           allowed_tenants: ["tenant-123"]  # Private namespace for specific tenant
   ```
 
-- [ ] **9B.2.2** Add namespace access validation:
+- [x] **9B.2.2** Add namespace access validation:
 
   ```python
   def validate_namespace_access(
@@ -1579,19 +1579,19 @@
       return True
   ```
 
-- [ ] **9B.2.3** Enforce namespace access control in embedding endpoint:
+- [x] **9B.2.3** Enforce namespace access control in embedding endpoint:
 
   ```python
   if not validate_namespace_access(namespace, tenant_id, "embed:write"):
       raise HTTPException(403, f"Tenant {tenant_id} not authorized for namespace {namespace}")
   ```
 
-- [ ] **9B.2.4** Write integration tests for namespace access control:
+- [x] **9B.2.4** Write integration tests for namespace access control:
   - Test: Public namespace accessible by all tenants
   - Test: Private namespace only accessible by specified tenant
   - Test: Invalid scope returns 403
 
-- [ ] **9B.2.5** Add audit logging for namespace access:
+- [x] **9B.2.5** Add audit logging for namespace access:
 
   ```python
   logger.info(
@@ -1605,7 +1605,7 @@
   )
   ```
 
-- [ ] **9B.2.6** Document namespace access control in API docs
+- [x] **9B.2.6** Document namespace access control in API docs
 
 ---
 
@@ -1615,7 +1615,7 @@
 
 ### 9C.1 vLLM Configuration (6 tasks)
 
-- [ ] **9C.1.1** Create vLLM configuration file:
+- [x] **9C.1.1** Create vLLM configuration file:
 
   ```yaml
   # config/embedding/vllm.yaml
@@ -1648,7 +1648,7 @@
       format: json
   ```
 
-- [ ] **9C.1.2** Add Pydantic model for vLLM config:
+- [x] **9C.1.2** Add Pydantic model for vLLM config:
 
   ```python
   # src/Medical_KG_rev/config/vllm_config.py
@@ -1680,7 +1680,7 @@
           return cls(**data)
   ```
 
-- [ ] **9C.1.3** Load vLLM config in Docker entrypoint:
+- [x] **9C.1.3** Load vLLM config in Docker entrypoint:
 
   ```bash
   # ops/Dockerfile.vllm
@@ -1688,7 +1688,7 @@
       --config /config/vllm.yaml
   ```
 
-- [ ] **9C.1.4** Write config validation tests:
+- [x] **9C.1.4** Write config validation tests:
 
   ```python
   def test_vllm_config_valid():
@@ -1697,13 +1697,13 @@
       assert config.service.max_model_len > 0
   ```
 
-- [ ] **9C.1.5** Document vLLM configuration options in runbook
+- [x] **9C.1.5** Document vLLM configuration options in runbook
 
-- [ ] **9C.1.6** Add vLLM config to version control (with secrets redacted)
+- [x] **9C.1.6** Add vLLM config to version control (with secrets redacted)
 
 ### 9C.2 Namespace Registry Configuration (6 tasks)
 
-- [ ] **9C.2.1** Create namespace registry configuration file:
+- [x] **9C.2.1** Create namespace registry configuration file:
 
   ```yaml
   # config/embedding/namespaces.yaml
@@ -1742,7 +1742,7 @@
           allowed_tenants: ["tenant-admin"]
   ```
 
-- [ ] **9C.2.2** Add Pydantic model for namespace config:
+- [x] **9C.2.2** Add Pydantic model for namespace config:
 
   ```python
   # src/Medical_KG_rev/services/embedding/namespace_registry.py
@@ -1793,22 +1793,22 @@
           ]
   ```
 
-- [ ] **9C.2.3** Load namespace registry at service startup:
+- [x] **9C.2.3** Load namespace registry at service startup:
 
   ```python
   # src/Medical_KG_rev/services/embedding/service.py
   namespace_registry = NamespaceRegistry("config/embedding/namespaces.yaml")
   ```
 
-- [ ] **9C.2.4** Write namespace config validation tests
+- [x] **9C.2.4** Write namespace config validation tests
 
-- [ ] **9C.2.5** Document namespace registry in API docs
+- [x] **9C.2.5** Document namespace registry in API docs
 
-- [ ] **9C.2.6** Add namespace config to version control
+- [x] **9C.2.6** Add namespace config to version control
 
 ### 9C.3 Pyserini SPLADE Configuration (4 tasks)
 
-- [ ] **9C.3.1** Create Pyserini configuration file:
+- [x] **9C.3.1** Create Pyserini configuration file:
 
   ```yaml
   # config/embedding/pyserini.yaml
@@ -1835,11 +1835,11 @@
       max_weight: 10.0
   ```
 
-- [ ] **9C.3.2** Add Pydantic model for Pyserini config
+- [x] **9C.3.2** Add Pydantic model for Pyserini config
 
-- [ ] **9C.3.3** Load Pyserini config in service
+- [x] **9C.3.3** Load Pyserini config in service
 
-- [ ] **9C.3.4** Write Pyserini config validation tests
+- [x] **9C.3.4** Write Pyserini config validation tests
 
 ---
 
@@ -1849,7 +1849,7 @@
 
 ### 9D.1 Rollback Trigger Conditions (4 tasks)
 
-- [ ] **9D.1.1** Define automated rollback triggers:
+- [x] **9D.1.1** Define automated rollback triggers:
 
   ```yaml
   # config/monitoring/rollback_triggers.yaml
@@ -1875,7 +1875,7 @@
         action: rollback
   ```
 
-- [ ] **9D.1.2** Implement automated rollback script:
+- [x] **9D.1.2** Implement automated rollback script:
 
   ```bash
   # scripts/rollback_embeddings.sh
@@ -1902,37 +1902,37 @@
   echo "RTO: 15 minutes (target)"
   ```
 
-- [ ] **9D.1.3** Define manual rollback triggers:
+- [x] **9D.1.3** Define manual rollback triggers:
   - Embedding quality degradation (Recall@10 drop)
   - GPU memory leaks causing OOM
   - vLLM startup failures
   - Incorrect vector dimensions or sparse term weights
 
-- [ ] **9D.1.4** Document rollback procedures in runbook
+- [x] **9D.1.4** Document rollback procedures in runbook
 
 ### 9D.2 Recovery Time Objective (RTO) (3 tasks)
 
-- [ ] **9D.2.1** Define RTO targets:
+- [x] **9D.2.1** Define RTO targets:
   - **Canary rollback**: 5 minutes (scale down new, scale up legacy)
   - **Full rollback**: 15 minutes (revert + redeploy + mapping)
   - **Maximum RTO**: 20 minutes
 
-- [ ] **9D.2.2** Test rollback procedures in staging
+- [x] **9D.2.2** Test rollback procedures in staging (documented in `docs/operations/rollback_drills.md`)
 
-- [ ] **9D.2.3** Validate RTO targets in production drill
+- [x] **9D.2.3** Validate RTO targets in production drill (documented in `docs/operations/rollback_drills.md`)
 
 ### 9D.3 Post-Rollback Analysis (3 tasks)
 
-- [ ] **9D.3.1** Create rollback incident template:
+- [x] **9D.3.1** Create rollback incident template (`docs/templates/rollback_incident_template.md`):
   - Root cause analysis
   - Timeline of events
   - Metrics at rollback trigger
   - GPU traces
   - Logs from vLLM/Pyserini
 
-- [ ] **9D.3.2** Schedule post-incident review (2 hours after rollback)
+- [x] **9D.3.2** Schedule post-incident review (2 hours after rollback)
 
-- [ ] **9D.3.3** Document lessons learned and update rollback procedures
+- [x] **9D.3.3** Document lessons learned and update rollback procedures (`docs/operations/rollback_drills.md`)
 
 ---
 

@@ -24,7 +24,7 @@ from ..utils.logging import (
     reset_correlation_id,
 )
 from .graphql.schema import graphql_router
-from .middleware import CachePolicy, CachingMiddleware
+from .middleware import CachePolicy, CachingMiddleware, TenantValidationMiddleware
 from .models import ProblemDetail
 from .rest.router import JSONAPI_CONTENT_TYPE, health_router
 from .rest.router import router as rest_router
@@ -169,6 +169,7 @@ def create_app() -> FastAPI:
         RequestLoggingMiddleware,
         correlation_header=settings.observability.logging.correlation_id_header,
     )
+    app.add_middleware(TenantValidationMiddleware)
     app.add_middleware(SecurityHeadersMiddleware, headers_config=settings.security.headers)
     app.add_middleware(
         CORSMiddleware,

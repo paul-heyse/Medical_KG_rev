@@ -210,6 +210,9 @@ class JobLedger:
         entry.retry_count_per_stage.setdefault(stage, entry.retry_count_per_stage.get(stage, 0))
         return entry
 
+    def assign_pipeline(self, job_id: str, pipeline_name: str | None) -> JobLedgerEntry:
+        return self._update(job_id, pipeline_name=pipeline_name)
+
     def mark_stage_started(self, job_id: str, stage: str) -> JobLedgerEntry:
         entry = self.mark_processing(job_id, stage)
         entry.retry_count_per_stage.setdefault(stage, 0)

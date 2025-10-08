@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
 import yaml
 from pydantic import (
@@ -28,6 +28,7 @@ from Medical_KG_rev.observability.metrics import (
     record_resilience_rate_limit_wait,
     record_resilience_retry,
 )
+from Medical_KG_rev.orchestration.ledger import LEDGER_BOOLEAN_FIELDS
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -133,6 +134,85 @@ class PipelineTopologyConfig(BaseModel):
                 raise ValueError(
                     f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
                 )
+
+        gate_map = {gate.name: gate for gate in self.gates}
+        for stage in self.stages:
+            if stage.stage_type == "ingest":
+                adapter_name = stage.config.get("adapter") if isinstance(stage.config, dict) else None
+                if not adapter_name or not str(adapter_name).strip():
+                    raise ValueError(
+                        f"stage '{stage.name}' must declare an adapter configuration"
+                    )
+            if stage.stage_type == "download":
+                config = stage.config if isinstance(stage.config, dict) else {}
+                extractors = config.get("url_extractors")
+                if not extractors or not isinstance(extractors, Iterable):
+                    raise ValueError(
+                        f"stage '{stage.name}' must define at least one URL extractor"
+                    )
+                normalised_extractors: list[dict[str, Any]] = []
+                for item in extractors:
+                    if not isinstance(item, Mapping):
+                        raise ValueError(
+                            f"stage '{stage.name}' url_extractors entries must be mappings"
+                        )
+                    source = str(item.get("source", "")).strip()
+                    path = str(item.get("path", "")).strip()
+                    if not source or not path:
+                        raise ValueError(
+                            f"stage '{stage.name}' url_extractors require non-empty source and path"
+                        )
+                    normalised_extractors.append({"source": source, "path": path})
+                config["url_extractors"] = normalised_extractors
+                storage = config.get("storage") if isinstance(config.get("storage"), Mapping) else {}
+                base_path = str(storage.get("base_path", "")).strip()
+                if not base_path:
+                    raise ValueError(
+                        f"stage '{stage.name}' storage.base_path must be provided for downloads"
+                    )
+                if "filename_template" not in storage:
+                    storage["filename_template"] = "{job_id}.pdf"
+                config["storage"] = dict(storage)
+            if stage.stage_type == "gate":
+                config = stage.config if isinstance(stage.config, dict) else {}
+                gate_name = str(config.get("gate") or stage.name)
+                if gate_name not in gate_map:
+                    raise ValueError(
+                        f"stage '{stage.name}' references undefined gate '{gate_name}'"
+                    )
+                gate_def = gate_map[gate_name]
+                resume_stage = str(config.get("resume_stage") or gate_def.resume_stage)
+                if resume_stage not in gate_stage_set:
+                    raise ValueError(
+                        f"stage '{stage.name}' resume_stage '{resume_stage}' is not declared"
+                    )
+                if resume_stage != gate_def.resume_stage:
+                    raise ValueError(
+                        f"stage '{stage.name}' resume_stage '{resume_stage}' must match gate definition '{gate_def.resume_stage}'"
+                    )
+                config["resume_stage"] = resume_stage
+                field = str(config.get("field") or gate_def.condition.field)
+                if field not in LEDGER_BOOLEAN_FIELDS:
+                    raise ValueError(
+                        f"stage '{stage.name}' references unsupported ledger field '{field}'"
+                    )
+                config["field"] = field
+                equals = config.get("equals", gate_def.condition.equals)
+                config["equals"] = equals
+                timeout = config.get("timeout_seconds") or gate_def.condition.timeout_seconds or 900
+                if not isinstance(timeout, (int, float)) or timeout <= 0:
+                    raise ValueError(
+                        f"stage '{stage.name}' timeout_seconds must be a positive number"
+                    )
+                config["timeout_seconds"] = float(timeout)
+                poll = config.get("poll_interval_seconds", gate_def.condition.poll_interval_seconds)
+                if not isinstance(poll, (int, float)) or poll <= 0:
+                    raise ValueError(
+                        f"stage '{stage.name}' poll_interval_seconds must be positive"
+                    )
+                config["poll_interval_seconds"] = float(poll)
+                config.setdefault("gate", gate_name)
+        return self
         return self
 
 

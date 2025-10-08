@@ -219,6 +219,9 @@ def _make_stage_op(
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
         stage = stage_factory.resolve(topology.name, stage_definition)
+        bind_runtime = getattr(stage, "bind_runtime", None)
+        if callable(bind_runtime):
+            bind_runtime(job_ledger=context.resources.job_ledger)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 

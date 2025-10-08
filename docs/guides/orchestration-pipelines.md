@@ -29,12 +29,17 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
   optional `policy`, dependencies, and a free-form `config` block. Gates define
   resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
+  Refer to [`pdf-two-phase-gate.md`](./pdf-two-phase-gate.md) for a walkthrough
+  of the MinerU-controlled PDF pipeline.
 - **Resilience policies** – `config/orchestration/resilience.yaml` contains
   shared retry, circuit breaker, and rate limiting definitions. The runtime
   loads these into Tenacity, PyBreaker, and aiolimiter objects.
 - **Version manifest** – `config/orchestration/versions/*` tracks pipeline
   revisions. `PipelineConfigLoader` loads and caches versions to provide
   deterministic orchestration.
+- **Custom stages** – The stage registry supports additional stage types via
+  plugins. See [`custom-pipeline-stages.md`](./custom-pipeline-stages.md) for
+  details on registering new builders.
 
 ## Execution Flow
 
@@ -61,10 +66,27 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   policies raise validation errors at load time.
 - **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
   set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
-  and record trigger counts in the ledger metadata.
+  and record trigger counts in the ledger metadata. Metrics
+  (`pipeline_gate_wait_seconds`, `pipeline_gate_events_total`) expose long-lived
+  waits.
 - **Missing embeddings** – Ensure the embed stage resolved the Haystack
   embedder; stubs return deterministic values for test runs but do not persist
   to OpenSearch/FAISS.
+
+## PDF Two-Phase Pipeline
+
+The `pdf-two-phase` topology combines metadata ingestion, PDF download, a
+ledger-backed MinerU gate, and downstream enrichment. Highlights:
+
+- Download stage extracts URLs from OpenAlex payloads, writes PDFs to
+  `/var/lib/medical-kg/pdfs`, and updates ledger fields `pdf_url`, `pdf_path`,
+  and `pdf_sha256`.
+- Gate stage waits for MinerU to set `pdf_ir_ready=true`, recording wait
+  duration metrics and ledger metadata (`gate.pdf_ir_ready.*`).
+- Metrics `pdf_download_duration_seconds`, `pdf_download_size_bytes`, and
+  `pdf_download_events_total` provide visibility into acquisition behaviour.
+
+See the dedicated guide for configuration snippets and troubleshooting advice.
 
 ## Operational Notes
 

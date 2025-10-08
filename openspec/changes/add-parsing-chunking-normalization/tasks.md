@@ -16,41 +16,41 @@
 
 ### 1.1 Legacy Code Inventory (Audit Phase)
 
-- [ ] 1.1.1 Identify all files in `src/Medical_KG_rev/services/chunking/` to delete:
+- [x] 1.1.1 Identify all files in `src/Medical_KG_rev/services/chunking/` to delete:
   - [ ] `custom_splitters.py` (8 custom chunkers, 420 lines) - Replace with ChunkerPort + library wrappers
   - [ ] `semantic_splitter.py` (75 lines) - Replace with LlamaIndex node parsers
   - [ ] `sliding_window.py` (62 lines) - Replace with langchain RecursiveCharacterTextSplitter
   - [ ] `section_aware_splitter.py` (110 lines) - Replace with profile-based chunking
-- [ ] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
+- [x] 1.1.2 Identify all files in `src/Medical_KG_rev/services/parsing/` to delete:
   - [ ] `pdf_parser.py` (bespoke PDF logic, 180 lines) - MinerU is the only PDF path
   - [ ] `xml_parser.py` (custom XML parsing, 95 lines) - Replace with unstructured
   - [ ] `sentence_splitters.py` (3 implementations, 140 lines) - Replace with scispaCy/syntok
-- [ ] 1.1.3 Identify adapter methods to delete:
+- [x] 1.1.3 Identify adapter methods to delete:
   - [ ] Search for `def split_document\|\.chunk\(` in adapters/ (15 occurrences)
   - [ ] All adapter-specific chunking logic → delegate to ChunkerPort
-- [ ] 1.1.4 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md`
+- [x] 1.1.4 Create deletion checklist: `LEGACY_DECOMMISSION_CHECKLIST.md`
 
 ### 1.2 Dependency Analysis (Pre-Delete Validation)
 
-- [ ] 1.2.1 Find all imports of custom chunkers:
+- [x] 1.2.1 Find all imports of custom chunkers:
 
   ```bash
   grep -r "from.*custom_splitters import\|SemanticSplitter\|SlidingWindow" src/
   ```
 
-- [ ] 1.2.2 Find all imports of custom parsers:
+- [x] 1.2.2 Find all imports of custom parsers:
 
   ```bash
   grep -r "from.*pdf_parser import\|from.*xml_parser import" src/
   ```
 
-- [ ] 1.2.3 Find all `.split_document()` calls:
+- [x] 1.2.3 Find all `.split_document()` calls:
 
   ```bash
   grep -r "\.split_document\(\|\.chunk\(" src/Medical_KG_rev/adapters/
   ```
 
-- [ ] 1.2.4 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
+- [x] 1.2.4 Document all dependencies in `LEGACY_DEPENDENCIES.md` with replacement plan
 
 ### 1.3 Delegation to Open-Source Libraries (Validation)
 
@@ -59,9 +59,9 @@
   - [ ] Decision: Map to `RecursiveCharacterTextSplitter` (default) or `SentenceWindowNodeParser` (coherence-sensitive)
   - [ ] Delete: All 8 custom chunker implementations
   - [ ] Verify: Chunk quality (offsets, section labels) preserved
-- [ ] 1.3.2 **Sentence Segmentation**: Verify delegation to scispaCy/syntok
+- [ ] 1.3.2 **Sentence Segmentation**: Verify delegation to HuggingFace/syntok
   - [ ] Audit: Where are custom sentence splitters used?
-  - [ ] Decision: scispaCy for biomedical-aware splitting, syntok for speed
+  - [ ] Decision: HuggingFace biomedical models for domain-aware splitting, syntok for speed
   - [ ] Delete: All 3 custom sentence splitter implementations
   - [ ] Verify: Sentence boundaries match expected behavior
 - [ ] 1.3.3 **Tokenization**: Verify delegation to transformers/tiktoken
@@ -84,7 +84,7 @@
 - [ ] 1.4.1 Create commit plan with atomic deletions:
   - [ ] Commit 1: Add ChunkerPort interface + delete `custom_splitters.py`
   - [ ] Commit 2: Add langchain/LlamaIndex wrappers + delete `semantic_splitter.py`, `sliding_window.py`
-  - [ ] Commit 3: Add scispaCy/syntok wrappers + delete `sentence_splitters.py`
+  - [ ] Commit 3: Add HuggingFace/syntok wrappers + delete `sentence_splitters.py`
   - [ ] Commit 4: Add unstructured wrapper + delete `xml_parser.py`
   - [ ] Commit 5: Harden MinerU gate + delete `pdf_parser.py`
   - [ ] Commit 6: Add profile system + delete adapter `.split_document()` methods
@@ -113,7 +113,7 @@
 - [ ] 1.6.2 Create new ChunkerPort tests:
   - [ ] `tests/chunking/test_chunker_port.py` (interface compliance)
   - [ ] `tests/chunking/test_profiles.py` (IMRaD, Registry, SPL, Guideline)
-  - [ ] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, scispaCy)
+  - [ ] `tests/chunking/test_library_wrappers.py` (langchain, LlamaIndex, HuggingFace)
 - [ ] 1.6.3 Verify test coverage ≥90% for new chunking code
 - [ ] 1.6.4 Delete all references to custom chunkers in test fixtures
 
@@ -126,7 +126,7 @@
 - [ ] 1.7.2 Update `docs/guides/chunking.md`:
   - [ ] Remove: Legacy examples with custom chunkers
   - [ ] Add: Profile-based chunking examples
-  - [ ] Add: Library delegation guide (langchain, LlamaIndex, scispaCy)
+  - [ ] Add: Library delegation guide (langchain, LlamaIndex, HuggingFace)
 - [ ] 1.7.3 Create `DELETED_CODE.md` for chunking/parsing
 
 ### 1.8 Codebase Size Validation
@@ -146,42 +146,42 @@
 
 ## 2. Foundation & Dependencies
 
-- [ ] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
-- [ ] 2.2 Add **llama-index-core>=0.10.0** for node parsers
-- [ ] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
-- [ ] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
-- [ ] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
-- [ ] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
-- [ ] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
+- [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
+- [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
+- [x] 2.3 Add **scispacy>=0.5.4** + **en-core-sci-sm** model
+- [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
+- [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML
+- [x] 2.6 Add **tiktoken>=0.6.0** and **transformers>=4.38.0** for tokenization
+- [x] 2.7 Pin exact versions in requirements.txt (no `^` or `~`)
 - [ ] 2.8 Test dependency installation in clean venv
-- [ ] 2.9 Download scispaCy model: `python -m spacy download en_core_sci_sm`
+- [ ] 2.9 Download biomedical sentence model if needed (HuggingFace will auto-download)
 - [ ] 2.10 Verify all libraries import without errors
 
 ---
 
 ## 3. ChunkerPort Interface & Runtime Registry
 
-- [ ] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
+- [x] 3.1 Define `ChunkerPort` Protocol in `src/Medical_KG_rev/services/chunking/port.py`:
 
   ```python
   class ChunkerPort(Protocol):
       def chunk(self, document: Document, profile: str) -> list[Chunk]: ...
   ```
 
-- [ ] 3.2 Define `Chunk` dataclass with required fields:
-  - [ ] `chunk_id: str`
-  - [ ] `doc_id: str`
-  - [ ] `text: str`
-  - [ ] `char_offsets: tuple[int, int]`
-  - [ ] `section_label: str` (e.g., "Methods", "LOINC:34089-3")
-  - [ ] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
-  - [ ] `page_bbox: dict | None` (for PDFs)
-  - [ ] `metadata: dict[str, Any]`
-- [ ] 3.3 Implement chunker registry:
-  - [ ] `register_chunker(name: str, implementation: Type[ChunkerPort])`
-  - [ ] `get_chunker(name: str) -> ChunkerPort`
-- [ ] 3.4 Add validation: raise if profile not registered
-- [ ] 3.5 Write unit tests for ChunkerPort protocol compliance
+- [x] 3.2 Define `Chunk` dataclass with required fields:
+  - [x] `chunk_id: str`
+  - [x] `doc_id: str`
+  - [x] `text: str`
+  - [x] `char_offsets: tuple[int, int]`
+  - [x] `section_label: str` (e.g., "Methods", "LOINC:34089-3")
+  - [x] `intent_hint: str` (e.g., "eligibility", "outcome", "ae", "dose")
+  - [x] `page_bbox: dict | None` (for PDFs)
+  - [x] `metadata: dict[str, Any]`
+- [x] 3.3 Implement chunker registry:
+  - [x] `register_chunker(name: str, implementation: Type[ChunkerPort])`
+  - [x] `get_chunker(name: str) -> ChunkerPort`
+- [x] 3.4 Add validation: raise if profile not registered
+- [x] 3.5 Write unit tests for ChunkerPort protocol compliance
 
 ---
 
@@ -189,7 +189,7 @@
 
 ### 4.1 Profile Data Model
 
-- [ ] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
+- [x] 4.1.1 Create `Profile` Pydantic model in `src/Medical_KG_rev/services/chunking/profiles/models.py`:
 
   ```python
   class Profile(BaseModel):
@@ -198,17 +198,17 @@
       target_tokens: int = 512
       overlap_tokens: int = 50
       respect_boundaries: list[str]  # ["heading", "table", "section"]
-      sentence_splitter: str = "syntok"  # or "scispacy"
+      sentence_splitter: str = "syntok"  # or "huggingface"
       preserve_tables_as_html: bool = True
       filters: list[str] = ["drop_boilerplate", "exclude_references"]
   ```
 
-- [ ] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
-- [ ] 4.1.3 Validate profiles on startup (Pydantic validation)
+- [x] 4.1.2 Load profiles from YAML: `config/chunking/profiles/*.yaml`
+- [x] 4.1.3 Validate profiles on startup (Pydantic validation)
 
 ### 4.2 IMRaD Profile (PMC JATS)
 
-- [ ] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
+- [x] 4.2.1 Create `config/chunking/profiles/pmc-imrad.yaml`:
 
   ```yaml
   name: pmc-imrad
@@ -219,7 +219,7 @@
     - heading  # Never split across IMRaD sections
     - figure_caption
     - table
-  sentence_splitter: scispacy  # Biomedical-aware
+  sentence_splitter: huggingface  # Biomedical-aware
   preserve_tables_as_html: true
   filters:
     - drop_boilerplate
@@ -227,13 +227,13 @@
     - deduplicate_page_furniture
   ```
 
-- [ ] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
+- [x] 4.2.2 Implement IMRaD chunker using LangChain `RecursiveCharacterTextSplitter`
 - [ ] 4.2.3 Test on 10 PMC articles, verify heading alignment
 - [ ] 4.2.4 Validate section labels: "Abstract", "Introduction", "Methods", "Results", "Discussion"
 
 ### 4.3 Registry Profile (CT.gov)
 
-- [ ] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
+- [x] 4.3.1 Create `config/chunking/profiles/ctgov-registry.yaml`:
 
   ```yaml
   name: ctgov-registry
@@ -260,7 +260,7 @@
 
 ### 4.4 SPL Profile (DailyMed)
 
-- [ ] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
+- [x] 4.4.1 Create `config/chunking/profiles/spl-label.yaml`:
 
   ```yaml
   name: spl-label
@@ -270,7 +270,7 @@
   respect_boundaries:
     - loinc_section  # LOINC-coded sections
     - table
-  sentence_splitter: scispacy
+  sentence_splitter: huggingface
   preserve_tables_as_html: true
   filters:
     - drop_boilerplate
@@ -285,7 +285,7 @@
 
 ### 4.5 Guideline Profile
 
-- [ ] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
+- [x] 4.5.1 Create `config/chunking/profiles/guideline.yaml`:
 
   ```yaml
   name: guideline
@@ -313,8 +313,8 @@
 
 ### 5.1 LangChain Text Splitters Wrapper
 
-- [ ] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
-- [ ] 5.1.2 Implement `LangChainChunker` class:
+- [x] 5.1.1 Create `src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py`
+- [x] 5.1.2 Implement `LangChainChunker` class:
 
   ```python
   class LangChainChunker:
@@ -336,8 +336,8 @@
 
 ### 5.2 LlamaIndex Node Parsers Wrapper
 
-- [ ] 5.2.1 Create `src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py`
-- [ ] 5.2.2 Implement `LlamaIndexChunker` class using `SentenceWindowNodeParser`:
+- [x] 5.2.1 Create `src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py`
+- [x] 5.2.2 Implement `LlamaIndexChunker` class using `SentenceWindowNodeParser`:
 
   ```python
   class LlamaIndexChunker:
@@ -349,14 +349,14 @@
           )
   ```
 
-- [ ] 5.2.3 Add sentence boundary detection via scispaCy/syntok
-- [ ] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
-- [ ] 5.2.5 Write unit tests for coherence preservation
+- [x] 5.2.3 Add sentence boundary detection via scispaCy/syntok
+- [x] 5.2.4 Map LlamaIndex nodes to `Chunk` dataclass
+- [x] 5.2.5 Write unit tests for coherence preservation
 
-### 5.3 scispaCy Sentence Segmentation Wrapper
+### 5.3 HuggingFace Sentence Segmentation Wrapper
 
-- [ ] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
-- [ ] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
+- [x] 5.3.1 Create `src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py`
+- [x] 5.3.2 Implement `SciSpaCySentenceSegmenter`:
 
   ```python
   import spacy
@@ -368,13 +368,13 @@
   ```
 
 - [ ] 5.3.3 Handle biomedical abbreviations (e.g., "Fig.", "et al.")
-- [ ] 5.3.4 Preserve char offsets
-- [ ] 5.3.5 Write unit tests with biomedical text samples
+- [x] 5.3.4 Preserve char offsets
+- [x] 5.3.5 Write unit tests with biomedical text samples
 
 ### 5.4 syntok Fast Sentence Splitter Wrapper
 
-- [ ] 5.4.1 Create `src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py`
-- [ ] 5.4.2 Implement `SyntokSentenceSegmenter`:
+- [x] 5.4.1 Create `src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py`
+- [x] 5.4.2 Implement `SyntokSentenceSegmenter`:
 
   ```python
   from syntok import segmenter
@@ -383,14 +383,14 @@
       # Implementation with offset tracking
   ```
 
-- [ ] 5.4.3 Handle messy punctuation
-- [ ] 5.4.4 Preserve char offsets
+- [x] 5.4.3 Handle messy punctuation
+- [x] 5.4.4 Preserve char offsets
 - [ ] 5.4.5 Benchmark throughput vs scispaCy (should be 5-10x faster)
 
 ### 5.5 Tokenizer Wrappers (HF / tiktoken)
 
-- [ ] 5.5.1 Create `src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py`
-- [ ] 5.5.2 Implement HF tokenizer wrapper for Qwen3:
+- [x] 5.5.1 Create `src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py`
+- [x] 5.5.2 Implement HF tokenizer wrapper for Qwen3:
 
   ```python
   from transformers import AutoTokenizer
@@ -400,14 +400,14 @@
       return len(tokenizer.encode(text))
   ```
 
-- [ ] 5.5.3 Add token budget enforcement before chunking
-- [ ] 5.5.4 Cache tokenizer instance (avoid re-loading)
-- [ ] 5.5.5 Write unit tests for token counting accuracy
+- [x] 5.5.3 Add token budget enforcement before chunking
+- [x] 5.5.4 Cache tokenizer instance (avoid re-loading)
+- [x] 5.5.5 Write unit tests for token counting accuracy
 
 ### 5.6 unstructured Wrapper (XML/HTML)
 
-- [ ] 5.6.1 Create `src/Medical_KG_rev/services/parsing/wrappers/unstructured_parser.py`
-- [ ] 5.6.2 Implement `UnstructuredParser`:
+- [x] 5.6.1 Create `src/Medical_KG_rev/services/parsing/wrappers/unstructured_parser.py`
+- [x] 5.6.2 Implement `UnstructuredParser`:
 
   ```python
   from unstructured.partition.xml import partition_xml
@@ -418,28 +418,28 @@
       # Map to IR Document
   ```
 
-- [ ] 5.6.3 Map unstructured elements to IR blocks
-- [ ] 5.6.4 Preserve metadata (element type, attributes)
-- [ ] 5.6.5 Test on JATS XML, SPL XML, HTML guidelines
+- [x] 5.6.3 Map unstructured elements to IR blocks
+- [x] 5.6.4 Preserve metadata (element type, attributes)
+- [x] 5.6.5 Test on JATS XML, SPL XML, HTML guidelines
 
 ---
 
 ## 6. Filter Chain System
 
-- [ ] 6.1 Create `src/Medical_KG_rev/services/chunking/filters/` directory
-- [ ] 6.2 Implement `drop_boilerplate` filter:
-  - [ ] Remove headers/footers via regex patterns
-  - [ ] Remove "Page X of Y" artifacts
-- [ ] 6.3 Implement `exclude_references` filter:
-  - [ ] Detect "References" section start
-  - [ ] Drop all text after that section
-- [ ] 6.4 Implement `deduplicate_page_furniture` filter:
-  - [ ] Detect repeated text across pages (e.g., running headers)
-  - [ ] Remove duplicates
-- [ ] 6.5 Implement `preserve_tables_html` filter:
-  - [ ] Keep HTML for tables when `rectangularize_confidence < 0.8`
-  - [ ] Tag chunk with `is_unparsed_table=true`
-- [ ] 6.6 Create filter chain executor:
+- [x] 6.1 Create `src/Medical_KG_rev/services/chunking/filters/` directory
+- [x] 6.2 Implement `drop_boilerplate` filter:
+  - [x] Remove headers/footers via regex patterns
+  - [x] Remove "Page X of Y" artifacts
+- [x] 6.3 Implement `exclude_references` filter:
+  - [x] Detect "References" section start
+  - [x] Drop all text after that section
+- [x] 6.4 Implement `deduplicate_page_furniture` filter:
+  - [x] Detect repeated text across pages (e.g., running headers)
+  - [x] Remove duplicates
+- [x] 6.5 Implement `preserve_tables_html` filter:
+  - [x] Keep HTML for tables when `rectangularize_confidence < 0.8`
+  - [x] Tag chunk with `is_unparsed_table=true`
+- [x] 6.6 Create filter chain executor:
 
   ```python
   def apply_filters(chunks: list[Chunk], filters: list[str]) -> list[Chunk]:
@@ -448,7 +448,7 @@
       return chunks
   ```
 
-- [ ] 6.7 Write unit tests for each filter
+- [x] 6.7 Write unit tests for each filter
 
 ---
 
@@ -505,7 +505,7 @@
 
 ### 8.1 Chunk Schema Validation
 
-- [ ] 8.1.1 Define Pydantic model for `Chunk`:
+- [x] 8.1.1 Define Pydantic model for `Chunk`:
 
   ```python
   class Chunk(BaseModel):
@@ -519,17 +519,17 @@
       metadata: dict[str, Any] = Field(default_factory=dict)
   ```
 
-- [ ] 8.1.2 Validate all chunks before storage
-- [ ] 8.1.3 Raise `ValidationError` if required fields missing
+- [x] 8.1.2 Validate all chunks before storage
+- [x] 8.1.3 Raise `ValidationError` if required fields missing
 
 ### 8.2 Provenance Tracking
 
-- [ ] 8.2.1 Attach to every chunk:
+- [x] 8.2.1 Attach to every chunk:
   - [ ] `source_system: str` (e.g., "pmc", "ctgov", "dailymed")
   - [ ] `chunking_profile: str` (e.g., "pmc-imrad")
   - [ ] `chunker_version: str` (e.g., "langchain-v0.2.0")
   - [ ] `created_at: datetime`
-- [ ] 8.2.2 Store in chunk metadata
+- [x] 8.2.2 Store in chunk metadata
 - [ ] 8.2.3 Index in OpenSearch for retrieval filters
 
 ### 8.3 Failure Semantics
@@ -591,7 +591,7 @@
 
 - [ ] 10.1.1 ChunkerPort protocol compliance (5 tests)
 - [ ] 10.1.2 Each profile (IMRaD, Registry, SPL, Guideline) (12 tests)
-- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, scispaCy, syntok, unstructured) (15 tests)
+- [ ] 10.1.3 Each library wrapper (LangChain, LlamaIndex, HuggingFace, syntok, unstructured) (15 tests)
 - [ ] 10.1.4 Filter chain system (8 tests)
 - [ ] 10.1.5 MinerU gate logic (6 tests)
 - [ ] 10.1.6 Chunk schema validation (4 tests)
@@ -620,14 +620,170 @@
 - [ ] 10.4.2 Compare chunk quality before/after for 10 CT.gov studies
 - [ ] 10.4.3 Verify downstream retrieval quality unchanged (P95 latency, Recall@10)
 
+### 10.5 Performance Tests (New)
+
+- [ ] 10.5.1 **Chunking Latency Benchmarks** (per profile):
+  - [ ] pmc-imrad: P95 <2s per document (target: 30 docs/min)
+  - [ ] ctgov-registry: P95 <1s per document (target: 60 docs/min)
+  - [ ] spl-loinc: P95 <1.5s per document (target: 40 docs/min)
+  - [ ] guideline: P95 <1s per document (target: 60 docs/min)
+
+- [ ] 10.5.2 **MinerU Performance Benchmarks**:
+  - [ ] Latency: P95 <30s per PDF (20-30 pages)
+  - [ ] Throughput: 2-3 PDFs/second (GPU-accelerated)
+  - [ ] Success Rate: >95% (excluding malformed PDFs)
+  - [ ] GPU Utilization: 60-80% during processing
+
+- [ ] 10.5.3 **Token Overflow Rate**:
+  - [ ] Measure token overflows per profile
+  - [ ] Target: <1% across all profiles
+  - [ ] If >1%, tune token budgets in profiles
+
+- [ ] 10.5.4 **Load Testing** (k6):
+  - [ ] 100 concurrent ingestion jobs, 5-minute duration
+  - [ ] Validate chunking service stability
+  - [ ] Monitor memory usage (no leaks)
+  - [ ] Check error rate <1%
+
+- [ ] 10.5.5 **Soak Test** (24-hour):
+  - [ ] Continuous chunking load (10 docs/sec)
+  - [ ] Monitor memory growth
+  - [ ] Validate no performance degradation
+
+### 10.6 Contract Tests (New)
+
+- [ ] 10.6.1 **REST API Contract**:
+  - [ ] Schemathesis tests for `/v1/ingest/{source}` with `chunking_profile` parameter
+  - [ ] Validate response includes chunk count, profile used
+  - [ ] Test invalid profile name (expect 400 Bad Request)
+
+- [ ] 10.6.2 **GraphQL API Contract**:
+  - [ ] GraphQL Inspector for schema changes
+  - [ ] Test `IngestClinicalTrial` mutation with chunking options
+  - [ ] Validate response types match schema
+
+- [ ] 10.6.3 **gRPC API Contract**:
+  - [ ] Buf breaking change detection on proto files
+  - [ ] Test `SubmitIngestionJob` RPC with chunking config
+  - [ ] Validate proto message compatibility
+
+### 10.7 Table Preservation Tests (New)
+
+- [ ] 10.7.1 **HTML Preservation**:
+  - [ ] Test 10 tables with high rectangularization uncertainty
+  - [ ] Verify HTML preserved verbatim
+  - [ ] Validate `is_unparsed_table=true` flag set
+
+- [ ] 10.7.2 **Rectangularization Decision**:
+  - [ ] Test 10 tables with high confidence
+  - [ ] Verify rectangularization applied
+  - [ ] Validate cell structure preserved
+
+- [ ] 10.7.3 **Table Chunk Metadata**:
+  - [ ] Verify `table_html` field populated
+  - [ ] Verify `intent_hint="ae"` for adverse event tables
+  - [ ] Verify `section_label` includes table context
+
 ---
 
-## 11. Performance Optimization
+## 11. API Integration (New)
+
+### 11.1 REST API Updates
+
+- [ ] 11.1.1 Update `/v1/ingest/{source}` endpoint:
+  - [ ] Add `chunking_profile` parameter (optional, default="default")
+  - [ ] Add `chunking_options` object (preserve_tables_html, sentence_splitter, custom_token_budget)
+  - [ ] Update OpenAPI schema
+
+- [ ] 11.1.2 Add `/v1/chunking/profiles` endpoint:
+  - [ ] GET: List available chunking profiles
+  - [ ] Response includes profile name, description, domain, target tokens
+
+- [ ] 11.1.3 Add `/v1/chunking/validate` endpoint:
+  - [ ] POST: Validate chunk quality for a document
+  - [ ] Returns metrics: chunk count, token overflow rate, section label coverage
+
+### 11.2 GraphQL API Updates
+
+- [ ] 11.2.1 Update `IngestionInput` type:
+  - [ ] Add `chunkingProfile: String = "default"` field
+  - [ ] Add `options: ChunkingOptions` field
+
+- [ ] 11.2.2 Add `ChunkingOptions` input type:
+  - [ ] preserveTablesHtml: Boolean = true
+  - [ ] sentenceSplitter: String = "syntok"
+  - [ ] customTokenBudget: Int
+
+- [ ] 11.2.3 Add `chunkingProfiles` query:
+  - [ ] Returns list of available profiles
+  - [ ] Includes profile metadata (name, domain, target tokens)
+
+### 11.3 gRPC API Updates
+
+- [ ] 11.3.1 Update `IngestionJobRequest` proto:
+  - [ ] Add `chunking_profile` field
+  - [ ] Add `ChunkingOptions` message type
+
+- [ ] 11.3.2 Update `IngestionJobResponse` proto:
+  - [ ] Add `estimated_chunks` field
+  - [ ] Add `profile_used` field
+
+- [ ] 11.3.3 Compile proto files:
+  - [ ] Run `buf generate`
+  - [ ] Run `buf breaking` to check for breaking changes
+
+---
+
+## 12. Error Handling & Taxonomy (New)
+
+### 12.1 Define Error Types
+
+- [ ] 12.1.1 **ProfileNotFoundError**:
+  - [ ] Raised when requested profile doesn't exist
+  - [ ] HTTP 400 Bad Request
+  - [ ] Message: "Chunking profile '{profile}' not found. Available: {profiles}"
+
+- [ ] 12.1.2 **TokenizerMismatchError**:
+  - [ ] Raised when tokenizer doesn't align with embedding model
+  - [ ] HTTP 500 Internal Server Error
+  - [ ] Message: "Tokenizer '{tokenizer}' incompatible with embedding model '{model}'"
+
+- [ ] 12.1.3 **ChunkingFailedError**:
+  - [ ] Raised when chunking process fails
+  - [ ] HTTP 500 Internal Server Error
+  - [ ] Includes detailed error message and stack trace
+
+- [ ] 12.1.4 **MineruOutOfMemoryError**:
+  - [ ] Raised when GPU runs out of memory during PDF processing
+  - [ ] HTTP 503 Service Unavailable
+  - [ ] Message: "GPU out of memory. Retry later or reduce PDF size."
+
+- [ ] 12.1.5 **MineruGpuUnavailableError**:
+  - [ ] Raised when GPU not available for MinerU
+  - [ ] HTTP 503 Service Unavailable
+  - [ ] Message: "GPU required for PDF processing. Check GPU availability."
+
+### 12.2 Error Handling Implementation
+
+- [ ] 12.2.1 Add error handlers to gateway:
+  - [ ] Map custom exceptions to HTTP status codes
+  - [ ] Return RFC 7807 Problem Details format
+
+- [ ] 12.2.2 Add error logging:
+  - [ ] Log all errors with correlation ID
+  - [ ] Include context (profile, document ID, stage)
+
+- [ ] 12.2.3 Add error metrics:
+  - [ ] Count errors by type: `medicalkg_chunking_errors_total{error_type}`
+
+---
+
+## 13. Performance Optimization
 
 - [ ] 11.1 Batch sentence segmentation (process 10 documents at once)
-- [ ] 11.2 Cache scispaCy model loading (singleton pattern)
+- [ ] 11.2 Cache HuggingFace model loading (singleton pattern)
 - [ ] 11.3 Parallelize chunking for independent documents (asyncio)
-- [ ] 11.4 Benchmark: scispaCy vs syntok throughput (choose per profile)
+- [ ] 11.4 Benchmark: HuggingFace vs syntok throughput (choose per profile)
 - [ ] 11.5 Validate: Chunking throughput ≥100 docs/sec for non-PDF sources
 
 ---

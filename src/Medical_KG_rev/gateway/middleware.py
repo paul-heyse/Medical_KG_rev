@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from fastapi import Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -151,3 +152,24 @@ class CachingMiddleware(BaseHTTPMiddleware):
 
 
 __all__ = ["CacheEntry", "CachePolicy", "CachingMiddleware", "ResponseCache"]
+
+
+class TenantValidationMiddleware(BaseHTTPMiddleware):
+    """Ensure tenant claims from JWT align with request context."""
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        response = await call_next(request)
+        context = getattr(request.state, "security_context", None)
+        if context is None:
+            return response
+        tenant_id = getattr(context, "tenant_id", None)
+        if not tenant_id:
+            return JSONResponse({"detail": "Missing tenant_id in JWT"}, status_code=403)
+        requested = getattr(request.state, "requested_tenant_id", tenant_id)
+        if requested != tenant_id:
+            return JSONResponse({"detail": "Tenant mismatch"}, status_code=403)
+        request.state.validated_tenant_id = tenant_id
+        return response
+
+
+__all__.append("TenantValidationMiddleware")

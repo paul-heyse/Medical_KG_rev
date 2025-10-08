@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retrieval-config
+  namespace: medical-kg
+data:
+  components.yaml: |-
+    # Hybrid retrieval component configuration
+    #
+    # Controls which components are executed by the HybridSearchCoordinator and
+    # establishes deterministic timeouts, caching behaviour, and optional query
+    # expansion synonyms shared across tenants.
+    
+    defaults:
+      enable_splade: true
+      enable_dense: true
+      enable_query_expansion: false
+      timeout_ms: 300
+      cache_ttl_seconds: 300
+      components:
+        - bm25
+        - splade
+        - dense
+    
+    components:
+      bm25:
+        timeout_ms: 300
+      splade:
+        timeout_ms: 300
+      dense:
+        timeout_ms: 300
+    
+    synonyms:
+      diabetes:
+        - dm
+        - hyperglycemia
+      hypertension:
+        - high blood pressure
+  reranking.yaml: |-
+    # Default reranking configuration for tenants.
+    # Tenants listed in the `tenants` map default to reranking without requiring
+    # callers to set the rerank flag explicitly. Other tenants participate in the
+    # experiment defined below.
+    default_enabled: false
+    
+    # Explicit tenant defaults.
+    tenants:
+      oncology: true
+      cardiology: false
+    
+    # Deterministic A/B experiment split controlling optional reranking.
+    experiment:
+      rerank_ratio: 0.1
+  reranking_models.yaml: |-
+    # Reranking model registry describing available reranker variants.
+    default: bge-reranker-base
+    cache_dir: model_cache/rerankers
+    models:
+      bge-reranker-base:
+        display_name: BGE Reranker Base
+        reranker_id: cross_encoder:bge
+        provider: huggingface
+        model_id: BAAI/bge-reranker-base
+        revision: main
+        version: v1.0
+        requires_gpu: false
+        description: Balanced quality reranker tuned for biomedical passages.
+        metadata:
+          languages: ["en"]
+          latency_profile: medium
+      ms-marco-minilm-l12-v2:
+        display_name: MS MARCO MiniLM L-12 v2
+        reranker_id: cross_encoder:minilm
+        provider: huggingface
+        model_id: cross-encoder/ms-marco-MiniLM-L-12-v2
+        revision: main
+        version: v2.1
+        requires_gpu: false
+        description: Low-latency MiniLM cross encoder suitable for CPU deployments.
+        metadata:
+          languages: ["en"]
+          latency_profile: fast
+      colbert-reranker-v2:
+        display_name: ColBERT v2 Reranker
+        reranker_id: late_interaction:colbert
+        provider: huggingface
+        model_id: colbert-ir/colbertv2.0
+        revision: main
+        version: v2.0
+        requires_gpu: true
+        description: Late interaction reranker offering strong recall for long passages.
+        metadata:
+          languages: ["en"]
+          latency_profile: slow

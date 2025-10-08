@@ -1,0 +1,155 @@
+{
+  "documents": [
+    {
+      "document_id": "doc-01-overview",
+      "blocks": 6,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-02-cohort-table",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-03-multi-page",
+      "blocks": 5,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-04-adverse-events",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-05-lab-results",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-06-trial-design",
+      "blocks": 5,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-07-population-table",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-08-efficacy",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-09-safety",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-10-methods",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-11-endpoints",
+      "blocks": 3,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-12-timeline-table",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-13-quality",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-14-subgroup-table",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-15-biomarkers",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-16-imaging",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-17-follow-up",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-18-dose-response",
+      "blocks": 4,
+      "tables": 4,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-19-compliance",
+      "blocks": 4,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    },
+    {
+      "document_id": "doc-20-summary",
+      "blocks": 5,
+      "tables": 0,
+      "figures": 0,
+      "equations": 0
+    }
+  ],
+  "totals": {
+    "blocks": 84,
+    "tables": 24,
+    "figures": 0,
+    "equations": 0
+  }
+    {"document_id": "doc-basic", "blocks": 4, "tables": 0, "figures": 0, "equations": 0},
+    {"document_id": "doc-table", "blocks": 3, "tables": 3, "figures": 0, "equations": 0},
+    {"document_id": "doc-multi", "blocks": 3, "tables": 0, "figures": 0, "equations": 0}
+  ],
+  "totals": {"blocks": 10, "tables": 3, "figures": 0, "equations": 0}
+}

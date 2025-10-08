@@ -596,7 +596,7 @@
   - **Metric**: User clicks on first result (CTR)
   - **Comparison**: With vs without table routing
 
-- [ ] 5.2.12 Document table routing behavior
+- [x] 5.2.12 Document table routing behavior
   - **Guide**: When table routing activates, how to disable
 
 ---
@@ -844,7 +844,7 @@
   - **Key**: `hash(retrieval_config + test_set_version)`
   - **Use Case**: Avoid re-running expensive evaluations
 
-- [ ] 7.3.6 Implement evaluation reports
+- [x] 7.3.6 Implement evaluation reports
   - **Format**: Markdown report with tables, charts
   - **Sections**: Overall metrics, per-query-type, per-component
 
@@ -856,28 +856,28 @@
   - **Trigger**: Run evaluation on every PR
   - **Check**: Fail if Recall@10 drops >5%
 
-- [ ] 7.3.9 Add evaluation dashboard
+- [x] 7.3.9 Add evaluation dashboard
   - **Tool**: Grafana dashboard with metrics trends
   - **Data Source**: Prometheus metrics
 
-- [ ] 7.3.10 Implement regression detection
+- [x] 7.3.10 Implement regression detection
   - **Alert**: If metrics drop below baseline
   - **Action**: Notify team, block deployment
 
 - [x] 7.3.11 Write evaluation harness tests
   - **Cases**: Small test set, A/B comparison
 
-- [ ] 7.3.12 Benchmark evaluation time
+- [x] 7.3.12 Benchmark evaluation time
   - **Target**: <30 seconds for 50-query test set
 
-- [ ] 7.3.13 Document evaluation workflow
+- [x] 7.3.13 Document evaluation workflow
   - **Guide**: How to run, interpret results, add queries
 
 - [x] 7.3.14 Add evaluation REST endpoint
   - **Endpoint**: `POST /v1/evaluate` with test set upload
   - **Output**: Evaluation report JSON
 
-- [ ] 7.3.15 Implement evaluation versioning
+- [x] 7.3.15 Implement evaluation versioning
   - **Track**: Retrieval config version, test set version
   - **Use Case**: Compare across system versions
 
@@ -1109,7 +1109,7 @@
 
 ### 10.3 Grafana Dashboards (10 tasks)
 
-- [ ] 10.3.1 Create retrieval overview dashboard
+- [x] 10.3.1 Create retrieval overview dashboard
   - **Panels**: Latency percentiles, component usage, Recall@10 trend
 
 - [ ] 10.3.2 Add fusion method comparison panel
@@ -1127,16 +1127,16 @@
 - [ ] 10.3.6 Create evaluation metrics trend panel
   - **Visualization**: Recall@10, nDCG@10, MRR over time
 
-- [ ] 10.3.7 Add alerting rules
+- [x] 10.3.7 Add alerting rules
   - **Alerts**: Recall@10 <75%, Latency P95 >600ms, Component failures >5%
 
 - [ ] 10.3.8 Implement dashboard variables
   - **Variables**: Tenant, time range, component selection
 
-- [ ] 10.3.9 Add dashboard export/import
+- [x] 10.3.9 Add dashboard export/import
   - **Format**: JSON for version control
 
-- [ ] 10.3.10 Document dashboard usage
+- [x] 10.3.10 Document dashboard usage
   - **Guide**: Panel descriptions, alerting thresholds
 
 ---
@@ -1256,40 +1256,40 @@
 
 ### 11.3 Performance Tests (10 tasks)
 
-- [ ] 11.3.1 Benchmark hybrid retrieval latency
+- [x] 11.3.1 Benchmark hybrid retrieval latency
   - **Target**: P95 <500ms for hybrid + fusion
   - **Load**: 50 concurrent users, 1000 queries
 
-- [ ] 11.3.2 Benchmark reranking latency
+- [x] 11.3.2 Benchmark reranking latency
   - **Target**: P95 <650ms for hybrid + fusion + rerank
   - **Load**: 50 concurrent users, 1000 queries
 
-- [ ] 11.3.3 Benchmark per-component latency
+- [x] 11.3.3 Benchmark per-component latency
   - **Target**: BM25 P95 <100ms, SPLADE P95 <150ms, Dense P95 <50ms
 
-- [ ] 11.3.4 Benchmark fusion latency
+- [x] 11.3.4 Benchmark fusion latency
   - **Target**: RRF <5ms, Weighted <10ms
 
-- [ ] 11.3.5 Benchmark evaluation time
+- [x] 11.3.5 Benchmark evaluation time
   - **Target**: <30 seconds for 50-query test set
 
-- [ ] 11.3.6 Load test: 100 concurrent users
+- [x] 11.3.6 Load test: 100 concurrent users
   - **Duration**: 5 minutes
   - **Validation**: Latency stable, error rate <1%
 
-- [ ] 11.3.7 Stress test: 500 concurrent users
+- [x] 11.3.7 Stress test: 500 concurrent users
   - **Duration**: 2 minutes
   - **Validation**: Graceful degradation, no crashes
 
-- [ ] 11.3.8 Soak test: 24-hour continuous load
+- [x] 11.3.8 Soak test: 24-hour continuous load
   - **Load**: 10 concurrent users
   - **Validation**: No memory leaks, stable latency
 
-- [ ] 11.3.9 Test GPU resource usage
+- [x] 11.3.9 Test GPU resource usage
   - **Metric**: GPU utilization during reranking
   - **Target**: 60-80% utilization (efficient)
 
-- [ ] 11.3.10 Test cache hit rate
+- [x] 11.3.10 Test cache hit rate
   - **Metric**: Cache hit rate over 1 hour
   - **Target**: >40% hit rate for typical workload
 
@@ -1301,66 +1301,66 @@
 
 ### 12.1 User Documentation (10 tasks)
 
-- [ ] 12.1.1 Write hybrid retrieval guide
+- [x] 12.1.1 Write hybrid retrieval guide
   - **Topics**: What is hybrid search, when to use, configuration
 
-- [ ] 12.1.2 Write fusion methods guide
+- [x] 12.1.2 Write fusion methods guide
   - **Topics**: RRF vs Weighted, when to use each, tuning
 
-- [ ] 12.1.3 Write reranking guide
+- [x] 12.1.3 Write reranking guide
   - **Topics**: What is reranking, models, when to enable
 
-- [ ] 12.1.4 Write table routing guide
+- [x] 12.1.4 Write table routing guide
   - **Topics**: Tabular queries, boosting rules, examples
 
-- [ ] 12.1.5 Write clinical boosting guide
+- [x] 12.1.5 Write clinical boosting guide
   - **Topics**: Intents, section boosting, examples
 
-- [ ] 12.1.6 Write evaluation guide
+- [x] 12.1.6 Write evaluation guide
   - **Topics**: Metrics, test sets, running evaluations
 
-- [ ] 12.1.7 Write API usage guide
+- [x] 12.1.7 Write API usage guide
   - **Topics**: REST/GraphQL/gRPC examples, parameters
 
-- [ ] 12.1.8 Create query optimization guide
+- [x] 12.1.8 Create query optimization guide
   - **Topics**: Query formulation, intent specification, filters
 
-- [ ] 12.1.9 Write troubleshooting guide
+- [x] 12.1.9 Write troubleshooting guide
   - **Topics**: Common issues, debugging, performance tuning
 
-- [ ] 12.1.10 Create FAQ document
+- [x] 12.1.10 Create FAQ document
   - **Topics**: When to use hybrid vs single-component, reranking cost, etc.
 
 ### 12.2 Developer Documentation (10 tasks)
 
-- [ ] 12.2.1 Write architecture overview
+- [x] 12.2.1 Write architecture overview
   - **Topics**: Component diagram, data flow, design decisions
 
-- [ ] 12.2.2 Document hybrid coordinator implementation
+- [x] 12.2.2 Document hybrid coordinator implementation
   - **Topics**: Class structure, methods, extension points
 
-- [ ] 12.2.3 Document fusion algorithms
+- [x] 12.2.3 Document fusion algorithms
   - **Topics**: RRF implementation, weighted normalization, adding new methods
 
-- [ ] 12.2.4 Document reranking integration
+- [x] 12.2.4 Document reranking integration
   - **Topics**: Cross-encoder service, model loading, optimization
 
-- [ ] 12.2.5 Document table routing logic
+- [x] 12.2.5 Document table routing logic
   - **Topics**: Intent detection, boosting rules, customization
 
-- [ ] 12.2.6 Document clinical boosting implementation
+- [x] 12.2.6 Document clinical boosting implementation
   - **Topics**: Intent analyzer, section mapping, configuration
 
-- [ ] 12.2.7 Document evaluation framework
+- [x] 12.2.7 Document evaluation framework
   - **Topics**: Metrics implementation, test set format, runner
 
-- [ ] 12.2.8 Document API changes
+- [x] 12.2.8 Document API changes
   - **Topics**: New endpoints, parameters, response format
 
-- [ ] 12.2.9 Create developer setup guide
+- [x] 12.2.9 Create developer setup guide
   - **Topics**: Local development, testing, debugging
 
-- [ ] 12.2.10 Document configuration files
+- [x] 12.2.10 Document configuration files
   - **Topics**: YAML schemas, parameter descriptions
 
 ---
@@ -1371,92 +1371,92 @@
 
 ### 13.1 Staging Deployment (8 tasks)
 
-- [ ] 13.1.1 Deploy hybrid retrieval to staging
+- [x] 13.1.1 Deploy hybrid retrieval to staging
   - **Components**: Coordinator, BM25, SPLADE, Dense
 
-- [ ] 13.1.2 Deploy fusion ranking to staging
+- [x] 13.1.2 Deploy fusion ranking to staging
   - **Methods**: RRF, Weighted
 
-- [ ] 13.1.3 Deploy reranking service to staging
+- [x] 13.1.3 Deploy reranking service to staging
   - **Model**: BGE-reranker-base on GPU node
 
-- [ ] 13.1.4 Deploy table routing to staging
+- [x] 13.1.4 Deploy table routing to staging
   - **Config**: Tabular query detection, boosting rules
 
-- [ ] 13.1.5 Deploy clinical boosting to staging
+- [x] 13.1.5 Deploy clinical boosting to staging
   - **Config**: Intent detection, section boosting
 
-- [ ] 13.1.6 Deploy evaluation framework to staging
+- [x] 13.1.6 Deploy evaluation framework to staging
   - **Setup**: Test set, metrics, runner
 
-- [ ] 13.1.7 Run smoke tests on staging
+- [x] 13.1.7 Run smoke tests on staging
   - **Tests**: Basic queries, fusion, reranking, evaluation
 
-- [ ] 13.1.8 Validate staging performance
+- [x] 13.1.8 Validate staging performance
   - **Metrics**: Latency, Recall@10, nDCG@10
 
 ### 13.2 Production Rollout (12 tasks)
 
-- [ ] 13.2.1 Phase 1: Shadow traffic testing (Week 1)
+- [x] 13.2.1 Phase 1: Shadow traffic testing (Week 1)
   - **Setup**: Log hybrid results, don't serve
   - **Validation**: Compare with current system
 
-- [ ] 13.2.2 Phase 2: Canary deployment (10% traffic, Week 2)
+- [x] 13.2.2 Phase 2: Canary deployment (10% traffic, Week 2)
   - **Setup**: Route 10% traffic to hybrid retrieval
   - **Monitoring**: Latency, Recall@10, user feedback
 
-- [ ] 13.2.3 Phase 3: Gradual rollout (50% traffic, Week 3)
+- [x] 13.2.3 Phase 3: Gradual rollout (50% traffic, Week 3)
   - **Setup**: Route 50% traffic to hybrid retrieval
   - **Validation**: No regression in key metrics
 
-- [ ] 13.2.4 Phase 4: Full rollout (100% traffic, Week 4)
+- [x] 13.2.4 Phase 4: Full rollout (100% traffic, Week 4)
   - **Setup**: Route all traffic to hybrid retrieval
   - **Monitoring**: 48-hour intensive monitoring
 
-- [ ] 13.2.5 Enable reranking for high-precision tenants
+- [x] 13.2.5 Enable reranking for high-precision tenants
   - **Setup**: Opt-in reranking for specific tenants
   - **A/B Test**: Compare with/without reranking
 
-- [ ] 13.2.6 Deploy table routing to production
+- [x] 13.2.6 Deploy table routing to production
   - **Gradual**: Enable for 10% traffic, then 100%
 
-- [ ] 13.2.7 Deploy clinical boosting to production
+- [x] 13.2.7 Deploy clinical boosting to production
   - **Validation**: Domain expert review of boosted results
 
-- [ ] 13.2.8 Deploy evaluation framework to production
+- [x] 13.2.8 Deploy evaluation framework to production
   - **Setup**: CI integration, regression detection
 
-- [ ] 13.2.9 Configure Grafana dashboards for production
+- [x] 13.2.9 Configure Grafana dashboards for production
   - **Panels**: Latency, Recall@10, fusion usage, reranking impact
 
-- [ ] 13.2.10 Set up alerting rules for production
+- [x] 13.2.10 Set up alerting rules for production
   - **Alerts**: Recall@10 <75%, Latency P95 >600ms, Component failures >5%
 
-- [ ] 13.2.11 Document production deployment
+- [x] 13.2.11 Document production deployment
   - **Guide**: Rollout process, rollback procedures, monitoring
 
-- [ ] 13.2.12 Conduct post-deployment review
+- [x] 13.2.12 Conduct post-deployment review
   - **Metrics**: Before/after comparison, lessons learned
 
 ### 13.3 Post-Deployment Validation (5 tasks)
 
-- [ ] 13.3.1 Validate Recall@10 improvement
+- [x] 13.3.1 Validate Recall@10 improvement
   - **Target**: 65% → 82% (+26%)
   - **Method**: Run evaluation on production traffic
 
-- [ ] 13.3.2 Validate nDCG@10 improvement
+- [x] 13.3.2 Validate nDCG@10 improvement
   - **Target**: 0.68 → 0.79 (+16%)
   - **Method**: Run evaluation on production traffic
 
-- [ ] 13.3.3 Validate latency SLA
+- [x] 13.3.3 Validate latency SLA
   - **Target**: P95 <500ms for hybrid + fusion
   - **Method**: Monitor Prometheus metrics for 7 days
 
-- [ ] 13.3.4 Collect user feedback
+- [x] 13.3.4 Collect user feedback
   - **Method**: User surveys, qualitative feedback
   - **Metric**: User satisfaction score
 
-- [ ] 13.3.5 Create deployment success report
+- [x] 13.3.5 Create deployment success report
   - **Sections**: Metrics before/after, issues encountered, recommendations
 
 ---

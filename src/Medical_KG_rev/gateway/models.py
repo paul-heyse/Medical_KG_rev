@@ -156,6 +156,7 @@ class IngestionRequest(BaseModel):
     priority: Literal["low", "normal", "high"] = "normal"
     metadata: dict[str, Any] = Field(default_factory=dict)
     profile: str | None = None
+    chunking_options: dict[str, Any] | None = None
 
 
 class PipelineIngestionRequest(IngestionRequest):
@@ -171,12 +172,58 @@ class ChunkRequest(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
 
 
+class EmbeddingOptions(BaseModel):
+    normalize: bool = True
+    model: str | None = None
+
+
 class EmbedRequest(BaseModel):
     tenant_id: str
-    inputs: Sequence[str]
-    model: str
+    texts: Sequence[str]
     namespace: str
-    normalize: bool = True
+    options: EmbeddingOptions | None = None
+
+
+class EmbeddingMetadata(BaseModel):
+    provider: str
+    dimension: int | None = None
+    duration_ms: float | None = None
+    model: str | None = None
+
+
+class EmbeddingResponse(BaseModel):
+    namespace: str
+    embeddings: Sequence[EmbeddingVector]
+    metadata: EmbeddingMetadata
+
+
+class NamespaceInfo(BaseModel):
+    id: str
+    provider: str
+    kind: str
+    dimension: int | None = None
+    max_tokens: int | None = None
+    enabled: bool = True
+    allowed_tenants: list[str] = Field(default_factory=list)
+    allowed_scopes: list[str] = Field(default_factory=list)
+
+
+class NamespaceValidationResult(BaseModel):
+    text_index: int
+    token_count: int
+    exceeds_budget: bool
+    warning: str | None = None
+
+
+class NamespaceValidationResponse(BaseModel):
+    namespace: str
+    valid: bool
+    results: Sequence[NamespaceValidationResult]
+
+
+class NamespaceValidationRequest(BaseModel):
+    tenant_id: str
+    texts: Sequence[str] = Field(default_factory=list)
 
 
 class RetrieveRequest(BaseModel):

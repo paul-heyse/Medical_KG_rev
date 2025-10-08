@@ -8,21 +8,27 @@ from typing import Any
 
 import strawberry
 from strawberry import ID
+from fastapi import Request
 from strawberry.fastapi import GraphQLRouter
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
+from ..auth import Scopes
 from ..models import (
     AdapterMetadataView,
     AdapterHealthView,
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
+    EmbeddingOptions,
+    EmbeddingMetadata,
+    EmbeddingResponse,
     EmbeddingVector,
     EmbedRequest,
     EntityLinkRequest,
     ExtractionRequest,
     IngestionRequest,
+    NamespaceInfo,
     KnowledgeGraphWriteRequest,
     OperationStatus,
     Pagination,
@@ -91,6 +97,32 @@ def _embedding_to_type(vector: EmbeddingVector) -> EmbeddingVectorType:
         vector=list(vector.vector or []),
         terms=vector.terms,
         metadata=vector.metadata,
+    )
+
+
+def _embedding_result_to_type(result: EmbeddingResponse) -> "EmbeddingResultType":
+    return EmbeddingResultType(
+        namespace=result.namespace,
+        embeddings=[_embedding_to_type(vector) for vector in result.embeddings],
+        metadata=EmbeddingMetadataType(
+            provider=result.metadata.provider,
+            dimension=result.metadata.dimension,
+            duration_ms=result.metadata.duration_ms,
+            model=result.metadata.model,
+        ),
+    )
+
+
+def _namespace_to_type(info: NamespaceInfo) -> "NamespaceInfoType":
+    return NamespaceInfoType(
+        id=info.id,
+        provider=info.provider,
+        kind=info.kind,
+        dimension=info.dimension,
+        max_tokens=info.max_tokens,
+        enabled=info.enabled,
+        allowed_tenants=info.allowed_tenants,
+        allowed_scopes=info.allowed_scopes,
     )
 
 
@@ -222,10 +254,25 @@ class EmbeddingVectorType:
     model: str
     namespace: str
     kind: str
-    dimension: int
-    vector: list[float]
-    terms: dict[str, float] | None
+    dimension: int | None
+    vector: list[float] | None
+    terms: JSON | None
     metadata: JSON
+
+
+@strawberry.type
+class EmbeddingMetadataType:
+    provider: str
+    dimension: int | None
+    duration_ms: float | None
+    model: str | None
+
+
+@strawberry.type
+class EmbeddingResultType:
+    namespace: str
+    embeddings: list[EmbeddingVectorType]
+    metadata: EmbeddingMetadataType
 
 
 @strawberry.type
@@ -249,6 +296,18 @@ class KnowledgeGraphWriteResultType:
     nodes_written: int
     edges_written: int
     metadata: JSON
+
+
+@strawberry.type
+class NamespaceInfoType:
+    id: str
+    provider: str
+    kind: str
+    dimension: int | None
+    max_tokens: int | None
+    enabled: bool
+    allowed_tenants: list[str]
+    allowed_scopes: list[str]
 
 
 @strawberry.input
@@ -285,11 +344,16 @@ class ChunkInput:
 
 @strawberry.input
 class EmbedInput:
-    tenant_id: str
-    inputs: list[str]
-    model: str
+    tenant_id: str | None = None
     namespace: str
+    texts: list[str]
+    options: "EmbeddingOptionsInput" | None = None
+
+
+@strawberry.input
+class EmbeddingOptionsInput:
     normalize: bool = True
+    model: str | None = None
 
 
 @strawberry.input
@@ -365,6 +429,27 @@ class Query:
         return _adapter_metadata_to_type(metadata)
 
     @strawberry.field
+    async def namespaces(
+        self, info: Info[GraphQLContext, None], tenant_id: str | None = None
+    ) -> list[NamespaceInfoType]:
+        service = await _get_service(info)
+        resolved_tenant = tenant_id or info.context.tenant_id
+        namespaces = service.list_namespaces(tenant_id=resolved_tenant, scope=Scopes.EMBED_READ)
+        return [_namespace_to_type(item) for item in namespaces]
+
+    @strawberry.field
+    async def namespace(
+        self, info: Info[GraphQLContext, None], id: str, tenant_id: str | None = None
+    ) -> NamespaceInfoType | None:
+        service = await _get_service(info)
+        resolved_tenant = tenant_id or info.context.tenant_id
+        namespaces = service.list_namespaces(tenant_id=resolved_tenant, scope=Scopes.EMBED_READ)
+        for item in namespaces:
+            if item.id == id:
+                return _namespace_to_type(item)
+        return None
+
+    @strawberry.field
     async def adapter_health(
         self, info: Info[GraphQLContext, None], name: str
     ) -> AdapterHealthType | None:
@@ -432,10 +517,22 @@ class Mutation:
     @strawberry.mutation
     async def embed(
         self, info: Info[GraphQLContext, None], input: EmbedInput
-    ) -> list[EmbeddingVectorType]:
+    ) -> EmbeddingResultType:
         service = await _get_service(info)
-        request = EmbedRequest(**asdict(input))
-        return [_embedding_to_type(vector) for vector in service.embed(request)]
+        options = None
+        if input.options is not None:
+            options = EmbeddingOptions(**asdict(input.options))
+        tenant_id = input.tenant_id or info.context.tenant_id
+        if not tenant_id:
+            raise ValueError("Tenant ID is required for embedding operations")
+        request = EmbedRequest(
+            tenant_id=tenant_id,
+            texts=list(input.texts),
+            namespace=input.namespace,
+            options=options,
+        )
+        response = service.embed(request)
+        return _embedding_result_to_type(response)
 
     @strawberry.mutation
     async def retrieve(
@@ -504,9 +601,9 @@ class Mutation:
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 
 
-async def get_context() -> GraphQLContext:
+async def get_context(request: Request) -> GraphQLContext:
     service = get_gateway_service()
-    return await build_context(service)
+    return await build_context(service, request)
 
 
 graphql_router = GraphQLRouter(schema, context_getter=get_context)

@@ -13,7 +13,7 @@ def _setup_clients():
     opensearch = OpenSearchClient()
     opensearch.index("chunks", "1", {"text": "headache nausea", "document_id": "doc-1"})
     opensearch.index("chunks", "2", {"text": "migraine treatment", "document_id": "doc-2"})
-    faiss = FAISSIndex(dimension=4)
+    faiss = FAISSIndex(dimension=4, use_gpu=False)
     faiss.add("1", [1.0, 0.0, 0.0, 0.0], {"text": "headache nausea", "document_id": "doc-1"})
     faiss.add("2", [0.0, 1.0, 0.0, 0.0], {"text": "migraine treatment", "document_id": "doc-2"})
     return opensearch, faiss
@@ -129,6 +129,24 @@ def test_unknown_model_falls_back_to_default():
     assert metadata["model"]["key"] == "bge-reranker-base"
     assert "warnings" in metadata
     assert "model_fallback" in metadata["warnings"]
+
+
+def test_chunking_profile_filter_limits_results():
+    opensearch, _ = _setup_clients()
+    service = _service(opensearch, None)
+
+    results = service.search(
+        "chunks",
+        "migraine",
+        filters={"chunking_profile": "ctgov-registry"},
+        rerank=False,
+    )
+
+    assert results
+    assert all(
+        result.metadata.get("chunking_profile") == "ctgov-registry"
+        for result in results
+    )
 
 
 def test_rerank_fallback_records_error():

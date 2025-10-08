@@ -1,9 +1,44 @@
 diff a/docs/guides/orchestration-pipelines.md b/docs/guides/orchestration-pipelines.md	(rejected hunks)
-@@ -28,53 +28,114 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
+@@ -6,75 +6,90 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
+ `Medical_KG_rev.orchestration.haystack`.
+
+ ## Dagster Architecture
+
+ - **Stage contracts** – `StageContext`, `ChunkStage`, `EmbedStage`, and other
+   protocols live in `Medical_KG_rev.orchestration.stages.contracts`. Dagster ops
+   call these protocols so stage implementations remain framework-agnostic.
+ - **StageFactory** – `StageFactory` resolves stage definitions from topology
+   YAML files. The default factory wires Haystack chunking, embedding, and
+   indexing components while falling back to lightweight stubs for unit tests.
+ - **Runtime module** – `Medical_KG_rev.orchestration.dagster.runtime` defines
+   jobs, resources, and helper utilities (`DagsterOrchestrator`,
+   `submit_to_dagster`). Jobs call the appropriate stage implementation and
+   update the job ledger after each op.
+ - **Haystack wrappers** – `Medical_KG_rev.orchestration.haystack.components`
+   adapts Haystack classes to the stage protocols. The chunker converts IR
+   documents into Haystack documents, the embedder produces dense vectors (with
+   optional sparse expansion), and the index writer dual writes to OpenSearch and
+   FAISS.
+
+ ## Pipeline Configuration
+
  - **Topology YAML** – Pipelines are described in
    `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
    optional `policy`, dependencies, and a free-form `config` block. Gates define
-   resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
+-  resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
++  resume conditions, e.g., `ledger.pdf_ir_ready=true` for two-phase PDF ingestion.
++- **Plugins** – Pipeline files may include a `plugins` section with
++  `medical_kg.orchestration.stages` callables. Each callable returns one or more
++  `StageRegistration` objects, allowing pipelines to opt into custom stage
++  implementations without mutating the global registry.
++- **Metadata overrides** – Use the per-stage `metadata_overrides` block to tweak
++  registry metadata (state keys, descriptions, dependencies) without defining a
++  new plugin. Overrides are applied at job build time and leave the global
++  registration untouched.
++- **Gates** – Gate stages evaluate runtime state alongside Job Ledger flags such
++  as `ledger.pdf_ir_ready`. Configure gate conditions using dotted paths (for
++  example `ledger.pdf_downloaded`) so the stage can inspect ledger snapshots
++  injected by the runtime.
  - **Resilience policies** – `config/orchestration/resilience.yaml` contains
    shared retry, circuit breaker, and rate limiting definitions. The runtime
    loads these into Tenacity, PyBreaker, and aiolimiter objects.
@@ -21,84 +56,26 @@ diff a/docs/guides/orchestration-pipelines.md b/docs/guides/orchestration-pipeli
     retries, circuit breaker state changes, and rate limiting delays.
  3. **Ledger updates** – Ops record progress to the job ledger (`current_stage`,
     attempt counts, gate metadata). Sensors poll the ledger for gate conditions
-    (e.g., `pdf_ir_ready=true`) and resume downstream stages.
+-   (e.g., `pdf_ir_ready=true`) and resume downstream stages.
++   (e.g., `ledger.pdf_ir_ready=true`) and resume downstream stages.
  4. **Outputs** – Stage results are added to the Dagster run state and surfaced
     to the gateway through the ledger/SSE stream. Haystack components persist
     embeddings and metadata in downstream storage systems.
-+5. **Phase transitions** – When a gate passes, the runtime records a phase
-+   transition, updates the ledger (`gate.<name>.*` metadata), and resumes the
-+   downstream graph from the configured `resume_stage`.
-+
-+### Working with Gates
-+
-+- **Declaring gates** – Add a `type: gate` stage to the topology and declare a
-+  matching entry under `gates`. Each entry requires a `resume_stage`, one or
-+  more `clauses`, optional `timeout_seconds`, and optional `retry`
-+  configuration. Clauses support `equals`, `exists`, and `changed` operators.
-+- **Ledger fields** – Clause `field` values map to `JobLedgerEntry` fields. Use
-+  dot-notation for nested metadata (e.g. `metadata.gate.pdf_ir_ready.status`).
-+- **Phase tracking** – The runtime groups stages into phases separated by gate
-+  stages. Phase metrics are exported via Prometheus (`orchestration_phase_*`).
-+- **Resume runs** – The `pdf_ir_ready_sensor` copies `gate_results` and phase
-+  data into the run payload, ensuring the resumed Dagster run starts at the
-+  correct downstream phase.
-+
-+#### Example Gate Definition
-+
-+```yaml
-+gates:
-+  - name: pdf_ir_ready
-+    resume_stage: chunk
-+    timeout_seconds: 1800
-+    retry:
-+      max_attempts: 3
-+      backoff_seconds: 30
-+    condition:
-+      logic: all
-+      clauses:
-+        - field: pdf_ir_ready
-+          operator: equals
-+          value: true
-+        - field: metadata.gate.pdf_ir_ready.status
-+          operator: equals
-+          value: passed
-+      timeout_seconds: 900
-+      poll_interval_seconds: 10
-+```
-+
-+### Gate Tooling
-+
-+Use `scripts/orchestration_gate_tool.py` to validate and debug gated pipelines:
-+
-+```bash
-+# Validate the pipeline definition and gate wiring
-+python scripts/orchestration_gate_tool.py validate pdf-two-phase
-+
-+# Visualise phase boundaries and stage ordering
-+python scripts/orchestration_gate_tool.py visualize pdf-two-phase
-+
-+# Evaluate a gate against a saved JobLedgerEntry snapshot
-+python scripts/orchestration_gate_tool.py evaluate \
-+  pdf-two-phase pdf_ir_ready --ledger ledger-entry.json
-+```
-+
-+The script surfaces validation errors (e.g., missing resume stages, invalid
-+ledger fields) and prints clause-by-clause evaluation results for rapid
-+debugging of two-phase execution issues.
 
  ## Troubleshooting
 
  - **Stage resolution errors** – Verify the stage `type` in the topology YAML
    matches the keys registered in `build_default_stage_factory`. Unknown stage
    types raise `StageResolutionError` during job execution.
++- **Plugin conflicts** – If two plugins attempt to register the same stage type,
++  the registry emits a warning and retains the first registration. Use
++  `replace: true` in the plugin declaration to intentionally override an entry.
  - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
    for required fields (attempts, backoff, circuit breaker thresholds). Invalid
    policies raise validation errors at load time.
  - **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
    set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
--  and record trigger counts in the ledger metadata.
-+  and record trigger counts in the ledger metadata. Use the gate tooling script
-+  to replay the ledger entry locally and confirm which clause failed.
+   and record trigger counts in the ledger metadata.
  - **Missing embeddings** – Ensure the embed stage resolved the Haystack
    embedder; stubs return deterministic values for test runs but do not persist
    to OpenSearch/FAISS.

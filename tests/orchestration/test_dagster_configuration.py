@@ -5,13 +5,17 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("pydantic")
+
+from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
     PipelineTopologyConfig,
     ResiliencePolicyLoader,
 )
+from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
+from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
-
 
 def _write(tmp_path: Path, name: str, payload: str) -> Path:
     path = tmp_path / name
@@ -82,6 +86,66 @@ stages:
     _write(tmp_path, "cyclic.yaml", payload)
     with pytest.raises(ValueError):
         loader.load("cyclic")
+
+
+def test_pipeline_topology_with_plugins_and_metadata_overrides() -> None:
+    config = PipelineTopologyConfig.model_validate(
+        {
+            "name": "plugins",
+            "version": "2025-01-01",
+            "stages": [
+                {
+                    "name": "custom",
+                    "type": "custom-stage",
+                    "metadata_overrides": {"state_key": "custom_state"},
+                }
+            ],
+            "plugins": {
+                "stages": [
+                    {"callable": "package.module:register_stage"},
+                ]
+            },
+        }
+    )
+
+    assert config.plugins.stage_plugins[0].target == "package.module:register_stage"
+    assert config.stages[0].metadata_overrides is not None
+    assert config.stages[0].metadata_overrides.state_key == "custom_state"
+
+
+def test_stage_plugin_import_requires_callable_format() -> None:
+    with pytest.raises(ValueError):
+        PipelineTopologyConfig.model_validate(
+            {
+                "name": "invalid",
+                "version": "2025-01-01",
+                "stages": [
+                    {"name": "stage", "type": "custom"},
+                ],
+                "plugins": {
+                    "stages": [
+                        {"callable": "invalid"},
+                    ]
+                },
+            }
+        )
+
+
+def test_pdf_two_phase_pipeline_builds_with_plugins() -> None:
+    loader = PipelineConfigLoader(Path("config/orchestration/pipelines"))
+    topology = loader.load("pdf-two-phase")
+
+    registry = build_default_stage_factory(get_plugin_manager())
+    factory = StageFactory(registry)
+    factory.apply_pipeline_extensions(topology)
+
+    download_stage = next(stage for stage in topology.stages if stage.name == "download")
+    download_metadata = factory.metadata_for_stage(topology.name, download_stage)
+    assert download_metadata.description.startswith("Resolve and persist PDF")
+
+    gate_stage = next(stage for stage in topology.stages if stage.stage_type == "gate")
+    gate_metadata = factory.metadata_for_stage(topology.name, gate_stage)
+    assert gate_metadata.stage_type == "gate"
 
 
 def test_pipeline_loader_reload_on_change(tmp_path: Path) -> None:

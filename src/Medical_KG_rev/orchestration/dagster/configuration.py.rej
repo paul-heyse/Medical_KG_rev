@@ -1,5 +1,5 @@
 diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_KG_rev/orchestration/dagster/configuration.py	(rejected hunks)
-@@ -1,101 +1,193 @@
+@@ -1,134 +1,183 @@
  """Configuration models and loaders for Dagster-based orchestration."""
 
  from __future__ import annotations
@@ -12,12 +12,11 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
  from dataclasses import dataclass
  from enum import Enum
  from pathlib import Path
--from typing import TYPE_CHECKING, Any, Callable, Mapping
-+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence
-+from typing import Literal
+ from typing import TYPE_CHECKING, Any, Callable, Mapping
 
  import yaml
  from pydantic import (
++    AliasChoices,
      BaseModel,
      ConfigDict,
      Field,
@@ -32,7 +31,6 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
      record_resilience_rate_limit_wait,
      record_resilience_retry,
  )
-+from Medical_KG_rev.orchestration.ledger import JobLedgerEntry
  from Medical_KG_rev.utils.logging import get_logger
 
  logger = get_logger(__name__)
@@ -48,97 +46,16 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
      NONE = "none"
 
 
-+class GateConditionOperator(str, Enum):
-+    """Supported logical operators for gate predicates."""
-+
-+    EQUALS = "equals"
-+    EXISTS = "exists"
-+    CHANGED = "changed"
-+
-+
-+class GateConditionClause(BaseModel):
-+    """Single ledger predicate evaluated during gate execution."""
-+
-+    model_config = ConfigDict(extra="forbid")
-+
-+    field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
-+    operator: GateConditionOperator = Field(default=GateConditionOperator.EQUALS)
-+    value: Any | None = Field(default=None)
-+
-+    @model_validator(mode="after")
-+    def _validate_value(self) -> "GateConditionClause":
-+        if self.operator is GateConditionOperator.EQUALS and self.value is None:
-+            raise ValueError("equals operator requires a value")
-+        if self.operator is GateConditionOperator.EXISTS and self.value not in (None, True):
-+            raise ValueError("exists operator does not accept a comparison value")
-+        return self
-+
-+
  class GateCondition(BaseModel):
      """Predicate evaluated against Job Ledger entries to resume a pipeline."""
 
      model_config = ConfigDict(extra="forbid")
 
--    field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
--    equals: Any
-+    clauses: list[GateConditionClause]
-+    logic: Literal["all", "any"] = Field(default="all")
+     field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
+     equals: Any
      timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
      poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
 
-+    @model_validator(mode="before")
-+    @classmethod
-+    def _normalise_legacy(cls, data: Mapping[str, Any] | Any) -> Mapping[str, Any]:
-+        if not isinstance(data, Mapping):
-+            return data
-+        if "clauses" in data:
-+            return data
-+        clauses: list[Mapping[str, Any]] = []
-+        logic = data.get("logic", "all")
-+        if "all_of" in data or "any_of" in data:
-+            if "all_of" in data:
-+                clauses = list(data["all_of"])
-+                logic = "all"
-+            if "any_of" in data:
-+                clauses = list(data["any_of"])
-+                logic = "any"
-+        elif "field" in data:
-+            clause = {
-+                "field": data["field"],
-+                "operator": data.get("operator", data.get("op", "equals")),
-+                "value": data.get("equals", data.get("value")),
-+            }
-+            clauses = [clause]
-+        normalised: dict[str, Any] = dict(data)
-+        normalised.pop("field", None)
-+        normalised.pop("equals", None)
-+        normalised.pop("operator", None)
-+        normalised.pop("op", None)
-+        normalised.pop("value", None)
-+        if "all_of" in normalised:
-+            normalised.pop("all_of")
-+        if "any_of" in normalised:
-+            normalised.pop("any_of")
-+        normalised["clauses"] = clauses
-+        normalised["logic"] = logic
-+        return normalised
-+
-+    @field_validator("clauses")
-+    @classmethod
-+    def _require_clauses(cls, value: Sequence[GateConditionClause]) -> list[GateConditionClause]:
-+        if not value:
-+            raise ValueError("GateCondition requires at least one clause")
-+        return list(value)
-+
-+
-+class GateRetryPolicy(BaseModel):
-+    """Retry configuration for gate polling before timing out."""
-+
-+    model_config = ConfigDict(extra="forbid")
-+
-+    max_attempts: int = Field(default=1, ge=1, le=50)
-+    backoff_seconds: float = Field(default=0.0, ge=0.0, le=300.0)
-+
 
  class GateDefinition(BaseModel):
      """Declarative definition for a pipeline gate."""
@@ -148,10 +65,51 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
      name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
      condition: GateCondition
      resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-+    timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
-+    retry: GateRetryPolicy | None = None
 
 
++class StageMetadataOverrides(BaseModel):
++    """Optional overrides that adjust stage metadata at pipeline scope."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    state_key: str | list[str] | None = None
++    description: str | None = None
++    dependencies: list[str] | None = None
++
++
++class StagePluginImport(BaseModel):
++    """Declarative reference to a stage plugin registration callable."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    target: str = Field(alias="callable", pattern=r"^[A-Za-z0-9_.:]+$")
++    replace: bool = Field(default=False)
++
++    @model_validator(mode="after")
++    def _validate_target(self) -> StagePluginImport:
++        if ":" not in self.target:
++            raise ValueError("stage plugin callable must be in 'module:function' format")
++        module, _, attribute = self.target.partition(":")
++        if not module or not attribute:
++            raise ValueError("stage plugin callable must include module and attribute name")
++        return self
++
++    @property
++    def identifier(self) -> str:
++        return self.target
++
++
++class PipelinePluginConfig(BaseModel):
++    """Plugin declarations scoped to an individual pipeline topology."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    stage_plugins: list[StagePluginImport] = Field(
++        default_factory=list,
++        alias=AliasChoices("stage_plugins", "stages"),
++    )
++
++
  class StageDefinition(BaseModel):
      """Declarative stage specification for topology YAML files."""
 
@@ -162,15 +120,10 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
      policy: str | None = Field(default=None, alias="policy")
      depends_on: list[str] = Field(default_factory=list, alias="depends_on")
      config: dict[str, Any] = Field(default_factory=dict)
-+    gate_name: str | None = Field(default=None, alias="gate")
-+
-+    @model_validator(mode="after")
-+    def _normalise_gate(self) -> "StageDefinition":
-+        if self.stage_type == "gate" and not self.gate_name:
-+            self.gate_name = self.name
-+        if self.stage_type != "gate" and self.gate_name:
-+            raise ValueError("gate metadata can only be set on gate stage types")
-+        return self
++    metadata_overrides: StageMetadataOverrides | None = Field(
++        default=None,
++        alias=AliasChoices("metadata_overrides", "metadata"),
++    )
 
      @field_validator("depends_on")
      @classmethod
@@ -196,12 +149,15 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
  class PipelineTopologyConfig(BaseModel):
      """Complete topology definition for a pipeline."""
 
-@@ -105,56 +197,107 @@ class PipelineTopologyConfig(BaseModel):
+     model_config = ConfigDict(extra="forbid")
+
+     name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
      version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[A-Za-z0-9]+)?$")
      applicable_sources: list[str] = Field(default_factory=list)
      stages: list[StageDefinition]
      gates: list[GateDefinition] = Field(default_factory=list)
      metadata: PipelineMetadata | None = None
++    plugins: PipelinePluginConfig = Field(default_factory=PipelinePluginConfig)
 
      @model_validator(mode="after")
      def _validate_dependencies(self) -> PipelineTopologyConfig:
@@ -222,87 +178,8 @@ diff a/src/Medical_KG_rev/orchestration/dagster/configuration.py b/src/Medical_K
          if order is None:
              raise ValueError("cycle detected in pipeline dependencies")
 
--        gate_stage_set = {stage.name for stage in self.stages}
-+        stage_lookup = {stage.name: stage for stage in self.stages}
-+        order_index = {name: index for index, name in enumerate(order)}
-+        gate_stage_by_name = {
-+            stage.gate_name or stage.name: stage
-+            for stage in self.stages
-+            if stage.stage_type == "gate"
-+        }
-+        dependents: dict[str, list[str]] = {}
-+        for candidate in self.stages:
-+            for dep in candidate.depends_on:
-+                dependents.setdefault(dep, []).append(candidate.name)
-+
+         gate_stage_set = {stage.name for stage in self.stages}
          for gate in self.gates:
--            if gate.resume_stage not in gate_stage_set:
-+            if gate.name not in gate_stage_by_name:
-+                raise ValueError(f"gate definition '{gate.name}' does not match a gate stage")
-+            if gate.resume_stage not in stage_lookup:
+             if gate.resume_stage not in gate_stage_set:
                  raise ValueError(
                      f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
-                 )
-+            gate_stage = gate_stage_by_name[gate.name]
-+            if order_index[gate.resume_stage] <= order_index[gate_stage.name]:
-+                raise ValueError(
-+                    f"gate '{gate.name}' resume_stage '{gate.resume_stage}' must be downstream of gate stage"
-+                )
-+            resume_dependencies = stage_lookup[gate.resume_stage].depends_on
-+            if gate_stage.name not in resume_dependencies:
-+                raise ValueError(
-+                    f"resume_stage '{gate.resume_stage}' must depend on gate stage '{gate_stage.name}'"
-+                )
-+            invalid_dependents = [
-+                name for name in dependents.get(gate_stage.name, []) if name != gate.resume_stage
-+            ]
-+            if invalid_dependents:
-+                raise ValueError(
-+                    f"gate stage '{gate_stage.name}' may only be depended on by resume_stage "
-+                    f"'{gate.resume_stage}'; found: {', '.join(sorted(invalid_dependents))}"
-+                )
-+            if gate.timeout_seconds and gate.condition.timeout_seconds:
-+                if gate.timeout_seconds < gate.condition.timeout_seconds:
-+                    raise ValueError(
-+                        "gate timeout_seconds must exceed or equal condition timeout"
-+                    )
-+            for dep in resume_dependencies:
-+                if dep == gate_stage.name:
-+                    continue
-+                upstream = stage_lookup.get(dep)
-+                if upstream and upstream.stage_type == "gate":
-+                    raise ValueError(
-+                        f"gate '{gate.name}' resume_stage '{gate.resume_stage}' cannot depend on multiple gates"
-+                    )
-+            valid_fields = set(JobLedgerEntry.__annotations__)
-+            for clause in gate.condition.clauses:
-+                root_field = clause.field.split(".", 1)[0]
-+                if root_field not in valid_fields:
-+                    raise ValueError(
-+                        f"gate '{gate.name}' references unknown ledger field '{root_field}'"
-+                    )
-         return self
-
-
- class CircuitBreakerConfig(BaseModel):
-     failure_threshold: int = Field(ge=3, le=10)
-     recovery_timeout: float = Field(ge=1.0, le=600.0)
-     expected_exception: str | None = None
-
-
- class RateLimitConfig(BaseModel):
-     rate_limit_per_second: float = Field(ge=0.1, le=100.0)
-
-
- class BackoffConfig(BaseModel):
-     strategy: BackoffStrategy = Field(default=BackoffStrategy.EXPONENTIAL)
-     initial: float = Field(default=0.5, ge=0.0, le=60.0)
-     maximum: float = Field(default=30.0, ge=0.0, le=600.0)
-     jitter: bool = Field(default=True)
-
-     @model_validator(mode="after")
-     def _validate_bounds(self) -> BackoffConfig:
-         if self.strategy is BackoffStrategy.NONE:
-             return self
-         if self.initial < 0.05:
-             raise ValueError("initial backoff must be >=0.05 for non-none strategies")

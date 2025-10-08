@@ -305,16 +305,27 @@ PDF_DOWNLOAD_EVENTS = Counter(
     "PDF download stage outcomes grouped by status",
     labelnames=("pipeline", "status"),
 )
-PIPELINE_GATE_WAIT = Histogram(
-    "pipeline_gate_wait_seconds",
-    "Elapsed time waiting for pipeline gate conditions",
-    labelnames=("pipeline", "gate"),
-    buckets=(5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0),
+GATE_EVALUATIONS = Counter(
+    "orchestration_gate_evaluations_total",
+    "Gate evaluation outcomes grouped by gate and result",
+    labelnames=("gate", "result"),
 )
-PIPELINE_GATE_EVENTS = Counter(
-    "pipeline_gate_events_total",
-    "Pipeline gate evaluation outcomes",
-    labelnames=("pipeline", "gate", "outcome"),
+GATE_DURATION = Histogram(
+    "orchestration_gate_duration_seconds",
+    "Gate evaluation duration distribution",
+    labelnames=("gate",),
+    buckets=(1.0, 5.0, 15.0, 30.0, 60.0, 120.0, 300.0),
+)
+GATE_ATTEMPTS = Histogram(
+    "orchestration_gate_attempts",
+    "Number of polling attempts per gate evaluation",
+    labelnames=("gate",),
+    buckets=(1, 2, 3, 5, 8, 13, 21),
+)
+GATE_TIMEOUTS = Counter(
+    "orchestration_gate_timeouts_total",
+    "Gate evaluation timeouts",
+    labelnames=("gate",),
 )
 RERANK_CACHE_HIT = Gauge(
     "reranking_cache_hit_rate",

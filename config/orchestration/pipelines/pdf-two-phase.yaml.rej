@@ -1,5 +1,5 @@
 diff a/config/orchestration/pipelines/pdf-two-phase.yaml b/config/orchestration/pipelines/pdf-two-phase.yaml	(rejected hunks)
-@@ -1,56 +1,70 @@
+@@ -1,47 +1,69 @@
  name: pdf-two-phase
  version: "2025-01-01"
  applicable_sources:
@@ -8,24 +8,42 @@ diff a/config/orchestration/pipelines/pdf-two-phase.yaml b/config/orchestration/
  metadata:
    owner: ingestion-team
    description: PDF ingestion with MinerU gate.
++plugins:
++  stages:
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
  stages:
    - name: ingest
      type: ingest
      policy: default
-+    config:
-+      adapter: openalex
-+      parameters:
-+        source: pmc
    - name: download
      type: download
      policy: polite-api
      depends_on:
        - ingest
++    config:
++      sources:
++        - kind: openalex
++          attribute: best_pdf_url
++    metadata_overrides:
++      state_key: downloaded_files
++      description: Resolve and persist PDF assets required for downstream OCR.
    - name: gate_pdf_ir_ready
      type: gate
      policy: default
      depends_on:
        - download
++    config:
++      conditions:
++        - key: ledger.pdf_downloaded
++          expected: true
++        - key: ledger.pdf_ir_ready
++          expected: true
++      timeout_seconds: 900
++      poll_interval_seconds: 10
++    metadata_overrides:
++      dependencies:
++        - download
    - name: chunk
      type: chunk
      policy: gpu-bound
@@ -51,24 +69,3 @@ diff a/config/orchestration/pipelines/pdf-two-phase.yaml b/config/orchestration/
      policy: default
      depends_on:
        - extract
-       - index
- gates:
-   - name: pdf_ir_ready
-     resume_stage: chunk
-+    timeout_seconds: 1800
-+    retry:
-+      max_attempts: 3
-+      backoff_seconds: 30.0
-     condition:
--      field: pdf_ir_ready
--      equals: true
-+      logic: all
-+      clauses:
-+        - field: pdf_ir_ready
-+          operator: equals
-+          value: true
-+        - field: metadata.gate.pdf_ir_ready.status
-+          operator: equals
-+          value: passed
-       timeout_seconds: 900
-       poll_interval_seconds: 10.0

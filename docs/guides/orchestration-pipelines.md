@@ -27,10 +27,18 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
 
 - **Topology YAML** – Pipelines are described in
   `config/orchestration/pipelines/*.yaml`. Each stage lists `name`, `type`,
-  optional `policy`, dependencies, and a free-form `config` block. Gates define
-  resume conditions, e.g., `pdf_ir_ready=true` for two-phase PDF ingestion.
-  Refer to [`pdf-two-phase-gate.md`](./pdf-two-phase-gate.md) for a walkthrough
-  of the MinerU-controlled PDF pipeline.
+  optional `policy`, dependencies, and a free-form `config` block.
+  Gate stages add a `gate` reference that points to a named entry in the
+  `gates:` section. Gate definitions declare the ledger conditions, timeout,
+  polling interval, and resume stage for two-phase execution.
+- **Plugins** – Pipeline files may include a `plugins` section with
+  `medical_kg.orchestration.stages` callables. Each callable returns one or more
+  `StageRegistration` objects, allowing pipelines to opt into custom stage
+  implementations without mutating the global registry.
+- **Metadata overrides** – Use the per-stage `metadata_overrides` block to tweak
+  registry metadata (state keys, descriptions, dependencies) without defining a
+  new plugin. Overrides are applied at job build time and leave the global
+  registration untouched.
 - **Resilience policies** – `config/orchestration/resilience.yaml` contains
   shared retry, circuit breaker, and rate limiting definitions. The runtime
   loads these into Tenacity, PyBreaker, and aiolimiter objects.
@@ -50,11 +58,14 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
    `StageFactory`. Resilience policies wrap the execution and emit metrics on
    retries, circuit breaker state changes, and rate limiting delays.
 3. **Ledger updates** – Ops record progress to the job ledger (`current_stage`,
-   attempt counts, gate metadata). Gate evaluations record status, attempts,
-   and phase readiness so sensors can resume downstream stages deterministically.
+   attempt counts, gate metadata). Sensors poll the ledger for gate conditions
+   (e.g., `ledger.pdf_ir_ready=true`) and resume downstream stages.
 4. **Outputs** – Stage results are added to the Dagster run state and surfaced
    to the gateway through the ledger/SSE stream. Haystack components persist
    embeddings and metadata in downstream storage systems.
+5. **Phase transitions** – When a gate passes, the runtime records a phase
+   transition, updates the ledger (`gate.<name>.*` metadata), and resumes the
+   downstream graph from the configured `resume_stage`.
 
 ## Gate-Aware Execution
 
@@ -63,8 +74,9 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   `changed`. Clauses are combined with `condition.mode` (`all`/`any`). Field
   paths support root attributes such as `pdf_ir_ready`, `status`, or nested
   `metadata.*` entries stored in the job ledger.
-- **Timeout handling** – Gates poll the ledger until the condition is satisfied
-  or the configured `timeout_seconds` elapses. Timeouts raise
+- **Timeout & retry** – Gates poll the ledger until the condition is satisfied
+  or the configured timeout elapses. Optional retry configuration allows for
+  exponential back-off between evaluation attempts. Timeouts raise
   `GateConditionError`, update the ledger with gate status, and emit metrics for
   observability. The Dagster run completes without executing post-gate stages so
   sensors can resume later.
@@ -74,10 +86,31 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   should set `context.phase` to the unlocked phase (for example, `phase-2`) so
   pre-gate stages are skipped automatically.
 - **Metrics and logging** – Gate evaluation outcomes increment
-  `orchestration_gate_evaluation_total` with the gate name and status. Phase
-  transitions emit `orchestration_phase_transition_total`. Structured log lines
+  `orchestration_gate_evaluations_total` with the gate name and status. Phase
+  transitions emit `orchestration_phase_transitions_total`. Structured log lines
   prefixed with `dagster.stage.gate_*` describe skip reasons, failures, and
   successful unlocks.
+
+### Example Gate Definition
+
+```yaml
+gates:
+  - name: pdf_ir_ready
+    resume_stage: chunk
+    timeout_seconds: 1800
+    retry:
+      max_attempts: 3
+      backoff_seconds: 30.0
+    condition:
+      mode: all
+      clauses:
+        - field: pdf_ir_ready
+          operator: equals
+          value: true
+        - field: metadata.gate.pdf_ir_ready.status
+          operator: equals
+          value: passed
+```
 
 ## Sensors and Resumption
 
@@ -85,7 +118,7 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   `status=processing`. When triggered it creates a Dagster run with
   `context.phase=phase-2`, forwards the original adapter payload, and tags the
   resume stage/phase for observability.
-- Resume runs inherit ledger metadata (correlation ID, payload, gate status)
+- Resume runs inherit ledger metadata (correlation ID, payload, gate results)
   so monitoring dashboards can tie both phases together. The orchestrator only
   marks a job `completed` when the final phase finishes with `phase_ready=true`.
 - Gate metadata lives under `metadata["gate.<name>.*"]` in the ledger. Use this
@@ -100,10 +133,10 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
   for required fields (attempts, backoff, circuit breaker thresholds). Invalid
   policies raise validation errors at load time.
 - **Gate stalls** – Inspect the job ledger entry to confirm gate metadata is
-  set (e.g., `pdf_ir_ready` for PDF pipelines). Sensors poll every ten seconds
-  and record trigger counts in the ledger metadata. Metrics
-  (`pipeline_gate_wait_seconds`, `pipeline_gate_events_total`) expose long-lived
-  waits.
+  set (for example, `metadata["gate.pdf_ir_ready.status"]`). Sensors poll every
+  ten seconds and record trigger counts in the ledger metadata. Metrics
+  (`orchestration_gate_evaluations_total`, `orchestration_gate_timeouts_total`)
+  expose long-lived waits.
 - **Missing embeddings** – Ensure the embed stage resolved the Haystack
   embedder; stubs return deterministic values for test runs but do not persist
   to OpenSearch/FAISS.
@@ -134,4 +167,3 @@ See the dedicated guide for configuration snippets and troubleshooting advice.
   access to the same configuration volume as the webserver and gateway.
 - CloudEvents and OpenLineage emission hooks live alongside the Dagster jobs
   and reuse the resilience policy loader for consistent telemetry metadata.
-

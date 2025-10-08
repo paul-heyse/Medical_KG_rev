@@ -54,7 +54,7 @@ gates:
   - name: pdf_ir_ready
     resume_stage: mineru_ir
     condition:
-      field: pdf_ir_ready
+      field: ledger.pdf_ir_ready
       equals: true
       timeout_seconds: 900
       poll_interval_seconds: 10.0

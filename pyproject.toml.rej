@@ -1,0 +1,56 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -646,50 +646,54 @@ docs = [
+     "pdoc>=15.0.4",
+ ]
+
+ chunking = [
+     "langchain-text-splitters>=0.3.11",
+     "llama-index-core",
+     "haystack-ai>=2.18.1",
+     "unstructured>=0.11.8",
+     "hdbscan>=0.8.40",
+     "networkx>=3.2.1",
+     "layoutparser>=0.3.4",
+     "docling>=2.55.1",
+     "gensim>=4.3.3",
+     "nltk>=3.9.2",
+     "pysbd>=0.3.4",
+     "scikit-learn>=1.7.2",
+     "spacy>=3.7.2",
+ ]
+ reranking = [
+     "xgboost>=3.0.5",
+ ]
+
+ [project.entry-points."medical_kg.adapters"]
+ example = "Medical_KG_rev.adapters.plugins.example:ExampleAdapterPlugin"
+
++[project.entry-points."medical_kg.orchestration.stages"]
++download = "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
++gate = "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
++
+ [project.urls]
+ Homepage = "https://github.com/your-org/Medical_KG_rev"
+ Documentation = "https://your-org.github.io/Medical_KG_rev"
+ Repository = "https://github.com/your-org/Medical_KG_rev"
+ Issues = "https://github.com/your-org/Medical_KG_rev/issues"
+
+ [project.scripts]
+ medkg = "Medical_KG_rev.cli:main"
+ medkg-gateway = "Medical_KG_rev.gateway.main:main"
+
+ [build-system]
+ requires = ["setuptools>=68.0", "wheel"]
+ build-backend = "setuptools.build_meta"
+
+ [tool.setuptools.packages.find]
+ where = ["src"]
+
+ [tool.setuptools.package-data]
+ "Medical_KG_rev.kg" = ["*.ttl"]
+ "Medical_KG_rev.services.evaluation.data" = ["test_sets/*.yaml"]
+
+ [tool.black]
+ line-length = 100
+ target-version = ["py312"]
+ include = '\.pyi?$'

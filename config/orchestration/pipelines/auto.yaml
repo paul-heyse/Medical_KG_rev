@@ -7,6 +7,10 @@ applicable_sources:
 metadata:
   owner: ingestion-team
   description: Standard ingestion pipeline for non-PDF sources.
+plugins:
+  stages:
+    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_download_stage"
+    - callable: "Medical_KG_rev.orchestration.stage_plugins:register_gate_stage"
 stages:
   - name: ingest
     type: ingest
@@ -33,6 +37,8 @@ stages:
     policy: default
     depends_on:
       - chunk
+    metadata_overrides:
+      description: Embed chunks using the default Haystack pipeline resources.
   - name: index
     type: index
     policy: default

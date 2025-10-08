@@ -1,0 +1,60 @@
+diff a/src/Medical_KG_rev/adapters/plugins/resilience.py b/src/Medical_KG_rev/adapters/plugins/resilience.py	(rejected hunks)
+@@ -10,50 +10,58 @@ import time
+ from collections import deque
+ from enum import Enum
+ from functools import wraps
+ from typing import Any, Awaitable, Callable, TypeVar, cast
+
+ import httpx
+ from aiolimiter import AsyncLimiter
+ from pybreaker import CircuitBreaker, CircuitBreakerError
+ from tenacity import (
+     RetryCallState,
+     retry,
+     retry_if_exception_type,
+     stop_after_attempt,
+     wait_exponential,
+     wait_fixed,
+ )
+
+ from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
+
+ try:  # pragma: no cover - optional dependency
+     from prometheus_client import Counter, Gauge
+ except Exception:  # pragma: no cover - optional dependency
+     Counter = Gauge = None  # type: ignore
+
+
++class CircuitState(str, Enum):
++    """Simplified circuit breaker state representation for telemetry."""
++
++    CLOSED = "closed"
++    OPEN = "open"
++    HALF_OPEN = "half_open"
++
++
+ class BackoffStrategy(str, Enum):
+     """Supported retry backoff strategies."""
+
+     EXPONENTIAL = "exponential"
+     LINEAR = "linear"
+     JITTER = "jitter"
+
+
+ class ResilienceConfig(BaseModel):
+     """Configuration for retry, rate limiting and circuit breaking."""
+
+     max_attempts: PositiveInt = Field(3, description="Maximum retry attempts before failing.")
+     backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL
+     backoff_multiplier: NonNegativeFloat = Field(1.0, description="Multiplier applied to backoff intervals.")
+     backoff_max_seconds: NonNegativeFloat = Field(60.0, description="Maximum backoff duration in seconds.")
+     rate_limit_per_second: NonNegativeFloat = Field(5.0, description="Token bucket fill rate.")
+     rate_limit_capacity: PositiveInt = Field(10, description="Maximum tokens in the bucket.")
+     circuit_breaker_failure_threshold: PositiveInt = Field(
+         5, description="Failures required before opening the circuit."
+     )
+     circuit_breaker_reset_timeout: NonNegativeFloat = Field(
+         30.0, description="Seconds to wait before allowing a trial request."
+     )
+
+

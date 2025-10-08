@@ -530,6 +530,32 @@ class GatewayService:
         return result
 
     def chunk_document(self, request: ChunkRequest) -> Sequence[DocumentChunk]:
+        if self.chunking_coordinator is None:
+            raise RuntimeError("Chunking coordinator not initialised")
+
+        coordinator_request = CoordinatorChunkingRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=None,
+            metadata={"document_id": request.document_id},
+            document_id=request.document_id,
+            strategy=request.strategy,
+            chunk_size=request.chunk_size,
+            overlap=request.overlap,
+            options=request.options,
+        )
+        try:
+            result: ChunkingResult = self.chunking_coordinator(coordinator_request)
+        except CoordinatorError as exc:
+            detail = exc.context.get("problem") if isinstance(exc.context, dict) else None
+            if isinstance(detail, ProblemDetail):
+                raise GatewayError(detail) from exc
+            raise
+        observe_job_duration("chunk", result.duration_s)
+        return list(result.chunks)
+
+    def embed(self, request: EmbedRequest) -> EmbeddingResponse:
+        if self.embedding_coordinator is None:
+            raise RuntimeError("Embedding coordinator not initialised")
         job_id = self._new_job(request.tenant_id, "chunk")
         options_payload = request.options if isinstance(request.options, dict) else {}
         raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
@@ -1388,6 +1414,18 @@ def get_gateway_service() -> GatewayService:
             plugin_manager=adapter_manager,
             job_ledger=_ledger,
             pipeline_resource=pipeline_resource,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         settings = get_settings()
         embedding_cfg = settings.embedding

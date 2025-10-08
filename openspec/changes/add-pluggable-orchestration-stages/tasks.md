@@ -24,25 +24,25 @@
 - [x] 2.1 Create StagePluginManager class with entry point discovery
 - [x] 2.2 Implement plugin loading and validation logic
 - [x] 2.3 Add plugin metadata collection and capability reporting
-- [ ] 2.4 Create plugin lifecycle management (load, validate, unload)
+- [x] 2.4 Create plugin lifecycle management (load, validate, unload)
 - [x] 2.5 Add plugin configuration schema validation
-- [ ] 2.6 Implement plugin dependency resolution and loading order
+- [x] 2.6 Implement plugin dependency resolution and loading order
 - [ ] 2.7 Add plugin isolation mechanisms and resource limits
 - [ ] 2.8 Create plugin version compatibility checking and conflict resolution
-- [ ] 2.9 Implement plugin health monitoring and failure recovery
+- [x] 2.9 Implement plugin health monitoring and failure recovery
 - [ ] 2.10 Add plugin security validation and access control
 
 ## 3. Stage Plugin Interface
 
-- [ ] 3.1 Define StagePlugin abstract base class
+- [x] 3.1 Define StagePlugin abstract base class
 - [ ] 3.2 Implement create_stage() method with StageDefinition parameter
 - [ ] 3.3 Add plugin metadata properties (name, version, stage_types)
 - [ ] 3.4 Create plugin validation interface
 - [ ] 3.5 Add error handling for plugin instantiation failures
-- [ ] 3.6 Define plugin lifecycle hooks (initialize, cleanup, health_check)
-- [ ] 3.7 Add plugin resource management and cleanup interfaces
+- [x] 3.6 Define plugin lifecycle hooks (initialize, cleanup, health_check)
+- [x] 3.7 Add plugin resource management and cleanup interfaces
 - [ ] 3.8 Create plugin configuration interfaces and validation
-- [ ] 3.9 Implement plugin dependency declaration and resolution
+- [x] 3.9 Implement plugin dependency declaration and resolution
 - [ ] 3.10 Add plugin metrics and observability interfaces
 
 ## 4. Runtime Integration
@@ -104,7 +104,7 @@
 
 ## 7. Testing & Validation
 
-- [ ] 7.1 Create unit tests for StagePluginManager
+- [x] 7.1 Create unit tests for StagePluginManager
 - [ ] 7.2 Test plugin discovery and loading mechanisms
 - [x] 7.3 Test stage resolution with mixed plugin/built-in stages
 - [ ] 7.4 Integration tests for complete pipeline execution

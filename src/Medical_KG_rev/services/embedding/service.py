@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Mapping, Sequence
 
 import structlog
@@ -23,6 +24,18 @@ from Medical_KG_rev.embeddings.utils.tokenization import (
     TokenLimitExceededError,
     TokenizerCache,
 )
+from Medical_KG_rev.observability.metrics import (
+    record_embedding_cache_hit,
+    record_embedding_cache_miss,
+    record_embedding_failure,
+    record_embedding_success,
+    record_embedding_timing,
+)
+from Medical_KG_rev.services.embedding.cache import (
+    EmbeddingCache,
+    NullEmbeddingCache,
+)
+from Medical_KG_rev.services.embedding.events import EmbeddingEventEmitter
 from Medical_KG_rev.services.vector_store.models import VectorRecord
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
@@ -113,6 +126,8 @@ class EmbeddingWorker:
     config_path: str | None = None
     tokenizer_cache: TokenizerCache | None = None
     namespace_registry: EmbeddingNamespaceRegistry | None = None
+    cache: EmbeddingCache | None = None
+    event_emitter: EmbeddingEventEmitter | None = None
     registry: EmbedderRegistry | None = field(init=False, default=None)
     factory: EmbedderFactory | None = field(init=False, default=None)
     storage_router: StorageRouter | None = field(init=False, default=None)
@@ -130,6 +145,7 @@ class EmbeddingWorker:
         self.factory = self.model_registry.factory
         self.storage_router = self.model_registry.storage_router
         self.tokenizers = self.tokenizer_cache or TokenizerCache()
+        self.cache = self.cache or NullEmbeddingCache()
 
     # ------------------------------------------------------------------
     # Helpers
@@ -218,6 +234,36 @@ class EmbeddingWorker:
     def _token_budget(self, config: EmbedderConfig) -> int | None:
         return config.parameters.get("max_tokens") if config.parameters else None
 
+    def _cache_ttl(self, config: EmbedderConfig) -> int | None:
+        if not config.parameters:
+            return None
+        ttl = config.parameters.get("cache_ttl_seconds")
+        return int(ttl) if isinstance(ttl, int) and ttl > 0 else None
+
+    def _lookup_cache(
+        self,
+        *,
+        config: EmbedderConfig,
+        adapter_request: AdapterEmbeddingRequest,
+    ) -> tuple[dict[int, EmbeddingRecord], list[int], int, int]:
+        if isinstance(self.cache, NullEmbeddingCache):
+            length = len(adapter_request.texts)
+            return {}, list(range(length)), 0, length
+        cached: dict[int, EmbeddingRecord] = {}
+        missing: list[int] = []
+        hits = 0
+        misses = 0
+        ids = list(adapter_request.ids or [])
+        for index, identifier in enumerate(ids):
+            record = self.cache.get(config.namespace, identifier) if self.cache else None
+            if record is not None:
+                cached[index] = record
+                hits += 1
+            else:
+                missing.append(index)
+                misses += 1
+        return cached, missing, hits, misses
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -227,24 +273,95 @@ class EmbeddingWorker:
         texts = list(request.texts)
         for config in configs:
             ensure_available(config.requires_gpu, operation=f"embed:{config.namespace}")
-            try:
-                self.tokenizers.ensure_within_limit(
-                    model_id=config.model_id,
-                    texts=texts,
-                    max_tokens=self._token_budget(config),
-                    correlation_id=request.correlation_id,
-                )
-            except TokenLimitExceededError:
-                logger.error(
-                    "embedding.token_limit_exceeded",
-                    namespace=config.namespace,
-                    model=config.model_id,
-                    correlation_id=request.correlation_id,
-                )
-                raise
-            embedder = self.model_registry.get(config)
             adapter_request = self._adapter_request(request, config, texts=texts)
-            records = embedder.embed_documents(adapter_request)
+            cached_records, missing_indices, cache_hits, cache_misses = self._lookup_cache(
+                config=config,
+                adapter_request=adapter_request,
+            )
+            record_embedding_cache_hit(config.namespace, cache_hits)
+            record_embedding_cache_miss(config.namespace, cache_misses)
+
+            embedder = self.model_registry.get(config)
+            records: list[EmbeddingRecord] = []
+            timer = perf_counter()
+            if self.event_emitter is not None:
+                self.event_emitter.emit_started(
+                    tenant_id=request.tenant_id,
+                    namespace=config.namespace,
+                    provider=config.provider,
+                    batch_size=len(adapter_request.texts),
+                    correlation_id=request.correlation_id,
+                )
+            try:
+                if missing_indices:
+                    subset_texts = [adapter_request.texts[index] for index in missing_indices]
+                    subset_ids = [adapter_request.ids[index] for index in missing_indices]  # type: ignore[index]
+                    subset_metadata = (
+                        [adapter_request.metadata[index] for index in missing_indices]  # type: ignore[index]
+                        if adapter_request.metadata
+                        else [{} for _ in missing_indices]
+                    )
+                    try:
+                        self.tokenizers.ensure_within_limit(
+                            model_id=config.model_id,
+                            texts=subset_texts,
+                            max_tokens=self._token_budget(config),
+                            correlation_id=request.correlation_id,
+                        )
+                    except TokenLimitExceededError:
+                        logger.error(
+                            "embedding.token_limit_exceeded",
+                            namespace=config.namespace,
+                            model=config.model_id,
+                            correlation_id=request.correlation_id,
+                        )
+                        raise
+                    subset_request = AdapterEmbeddingRequest(
+                        tenant_id=adapter_request.tenant_id,
+                        namespace=adapter_request.namespace,
+                        texts=subset_texts,
+                        ids=subset_ids,
+                        correlation_id=adapter_request.correlation_id,
+                        metadata=subset_metadata,
+                    )
+                    new_records = embedder.embed_documents(subset_request)
+                    ttl = self._cache_ttl(config)
+                    for index, record in zip(missing_indices, new_records):
+                        cached_records[index] = record
+                        if self.cache is not None:
+                            self.cache.set(record, ttl=ttl)
+                ordered: list[EmbeddingRecord] = []
+                for index in range(len(adapter_request.texts)):
+                    record = cached_records.get(index)
+                    if record is not None:
+                        ordered.append(record)
+                records = ordered
+            except Exception as exc:
+                record_embedding_failure(config.namespace, config.provider, exc.__class__.__name__)
+                if self.event_emitter is not None:
+                    self.event_emitter.emit_failed(
+                        tenant_id=request.tenant_id,
+                        namespace=config.namespace,
+                        provider=config.provider,
+                        correlation_id=request.correlation_id,
+                        error_type=exc.__class__.__name__,
+                        message=str(exc),
+                    )
+                raise
+            duration = (perf_counter() - timer) * 1000
+            record_embedding_timing(config.namespace, config.provider, duration / 1000)
+            record_embedding_success(config.namespace, config.provider, len(records))
+            if self.event_emitter is not None:
+                self.event_emitter.emit_completed(
+                    tenant_id=request.tenant_id,
+                    namespace=config.namespace,
+                    provider=config.provider,
+                    correlation_id=request.correlation_id,
+                    duration_ms=duration,
+                    generated=len(records),
+                    cache_hits=cache_hits,
+                    cache_misses=cache_misses,
+                )
             if not records:
                 logger.warning(
                     "embedding.no_records",

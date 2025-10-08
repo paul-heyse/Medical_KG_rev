@@ -482,12 +482,11 @@ class MineruService:
   - **Performance**: 2-3 papers/second, 50+ pages/minute throughput
   - **Integration**: CLI wrapper with GPU budget management and artifact processing
 
-- **Embedding Service**: vLLM dense + Pyserini SPLADE sparse embeddings with multi-namespace support
-  - **Multi-Namespace**: Single vector (Qwen3-8B), sparse (SPLADE-v3), multi-vector (ColBERT-v2)
-  - **Library Delegation**: OpenAI-compatible vLLM endpoint and Pyserini encoders
+- **Embedding Service**: vLLM dense + Pyserini SPLADE sparse embeddings
+  - **Multi-Namespace**: Single vector (Qwen3), sparse (SPLADE-v3), multi-vector (ColBERT)
+  - **Library Delegation**: OpenAI-compatible vLLM endpoint and Pyserini encoders replace bespoke Python implementations
   - **Vector Storage**: OpenSearch `rank_features` (sparse) + FAISS (dense) indexing with namespace-aware routing
-  - **Performance**: ≥1000 embeddings/second on GPU with fail-fast GPU enforcement and batch processing
-  - **Configuration**: YAML-based namespace registry with GPU allocation and model validation
+  - **Performance**: ≥1000 embeddings/second on GPU with fail-fast GPU enforcement
 
 - **Vector Store Service**: GPU-accelerated similarity search and indexing
   - **Storage Backends**: FAISS (dense), OpenSearch (sparse + lexical), Qdrant (optional dense)

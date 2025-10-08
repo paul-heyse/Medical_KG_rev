@@ -13,13 +13,18 @@ from Medical_KG_rev.services.embedding.service import (
     EmbeddingRequest,
     EmbeddingWorker,
 )
+from Medical_KG_rev.services.embedding.cache import InMemoryEmbeddingCache
 from Medical_KG_rev.services.vector_store.models import NamespaceConfig, IndexParams
 from Medical_KG_rev.services.vector_store.registry import NamespaceRegistry
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 
 
 class DummyEmbedder:
+    def __init__(self) -> None:
+        self.calls = 0
+
     def embed_documents(self, request):  # type: ignore[override]
+        self.calls += 1
         return [
             EmbeddingRecord(
                 id=request.ids[0] if request.ids else "chunk-1",
@@ -80,11 +85,16 @@ def embedding_worker(monkeypatch: pytest.MonkeyPatch):
     registry = NamespaceRegistry()
     vector_store_adapter = StubVectorStore()
     service = VectorStoreService(vector_store_adapter, registry)
-    worker = EmbeddingWorker(namespace_manager=namespace_manager, vector_store=service)
+    worker = EmbeddingWorker(
+        namespace_manager=namespace_manager,
+        vector_store=service,
+        cache=InMemoryEmbeddingCache(),
+    )
     worker.namespace_manager.register(fake_config)
 
+    dummy = DummyEmbedder()
     monkeypatch.setattr(EmbeddingWorker, "_resolve_configs", lambda self, request: [fake_config])
-    monkeypatch.setattr(EmbeddingModelRegistry, "get", lambda self, config: DummyEmbedder())
+    monkeypatch.setattr(EmbeddingModelRegistry, "get", lambda self, config: dummy)
     monkeypatch.setattr(TokenizerCache, "ensure_within_limit", lambda *args, **kwargs: None)
     service.ensure_namespace(
         context=SecurityContext(subject="tester", tenant_id="tenant", scopes={"index:write"}),
@@ -94,11 +104,11 @@ def embedding_worker(monkeypatch: pytest.MonkeyPatch):
         ),
     )
     assert registry.get(tenant_id="tenant", namespace=fake_config.namespace)
-    return worker, vector_store_adapter, fake_config
+    return worker, vector_store_adapter, fake_config, dummy
 
 
 def test_worker_upserts_vectors(embedding_worker) -> None:
-    worker, vector_store, config = embedding_worker
+    worker, vector_store, config, embedder = embedding_worker
     request = EmbeddingRequest(
         tenant_id="tenant",
         chunk_ids=["chunk-1"],
@@ -108,6 +118,7 @@ def test_worker_upserts_vectors(embedding_worker) -> None:
     assert response.vectors[0].metadata["storage_target"] == "faiss"
     assert vector_store.records[0]["vector_id"] == "chunk-1"
     assert vector_store.records[0]["namespace"] == config.namespace
+    assert embedder.calls == 1
 
 
 def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
@@ -153,3 +164,29 @@ def test_worker_resolves_configs_via_registry(monkeypatch) -> None:
 
     assert captured["namespaces"] == [fake_config.namespace]
     assert captured["models"] is None
+
+
+def test_worker_uses_cache_hits(embedding_worker) -> None:
+    worker, _, config, embedder = embedding_worker
+    record = EmbeddingRecord(
+        id="chunk-1",
+        tenant_id="tenant",
+        namespace=config.namespace,
+        model_id=config.model_id,
+        model_version=config.model_version,
+        kind=config.kind,
+        dim=config.dim,
+        vectors=[[0.5 for _ in range(config.dim or 0)]],
+        metadata={"provider": config.provider},
+    )
+    worker.cache.set(record)
+
+    request = EmbeddingRequest(
+        tenant_id="tenant",
+        chunk_ids=["chunk-1"],
+        texts=["sample"],
+    )
+    response = worker.run(request)
+
+    assert embedder.calls == 0
+    assert response.vectors[0].id == "chunk-1"

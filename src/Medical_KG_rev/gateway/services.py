@@ -24,11 +24,7 @@ from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..auth.scopes import Scopes
-from ..observability.metrics import (
-    CROSS_TENANT_ACCESS_ATTEMPTS,
-    observe_job_duration,
-    record_business_event,
-)
+from ..observability.metrics import observe_job_duration
 from ..orchestration import (
     HaystackRetriever,
     JobLedger,
@@ -44,14 +40,27 @@ from ..orchestration.dagster import (
 )
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
-from ..services.embedding.namespace.access import validate_namespace_access
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
+from ..services.embedding.policy import (
+    NamespaceAccessPolicy,
+    NamespacePolicySettings,
+    StandardNamespacePolicy,
+)
+from ..services.embedding.persister import (
+    EmbeddingPersister,
+    PersistenceContext,
+    VectorStorePersister,
+)
 from ..services.embedding.registry import EmbeddingModelRegistry
+from ..services.embedding.telemetry import EmbeddingTelemetry, StandardEmbeddingTelemetry
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
-from Medical_KG_rev.embeddings.ports import EmbeddingRequest as AdapterEmbeddingRequest
+from Medical_KG_rev.embeddings.ports import (
+    EmbeddingRecord,
+    EmbeddingRequest as AdapterEmbeddingRequest,
+)
 from .models import (
     AdapterConfigSchemaView,
     AdapterHealthView,
@@ -123,6 +132,10 @@ class GatewayService:
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
     embedding_registry: EmbeddingModelRegistry = field(default_factory=EmbeddingModelRegistry)
     namespace_registry: EmbeddingNamespaceRegistry | None = None
+    namespace_policy: NamespaceAccessPolicy | None = None
+    namespace_policy_settings: NamespacePolicySettings | None = None
+    embedding_persister: EmbeddingPersister | None = None
+    embedding_telemetry: EmbeddingTelemetry | None = None
 
     def __post_init__(self) -> None:
         if self.stage_factory is None:
@@ -131,6 +144,24 @@ class GatewayService:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.namespace_registry is None:
             self.namespace_registry = self.embedding_registry.namespace_registry
+        if self.embedding_telemetry is None:
+            self.embedding_telemetry = StandardEmbeddingTelemetry()
+        if self.namespace_policy is None:
+            if self.namespace_registry is None:
+                raise RuntimeError("Namespace registry not initialised")
+            if self.namespace_policy_settings is None:
+                self.namespace_policy_settings = NamespacePolicySettings()
+            policy_settings = self.namespace_policy_settings
+            self.namespace_policy = StandardNamespacePolicy(
+                self.namespace_registry,
+                telemetry=self.embedding_telemetry,
+                settings=policy_settings,
+            )
+        if self.embedding_persister is None:
+            router = getattr(self.embedding_registry, "storage_router", None)
+            if router is None:
+                raise RuntimeError("Embedding registry missing storage router")
+            self.embedding_persister = VectorStorePersister(router, telemetry=self.embedding_telemetry)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -579,38 +610,49 @@ class GatewayService:
         return chunks
 
     def embed(self, request: EmbedRequest) -> EmbeddingResponse:
-        if self.namespace_registry is None:
-            raise RuntimeError("Namespace registry not initialised")
+        if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
+            raise RuntimeError("Embedding components not initialised")
 
         started = perf_counter()
         options = request.options or EmbeddingOptions()
         namespace = request.namespace
-        config = self.namespace_registry.get(namespace)
 
-        access = validate_namespace_access(
-            self.namespace_registry,
-            namespace=namespace,
-            tenant_id=request.tenant_id,
-            required_scope=Scopes.EMBED_WRITE,
-        )
-        if not access.allowed:
-            if access.reason and "Tenant" in access.reason:
-                allowed = ",".join(sorted(self.namespace_registry.get_allowed_tenants(namespace)))
-                CROSS_TENANT_ACCESS_ATTEMPTS.labels(
-                    source_tenant=request.tenant_id,
-                    target_tenant=allowed or "restricted",
-                ).inc()
+        try:
+            decision = self.namespace_policy.evaluate(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                required_scope=Scopes.EMBED_WRITE,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            detail = ProblemDetail(
+                title="Namespace policy failure",
+                status=500,
+                type="https://httpstatuses.com/500",
+                detail=str(exc),
+            )
+            raise GatewayError(detail) from exc
+
+        if not decision.allowed:
             detail = ProblemDetail(
                 title="Namespace access denied",
                 status=403,
                 type="https://httpstatuses.com/403",
-                detail=access.reason or "Access to namespace not permitted",
+                detail=decision.reason or "Access to namespace not permitted",
             )
             raise GatewayError(detail)
+
+        config = decision.config or self.namespace_registry.get(namespace)
 
         job_id = self._new_job(request.tenant_id, "embed")
         correlation_id = uuid.uuid4().hex
         model_name = options.model or config.model_id
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_started(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+            )
 
         texts: list[str] = []
         ids: list[str] = []
@@ -670,10 +712,16 @@ class GatewayService:
                 detail=str(exc),
             )
             self._fail_job(job_id, detail.detail or detail.title)
+            if self.embedding_telemetry:
+                self.embedding_telemetry.record_embedding_failure(
+                    namespace=namespace,
+                    tenant_id=request.tenant_id,
+                    error=exc,
+                )
             raise GatewayError(detail) from exc
 
         embeddings: list[EmbeddingVector] = []
-        storage_router = getattr(self.embedding_registry, "storage_router", None)
+        prepared_records: list[EmbeddingRecord] = []
         duration_ms = (perf_counter() - started) * 1000
 
         for record in records:
@@ -692,8 +740,7 @@ class GatewayService:
             if record.kind == "multi_vector" and record.vectors:
                 meta.setdefault("vectors", [list(vector) for vector in record.vectors])
             updated_record = replace(record, metadata=meta)
-            if storage_router is not None:
-                storage_router.persist(updated_record)
+            prepared_records.append(updated_record)
 
             values: list[float] = []
             if updated_record.vectors:
@@ -717,17 +764,37 @@ class GatewayService:
                 )
             )
 
+        persistence_context = PersistenceContext(
+            tenant_id=request.tenant_id,
+            namespace=namespace,
+            model=model_name,
+            provider=config.provider,
+            job_id=job_id,
+            correlation_id=correlation_id,
+            normalize=bool(options.normalize),
+        )
+        persistence_report = self.embedding_persister.persist_batch(prepared_records, persistence_context)
+
         payload = {
             "embeddings": len(embeddings),
             "model": model_name,
             "namespace": namespace,
             "provider": config.provider,
             "tenant_id": request.tenant_id,
+            "persisted": persistence_report.persisted,
         }
         self.ledger.update_metadata(job_id, payload)
         self._complete_job(job_id, payload=payload)
-        if embeddings:
-            record_business_event("embeddings_generated", request.tenant_id)
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_completed(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+                provider=config.provider,
+                duration_ms=duration_ms,
+                embeddings=len(embeddings),
+            )
 
         metadata = EmbeddingMetadata(
             provider=config.provider,
@@ -797,24 +864,24 @@ class GatewayService:
         namespace: str,
         texts: Sequence[str],
     ) -> NamespaceValidationResponse:
-        if self.namespace_registry is None:
-            raise RuntimeError("Namespace registry not initialised")
-        access = validate_namespace_access(
-            self.namespace_registry,
+        if self.namespace_registry is None or self.namespace_policy is None:
+            raise RuntimeError("Namespace policy not initialised")
+        decision = self.namespace_policy.evaluate(
             namespace=namespace,
             tenant_id=tenant_id,
             required_scope=Scopes.EMBED_READ,
         )
-        if not access.allowed:
+        if not decision.allowed:
             detail = ProblemDetail(
                 title="Namespace access denied",
                 status=403,
                 type="https://httpstatuses.com/403",
-                detail=access.reason or "Access to namespace not permitted",
+                detail=decision.reason or "Access to namespace not permitted",
             )
             raise GatewayError(detail)
 
-        max_tokens = self.namespace_registry.get_max_tokens(namespace)
+        config = decision.config or self.namespace_registry.get(namespace)
+        max_tokens = config.max_tokens
         if max_tokens is None:
             detail = ProblemDetail(
                 title="Namespace lacks token budget",

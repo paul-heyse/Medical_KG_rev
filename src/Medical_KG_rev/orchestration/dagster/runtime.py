@@ -36,6 +36,7 @@ from Medical_KG_rev.orchestration.dagster.configuration import (
 from Medical_KG_rev.orchestration.dagster.stages import (
     HaystackPipelineResource,
     create_default_pipeline_resource,
+    create_stage_plugin_manager,
 )
 from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
@@ -53,6 +54,12 @@ from Medical_KG_rev.orchestration.stages.plugins.builtin import (
     PdfTwoPhasePlugin,
 )
 from Medical_KG_rev.orchestration.state.cache import PipelineStateCache
+from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
+from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePluginBuildError,
+    StagePluginLookupError,
+    StagePluginManager,
+)
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -78,6 +85,20 @@ class StageFactory:
         except StagePluginExecutionError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
                 f"Stage plugin failed for '{stage.name}' ({stage.stage_type})"
+    """Resolve orchestration stages through the plugin manager."""
+
+    plugin_manager: StagePluginManager
+
+    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+        try:
+            instance = self.plugin_manager.build_stage(stage)
+        except StagePluginLookupError as exc:
+            raise StageResolutionError(
+                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+            ) from exc
+        except StagePluginBuildError as exc:
+            raise StageResolutionError(
+                f"Stage '{stage.name}' of type '{stage.stage_type}' failed to initialise"
             ) from exc
         logger.debug(
             "dagster.stage.resolved",
@@ -171,6 +192,10 @@ def _make_stage_op(
     def _stage_op(context, state: PipelineState) -> PipelineState:
         stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
+        ledger: JobLedger = context.resources.job_ledger
+        emitter: StageEventEmitter = context.resources.event_emitter
+        persister = PipelineStatePersister(metadata_store=ledger)
+        dependencies = stage_definition.depends_on
 
         execute = getattr(stage, "execute")
         execution_state: dict[str, Any] = {
@@ -232,6 +257,8 @@ def _make_stage_op(
         checkpoint_label = stage_name
 
         try:
+            if dependencies:
+                state.ensure_dependencies(stage_name, dependencies)
             state.validate_transition(stage_type)
             state.create_checkpoint(checkpoint_label)
             result = wrapped(stage_ctx, state)
@@ -245,6 +272,16 @@ def _make_stage_op(
             )
             state.clear_checkpoint(checkpoint_label)
             snapshot_b64 = state.serialise_base64()
+            if job_id:
+                try:
+                    snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+                except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                    logger.warning(
+                        "dagster.stage.snapshot_persist_failed",
+                        job_id=job_id,
+                        stage=stage_name,
+                        error=str(persist_exc),
+                    )
             emitter.emit_failed(
                 stage_ctx,
                 stage_name,
@@ -278,6 +315,16 @@ def _make_stage_op(
         cache_key = job_id or stage_ctx.correlation_id or stage_name
         context.resources.state_cache.store(cache_key, state.snapshot())
         snapshot_b64 = state.serialise_base64()
+        if job_id:
+            try:
+                snapshot_b64 = persister.persist_state(job_id, stage=stage_name, state=state)
+            except StatePersistenceError as persist_exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "dagster.stage.snapshot_persist_failed",
+                    job_id=job_id,
+                    stage=stage_name,
+                    error=str(persist_exc),
+                )
         state.clear_checkpoint(checkpoint_label)
 
         if job_id:
@@ -290,6 +337,10 @@ def _make_stage_op(
                     f"state.{stage_name}.snapshot": snapshot_b64,
                 },
             )
+            if stage_type == "pdf-download":
+                ledger.set_pdf_downloaded(job_id)
+            elif stage_type == "pdf-ir-gate":
+                ledger.set_pdf_ir_ready(job_id)
         emitter.emit_completed(
             stage_ctx,
             stage_name,
@@ -675,6 +726,12 @@ def build_default_orchestrator() -> DagsterOrchestrator:
         "dagster.stage_plugins.initialised",
         stage_types=stage_factory.plugins.available_stage_types(),
     )
+    stage_plugin_manager = create_stage_plugin_manager(
+        adapter_manager,
+        pipeline_resource,
+        job_ledger=job_ledger,
+    )
+    stage_factory = StageFactory(stage_plugin_manager)
     kafka_client = KafkaClient()
     event_emitter = StageEventEmitter(kafka_client)
     openlineage_emitter = OpenLineageEmitter()

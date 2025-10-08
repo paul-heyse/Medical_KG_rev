@@ -18,6 +18,8 @@ from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.runtime import StageFactory, build_stage_factory
 from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
 from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
+from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import ChunkStage, StageContext
 
 logger = structlog.get_logger(__name__)
@@ -55,6 +57,8 @@ class ChunkingService:
             pipeline_resource = create_default_pipeline_resource()
             job_ledger = JobLedger()
             stage_factory = build_stage_factory(manager, pipeline_resource, job_ledger)
+            plugin_manager = create_stage_plugin_manager(manager)
+            stage_factory = StageFactory(plugin_manager)
         self._stage_factory = stage_factory
 
     def chunk(self, *args: Any, **kwargs: Any) -> list[Chunk]:

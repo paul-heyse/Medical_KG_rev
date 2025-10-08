@@ -55,6 +55,7 @@ under `Medical_KG_rev.orchestration.dagster` and Haystack components under
 
 - **Stage resolution errors** – Verify the stage `type` in the topology YAML
   matches the plugins registered via `build_stage_factory`. Unknown stage
+  matches the stage types advertised by `create_stage_plugin_manager`. Unknown stage
   types raise `StageResolutionError` during job execution.
 - **Resilience misconfiguration** – Check `config/orchestration/resilience.yaml`
   for required fields (attempts, backoff, circuit breaker thresholds). Invalid

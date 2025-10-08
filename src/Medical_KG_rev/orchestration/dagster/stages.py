@@ -20,17 +20,32 @@ from Medical_KG_rev.orchestration.haystack.components import (
 )
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
+    DownloadStage,
     EmbedStage,
     ExtractStage,
+    GateStage,
     GraphWriteReceipt,
     IngestStage,
     IndexStage,
     KGStage,
+    PdfAsset,
     ParseStage,
     PipelineState,
     StageContext,
 )
 from Medical_KG_rev.orchestration.stages.contracts import RawPayload
+from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePluginManager,
+    StagePluginMetadata,
+    StagePluginRegistration,
+    StagePluginResources,
+    hookimpl,
+)
+
+try:  # pragma: no cover - optional import for typing only
+    from Medical_KG_rev.orchestration.ledger import JobLedger
+except Exception:  # pragma: no cover - defensive guard
+    JobLedger = Any  # type: ignore[assignment]
 
 logger = structlog.get_logger(__name__)
 
@@ -249,3 +264,291 @@ def create_default_pipeline_resource() -> HaystackPipelineResource:
         sparse_writer=NoOpDocumentWriter(name="opensearch"),
     )
 
+
+class PdfDownloadStage(DownloadStage):
+    """Stage responsible for retrieving PDF assets for a pipeline run."""
+
+    def __init__(
+        self,
+        *,
+        job_ledger: JobLedger | None = None,
+        urls: Sequence[str] | None = None,
+        checksum_field: str | None = None,
+    ) -> None:
+        self._job_ledger = job_ledger
+        self._urls = tuple(urls or ())
+        self._checksum_field = checksum_field
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[PdfAsset]:
+        configured_urls: Sequence[str] = self._urls
+        if not configured_urls and isinstance(state.metadata, Mapping):
+            metadata_urls = state.metadata.get("pdf_urls")
+            if isinstance(metadata_urls, Sequence):
+                configured_urls = tuple(str(url) for url in metadata_urls)
+        checksum_value: str | None = None
+        if isinstance(ctx.metadata, Mapping) and self._checksum_field:
+            raw_value = ctx.metadata.get(self._checksum_field)
+            if raw_value is not None:
+                checksum_value = str(raw_value)
+        assets: list[PdfAsset] = []
+        for index, url in enumerate(configured_urls or ()): 
+            assets.append(
+                PdfAsset(
+                    asset_id=f"{ctx.doc_id or ctx.job_id or 'pdf'}:{index}",
+                    uri=str(url),
+                    checksum=checksum_value,
+                    metadata={"source": "configured"},
+                )
+            )
+        if not assets:
+            assets.append(
+                PdfAsset(
+                    asset_id=f"{ctx.doc_id or ctx.job_id or 'pdf'}:0",
+                    uri="about:blank",
+                    checksum=checksum_value,
+                    metadata={"generated": True},
+                )
+            )
+        if ctx.job_id and isinstance(self._job_ledger, JobLedger):
+            try:
+                self._job_ledger.set_pdf_downloaded(ctx.job_id, True)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                logger.warning(
+                    "dagster.stage.pdf_download.ledger_error",
+                    job_id=ctx.job_id,
+                    error=str(exc),
+                )
+        return assets
+
+
+class PdfGateStage(GateStage):
+    """Stage that evaluates ledger state to determine PDF readiness."""
+
+    def __init__(
+        self,
+        *,
+        job_ledger: JobLedger | None = None,
+        field: str = "pdf_ir_ready",
+    ) -> None:
+        self._job_ledger = job_ledger
+        self._field = field
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> bool:
+        if not ctx.job_id or not isinstance(self._job_ledger, JobLedger):
+            return False
+        try:
+            entry = self._job_ledger.get(ctx.job_id)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logger.warning(
+                "dagster.stage.pdf_gate.ledger_error",
+                job_id=ctx.job_id,
+                error=str(exc),
+            )
+            return False
+        if entry is None:
+            return False
+        return bool(getattr(entry, self._field, False))
+
+
+class CoreStagePlugin:
+    """Register the built-in orchestration stage implementations."""
+
+    NAME = "core-stage"
+    VERSION = "1.0.0"
+
+    @hookimpl
+    def stage_builders(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
+        adapter_manager = resources.adapter_manager
+        pipeline_resource = resources.pipeline_resource
+        job_ledger = resources.job_ledger if isinstance(resources.job_ledger, JobLedger) else None
+
+        def build_ingest(definition: StageDefinition, _: StagePluginResources) -> IngestStage:
+            config = definition.config
+            adapter_name = config.get("adapter")
+            if not adapter_name:
+                raise ValueError(f"Stage '{definition.name}' requires an adapter name")
+            strict = bool(config.get("strict", False))
+            domain_value = config.get("domain")
+            try:
+                domain = AdapterDomain(domain_value) if domain_value else AdapterDomain.BIOMEDICAL
+            except Exception as exc:  # pragma: no cover - validation guard
+                raise ValueError(f"Invalid adapter domain '{domain_value}'") from exc
+            extra_parameters = config.get("parameters", {}) if isinstance(config, Mapping) else {}
+            return AdapterIngestStage(
+                adapter_manager,
+                adapter_name=adapter_name,
+                strict=strict,
+                default_domain=domain,
+                extra_parameters=extra_parameters if isinstance(extra_parameters, Mapping) else {},
+            )
+
+        def build_parse(_: StageDefinition, __: StagePluginResources) -> ParseStage:
+            return AdapterParseStage()
+
+        def build_validation(_: StageDefinition, __: StagePluginResources) -> ParseStage:
+            return IRValidationStage()
+
+        def build_chunk(_: StageDefinition, __: StagePluginResources) -> ChunkStage:
+            splitter = pipeline_resource.splitter
+            return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
+
+        def build_embed(_: StageDefinition, __: StagePluginResources) -> EmbedStage:
+            embedder = pipeline_resource.embedder
+            return HaystackEmbedder(embedder=embedder, require_gpu=False, sparse_expander=None)
+
+        def build_index(_: StageDefinition, __: StagePluginResources) -> IndexStage:
+            dense_writer = pipeline_resource.dense_writer
+            sparse_writer = pipeline_resource.sparse_writer
+            return HaystackIndexWriter(dense_writer=dense_writer, sparse_writer=sparse_writer)
+
+        def build_extract(_: StageDefinition, __: StagePluginResources) -> ExtractStage:
+            return NoOpExtractStage()
+
+        def build_kg(_: StageDefinition, __: StagePluginResources) -> KGStage:
+            return NoOpKnowledgeGraphStage()
+
+        def build_download(definition: StageDefinition, __: StagePluginResources) -> PdfDownloadStage:
+            config = definition.config
+            urls = config.get("urls") if isinstance(config, Mapping) else None
+            checksum_field = config.get("checksum_field") if isinstance(config, Mapping) else None
+            urls_seq = tuple(str(url) for url in urls) if isinstance(urls, Sequence) else None
+            return PdfDownloadStage(
+                job_ledger=job_ledger,
+                urls=urls_seq,
+                checksum_field=str(checksum_field) if checksum_field else None,
+            )
+
+        def build_gate(definition: StageDefinition, __: StagePluginResources) -> PdfGateStage:
+            config = definition.config
+            field_name = config.get("field", "pdf_ir_ready") if isinstance(config, Mapping) else "pdf_ir_ready"
+            return PdfGateStage(job_ledger=job_ledger, field=str(field_name))
+
+        return [
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.ingest",
+                    version=self.VERSION,
+                    stage_type="ingest",
+                    capabilities=("adapter",),
+                ),
+                builder=build_ingest,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.parse",
+                    version=self.VERSION,
+                    stage_type="parse",
+                    capabilities=("document",),
+                ),
+                builder=build_parse,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.ir-validation",
+                    version=self.VERSION,
+                    stage_type="ir-validation",
+                    capabilities=("document",),
+                ),
+                builder=build_validation,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.chunk",
+                    version=self.VERSION,
+                    stage_type="chunk",
+                    capabilities=("haystack",),
+                ),
+                builder=build_chunk,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.embed",
+                    version=self.VERSION,
+                    stage_type="embed",
+                    capabilities=("haystack",),
+                ),
+                builder=build_embed,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.index",
+                    version=self.VERSION,
+                    stage_type="index",
+                    capabilities=("haystack",),
+                ),
+                builder=build_index,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.extract",
+                    version=self.VERSION,
+                    stage_type="extract",
+                    capabilities=("noop",),
+                ),
+                builder=build_extract,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.knowledge-graph",
+                    version=self.VERSION,
+                    stage_type="knowledge-graph",
+                    capabilities=("noop",),
+                ),
+                builder=build_kg,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.download",
+                    version=self.VERSION,
+                    stage_type="download",
+                    capabilities=("pdf",),
+                ),
+                builder=build_download,
+            ),
+            StagePluginRegistration(
+                metadata=StagePluginMetadata(
+                    name=f"{self.NAME}.gate",
+                    version=self.VERSION,
+                    stage_type="gate",
+                    capabilities=("ledger",),
+                ),
+                builder=build_gate,
+            ),
+        ]
+
+
+def create_stage_plugin_manager(
+    adapter_manager: AdapterPluginManager,
+    pipeline_resource: HaystackPipelineResource | None = None,
+    *,
+    job_ledger: JobLedger | None = None,
+    load_entrypoints: bool = False,
+) -> StagePluginManager:
+    resources = StagePluginResources(
+        adapter_manager=adapter_manager,
+        pipeline_resource=pipeline_resource or create_default_pipeline_resource(),
+        job_ledger=job_ledger,
+    )
+    manager = StagePluginManager(resources=resources)
+    manager.register(CoreStagePlugin())
+    if load_entrypoints:
+        manager.load_entrypoints()
+    return manager
+
+
+__all__ = [
+    "AdapterIngestStage",
+    "AdapterParseStage",
+    "IRValidationStage",
+    "NoOpExtractStage",
+    "NoOpKnowledgeGraphStage",
+    "SimpleDocumentSplitter",
+    "SimpleEmbedder",
+    "NoOpDocumentWriter",
+    "HaystackPipelineResource",
+    "PdfDownloadStage",
+    "PdfGateStage",
+    "create_default_pipeline_resource",
+    "CoreStagePlugin",
+    "create_stage_plugin_manager",
+]

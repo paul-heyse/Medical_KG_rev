@@ -25,3 +25,4 @@
 - Replace worker-based pipeline execution with Dagster daemon triggers
 - Replace retrieval orchestrators with Haystack retriever wrappers
 - Update gateway service to call `DagsterOrchestrator.submit` instead of creating legacy workers
+- Retire bespoke embedding/indexing services in favour of Dagster stage execution

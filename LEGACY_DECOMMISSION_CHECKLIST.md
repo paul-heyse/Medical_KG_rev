@@ -14,8 +14,8 @@
 - ~~src/Medical_KG_rev/orchestration/retrieval_pipeline.py~~
 
 ### Services Layer Adapters
-- `src/Medical_KG_rev/services/retrieval/indexing_service.py`
-- `src/Medical_KG_rev/services/embedding/service.py`
+- ~~`src/Medical_KG_rev/services/retrieval/indexing_service.py`~~ (removed)
+- ~~`src/Medical_KG_rev/services/embedding/service.py`~~ (replaced with stage-backed worker)
 - ~~`src/Medical_KG_rev/services/retrieval/chunking.py`~~ (replaced with Haystack stage wrapper)
 
 ### Legacy Tests
@@ -29,8 +29,8 @@
 - Replace `from Medical_KG_rev.orchestration import Orchestrator` with `from Medical_KG_rev.orchestration.dagster.runtime import DagsterOrchestrator`
 - Replace `from Medical_KG_rev.orchestration.worker import IngestWorker, MappingWorker` with Dagster job submission helpers
 - Replace `from Medical_KG_rev.services.retrieval.chunking import ...` with `from Medical_KG_rev.orchestration.haystack.components import HaystackChunker`
-- Replace `from Medical_KG_rev.services.embedding.service import ...` with `from Medical_KG_rev.orchestration.haystack.components import HaystackEmbedder`
-- Replace `from Medical_KG_rev.services.retrieval.indexing_service import ...` with `HaystackIndexWriter`
+- Replace `from Medical_KG_rev.services.embedding.service import ...` with `from Medical_KG_rev.services.embedding import EmbeddingWorker`
+- Replace `from Medical_KG_rev.services.retrieval.indexing_service import ...` with `from Medical_KG_rev.orchestration.haystack import HaystackIndexWriter`
 
 ## Documentation to Update
 - `COMPREHENSIVE_CODEBASE_DOCUMENTATION.md`

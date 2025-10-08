@@ -223,13 +223,19 @@ class ResiliencePolicy(BaseModel):
             return None
 
         class _Listener(CircuitBreakerListener):
+            def __init__(self, policy_name: str, stage_name: str) -> None:
+                self._policy_name = policy_name
+                self._stage_name = stage_name
+
             def state_change(self, cb, old_state, new_state):  # type: ignore[override]
-                record_resilience_circuit_state(self.name, stage, str(new_state))
+                record_resilience_circuit_state(
+                    self._policy_name, self._stage_name, str(new_state)
+                )
 
         return CircuitBreaker(
             fail_max=cfg.failure_threshold,
             reset_timeout=cfg.recovery_timeout,
-            listeners=[_Listener()],
+            listeners=[_Listener(self.name, stage)],
         )
 
     def create_rate_limiter(self):
@@ -400,7 +406,10 @@ class ResiliencePolicyLoader:
                     record_resilience_rate_limit_wait(name, stage, waited)
             call = func
             if circuit_breaker is not None:
-                call = circuit_breaker.call
+                def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
+                    return circuit_breaker.call(call, *inner_args, **inner_kwargs)
+
+                call = _call_with_breaker
             return call(*args, **kwargs)
 
         return retry_decorator(_wrapped)

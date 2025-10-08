@@ -1,4 +1,4 @@
-"""Vector storage service abstractions and implementations."""
+"""Vector storage service abstractions."""
 
 from .errors import (
     BackendUnavailableError,
@@ -9,7 +9,6 @@ from .errors import (
     ScopeError,
     VectorStoreError,
 )
-from .factory import VectorStoreFactory
 from .models import (
     CompressionPolicy,
     HealthStatus,
@@ -24,62 +23,27 @@ from .models import (
 )
 from .registry import NamespaceRegistry
 from .service import VectorStoreService
-from .stores.external import (
-    AnnoyIndex,
-    ChromaStore,
-    DiskANNStore,
-    DuckDBVSSStore,
-    HNSWLibIndex,
-    LanceDBStore,
-    NMSLibIndex,
-    PgvectorStore,
-    ScaNNIndex,
-    VespaStore,
-    WeaviateStore,
-)
-from .stores.faiss import FaissVectorStore
-from .stores.memory import InMemoryVectorStore
-from .stores.milvus import MilvusVectorStore
-from .stores.opensearch import OpenSearchKNNStore
-from .stores.qdrant import QdrantVectorStore
 from .types import VectorStorePort
 
 __all__ = [
     "BackendUnavailableError",
     "CompressionPolicy",
-    "HealthStatus",
     "DimensionMismatchError",
-    "InvalidNamespaceConfigError",
-    "AnnoyIndex",
-    "ChromaStore",
-    "DiskANNStore",
-    "DuckDBVSSStore",
-    "FaissVectorStore",
-    "HNSWLibIndex",
-    "InMemoryVectorStore",
-    "LanceDBStore",
-    "MilvusVectorStore",
-    "NMSLibIndex",
-    "OpenSearchKNNStore",
-    "PgvectorStore",
-    "QdrantVectorStore",
-    "ScaNNIndex",
-    "VespaStore",
-    "WeaviateStore",
+    "HealthStatus",
     "IndexParams",
+    "InvalidNamespaceConfigError",
     "NamespaceConfig",
     "NamespaceNotFoundError",
     "NamespaceRegistry",
     "RebuildReport",
     "ResourceExhaustedError",
-    "SnapshotInfo",
     "ScopeError",
+    "SnapshotInfo",
     "UpsertResult",
     "VectorMatch",
     "VectorQuery",
     "VectorRecord",
     "VectorStoreError",
-    "VectorStoreFactory",
     "VectorStorePort",
     "VectorStoreService",
 ]

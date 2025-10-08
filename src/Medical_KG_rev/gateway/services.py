@@ -192,12 +192,31 @@ class GatewayService:
         document_id = str(item.get("id") or uuid.uuid4().hex)
         doc_key = f"{dataset}:{document_id}"
         job_id = f"job-{uuid.uuid4().hex[:12]}"
+        domain = self._ingest_domain(topology) or AdapterDomain.BIOMEDICAL
+        correlation_id = uuid.uuid4().hex
+        adapter_request = AdapterRequest(
+            tenant_id=request.tenant_id,
+            correlation_id=correlation_id,
+            domain=domain,
+            parameters={"dataset": dataset, "item": item},
+        )
+        payload = {"dataset": dataset, "item": item, "metadata": metadata}
+        ledger_metadata = {
+            "dataset": dataset,
+            "item": item,
+            **metadata,
+            "pipeline_version": topology.version,
+            "correlation_id": correlation_id,
+            "adapter_request": adapter_request.model_dump(),
+            "payload": payload,
+        }
+
         entry = self.ledger.idempotent_create(
             job_id=job_id,
             doc_key=doc_key,
             tenant_id=request.tenant_id,
             pipeline=pipeline_name,
-            metadata={"dataset": dataset, "item": item, **metadata},
+            metadata=ledger_metadata,
         )
         duplicate = entry.job_id != job_id
         if duplicate:
@@ -220,24 +239,15 @@ class GatewayService:
                 error=error,
             )
 
-        correlation_id = uuid.uuid4().hex
         context = StageContext(
             tenant_id=request.tenant_id,
+            job_id=job_id,
             doc_id=document_id,
             correlation_id=correlation_id,
             metadata={"dataset": dataset, **metadata},
             pipeline_name=pipeline_name,
             pipeline_version=topology.version,
         )
-
-        domain = self._ingest_domain(topology) or AdapterDomain.BIOMEDICAL
-        adapter_request = AdapterRequest(
-            tenant_id=request.tenant_id,
-            correlation_id=correlation_id,
-            domain=domain,
-            parameters={"dataset": dataset, "item": item},
-        )
-        payload = {"dataset": dataset, "item": item, "metadata": metadata}
 
         self.ledger.mark_processing(job_id, stage="bootstrap")
         self.events.publish(

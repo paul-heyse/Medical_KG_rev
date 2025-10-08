@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import time
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
+from uuid import uuid4
 
 from dagster import (
     Definitions,
@@ -13,19 +15,33 @@ from dagster import (
     In,
     Out,
     ResourceDefinition,
+    RunRequest,
+    SensorEvaluationContext,
+    SkipReason,
     graph,
     op,
+    sensor,
 )
 
 from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
+from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
     PipelineTopologyConfig,
+    StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
 )
-from Medical_KG_rev.orchestration.dagster.stages import build_default_stage_factory
+from Medical_KG_rev.orchestration.dagster.stages import (
+    HaystackPipelineResource,
+    build_default_stage_factory,
+    create_default_pipeline_resource,
+)
+from Medical_KG_rev.orchestration.events import StageEventEmitter
+from Medical_KG_rev.orchestration.kafka import KafkaClient
+from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
+from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
 from Medical_KG_rev.utils.logging import get_logger
 
@@ -77,6 +93,7 @@ def bootstrap_op(context) -> dict[str, Any]:
 
     stage_ctx = StageContext(
         tenant_id=ctx_payload["tenant_id"],
+        job_id=ctx_payload.get("job_id"),
         doc_id=ctx_payload.get("doc_id"),
         correlation_id=ctx_payload.get("correlation_id"),
         metadata=ctx_payload.get("metadata", {}),
@@ -90,6 +107,7 @@ def bootstrap_op(context) -> dict[str, Any]:
         "adapter_request": adapter_request,
         "payload": payload,
         "results": {},
+        "job_id": stage_ctx.job_id,
     }
     logger.debug(
         "dagster.bootstrap.initialised",
@@ -143,6 +161,33 @@ def _apply_stage_output(
     return state
 
 
+def _infer_output_count(stage_type: str, output: Any) -> int:
+    if output is None:
+        return 0
+    if stage_type in {"ingest", "chunk"} and isinstance(output, Sequence):
+        return len(output)
+    if stage_type in {"parse", "ir-validation"}:
+        return 1
+    if stage_type == "embed" and hasattr(output, "vectors"):
+        vectors = getattr(output, "vectors")
+        if isinstance(vectors, Sequence):
+            return len(vectors)
+    if stage_type == "index" and hasattr(output, "chunks_indexed"):
+        indexed = getattr(output, "chunks_indexed")
+        if isinstance(indexed, int):
+            return indexed
+    if stage_type == "extract" and isinstance(output, tuple) and len(output) == 2:
+        entities, claims = output
+        entity_count = len(entities) if isinstance(entities, Sequence) else 0
+        claim_count = len(claims) if isinstance(claims, Sequence) else 0
+        return entity_count + claim_count
+    if stage_type == "knowledge-graph" and hasattr(output, "nodes_written"):
+        nodes = getattr(output, "nodes_written", 0)
+        if isinstance(nodes, int):
+            return nodes
+    return 1
+
+
 def _make_stage_op(
     topology: PipelineTopologyConfig,
     stage_definition: StageDefinition,
@@ -155,51 +200,135 @@ def _make_stage_op(
         name=stage_name,
         ins={"state": In(dict)},
         out=Out(dict),
-        required_resource_keys={"stage_factory", "resilience_policies"},
+        required_resource_keys={
+            "stage_factory",
+            "resilience_policies",
+            "job_ledger",
+            "event_emitter",
+        },
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage = context.resources.stage_factory.resolve(topology.name, stage_definition)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 
         execute = getattr(stage, "execute")
-        wrapped = policy_loader.apply(policy_name, stage_name, execute)
+        execution_state: dict[str, Any] = {
+            "attempts": 0,
+            "duration": 0.0,
+            "failed": False,
+            "error": None,
+        }
+
+        def _on_retry(retry_state: Any) -> None:
+            job_identifier = state.get("job_id")
+            if job_identifier:
+                ledger.increment_retry(job_identifier, stage_name)
+            sleep_seconds = getattr(getattr(retry_state, "next_action", None), "sleep", 0.0) or 0.0
+            attempt_number = getattr(retry_state, "attempt_number", 0) + 1
+            error = getattr(getattr(retry_state, "outcome", None), "exception", lambda: None)()
+            reason = str(error) if error else "retry"
+            emitter.emit_retrying(
+                state["context"],
+                stage_name,
+                attempt=attempt_number,
+                backoff_ms=int(sleep_seconds * 1000),
+                reason=reason,
+            )
+
+        def _on_success(attempts: int, duration: float) -> None:
+            execution_state["attempts"] = attempts
+            execution_state["duration"] = duration
+
+        def _on_failure(error: BaseException, attempts: int) -> None:
+            execution_state["attempts"] = attempts
+            execution_state["failed"] = True
+            execution_state["error"] = error
+
+        hooks = StageExecutionHooks(
+            on_retry=_on_retry,
+            on_success=_on_success,
+            on_failure=_on_failure,
+        )
+
+        wrapped = policy_loader.apply(policy_name, stage_name, execute, hooks=hooks)
 
         stage_ctx: StageContext = state["context"]
+        job_id = stage_ctx.job_id or state.get("job_id")
 
-        if stage_type == "ingest":
-            adapter_request: AdapterRequest = state["adapter_request"]
-            result = wrapped(stage_ctx, adapter_request)
-        elif stage_type in {"parse", "ir-validation"}:
-            payloads = state.get("payloads", [])
-            result = wrapped(stage_ctx, payloads)
-        elif stage_type == "chunk":
-            document = state.get("document")
-            result = wrapped(stage_ctx, document)
-        elif stage_type == "embed":
-            chunks = state.get("chunks", [])
-            result = wrapped(stage_ctx, chunks)
-        elif stage_type == "index":
-            batch = state.get("embedding_batch")
-            result = wrapped(stage_ctx, batch)
-        elif stage_type == "extract":
-            document = state.get("document")
-            result = wrapped(stage_ctx, document)
-        elif stage_type == "knowledge-graph":
-            entities = state.get("entities", [])
-            claims = state.get("claims", [])
-            result = wrapped(stage_ctx, entities, claims)
-        else:  # pragma: no cover - guard for future expansion
-            upstream = state.get(_stage_state_key(stage_type))
-            result = wrapped(stage_ctx, upstream)
+        initial_attempt = 1
+        if job_id:
+            entry = ledger.mark_stage_started(job_id, stage_name)
+            initial_attempt = entry.retry_count_per_stage.get(stage_name, 0) + 1
+        emitter.emit_started(stage_ctx, stage_name, attempt=initial_attempt)
+
+        start_time = time.perf_counter()
+
+        try:
+            if stage_type == "ingest":
+                adapter_request: AdapterRequest = state["adapter_request"]
+                result = wrapped(stage_ctx, adapter_request)
+            elif stage_type in {"parse", "ir-validation"}:
+                payloads = state.get("payloads", [])
+                result = wrapped(stage_ctx, payloads)
+            elif stage_type == "chunk":
+                document = state.get("document")
+                result = wrapped(stage_ctx, document)
+            elif stage_type == "embed":
+                chunks = state.get("chunks", [])
+                result = wrapped(stage_ctx, chunks)
+            elif stage_type == "index":
+                batch = state.get("embedding_batch")
+                result = wrapped(stage_ctx, batch)
+            elif stage_type == "extract":
+                document = state.get("document")
+                result = wrapped(stage_ctx, document)
+            elif stage_type == "knowledge-graph":
+                entities = state.get("entities", [])
+                claims = state.get("claims", [])
+                result = wrapped(stage_ctx, entities, claims)
+            else:  # pragma: no cover - guard for future expansion
+                upstream = state.get(_stage_state_key(stage_type))
+                result = wrapped(stage_ctx, upstream)
+        except Exception as exc:
+            attempts = execution_state.get("attempts") or 1
+            emitter.emit_failed(stage_ctx, stage_name, attempt=attempts, error=str(exc))
+            if job_id:
+                ledger.mark_failed(job_id, stage=stage_name, reason=str(exc))
+            raise
 
         updated = dict(state)
         _apply_stage_output(stage_type, stage_name, updated, result)
+        output = updated.get(_stage_state_key(stage_type))
+        attempts = execution_state.get("attempts") or 1
+        duration_seconds = execution_state.get("duration") or (time.perf_counter() - start_time)
+        duration_ms = int(duration_seconds * 1000)
+        output_count = _infer_output_count(stage_type, output)
+
+        if job_id:
+            ledger.update_metadata(
+                job_id,
+                {
+                    f"stage.{stage_name}.attempts": attempts,
+                    f"stage.{stage_name}.output_count": output_count,
+                    f"stage.{stage_name}.duration_ms": duration_ms,
+                },
+            )
+        emitter.emit_completed(
+            stage_ctx,
+            stage_name,
+            attempt=attempts,
+            duration_ms=duration_ms,
+            output_count=output_count,
+        )
         logger.debug(
             "dagster.stage.completed",
             pipeline=topology.name,
             stage=stage_name,
             stage_type=stage_type,
             policy=policy_name,
+            attempts=attempts,
+            duration_ms=duration_ms,
+            output_count=output_count,
         )
         return updated
 
@@ -234,6 +363,7 @@ class BuiltPipelineJob:
     job_name: str
     job_definition: Any
     final_node: str
+    version: str
 
 
 def _normalise_name(name: str) -> str:
@@ -250,8 +380,7 @@ def _normalise_name(name: str) -> str:
 def _build_pipeline_job(
     topology: PipelineTopologyConfig,
     *,
-    stage_factory: StageFactory,
-    resilience_loader: ResiliencePolicyLoader,
+    resource_defs: Mapping[str, ResourceDefinition],
 ) -> BuiltPipelineJob:
     stage_ops = {
         stage.name: _make_stage_op(topology, stage)
@@ -272,8 +401,7 @@ def _build_pipeline_job(
     job = _pipeline_graph.to_job(
         name=f"{safe_name}_job",
         resource_defs={
-            "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
-            "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
+            **resource_defs,
         },
         tags={
             "medical_kg.pipeline": topology.name,
@@ -285,6 +413,7 @@ def _build_pipeline_job(
         job_name=job.name,
         job_definition=job,
         final_node=order[-1] if order else "bootstrap",
+        version=topology.version,
     )
 
 
@@ -307,12 +436,34 @@ class DagsterOrchestrator:
         resilience_loader: ResiliencePolicyLoader,
         stage_factory: StageFactory,
         *,
+        plugin_manager: AdapterPluginManager | None = None,
+        job_ledger: JobLedger | None = None,
+        kafka_client: KafkaClient | None = None,
+        event_emitter: StageEventEmitter | None = None,
+        openlineage_emitter: OpenLineageEmitter | None = None,
+        pipeline_resource: HaystackPipelineResource | None = None,
         base_path: str | Path | None = None,
     ) -> None:
         self.pipeline_loader = pipeline_loader
         self.resilience_loader = resilience_loader
         self.stage_factory = stage_factory
+        self.plugin_manager = plugin_manager or get_plugin_manager()
         self.base_path = Path(base_path or pipeline_loader.base_path)
+        self.job_ledger = job_ledger or JobLedger()
+        self.kafka_client = kafka_client or KafkaClient()
+        self.pipeline_resource = pipeline_resource or create_default_pipeline_resource()
+        self.event_emitter = event_emitter or StageEventEmitter(self.kafka_client)
+        self.openlineage = openlineage_emitter or OpenLineageEmitter()
+        self._resource_defs: dict[str, ResourceDefinition] = {
+            "stage_factory": ResourceDefinition.hardcoded_resource(stage_factory),
+            "resilience_policies": ResourceDefinition.hardcoded_resource(resilience_loader),
+            "job_ledger": ResourceDefinition.hardcoded_resource(self.job_ledger),
+            "event_emitter": ResourceDefinition.hardcoded_resource(self.event_emitter),
+            "haystack_pipeline": ResourceDefinition.hardcoded_resource(self.pipeline_resource),
+            "plugin_manager": ResourceDefinition.hardcoded_resource(self.plugin_manager),
+            "kafka": ResourceDefinition.hardcoded_resource(self.kafka_client),
+            "openlineage": ResourceDefinition.hardcoded_resource(self.openlineage),
+        }
         self._jobs: dict[str, BuiltPipelineJob] = {}
         self._definitions: Definitions | None = None
         self._refresh_jobs()
@@ -321,7 +472,11 @@ class DagsterOrchestrator:
     def definitions(self) -> Definitions:
         if self._definitions is None:
             jobs = [entry.job_definition for entry in self._jobs.values()]
-            self._definitions = Definitions(jobs=jobs)
+            self._definitions = Definitions(
+                jobs=jobs,
+                resources=self._resource_defs,
+                sensors=[pdf_ir_ready_sensor],
+            )
         return self._definitions
 
     def available_pipelines(self) -> list[str]:
@@ -333,11 +488,19 @@ class DagsterOrchestrator:
             topology = self.pipeline_loader.load(path.stem)
             job_entries[topology.name] = _build_pipeline_job(
                 topology,
-                stage_factory=self.stage_factory,
-                resilience_loader=self.resilience_loader,
+                resource_defs=self._resource_defs,
             )
         self._jobs = job_entries
         self._definitions = None
+
+    def _record_job_attempt(self, job_id: str | None) -> int:
+        if not job_id:
+            return 1
+        try:
+            return self.job_ledger.record_attempt(job_id)
+        except JobLedgerError:
+            logger.debug("dagster.ledger.missing_job", job_id=job_id)
+            return 1
 
     def submit(
         self,
@@ -360,11 +523,12 @@ class DagsterOrchestrator:
                     "config": {
                         "context": {
                             "tenant_id": context.tenant_id,
+                            "job_id": context.job_id,
                             "doc_id": context.doc_id,
                             "correlation_id": context.correlation_id,
-                            "metadata": context.metadata,
+                            "metadata": dict(context.metadata),
                             "pipeline_name": pipeline,
-                            "pipeline_version": self.pipeline_loader.load(pipeline).version,
+                            "pipeline_version": job.version,
                         },
                         "adapter_request": adapter_request.model_dump(),
                         "payload": dict(payload),
@@ -373,7 +537,75 @@ class DagsterOrchestrator:
             }
         }
 
-        result = job.job_definition.execute_in_process(run_config=run_config)
+        run_metadata: dict[str, Any] = {}
+        if isinstance(context.metadata, Mapping):
+            run_metadata = dict(context.metadata)
+        run_metadata.setdefault("pipeline_version", job.version)
+
+        job_attempt = self._record_job_attempt(context.job_id)
+        run_identifier = context.job_id or context.correlation_id or uuid4().hex
+
+        if context.job_id:
+            try:
+                self.job_ledger.update_metadata(
+                    context.job_id,
+                    {
+                        "pipeline_version": job.version,
+                        "correlation_id": context.correlation_id,
+                        "adapter_request": adapter_request.model_dump(),
+                        "payload": dict(payload),
+                    },
+                )
+            except JobLedgerError:
+                logger.debug(
+                    "dagster.ledger.metadata_update_failed",
+                    job_id=context.job_id,
+                    pipeline=pipeline,
+                )
+
+        self.openlineage.emit_run_started(
+            pipeline,
+            run_id=run_identifier,
+            context=context,
+            attempt=job_attempt,
+            run_metadata=run_metadata,
+        )
+
+        start_time = time.perf_counter()
+        try:
+            result = job.job_definition.execute_in_process(run_config=run_config)
+        except Exception as exc:
+            ledger_entry = self.job_ledger.get(context.job_id) if context.job_id else None
+            self.openlineage.emit_run_failed(
+                pipeline,
+                run_id=run_identifier,
+                context=context,
+                attempt=job_attempt,
+                ledger_entry=ledger_entry,
+                run_metadata=run_metadata,
+                error=str(exc),
+            )
+            raise
+
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+
+        ledger_entry = None
+        if context.job_id:
+            try:
+                ledger_entry = self.job_ledger.mark_completed(context.job_id)
+            except JobLedgerError:
+                ledger_entry = self.job_ledger.get(context.job_id)
+
+        self.openlineage.emit_run_completed(
+            pipeline,
+            run_id=run_identifier,
+            context=context,
+            attempt=job_attempt,
+            ledger_entry=ledger_entry,
+            run_metadata=run_metadata,
+            duration_ms=duration_ms,
+        )
+
         final_state = result.output_for_node(job.final_node)
         return DagsterRunResult(
             pipeline=pipeline,
@@ -401,14 +633,79 @@ def submit_to_dagster(
     )
 
 
+@sensor(name="pdf_ir_ready_sensor", minimum_interval_seconds=30, required_resource_keys={"job_ledger"})
+def pdf_ir_ready_sensor(context: SensorEvaluationContext):
+    ledger: JobLedger = context.resources.job_ledger
+    ready_requests: list[RunRequest] = []
+    for entry in ledger.all():
+        if entry.pipeline_name != "pdf-two-phase":
+            continue
+        if not entry.pdf_ir_ready or entry.status != "processing":
+            continue
+        run_key = f"{entry.job_id}-resume"
+        context_payload = {
+            "tenant_id": entry.tenant_id,
+            "job_id": entry.job_id,
+            "doc_id": entry.doc_key,
+            "correlation_id": entry.metadata.get("correlation_id"),
+            "metadata": dict(entry.metadata),
+            "pipeline_name": entry.pipeline_name,
+            "pipeline_version": entry.metadata.get("pipeline_version", entry.pipeline_name or ""),
+        }
+        adapter_payload = entry.metadata.get("adapter_request", {})
+        payload = entry.metadata.get("payload", {})
+        run_config = {
+            "ops": {
+                "bootstrap": {
+                    "config": {
+                        "context": context_payload,
+                        "adapter_request": adapter_payload,
+                        "payload": payload,
+                    }
+                }
+            }
+        }
+        ready_requests.append(
+            RunRequest(
+                run_key=run_key,
+                run_config=run_config,
+                tags={
+                    "medical_kg.pipeline": entry.pipeline_name or "",
+                    "medical_kg.resume_stage": "chunk",
+                },
+            )
+        )
+    if not ready_requests:
+        yield SkipReason("No PDF ingestion jobs ready for resumption")
+        return
+    for request in ready_requests:
+        yield request
+
+
 def build_default_orchestrator() -> DagsterOrchestrator:
     """Construct a Dagster orchestrator with default stage builders."""
 
     pipeline_loader = PipelineConfigLoader()
     resilience_loader = ResiliencePolicyLoader()
-    stage_builders = build_default_stage_factory(get_plugin_manager())
+    plugin_manager = get_plugin_manager()
+    pipeline_resource = create_default_pipeline_resource()
+    stage_builders = build_default_stage_factory(plugin_manager, pipeline_resource)
     stage_factory = StageFactory(stage_builders)
-    return DagsterOrchestrator(pipeline_loader, resilience_loader, stage_factory)
+    job_ledger = JobLedger()
+    kafka_client = KafkaClient()
+    event_emitter = StageEventEmitter(kafka_client)
+    openlineage_emitter = OpenLineageEmitter()
+    return DagsterOrchestrator(
+        pipeline_loader,
+        resilience_loader,
+        stage_factory,
+        plugin_manager=plugin_manager,
+        job_ledger=job_ledger,
+        kafka_client=kafka_client,
+        event_emitter=event_emitter,
+        openlineage_emitter=openlineage_emitter,
+        pipeline_resource=pipeline_resource,
+    )
 
 
 try:  # pragma: no cover - import side effect for CLI usage
@@ -423,4 +720,5 @@ __all__ = [
     "StageFactory",
     "StageResolutionError",
     "submit_to_dagster",
+    "pdf_ir_ready_sensor",
 ]

@@ -64,6 +64,7 @@ class StageContext:
     """Immutable context shared across stage boundaries."""
 
     tenant_id: str
+    job_id: str | None = None
     doc_id: str | None = None
     correlation_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -77,6 +78,7 @@ class StageContext:
         updated.update(values)
         return StageContext(
             tenant_id=self.tenant_id,
+            job_id=self.job_id,
             doc_id=self.doc_id,
             correlation_id=self.correlation_id,
             metadata=updated,

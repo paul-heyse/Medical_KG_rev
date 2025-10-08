@@ -23,6 +23,7 @@ from Medical_KG_rev.orchestration.haystack.components import (
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
     EmbedStage,
+    ExtractStage,
     GraphWriteReceipt,
     IngestStage,
     IndexStage,
@@ -141,7 +142,7 @@ class IRValidationStage(ParseStage):
         return document
 
 
-class NoOpExtractStage(ParseStage):
+class NoOpExtractStage(ExtractStage):
     """Stub extraction stage returning empty entity and claim collections."""
 
     def execute(self, ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]:
@@ -229,13 +230,34 @@ class NoOpDocumentWriter:
         return {"documents": list(documents)}
 
 
-def build_default_stage_factory(manager: AdapterPluginManager) -> dict[str, Callable[[StageDefinition], object]]:
+@dataclass(slots=True)
+class HaystackPipelineResource:
+    splitter: SimpleDocumentSplitter
+    embedder: SimpleEmbedder
+    dense_writer: NoOpDocumentWriter
+    sparse_writer: NoOpDocumentWriter
+
+
+def create_default_pipeline_resource() -> HaystackPipelineResource:
+    return HaystackPipelineResource(
+        splitter=SimpleDocumentSplitter(),
+        embedder=SimpleEmbedder(),
+        dense_writer=NoOpDocumentWriter(name="faiss"),
+        sparse_writer=NoOpDocumentWriter(name="opensearch"),
+    )
+
+
+def build_default_stage_factory(
+    manager: AdapterPluginManager,
+    pipeline: HaystackPipelineResource | None = None,
+) -> dict[str, Callable[[StageDefinition], object]]:
     """Return builder mappings for standard Dagster stage types."""
 
-    splitter = SimpleDocumentSplitter()
-    embedder = SimpleEmbedder()
-    dense_writer = NoOpDocumentWriter(name="faiss")
-    sparse_writer = NoOpDocumentWriter(name="opensearch")
+    pipeline = pipeline or create_default_pipeline_resource()
+    splitter = pipeline.splitter
+    embedder = pipeline.embedder
+    dense_writer = pipeline.dense_writer
+    sparse_writer = pipeline.sparse_writer
 
     def _ingest_builder(definition: StageDefinition) -> IngestStage:
         config = definition.config
@@ -272,7 +294,7 @@ def build_default_stage_factory(manager: AdapterPluginManager) -> dict[str, Call
     def _index_builder(_: StageDefinition) -> IndexStage:
         return HaystackIndexWriter(dense_writer=dense_writer, sparse_writer=sparse_writer)
 
-    def _extract_builder(_: StageDefinition) -> ParseStage:
+    def _extract_builder(_: StageDefinition) -> ExtractStage:
         return NoOpExtractStage()
 
     def _kg_builder(_: StageDefinition) -> KGStage:

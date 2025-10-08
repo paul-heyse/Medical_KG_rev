@@ -10,10 +10,18 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Mapping
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from Medical_KG_rev.observability.metrics import (
     record_resilience_circuit_state,
@@ -23,6 +31,10 @@ from Medical_KG_rev.observability.metrics import (
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+if TYPE_CHECKING:  # pragma: no cover - hints only
+    from aiolimiter import AsyncLimiter
+    from pybreaker import CircuitBreaker
 
 
 class BackoffStrategy(str, Enum):
@@ -165,6 +177,15 @@ class ResiliencePolicyConfig(BaseModel):
     rate_limit: RateLimitConfig | None = None
 
 
+@dataclass(slots=True)
+class StageExecutionHooks:
+    """Lifecycle callbacks for stage execution resilience wrappers."""
+
+    on_retry: Callable[[Any], None] | None = None
+    on_success: Callable[[int, float], None] | None = None
+    on_failure: Callable[[BaseException, int], None] | None = None
+
+
 class ResiliencePolicy(BaseModel):
     """Runtime wrapper around :class:`ResiliencePolicyConfig`."""
 
@@ -173,7 +194,10 @@ class ResiliencePolicy(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
-    def create_retry(self, stage: str):
+    _rate_limiter: "AsyncLimiter | None" = PrivateAttr(default=None)
+    _circuit_breakers: dict[str, "CircuitBreaker"] = PrivateAttr(default_factory=dict)
+
+    def create_retry(self, stage: str, hooks: StageExecutionHooks | None = None):
         from tenacity import retry, stop_after_attempt
         from tenacity import wait_none
         from tenacity.wait import wait_exponential, wait_fixed, wait_incrementing
@@ -198,6 +222,8 @@ class ResiliencePolicy(BaseModel):
 
         def _before_sleep(retry_state):
             record_resilience_retry(self.name, stage)
+            if hooks and hooks.on_retry:
+                hooks.on_retry(retry_state)
 
         return retry(
             stop=stop_after_attempt(self.config.max_attempts),
@@ -222,6 +248,9 @@ class ResiliencePolicy(BaseModel):
         if cfg is None:
             return None
 
+        if stage in self._circuit_breakers:
+            return self._circuit_breakers[stage]
+
         class _Listener(CircuitBreakerListener):
             def __init__(self, policy_name: str, stage_name: str) -> None:
                 self._policy_name = policy_name
@@ -232,13 +261,15 @@ class ResiliencePolicy(BaseModel):
                     self._policy_name, self._stage_name, str(new_state)
                 )
 
-        return CircuitBreaker(
+        breaker = CircuitBreaker(
             fail_max=cfg.failure_threshold,
             reset_timeout=cfg.recovery_timeout,
             listeners=[_Listener(self.name, stage)],
         )
+        self._circuit_breakers[stage] = breaker
+        return breaker
 
-    def create_rate_limiter(self):
+    def get_rate_limiter(self) -> "AsyncLimiter | None":
         try:
             from aiolimiter import AsyncLimiter
         except ModuleNotFoundError:  # pragma: no cover - optional dependency
@@ -252,7 +283,10 @@ class ResiliencePolicy(BaseModel):
         cfg = self.config.rate_limit
         if cfg is None:
             return None
-        return AsyncLimiter(cfg.rate_limit_per_second, 1)
+        if self._rate_limiter is None:
+            rate = max(cfg.rate_limit_per_second, 1e-6)
+            self._rate_limiter = AsyncLimiter(rate, time_period=1.0)
+        return self._rate_limiter
 
 
 def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:
@@ -278,6 +312,41 @@ def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:
 class _CacheEntry:
     config: PipelineTopologyConfig
     mtime: float
+
+
+class _SyncLimiter:
+    """Run an AsyncLimiter behind a dedicated event loop for sync callers."""
+
+    def __init__(self, limiter: "AsyncLimiter") -> None:
+        self._limiter = limiter
+        self._loop = asyncio.new_event_loop()
+        self._ready = threading.Event()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="resilience-policy-limiter",
+            daemon=True,
+        )
+        self._thread.start()
+        self._ready.wait()
+
+    def _run(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._ready.set()
+        self._loop.run_forever()
+
+    def acquire(self) -> float:
+        start = time.perf_counter()
+        future = asyncio.run_coroutine_threadsafe(self._limiter.acquire(), self._loop)
+        future.result()
+        return time.perf_counter() - start
+
+    def close(self) -> None:
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join(timeout=1.0)
+
+    @property
+    def limiter(self) -> "AsyncLimiter":
+        return self._limiter
 
 
 class PipelineConfigLoader:
@@ -354,6 +423,7 @@ class ResiliencePolicyLoader:
         self._watchers: list[Callable[[str, ResiliencePolicy], None]] = []
         self._watch_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._sync_limiters: dict[str, _SyncLimiter] = {}
 
     def load(self, *, force: bool = False) -> dict[str, ResiliencePolicy]:
         if not self.path.exists():
@@ -373,6 +443,7 @@ class ResiliencePolicyLoader:
                 for watcher in self._watchers:
                     for name, policy in policies.items():
                         watcher(name, policy)
+                self._prune_limiters(set(policies))
             return dict(self._policies)
 
     def get(self, name: str) -> ResiliencePolicy:
@@ -384,27 +455,56 @@ class ResiliencePolicyLoader:
             except KeyError as exc:
                 raise KeyError(f"Unknown resilience policy '{name}'") from exc
 
-    def apply(self, name: str, stage: str, func: Callable[..., Any]) -> Callable[..., Any]:
+    def apply(
+        self,
+        name: str,
+        stage: str,
+        func: Callable[..., Any],
+        hooks: StageExecutionHooks | None = None,
+    ) -> Callable[..., Any]:
         policy = self.get(name)
         if asyncio.iscoroutinefunction(func):
             raise TypeError("ResiliencePolicyLoader.apply only supports synchronous callables")
 
-        retry_decorator = policy.create_retry(stage)
+        hooks = hooks or StageExecutionHooks()
         circuit_breaker = policy.create_circuit_breaker(stage)
-        limiter = policy.create_rate_limiter()
+        limiter = policy.get_rate_limiter()
+        sync_limiter = None
+        if limiter is not None:
+            sync_limiter = self._sync_limiters.get(name)
+            if sync_limiter is None or sync_limiter.limiter is not limiter:
+                if sync_limiter is not None:
+                    sync_limiter.close()
+                sync_limiter = _SyncLimiter(limiter)
+                self._sync_limiters[name] = sync_limiter
+
+        def _invoke(*args: Any, **kwargs: Any) -> Any:
+            call_state = {"attempts": 0}
+
+            def _call(*inner_args: Any, **inner_kwargs: Any) -> Any:
+                call_state["attempts"] += 1
+                return func(*inner_args, **inner_kwargs)
+
+            retry_decorator = policy.create_retry(stage, hooks)
+            wrapped = retry_decorator(_call)
+            start = time.perf_counter()
+            try:
+                result = wrapped(*args, **kwargs)
+            except Exception as exc:
+                if hooks.on_failure:
+                    hooks.on_failure(exc, call_state["attempts"])
+                raise
+            duration = time.perf_counter() - start
+            if hooks.on_success:
+                hooks.on_success(call_state["attempts"], duration)
+            return result
 
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
-            if limiter is not None:
-                start = time.perf_counter()
-                loop = asyncio.new_event_loop()
-                try:
-                    loop.run_until_complete(limiter.acquire())
-                finally:
-                    loop.close()
-                waited = time.perf_counter() - start
+            if sync_limiter is not None:
+                waited = sync_limiter.acquire()
                 if waited:
                     record_resilience_rate_limit_wait(name, stage, waited)
-            call = func
+            call = _invoke
             if circuit_breaker is not None:
                 def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
                     return circuit_breaker.call(call, *inner_args, **inner_kwargs)
@@ -412,7 +512,7 @@ class ResiliencePolicyLoader:
                 call = _call_with_breaker
             return call(*args, **kwargs)
 
-        return retry_decorator(_wrapped)
+        return _wrapped
 
     def watch(self, callback: Callable[[str, ResiliencePolicy], None], *, interval: float = 2.0) -> None:
         self._watchers.append(callback)
@@ -440,6 +540,15 @@ class ResiliencePolicyLoader:
         self._stop_event.set()
         if self._watch_thread and self._watch_thread.is_alive():
             self._watch_thread.join(timeout=1.0)
+        for limiter in list(self._sync_limiters.values()):
+            limiter.close()
+        self._sync_limiters.clear()
+
+    def _prune_limiters(self, active: set[str]) -> None:
+        for key in list(self._sync_limiters.keys()):
+            if key not in active:
+                limiter = self._sync_limiters.pop(key)
+                limiter.close()
 
 
 def export_pipeline_schema(path: str | Path) -> None:

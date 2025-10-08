@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections import deque
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Coroutine, TypeVar
+from functools import wraps
+import time
+from collections import deque
+from enum import Enum
+from functools import wraps
+from typing import Any, Awaitable, Callable, TypeVar, cast
 
 import httpx
+from aiolimiter import AsyncLimiter
+from pybreaker import CircuitBreaker, CircuitBreakerError
 from tenacity import (
     RetryCallState,
     retry,
@@ -52,147 +57,132 @@ class ResilienceConfig(BaseModel):
     )
 
 
-class CircuitState(str, Enum):
-    CLOSED = "closed"
-    OPEN = "open"
-    HALF_OPEN = "half_open"
+FuncT = TypeVar("FuncT", bound=Callable[..., Any])
+AsyncFuncT = TypeVar("AsyncFuncT", bound=Callable[..., Awaitable[Any]])
 
 
-@dataclass
-class CircuitBreaker:
-    """Simple circuit breaker implementation."""
-
-    failure_threshold: int
-    reset_timeout: float
-    _failures: int = 0
-    _state: CircuitState = CircuitState.CLOSED
-    _opened_at: float | None = None
-
-    def record_success(self) -> None:
-        self._failures = 0
-        self._state = CircuitState.CLOSED
-        self._opened_at = None
-
-    def record_failure(self) -> None:
-        self._failures += 1
-        if self._failures >= self.failure_threshold:
-            self._state = CircuitState.OPEN
-            self._opened_at = time.monotonic()
-
-    def can_execute(self) -> bool:
-        if self._state == CircuitState.CLOSED:
-            return True
-        if self._state == CircuitState.OPEN:
-            assert self._opened_at is not None
-            elapsed = time.monotonic() - self._opened_at
-            if elapsed >= self.reset_timeout:
-                self._state = CircuitState.HALF_OPEN
-                return True
-            return False
-        # Half-open allows a single trial request
-        return True
-
-    def on_trial_result(self, success: bool) -> None:
-        if success:
-            self.record_success()
-        else:
-            self.record_failure()
-
-    @property
-    def state(self) -> CircuitState:
-        return self._state
+def _build_wait_strategy(config: ResilienceConfig):
+    if config.backoff_strategy is BackoffStrategy.EXPONENTIAL:
+        return wait_exponential(
+            multiplier=max(config.backoff_multiplier, 0.0),
+            max=max(config.backoff_max_seconds, 0.0),
+        )
+    if config.backoff_strategy is BackoffStrategy.JITTER:
+        base = wait_exponential(
+            multiplier=max(config.backoff_multiplier, 0.0) or 1.0,
+            max=max(config.backoff_max_seconds, 0.0) or None,
+        )
+        if hasattr(base, "with_jitter"):
+            return base.with_jitter(0.1)
+        return base
+    return wait_fixed(config.backoff_multiplier)
 
 
-RateLimiterCallable = TypeVar("RateLimiterCallable", bound=Callable[..., Any])
+def retry_on_failure(
+    config: ResilienceConfig,
+    retry_exceptions: tuple[type[Exception], ...] = (Exception,),
+) -> Callable[[FuncT], FuncT]:
+    """Create a retry decorator backed by Tenacity."""
 
-
-class TokenBucket:
-    def __init__(self, capacity: int, fill_rate: float) -> None:
-        self.capacity = capacity
-        self.tokens = capacity
-        self.fill_rate = fill_rate
-        self.timestamp = time.monotonic()
-        self.lock = asyncio.Lock()
-
-    async def consume(self, tokens: float = 1.0) -> None:
-        async with self.lock:
-            self._add_new_tokens()
-            while self.tokens < tokens:
-                await asyncio.sleep(1 / max(self.fill_rate, 1e-6))
-                self._add_new_tokens()
-            self.tokens -= tokens
-
-    def _add_new_tokens(self) -> None:
-        now = time.monotonic()
-        delta = now - self.timestamp
-        self.timestamp = now
-        self.tokens = min(self.capacity, self.tokens + delta * self.fill_rate)
-
-
-def retry_on_failure(config: ResilienceConfig, retry_exceptions: tuple[type[Exception], ...] = (Exception,)):
-    """Create a retry decorator using Tenacity with the provided configuration."""
-
-    if config.backoff_strategy == BackoffStrategy.EXPONENTIAL:
-        wait = wait_exponential(multiplier=config.backoff_multiplier, max=config.backoff_max_seconds)
-    else:
-        wait = wait_fixed(config.backoff_multiplier)
+    wait_strategy = _build_wait_strategy(config)
 
     def before_sleep(retry_state: RetryCallState) -> None:  # pragma: no cover - logging hook
         if Counter is not None:
-            RETRY_ATTEMPTS.labels(adapter=retry_state.kwargs.get("adapter", "unknown")).inc()
+            adapter = retry_state.kwargs.get("adapter", "unknown")
+            RETRY_ATTEMPTS.labels(adapter=adapter).inc()
 
-    def decorator(func: RateLimiterCallable) -> RateLimiterCallable:
+    def decorator(func: FuncT) -> FuncT:
         wrapped = retry(
             stop=stop_after_attempt(config.max_attempts),
-            wait=wait,
+            wait=wait_strategy,
             reraise=True,
             retry=retry_if_exception_type(retry_exceptions),
             before_sleep=before_sleep,
         )(func)
-        return wrapped  # type: ignore[return-value]
+        return cast(FuncT, wrapped)
 
     return decorator
 
 
-def rate_limit(config: ResilienceConfig):
-    bucket = TokenBucket(config.rate_limit_capacity, config.rate_limit_per_second)
+def _create_rate_limiter(config: ResilienceConfig) -> AsyncLimiter | None:
+    if config.rate_limit_per_second <= 0:
+        return None
+    capacity = max(1, int(config.rate_limit_capacity))
+    fill_rate = max(config.rate_limit_per_second, 1e-6)
+    period = max(capacity / fill_rate, 1e-6)
+    return AsyncLimiter(capacity, period)
 
-    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]):
+
+def rate_limit(config: ResilienceConfig) -> Callable[[AsyncFuncT], AsyncFuncT]:
+    limiter = _create_rate_limiter(config)
+
+    def decorator(func: AsyncFuncT) -> AsyncFuncT:
+        if limiter is None:
+            return func
+
+        @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any):
-            await bucket.consume()
-            return await func(*args, **kwargs)
+            start = time.perf_counter()
+            async with limiter:
+                waited = time.perf_counter() - start
+                if Counter is not None and waited > 0:
+                    RETRY_LATENCY.labels(operation="rate_limit_wait").inc(waited)
+                return await func(*args, **kwargs)
 
-        return wrapper
+        return cast(AsyncFuncT, wrapper)
 
     return decorator
 
 
-def circuit_breaker(config: ResilienceConfig):
+async def _call_with_breaker(
+    breaker: CircuitBreaker,
+    func: Callable[..., Awaitable[Any]],
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    with breaker._lock:  # type: ignore[attr-defined]
+        state = breaker.state
+        state.before_call(func, *args, **kwargs)
+        for listener in breaker.listeners:
+            listener.before_call(breaker, func, *args, **kwargs)
+    try:
+        result = await func(*args, **kwargs)
+    except Exception as exc:  # pragma: no cover - state transitions tested separately
+        with breaker._lock:  # type: ignore[attr-defined]
+            breaker.state._handle_error(exc)
+        raise
+    else:
+        with breaker._lock:  # type: ignore[attr-defined]
+            breaker.state._handle_success()
+        return result
+
+
+def circuit_breaker(config: ResilienceConfig) -> Callable[[AsyncFuncT], AsyncFuncT]:
     breaker = CircuitBreaker(
-        failure_threshold=config.circuit_breaker_failure_threshold,
+        fail_max=config.circuit_breaker_failure_threshold,
         reset_timeout=config.circuit_breaker_reset_timeout,
     )
 
-    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]):
+    def decorator(func: AsyncFuncT) -> AsyncFuncT:
+        @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any):
-            if not breaker.can_execute():
-                if Gauge is not None:
-                    CIRCUIT_STATE.labels(adapter=kwargs.get("adapter", "unknown")).set(1)
-                raise RuntimeError("Circuit breaker is open")
+            adapter = kwargs.get("adapter", "unknown")
             try:
-                result = await func(*args, **kwargs)
-            except Exception:
-                breaker.record_failure()
+                result = await _call_with_breaker(breaker, func, *args, **kwargs)
+            except CircuitBreakerError:
                 if Gauge is not None:
-                    CIRCUIT_STATE.labels(adapter=kwargs.get("adapter", "unknown")).set(1)
+                    CIRCUIT_STATE.labels(adapter=adapter).set(1)
+                raise
+            except Exception:
+                if Gauge is not None and str(breaker.current_state).lower() == "open":
+                    CIRCUIT_STATE.labels(adapter=adapter).set(1)
                 raise
             else:
-                breaker.on_trial_result(True)
                 if Gauge is not None:
-                    CIRCUIT_STATE.labels(adapter=kwargs.get("adapter", "unknown")).set(0)
+                    CIRCUIT_STATE.labels(adapter=adapter).set(0)
                 return result
 
-        return wrapper
+        return cast(AsyncFuncT, wrapper)
 
     return decorator
 
@@ -209,16 +199,50 @@ class ResilientHTTPClient:
         self.config = config or ResilienceConfig()
         self._client = client or httpx.AsyncClient()
         self._history: deque[float] = deque(maxlen=20)
+        self._retry = retry_on_failure(self.config)
+        self._limiter = _create_rate_limiter(self.config)
+        self._breaker = CircuitBreaker(
+            fail_max=self.config.circuit_breaker_failure_threshold,
+            reset_timeout=self.config.circuit_breaker_reset_timeout,
+        )
 
-    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+    async def get(self, url: str, *, adapter_name: str = "http", **kwargs: Any) -> httpx.Response:
         async def _request() -> httpx.Response:
             response = await self._client.get(url, **kwargs)
             response.raise_for_status()
             return response
 
         start = time.perf_counter()
-        wrapped = retry_on_failure(self.config)(_request)
-        response = await wrapped()
+        call = self._retry(_request)
+
+        if self._limiter is not None:
+            previous = call
+
+            async def limited_call() -> httpx.Response:
+                async with self._limiter:
+                    return await previous()
+
+            call = limited_call
+
+        previous_call = call
+
+        async def guarded_call() -> httpx.Response:
+            try:
+                result = await _call_with_breaker(self._breaker, previous_call)
+            except CircuitBreakerError:
+                if Gauge is not None:
+                    CIRCUIT_STATE.labels(adapter=adapter_name).set(1)
+                raise
+            except Exception:
+                if Gauge is not None and str(self._breaker.current_state).lower() == "open":
+                    CIRCUIT_STATE.labels(adapter=adapter_name).set(1)
+                raise
+            else:
+                if Gauge is not None:
+                    CIRCUIT_STATE.labels(adapter=adapter_name).set(0)
+                return result
+
+        response = await guarded_call()
         await self._record_latency(time.perf_counter() - start)
         return response
 

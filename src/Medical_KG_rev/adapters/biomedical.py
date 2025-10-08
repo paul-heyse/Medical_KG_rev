@@ -9,10 +9,11 @@ from xml.etree.ElementTree import Element
 
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
-    CircuitBreaker,
+    BackoffStrategy,
+    CircuitBreakerConfig,
     HttpClient,
+    RateLimitConfig,
     RetryConfig,
-    SyncRateLimiter,
 )
 from Medical_KG_rev.utils.identifiers import build_document_id, normalize_identifier
 from Medical_KG_rev.utils.validation import (
@@ -65,6 +66,19 @@ def _collect_text(element: Element | None) -> str:
     return " ".join(parts)
 
 
+def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
+    initial = max(initial, 0.0)
+    if initial == 0:
+        return RetryConfig(attempts=attempts, backoff_strategy=BackoffStrategy.NONE, jitter=False)
+    return RetryConfig(
+        attempts=attempts,
+        backoff_strategy=BackoffStrategy.LINEAR,
+        backoff_initial=initial,
+        backoff_max=max(initial * attempts, initial),
+        jitter=False,
+    )
+
+
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
 
@@ -83,8 +97,8 @@ class ResilientHTTPAdapter(BaseAdapter):
             self._client = HttpClient(
                 base_url=base_url,
                 retry=retry or RetryConfig(),
-                rate_limiter=SyncRateLimiter(rate_limit_per_second),
-                circuit_breaker=CircuitBreaker(),
+                rate_limit=RateLimitConfig(rate_per_second=rate_limit_per_second),
+                circuit_breaker=CircuitBreakerConfig(),
             )
         else:
             self._client = client
@@ -118,7 +132,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
             name="clinicaltrials",
             base_url="https://clinicaltrials.gov/api/v2",
             rate_limit_per_second=3,
-            retry=RetryConfig(attempts=4, backoff_factor=1.0),
+            retry=_linear_retry_config(4, 1.0),
             client=client,
         )
 
@@ -211,7 +225,7 @@ class OpenFDAAdapter(ResilientHTTPAdapter):
             name=name,
             base_url="https://api.fda.gov",
             rate_limit_per_second=2,
-            retry=RetryConfig(attempts=5, backoff_factor=1.0),
+            retry=_linear_retry_config(5, 1.0),
             client=client,
         )
         self._endpoint = endpoint
@@ -381,7 +395,7 @@ class OpenAlexAdapter(ResilientHTTPAdapter):
             name="openalex",
             base_url="https://api.openalex.org",
             rate_limit_per_second=5,
-            retry=RetryConfig(attempts=4, backoff_factor=0.5),
+            retry=_linear_retry_config(4, 0.5),
             client=client,
         )
 
@@ -458,7 +472,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
             name="unpaywall",
             base_url="https://api.unpaywall.org/v2",
             rate_limit_per_second=5,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=_linear_retry_config(3, 0.5),
             client=client,
         )
         self._email = email
@@ -508,7 +522,7 @@ class CrossrefAdapter(ResilientHTTPAdapter):
             name="crossref",
             base_url="https://api.crossref.org",
             rate_limit_per_second=4,
-            retry=RetryConfig(attempts=4, backoff_factor=0.5),
+            retry=_linear_retry_config(4, 0.5),
             client=client,
         )
 
@@ -561,7 +575,7 @@ class COREAdapter(ResilientHTTPAdapter):
             name="core",
             base_url="https://core.ac.uk/api-v3",
             rate_limit_per_second=2,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=_linear_retry_config(3, 0.5),
             client=client,
         )
 
@@ -619,7 +633,7 @@ class PMCAdapter(ResilientHTTPAdapter):
             name="pmc",
             base_url="https://www.ebi.ac.uk/europepmc",
             rate_limit_per_second=3,
-            retry=RetryConfig(attempts=4, backoff_factor=1.0),
+            retry=_linear_retry_config(4, 1.0),
             client=client,
         )
 
@@ -662,7 +676,7 @@ class RxNormAdapter(ResilientHTTPAdapter):
             name="rxnorm",
             base_url="https://rxnav.nlm.nih.gov",
             rate_limit_per_second=5,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=_linear_retry_config(3, 0.5),
             client=client,
         )
 
@@ -713,7 +727,7 @@ class ICD11Adapter(ResilientHTTPAdapter):
             name="icd11",
             base_url="https://id.who.int/icd/release/11",
             rate_limit_per_second=3,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=_linear_retry_config(3, 0.5),
             client=client,
         )
 
@@ -768,7 +782,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
             name="mesh",
             base_url="https://id.nlm.nih.gov/mesh",
             rate_limit_per_second=5,
-            retry=RetryConfig(attempts=3, backoff_factor=0.5),
+            retry=_linear_retry_config(3, 0.5),
             client=client,
         )
 
@@ -829,7 +843,7 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
             name="chembl",
             base_url="https://www.ebi.ac.uk/chembl/api/data",
             rate_limit_per_second=3,
-            retry=RetryConfig(attempts=4, backoff_factor=0.5),
+            retry=_linear_retry_config(4, 0.5),
             client=client,
         )
 
@@ -894,7 +908,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
             name="semantic-scholar",
             base_url="https://api.semanticscholar.org/graph/v1",
             rate_limit_per_second=4,
-            retry=RetryConfig(attempts=4, backoff_factor=0.5),
+            retry=_linear_retry_config(4, 0.5),
             client=client,
         )
 

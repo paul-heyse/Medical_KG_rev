@@ -5,30 +5,20 @@ from __future__ import annotations
 import math
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from time import perf_counter
 from typing import Any
 
 import structlog
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..auth.scopes import Scopes
-from ..observability.metrics import (
-    CROSS_TENANT_ACCESS_ATTEMPTS,
-    observe_job_duration,
-    record_business_event,
-)
+from ..observability.metrics import observe_job_duration
+from ..config.settings import get_settings
 from ..orchestration import (
     HaystackRetriever,
     JobLedger,
@@ -39,19 +29,35 @@ from ..orchestration.dagster import (
     PipelineConfigLoader,
     ResiliencePolicyLoader,
     StageFactory,
-    build_default_stage_factory,
+    create_stage_plugin_manager,
     submit_to_dagster,
 )
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
-from ..services.embedding.namespace.access import validate_namespace_access
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
+from ..services.embedding.policy import (
+    NamespaceAccessPolicy,
+    NamespacePolicySettings,
+    build_policy_chain,
+)
+from ..services.embedding.persister import (
+    EmbeddingPersister,
+    PersistenceContext,
+    PersisterRuntimeSettings,
+    build_persister,
+)
 from ..services.embedding.registry import EmbeddingModelRegistry
-from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
+from ..services.embedding.telemetry import EmbeddingTelemetry, StandardEmbeddingTelemetry
+from ..services.retrieval.chunking import ChunkingService
+from ..services.retrieval.chunking_command import ChunkCommand
+from .chunking import ChunkingErrorTranslator
 from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
-from Medical_KG_rev.embeddings.ports import EmbeddingRequest as AdapterEmbeddingRequest
+from Medical_KG_rev.embeddings.ports import (
+    EmbeddingRecord,
+    EmbeddingRequest as AdapterEmbeddingRequest,
+)
 from .models import (
     AdapterConfigSchemaView,
     AdapterHealthView,
@@ -77,6 +83,12 @@ from .models import (
     KnowledgeGraphWriteRequest,
     KnowledgeGraphWriteResult,
     NamespaceInfo,
+    NamespacePolicyDiagnosticsView,
+    NamespacePolicyHealthView,
+    NamespacePolicyMetricsView,
+    NamespacePolicySettingsView,
+    NamespacePolicyStatus,
+    NamespacePolicyUpdateRequest,
     NamespaceValidationResponse,
     NamespaceValidationResult,
     OperationStatus,
@@ -99,9 +111,16 @@ class GatewayError(RuntimeError):
         self.detail = detail
 
 
-def _build_stage_factory(manager: AdapterPluginManager | None = None) -> StageFactory:
-    registry = build_default_stage_factory(manager or get_plugin_manager())
-    return StageFactory(registry)
+def _build_stage_factory(
+    manager: AdapterPluginManager | None = None,
+    *,
+    job_ledger: JobLedger | None = None,
+) -> StageFactory:
+    plugin_manager = create_stage_plugin_manager(
+        manager or get_plugin_manager(),
+        job_ledger=job_ledger,
+    )
+    return StageFactory(plugin_manager)
 
 
 @dataclass
@@ -117,24 +136,74 @@ class GatewayService:
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
     stage_factory: StageFactory | None = None
     chunker: ChunkingService | None = None
+    chunking_error_translator: ChunkingErrorTranslator | None = None
     retriever: HaystackRetriever = field(default_factory=HaystackRetriever)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
     embedding_registry: EmbeddingModelRegistry = field(default_factory=EmbeddingModelRegistry)
     namespace_registry: EmbeddingNamespaceRegistry | None = None
+    namespace_policy: NamespaceAccessPolicy | None = None
+    namespace_policy_settings: NamespacePolicySettings | None = None
+    embedding_persister: EmbeddingPersister | None = None
+    embedding_persister_settings: PersisterRuntimeSettings | None = None
+    embedding_telemetry: EmbeddingTelemetry | None = None
 
     def __post_init__(self) -> None:
         if self.stage_factory is None:
-            self.stage_factory = _build_stage_factory(self.adapter_manager)
+            self.stage_factory = _build_stage_factory(
+                self.adapter_manager,
+                job_ledger=self.ledger,
+            )
         if self.chunker is None:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
+        if self.chunking_error_translator is None:
+            self.chunking_error_translator = ChunkingErrorTranslator(
+                available_strategies=self.chunker.available_strategies,
+            )
         if self.namespace_registry is None:
             self.namespace_registry = self.embedding_registry.namespace_registry
+        if self.embedding_telemetry is None:
+            self.embedding_telemetry = StandardEmbeddingTelemetry()
+        if self.namespace_policy is None:
+            if self.namespace_policy_settings is None:
+                self.namespace_policy_settings = NamespacePolicySettings()
+            self.namespace_policy = self._build_namespace_policy()
+        self.namespace_policy_settings = self.namespace_policy.settings
+        if self.embedding_persister is None:
+            router = getattr(self.embedding_registry, "storage_router", None)
+            if router is None:
+                raise RuntimeError("Embedding registry missing storage router")
+            settings = self.embedding_persister_settings or PersisterRuntimeSettings()
+            self.embedding_persister = build_persister(
+                router,
+                telemetry=self.embedding_telemetry,
+                settings=settings,
+            )
+            self.embedding_persister_settings = settings
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _require_namespace_policy(self) -> NamespaceAccessPolicy:
+        if self.namespace_registry is None or self.namespace_policy is None:
+            raise RuntimeError("Namespace policy not initialised")
+        return self.namespace_policy
+
+    def _build_namespace_policy(self) -> NamespaceAccessPolicy:
+        if self.namespace_registry is None:
+            if self.embedding_registry is None:
+                raise RuntimeError("Namespace registry not initialised")
+            self.namespace_registry = self.embedding_registry.namespace_registry
+        settings = self.namespace_policy_settings or NamespacePolicySettings()
+        policy = build_policy_chain(
+            self.namespace_registry,
+            telemetry=self.embedding_telemetry,
+            settings=settings,
+            dry_run=settings.dry_run,
+        )
+        return policy
+
     def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
         payload = problem.to_response()
         extensions = payload.pop("extra", {})
@@ -403,163 +472,32 @@ class GatewayService:
         job_id = self._new_job(request.tenant_id, "chunk")
         options_payload = request.options if isinstance(request.options, dict) else {}
         raw_text = options_payload.get("text") if isinstance(options_payload.get("text"), str) else None
-        if not isinstance(raw_text, str) or not raw_text.strip():
-            detail = ProblemDetail(
-                title="Invalid document payload",
-                status=400,
-                type="https://httpstatuses.com/400",
-                detail="Chunking requests must include a non-empty 'text' field in options",
-                instance=f"/v1/chunk/{request.document_id}",
-            )
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail)
         metadata = {
             key: value
             for key, value in options_payload.items()
             if key != "text"
         }
-        profile_hint: str | None = None
-        raw_profile = metadata.get("profile") if isinstance(metadata, dict) else None
-        if isinstance(raw_profile, str) and raw_profile:
-            profile_hint = raw_profile
-        options = ChunkingOptions(
-            strategy=request.strategy,
-            max_tokens=request.chunk_size,
-            overlap=request.overlap,
-            metadata=metadata,
-        )
         chunker = self.chunker or ChunkingService(stage_factory=self.stage_factory)
+        translator = self.chunking_error_translator or ChunkingErrorTranslator(
+            available_strategies=chunker.available_strategies,
+        )
+        command: ChunkCommand | None = None
         try:
-            raw_chunks = chunker.chunk(
-                request.tenant_id,
-                request.document_id,
-                raw_text,
-                options,
-            )
-        except ProfileNotFoundError as exc:
-            detail = ProblemDetail(
-                title="Chunking profile not found",
-                status=400,
-                type="https://medical-kg/errors/chunking-profile-not-found",
-                detail=str(exc),
-                extensions={"available_profiles": list(getattr(exc, "available", []))},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ProfileNotFoundError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except TokenizerMismatchError as exc:
-            detail = ProblemDetail(
-                title="Tokenizer mismatch",
-                status=500,
-                type="https://medical-kg/errors/tokenizer-mismatch",
-                detail=str(exc),
-            )
-            record_chunking_failure(profile_hint or "unknown", "TokenizerMismatchError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkingFailedError as exc:
-            message = exc.detail or str(exc) or "Chunking process failed"
-            detail = ProblemDetail(
-                title="Chunking failed",
-                status=500,
-                type="https://medical-kg/errors/chunking-failed",
-                detail=message,
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkingFailedError")
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except InvalidDocumentError as exc:
-            detail = ProblemDetail(
-                title="Invalid document payload",
-                status=400,
-                type="https://httpstatuses.com/400",
-                detail=str(exc),
-                instance=f"/v1/chunk/{request.document_id}",
-            )
-            record_chunking_failure(profile_hint or "unknown", "InvalidDocumentError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkerConfigurationError as exc:
-            detail = ProblemDetail(
-                title="Chunker configuration invalid",
-                status=422,
-                type="https://httpstatuses.com/422",
-                detail=str(exc),
-                extensions={"valid_strategies": chunker.available_strategies()},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkerConfigurationError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except ChunkingUnavailableError as exc:
-            retry_after = max(1, int(round(exc.retry_after)))
-            detail = ProblemDetail(
-                title="Chunking temporarily unavailable",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=str(exc),
-                extensions={"retry_after": retry_after},
-            )
-            record_chunking_failure(profile_hint or "unknown", "ChunkingUnavailableError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MineruOutOfMemoryError as exc:
-            detail = ProblemDetail(
-                title="MinerU out of memory",
-                status=503,
-                type="https://medical-kg/errors/mineru-oom",
-                detail=str(exc),
-                extensions={"reason": "gpu_out_of_memory"},
-            )
-            record_chunking_failure(profile_hint or "unknown", "MineruOutOfMemoryError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MineruGpuUnavailableError as exc:
-            detail = ProblemDetail(
-                title="MinerU GPU unavailable",
-                status=503,
-                type="https://medical-kg/errors/mineru-gpu-unavailable",
-                detail=str(exc),
-                extensions={"reason": "gpu_unavailable"},
-            )
-            record_chunking_failure(profile_hint or "unknown", "MineruGpuUnavailableError")
-            self._fail_job(job_id, detail.detail or detail.title)
-            raise GatewayError(detail) from exc
-        except MemoryError as exc:
-            message = str(exc) or "Chunking operation exhausted available memory"
-            detail = ProblemDetail(
-                title="Chunking resources exhausted",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=message,
-                extensions={"retry_after": 60},
-            )
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except TimeoutError as exc:
-            message = str(exc) or "Chunking operation timed out"
-            detail = ProblemDetail(
-                title="Chunking resources exhausted",
-                status=503,
-                type="https://httpstatuses.com/503",
-                detail=message,
-                extensions={"retry_after": 30},
-            )
-            self._fail_job(job_id, message)
-            raise GatewayError(detail) from exc
-        except RuntimeError as exc:
-            message = str(exc)
-            if "GPU semantic checks" in message:
-                detail = ProblemDetail(
-                    title="GPU unavailable for semantic chunking",
-                    status=503,
-                    type="https://httpstatuses.com/503",
-                    detail=message,
-                    extensions={"reason": "gpu_unavailable"},
-                )
+            command = ChunkCommand.from_request(
+                request,
+                text=raw_text,
+                metadata=metadata,
+            ).with_context(job_id=job_id, endpoint="gateway")
+            raw_chunks = chunker.chunk(command)
+        except Exception as exc:
+            try:
+                translated = translator.translate(exc, command=command)
+            except Exception:
+                message = str(exc) or "Runtime error during chunking"
                 self._fail_job(job_id, message)
-                raise GatewayError(detail) from exc
-            self._fail_job(job_id, message or "Runtime error during chunking")
-            raise
+                raise
+            self._fail_job(job_id, translated.detail.detail or translated.detail.title)
+            raise GatewayError(translated.detail) from exc
         chunks: list[DocumentChunk] = []
         for index, chunk in enumerate(raw_chunks):
             metadata = dict(chunk.meta)
@@ -579,38 +517,49 @@ class GatewayService:
         return chunks
 
     def embed(self, request: EmbedRequest) -> EmbeddingResponse:
-        if self.namespace_registry is None:
-            raise RuntimeError("Namespace registry not initialised")
+        if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
+            raise RuntimeError("Embedding components not initialised")
 
         started = perf_counter()
         options = request.options or EmbeddingOptions()
         namespace = request.namespace
-        config = self.namespace_registry.get(namespace)
 
-        access = validate_namespace_access(
-            self.namespace_registry,
-            namespace=namespace,
-            tenant_id=request.tenant_id,
-            required_scope=Scopes.EMBED_WRITE,
-        )
-        if not access.allowed:
-            if access.reason and "Tenant" in access.reason:
-                allowed = ",".join(sorted(self.namespace_registry.get_allowed_tenants(namespace)))
-                CROSS_TENANT_ACCESS_ATTEMPTS.labels(
-                    source_tenant=request.tenant_id,
-                    target_tenant=allowed or "restricted",
-                ).inc()
+        try:
+            decision = self.namespace_policy.evaluate(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                required_scope=Scopes.EMBED_WRITE,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            detail = ProblemDetail(
+                title="Namespace policy failure",
+                status=500,
+                type="https://httpstatuses.com/500",
+                detail=str(exc),
+            )
+            raise GatewayError(detail) from exc
+
+        if not decision.allowed:
             detail = ProblemDetail(
                 title="Namespace access denied",
                 status=403,
                 type="https://httpstatuses.com/403",
-                detail=access.reason or "Access to namespace not permitted",
+                detail=decision.reason or "Access to namespace not permitted",
             )
             raise GatewayError(detail)
+
+        config = decision.config or self.namespace_registry.get(namespace)
 
         job_id = self._new_job(request.tenant_id, "embed")
         correlation_id = uuid.uuid4().hex
         model_name = options.model or config.model_id
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_started(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+            )
 
         texts: list[str] = []
         ids: list[str] = []
@@ -670,10 +619,16 @@ class GatewayService:
                 detail=str(exc),
             )
             self._fail_job(job_id, detail.detail or detail.title)
+            if self.embedding_telemetry:
+                self.embedding_telemetry.record_embedding_failure(
+                    namespace=namespace,
+                    tenant_id=request.tenant_id,
+                    error=exc,
+                )
             raise GatewayError(detail) from exc
 
         embeddings: list[EmbeddingVector] = []
-        storage_router = getattr(self.embedding_registry, "storage_router", None)
+        prepared_records: list[EmbeddingRecord] = []
         duration_ms = (perf_counter() - started) * 1000
 
         for record in records:
@@ -692,8 +647,7 @@ class GatewayService:
             if record.kind == "multi_vector" and record.vectors:
                 meta.setdefault("vectors", [list(vector) for vector in record.vectors])
             updated_record = replace(record, metadata=meta)
-            if storage_router is not None:
-                storage_router.persist(updated_record)
+            prepared_records.append(updated_record)
 
             values: list[float] = []
             if updated_record.vectors:
@@ -717,17 +671,37 @@ class GatewayService:
                 )
             )
 
+        persistence_context = PersistenceContext(
+            tenant_id=request.tenant_id,
+            namespace=namespace,
+            model=model_name,
+            provider=config.provider,
+            job_id=job_id,
+            correlation_id=correlation_id,
+            normalize=bool(options.normalize),
+        )
+        persistence_report = self.embedding_persister.persist_batch(prepared_records, persistence_context)
+
         payload = {
             "embeddings": len(embeddings),
             "model": model_name,
             "namespace": namespace,
             "provider": config.provider,
             "tenant_id": request.tenant_id,
+            "persisted": persistence_report.persisted,
         }
         self.ledger.update_metadata(job_id, payload)
         self._complete_job(job_id, payload=payload)
-        if embeddings:
-            record_business_event("embeddings_generated", request.tenant_id)
+
+        if self.embedding_telemetry:
+            self.embedding_telemetry.record_embedding_completed(
+                namespace=namespace,
+                tenant_id=request.tenant_id,
+                model=model_name,
+                provider=config.provider,
+                duration_ms=duration_ms,
+                embeddings=len(embeddings),
+            )
 
         metadata = EmbeddingMetadata(
             provider=config.provider,
@@ -790,6 +764,70 @@ class GatewayService:
             for namespace, config in entries
         ]
 
+    def namespace_policy_status(self) -> NamespacePolicyStatus:
+        policy = self._require_namespace_policy()
+        settings_view = NamespacePolicySettingsView(**asdict(policy.settings))
+        return NamespacePolicyStatus(
+            settings=settings_view,
+            stats=dict(policy.stats()),
+            operational=dict(policy.operational_metrics()),
+        )
+
+    def update_namespace_policy(
+        self, updates: NamespacePolicyUpdateRequest
+    ) -> NamespacePolicyStatus:
+        policy = self._require_namespace_policy()
+        current = asdict(policy.settings)
+        changes: dict[str, object] = {}
+        if updates.cache_ttl_seconds is not None:
+            value = float(updates.cache_ttl_seconds)
+            changes["cache_ttl_seconds"] = value
+            current["cache_ttl_seconds"] = value
+        if updates.max_cache_entries is not None:
+            value = int(updates.max_cache_entries)
+            changes["max_cache_entries"] = value
+            current["max_cache_entries"] = value
+        dry_run_changed = False
+        if updates.dry_run is not None and updates.dry_run != policy.settings.dry_run:
+            current["dry_run"] = bool(updates.dry_run)
+            dry_run_changed = True
+
+        if dry_run_changed:
+            self.namespace_policy_settings = NamespacePolicySettings(**current)
+            self.namespace_policy = self._build_namespace_policy()
+            self.namespace_policy_settings = self.namespace_policy.settings
+        elif changes:
+            policy.update_settings(**changes)
+            self.namespace_policy_settings = policy.settings
+
+        return self.namespace_policy_status()
+
+    def namespace_policy_diagnostics(self) -> NamespacePolicyDiagnosticsView:
+        policy = self._require_namespace_policy()
+        snapshot = policy.debug_snapshot()
+        settings_view = NamespacePolicySettingsView(**asdict(policy.settings))
+        cache_entries = [
+            f"{namespace}:{tenant}:{scope}"
+            for namespace, tenant, scope in snapshot.get("cache_keys", [])
+        ]
+        return NamespacePolicyDiagnosticsView(
+            settings=settings_view,
+            cache_keys=cache_entries,
+            stats=dict(snapshot.get("stats", {})),
+        )
+
+    def namespace_policy_health(self) -> NamespacePolicyHealthView:
+        policy = self._require_namespace_policy()
+        return NamespacePolicyHealthView(**policy.health_status())
+
+    def namespace_policy_metrics(self) -> NamespacePolicyMetricsView:
+        policy = self._require_namespace_policy()
+        return NamespacePolicyMetricsView(metrics=dict(policy.operational_metrics()))
+
+    def invalidate_namespace_policy_cache(self, namespace: str | None = None) -> None:
+        policy = self._require_namespace_policy()
+        policy.invalidate(namespace)
+
     def validate_namespace_texts(
         self,
         *,
@@ -797,24 +835,24 @@ class GatewayService:
         namespace: str,
         texts: Sequence[str],
     ) -> NamespaceValidationResponse:
-        if self.namespace_registry is None:
-            raise RuntimeError("Namespace registry not initialised")
-        access = validate_namespace_access(
-            self.namespace_registry,
+        if self.namespace_registry is None or self.namespace_policy is None:
+            raise RuntimeError("Namespace policy not initialised")
+        decision = self.namespace_policy.evaluate(
             namespace=namespace,
             tenant_id=tenant_id,
             required_scope=Scopes.EMBED_READ,
         )
-        if not access.allowed:
+        if not decision.allowed:
             detail = ProblemDetail(
                 title="Namespace access denied",
                 status=403,
                 type="https://httpstatuses.com/403",
-                detail=access.reason or "Access to namespace not permitted",
+                detail=decision.reason or "Access to namespace not permitted",
             )
             raise GatewayError(detail)
 
-        max_tokens = self.namespace_registry.get_max_tokens(namespace)
+        config = decision.config or self.namespace_registry.get(namespace)
+        max_tokens = config.max_tokens
         if max_tokens is None:
             detail = ProblemDetail(
                 title="Namespace lacks token budget",
@@ -1241,18 +1279,35 @@ def get_gateway_service() -> GatewayService:
         adapter_manager = get_plugin_manager()
         _pipeline_loader = PipelineConfigLoader()
         _resilience_loader = ResiliencePolicyLoader()
-        stage_builders = build_default_stage_factory(adapter_manager)
-        _stage_factory = StageFactory(stage_builders)
+        stage_plugin_manager = create_stage_plugin_manager(
+            adapter_manager,
+            job_ledger=_ledger,
+        )
+        _stage_factory = StageFactory(stage_plugin_manager)
         _orchestrator = DagsterOrchestrator(
             _pipeline_loader,
             _resilience_loader,
             _stage_factory,
+        )
+        settings = get_settings()
+        embedding_cfg = settings.embedding
+        policy_settings = NamespacePolicySettings(
+            cache_ttl_seconds=embedding_cfg.policy.cache_ttl_seconds,
+            max_cache_entries=embedding_cfg.policy.max_cache_entries,
+            dry_run=embedding_cfg.policy.dry_run,
+        )
+        persister_settings = PersisterRuntimeSettings(
+            backend=embedding_cfg.persister.backend,
+            cache_limit=embedding_cfg.persister.cache_limit,
+            hybrid_backends=dict(embedding_cfg.persister.hybrid_backends),
         )
         _service = GatewayService(
             events=events,
             orchestrator=_orchestrator,
             ledger=_ledger,
             adapter_manager=adapter_manager,
+            namespace_policy_settings=policy_settings,
+            embedding_persister_settings=persister_settings,
         )
     return _service
 from ..services.mineru import MineruGpuUnavailableError, MineruOutOfMemoryError

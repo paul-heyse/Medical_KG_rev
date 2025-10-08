@@ -7,6 +7,7 @@ from typing import Any
 
 __all__ = [
     "Chunk",
+    "ChunkCommand",
     "ChunkingOptions",
     "ChunkingService",
     "CrossEncoderReranker",
@@ -24,6 +25,10 @@ __all__ = [
 
 _RETRIEVAL_MAP = {
     "Chunk": ("Medical_KG_rev.services.retrieval.chunking", "Chunk"),
+    "ChunkCommand": (
+        "Medical_KG_rev.services.retrieval.chunking_command",
+        "ChunkCommand",
+    ),
     "ChunkingOptions": ("Medical_KG_rev.services.retrieval.chunking", "ChunkingOptions"),
     "ChunkingService": ("Medical_KG_rev.services.retrieval.chunking", "ChunkingService"),
     "CrossEncoderReranker": (

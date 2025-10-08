@@ -9,7 +9,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, MutableMapping
+from typing import Iterable
 
 import structlog
 
@@ -55,8 +55,6 @@ class MineruCliBase:
     def run_batch(
         self,
         batch: Iterable[MineruCliInput],
-        *,
-        gpu_id: int,
     ) -> MineruCliResult:
         raise NotImplementedError
 
@@ -75,7 +73,7 @@ class SubprocessMineruCli(MineruCliBase):
     ) -> None:
         super().__init__(settings)
         self._command = settings.cli_command
-        self._timeout = timeout_seconds or settings.workers.timeout_seconds
+        self._timeout = timeout_seconds or settings.cli_timeout_seconds()
 
     def _ensure_command(self) -> None:
         executable = self._command.split()[0]
@@ -84,12 +82,6 @@ class SubprocessMineruCli(MineruCliBase):
 
     def describe(self) -> str:
         return f"subprocess-cli(command={self._command})"
-
-    def _prepare_environment(self, gpu_id: int) -> MutableMapping[str, str]:
-        env: MutableMapping[str, str] = dict(os.environ)
-        env.update(self._settings.environment())
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-        return env
 
     def _build_command(self, input_dir: Path, output_dir: Path) -> list[str]:
         command = self._command.split()
@@ -102,8 +94,10 @@ class SubprocessMineruCli(MineruCliBase):
                 str(output_dir),
                 "--format",
                 "json",
-                "--vram-limit",
-                f"{self._settings.workers.vram_per_worker_gb}G",
+                "--backend",
+                self._settings.workers.backend,
+                "--vllm-url",
+                str(self._settings.vllm_server.base_url),
             ]
         )
         return command
@@ -111,8 +105,6 @@ class SubprocessMineruCli(MineruCliBase):
     def run_batch(
         self,
         batch: Iterable[MineruCliInput],
-        *,
-        gpu_id: int,
     ) -> MineruCliResult:
         self._ensure_command()
         inputs = list(batch)
@@ -128,14 +120,14 @@ class SubprocessMineruCli(MineruCliBase):
                 path.write_bytes(item.content)
 
             command = self._build_command(input_dir, output_dir)
-            logger.bind(command=command, gpu_id=gpu_id).info("mineru.cli.invoke")
+            logger.bind(command=command).info("mineru.cli.invoke")
             start = time.monotonic()
             proc = subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
                 timeout=self._timeout,
-                env=self._prepare_environment(gpu_id),
+                env=dict(os.environ),
             )
             duration = time.monotonic() - start
             if proc.returncode != 0:
@@ -173,8 +165,6 @@ class SimulatedMineruCli(MineruCliBase):
     def run_batch(
         self,
         batch: Iterable[MineruCliInput],
-        *,
-        gpu_id: int,
     ) -> MineruCliResult:
         outputs: list[MineruCliOutput] = []
         stdout_lines = []
@@ -262,8 +252,6 @@ def create_cli(settings: MineruSettings) -> MineruCliBase:
         logger.info("mineru.cli.selected", impl=cli.describe())
         return cli
     except MineruCliError:
-        if not settings.simulate_if_unavailable:
-            raise
         logger.bind(reason="command-not-found").warning("mineru.cli.fallback")
         return SimulatedMineruCli(settings)
 

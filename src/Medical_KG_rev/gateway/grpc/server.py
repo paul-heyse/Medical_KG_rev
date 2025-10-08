@@ -119,6 +119,7 @@ class EmbeddingService(
             tenant_id=request.tenant_id,
             inputs=list(request.inputs),
             model=request.model,
+            namespace=getattr(request, "namespace", request.model or ""),
             normalize=request.normalize,
         )
         vectors = self.service.embed(embed_request)
@@ -127,7 +128,14 @@ class EmbeddingService(
         response = embedding_pb2.EmbedResponse()
         for vector in vectors:
             resp_vector = response.embeddings.add(id=vector.id)
-            resp_vector.values.extend(vector.vector)
+            if vector.vector:
+                resp_vector.values.extend(vector.vector)
+            if hasattr(resp_vector, "model"):
+                resp_vector.model = vector.model
+            if hasattr(resp_vector, "namespace"):
+                resp_vector.namespace = vector.namespace
+            if hasattr(resp_vector, "dimension"):
+                resp_vector.dimension = vector.dimension
         return response
 
 

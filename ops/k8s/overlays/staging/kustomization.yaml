@@ -13,6 +13,9 @@ images:
   - name: ghcr.io/example/medical-kg-worker:latest
     newName: ghcr.io/example/medical-kg-worker
     newTag: staging
+  - name: registry.example.com/medical-kg/vllm-qwen3:latest
+    newName: ghcr.io/example/vllm-qwen3
+    newTag: staging
 
 patches:
   - target:

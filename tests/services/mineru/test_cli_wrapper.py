@@ -11,19 +11,18 @@ from Medical_KG_rev.services.mineru.cli_wrapper import MineruCliInput, Simulated
 
 
 def test_simulated_cli_generates_structured_output():
-    workers = SimpleNamespace(vram_per_worker_gb=7, timeout_seconds=30)
-    cpu = SimpleNamespace(export_environment=lambda: {})
+    workers = SimpleNamespace(backend="vlm-http-client", timeout_seconds=30)
+    vllm_server = SimpleNamespace(base_url="http://localhost:8000")
     settings = SimpleNamespace(
         cli_command="mineru",
         workers=workers,
-        cpu=cpu,
-        simulate_if_unavailable=True,
+        vllm_server=vllm_server,
     )
-    settings.environment = lambda: {}
+    settings.cli_timeout_seconds = lambda: workers.timeout_seconds
     cli = create_cli(settings)
     assert isinstance(cli, SimulatedMineruCli)
     content = b"Header1|Header2\nValue1|Value2"
-    result = cli.run_batch([MineruCliInput(document_id="doc-1", content=content)], gpu_id=0)
+    result = cli.run_batch([MineruCliInput(document_id="doc-1", content=content)])
     assert result.outputs
     data = json.loads(result.outputs[0].path.read_text(encoding="utf-8"))
     assert data["document_id"] == "doc-1"

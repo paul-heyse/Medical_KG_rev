@@ -1,13 +1,12 @@
-"""Core interfaces and data models for the universal embedding system."""
+"""Protocol and data models used by embedding adapters."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import re
 from typing import Any, Literal, Protocol, Sequence, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 EmbeddingKind = Literal["single_vector", "multi_vector", "sparse", "neural_sparse"]
 
@@ -17,10 +16,9 @@ NAMESPACE_PATTERN = re.compile(
 )
 
 
-class EmbeddingRecord(BaseModel):
+@dataclass(slots=True, frozen=True)
+class EmbeddingRecord:
     """Normalized representation of an embedding produced by any adapter."""
-
-    model_config = ConfigDict(frozen=True)
 
     id: str
     tenant_id: str
@@ -33,30 +31,37 @@ class EmbeddingRecord(BaseModel):
     terms: dict[str, float] | None = None
     neural_fields: dict[str, Any] | None = None
     normalized: bool = False
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
     correlation_id: str | None = None
 
-    @model_validator(mode="after")
-    def _validate_payload(self) -> "EmbeddingRecord":
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metadata", dict(self.metadata))
+        if self.vectors is not None:
+            normalized_vectors = [list(map(float, vector)) for vector in self.vectors]
+            object.__setattr__(self, "vectors", normalized_vectors)
+        if self.terms is not None:
+            object.__setattr__(self, "terms", {str(k): float(v) for k, v in self.terms.items()})
+        if self.neural_fields is not None:
+            object.__setattr__(self, "neural_fields", dict(self.neural_fields))
         if self.kind in {"single_vector", "multi_vector"}:
             if not self.vectors:
                 raise ValueError("Dense embeddings must provide vectors")
-            if any(len(vector) != len(self.vectors[0]) for vector in self.vectors):
-                raise ValueError("All vectors must share the same dimensionality")
-            if self.dim is not None and self.dim != len(self.vectors[0]):
+            first = self.vectors[0]
+            for vector in self.vectors:
+                if len(vector) != len(first):
+                    raise ValueError("All vectors must share the same dimensionality")
+            if self.dim is not None and self.dim != len(first):
                 raise ValueError("Vector dimensionality does not match declared dim")
-        if self.kind == "sparse" and not self.terms:
+        if self.kind == "sparse" and self.terms is None:
             raise ValueError("Sparse embeddings must provide term weights")
         if self.kind == "neural_sparse" and not (self.neural_fields or self.vectors):
             raise ValueError("Neural sparse embeddings must provide neural fields or vectors")
-        return self
 
 
-class EmbedderConfig(BaseModel):
+@dataclass(slots=True)
+class EmbedderConfig:
     """Configuration for an embedder instance loaded from YAML or environment."""
-
-    model_config = ConfigDict(extra="allow")
 
     name: str
     provider: str
@@ -67,31 +72,29 @@ class EmbedderConfig(BaseModel):
     dim: int | None = None
     pooling: Literal["mean", "max", "cls", "last_token", "none"] | None = "mean"
     normalize: bool = True
-    batch_size: int = Field(default=32, ge=1, le=4096)
+    batch_size: int = 32
     requires_gpu: bool = False
-    prefixes: dict[str, str] = Field(default_factory=dict)
-    parameters: dict[str, Any] = Field(default_factory=dict)
+    prefixes: dict[str, str] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
     tenant_scoped: bool = True
 
-    @field_validator("namespace")
-    @classmethod
-    def _validate_namespace(cls, value: str) -> str:
-        if not NAMESPACE_PATTERN.match(value):
+    def __post_init__(self) -> None:
+        if not NAMESPACE_PATTERN.match(self.namespace):
             raise ValueError(
                 "Namespace must follow {kind}.{model}.{dim}.{version} (e.g. dense.bge.1024.v1)"
             )
-        return value
-
-    @model_validator(mode="after")
-    def _validate_dimension(self) -> "EmbedderConfig":
         if self.kind in {"single_vector", "multi_vector"} and self.dim is None:
             raise ValueError("Dense embedders must declare expected dimensionality")
-        return self
+        if self.batch_size < 1 or self.batch_size > 4096:
+            raise ValueError("Batch size must be between 1 and 4096")
+        # Ensure we hold independent copies of mutable defaults
+        object.__setattr__(self, "prefixes", dict(self.prefixes))
+        object.__setattr__(self, "parameters", dict(self.parameters))
 
     @property
     def namespace_parts(self) -> dict[str, str]:
         match = NAMESPACE_PATTERN.match(self.namespace)
-        if not match:  # pragma: no cover - validated above
+        if not match:  # pragma: no cover - validated in __post_init__
             raise ValueError("Invalid namespace format")
         return match.groupdict()
 
@@ -121,3 +124,12 @@ class BaseEmbedder(Protocol):
 
     def embed_queries(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:
         """Embed search queries."""
+
+
+__all__ = [
+    "BaseEmbedder",
+    "EmbedderConfig",
+    "EmbeddingKind",
+    "EmbeddingRecord",
+    "EmbeddingRequest",
+]

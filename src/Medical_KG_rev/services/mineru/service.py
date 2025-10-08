@@ -310,6 +310,12 @@ class MineruProcessor:
                 f"vLLM server unavailable at {self._settings.vllm_server.base_url}"
             )
 
+    @property
+    def vllm_client(self) -> VLLMClient:
+        """Expose the configured vLLM client for observability and testing."""
+
+        return self._vllm_client
+
 
 class MineruGrpcService:
     """Async gRPC servicer bridging proto definitions to the processor."""

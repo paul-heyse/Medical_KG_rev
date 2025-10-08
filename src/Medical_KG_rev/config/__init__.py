@@ -1,36 +1,41 @@
-"""Configuration helpers for Medical_KG_rev."""
+"""Lightweight configuration package exports."""
+
+from __future__ import annotations
 
 from .domains import DomainConfig, DomainRegistry
-from .settings import (
-    AppSettings,
-    Environment,
-    FeatureFlagSettings,
-    LoggingSettings,
-    ObservabilitySettings,
-    RerankingSettings,
-    SecretResolver,
-    TelemetrySettings,
-    get_settings,
-    load_settings,
-    migrate_reranking_config,
-)
 
-__all__ = [
-    "AppSettings",
-    "DomainConfig",
-    "DomainRegistry",
-    "Environment",
-    "FeatureFlagSettings",
-    "LoggingSettings",
-    "ObservabilitySettings",
-    "RerankingSettings",
-    "migrate_reranking_config",
-    "SecretResolver",
-    "TelemetrySettings",
-    "get_settings",
-    "load_settings",
-    "VectorCompressionConfig",
-    "VectorNamespaceConfig",
-    "VectorStoreConfig",
-    "load_vector_store_config",
-]
+__all__ = ["DomainConfig", "DomainRegistry"]
+
+try:  # pragma: no cover - optional settings dependency
+    from .settings import (  # type: ignore[import-not-found]
+        AppSettings,
+        Environment,
+        FeatureFlagSettings,
+        LoggingSettings,
+        ObservabilitySettings,
+        RerankingSettings,
+        SecretResolver,
+        TelemetrySettings,
+        get_settings,
+        load_settings,
+        migrate_reranking_config,
+    )
+
+    __all__.extend(
+        [
+            "AppSettings",
+            "Environment",
+            "FeatureFlagSettings",
+            "LoggingSettings",
+            "ObservabilitySettings",
+            "RerankingSettings",
+            "SecretResolver",
+            "TelemetrySettings",
+            "get_settings",
+            "load_settings",
+            "migrate_reranking_config",
+        ]
+    )
+except ModuleNotFoundError:  # pragma: no cover - minimal environments
+    # Settings module depends on pydantic. Skip optional exports when dependency missing.
+    pass

@@ -381,7 +381,7 @@ components:
           type: integer
     EmbedRequest:
       type: object
-      required: [tenant_id, inputs, model]
+      required: [tenant_id, inputs, model, namespace]
       properties:
         tenant_id:
           type: string
@@ -391,6 +391,8 @@ components:
             type: string
         model:
           type: string
+        namespace:
+          type: string
         normalize:
           type: boolean
     EmbeddingVector:
@@ -398,12 +400,22 @@ components:
       properties:
         id:
           type: string
+        model:
+          type: string
+        namespace:
+          type: string
+        kind:
+          type: string
+        dimension:
+          type: integer
         vector:
           type: array
           items:
             type: number
-        model:
-          type: string
+        terms:
+          type: object
+          additionalProperties:
+            type: number
         metadata:
           type: object
           additionalProperties: true

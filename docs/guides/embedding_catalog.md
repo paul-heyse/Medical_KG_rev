@@ -14,6 +14,45 @@ Legacy adapters (SentenceTransformers, TEI, LangChain, etc.) were
 removed as part of the cutover and can be reinstated only by creating a
 new namespace YAML file with explicit ownership approval.
 
+## Namespace Access Control
+
+Every namespace entry now carries explicit access control metadata. The
+consolidated `config/embedding/namespaces.yaml` file documents
+`allowed_tenants` and `allowed_scopes` for each namespace. Public vectors
+such as `single_vector.qwen3.4096.v1` expose `allowed_tenants: ["all"]`,
+whereas private namespaces enumerate the specific tenant identifiers.
+
+Complementary configuration files:
+
+- `config/embedding/vllm.yaml` – dense embeddings service parameters validated
+  via `Medical_KG_rev.config.load_vllm_config`.
+- `config/embedding/pyserini.yaml` – SPLADE/Pyserini settings consumed by
+  `load_pyserini_config` to keep OpenSearch options in sync.
+
+Clients MUST call the discovery endpoint before embedding:
+
+```http
+GET /v1/namespaces
+Authorization: Bearer <token>
+```
+
+The response lists `NamespaceInfo` objects containing provider, kind,
+dimension, token budget, and ACL metadata. To proactively check whether
+texts respect the namespace token budget, call the validation endpoint:
+
+```http
+POST /v1/namespaces/{namespace}/validate
+Content-Type: application/json
+{
+  "tenant_id": "tenant-123",
+  "texts": ["...", "..."]
+}
+```
+
+The API returns per-text token counts and `exceeds_budget` flags. Both
+endpoints require the `embed:read` scope; embedding operations require
+`embed:write`.
+
 ## Configuration Examples
 
 Namespaces are declared via YAML and hydrated by the runtime registry.
@@ -21,36 +60,34 @@ The snippet below mirrors the defaults committed to
 `config/embedding/namespaces/`.
 
 ```yaml
-embeddings:
-  active_namespaces:
-    - single_vector.qwen3.4096.v1
-    - sparse.splade_v3.400.v1
-    - multi_vector.colbert_v2.128.v1
-  providers:
-    - name: qwen3
-      provider: vllm
-      kind: single_vector
-      namespace: single_vector.qwen3.4096.v1
-      model_id: Qwen/Qwen2.5-Coder-1.5B
-      dim: 4096
-      parameters:
-        endpoint: http://vllm-qwen3:8001/v1
-        timeout: 60
-        normalize: true
-    - name: splade-v3
-      provider: pyserini
-      kind: sparse
-      namespace: sparse.splade_v3.400.v1
-      model_id: naver/splade-v3
-      parameters:
-        top_k: 400
-    - name: colbert
-      provider: colbert
-      kind: multi_vector
-      namespace: multi_vector.colbert_v2.128.v1
-      model_id: colbert-ir/colbertv2.0
-      parameters:
-        shard_capacity: 100000
+namespaces:
+  single_vector.qwen3.4096.v1:
+    provider: vllm
+    kind: single_vector
+    model_id: Qwen/Qwen2.5-Embedding-8B-Instruct
+    dim: 4096
+    max_tokens: 8192
+    tokenizer: Qwen/Qwen2.5-Coder-1.5B
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["all"]
+  sparse.splade_v3.400.v1:
+    provider: pyserini
+    kind: sparse
+    model_id: naver/splade-v3
+    dim: 400
+    max_tokens: 512
+    tokenizer: naver/splade-v3
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["all"]
+  multi_vector.colbert_v2.128.v1:
+    provider: colbert
+    kind: multi_vector
+    model_id: colbert-v2
+    dim: 128
+    max_tokens: 512
+    tokenizer: colbert-ir/colbertv2.0
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["tenant-123", "tenant-456"]
 ```
 
 ## Deployment Notes

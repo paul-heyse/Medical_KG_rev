@@ -1,0 +1,55 @@
+namespaces:
+  single_vector.qwen3.4096.v1:
+    name: qwen3-embedding
+    provider: vllm
+    kind: single_vector
+    model_id: Qwen/Qwen2.5-Embedding-8B-Instruct
+    model_version: v1
+    dim: 4096
+    max_tokens: 8192
+    tokenizer: Qwen/Qwen2.5-Coder-1.5B
+    enabled: true
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["all"]
+    pooling: mean
+    normalize: true
+    batch_size: 64
+    requires_gpu: true
+    endpoint: http://vllm-qwen3:8001/v1/embeddings
+    parameters:
+      timeout: 60
+      batch_size: 64
+  sparse.splade_v3.400.v1:
+    name: splade-v3
+    provider: pyserini
+    kind: sparse
+    model_id: naver/splade-v3
+    model_version: v3
+    dim: 400
+    max_tokens: 512
+    tokenizer: naver/splade-v3
+    enabled: true
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["all"]
+    normalize: false
+    batch_size: 32
+    parameters:
+      top_k: 400
+      mode: document
+      max_terms: 400
+  multi_vector.colbert_v2.128.v1:
+    name: colbert-v2
+    provider: colbert
+    kind: multi_vector
+    model_id: colbert-v2
+    model_version: v2
+    dim: 128
+    max_tokens: 512
+    tokenizer: colbert-ir/colbertv2.0
+    enabled: true
+    allowed_scopes: ["embed:read", "embed:write"]
+    allowed_tenants: ["tenant-123", "tenant-456"]
+    normalize: false
+    batch_size: 16
+    parameters:
+      max_doc_tokens: 180

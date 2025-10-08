@@ -405,7 +405,6 @@ transformers = "^4.44.0"
 sentence-transformers = "^3.1.0"
 qdrant-client = "^1.11.0"
 opensearch-py = "^2.7.0"
-faiss-cpu = {version = "^1.8.0", optional = true}
 faiss-gpu = {version = "^1.8.0", optional = true}
 langchain = {version = "^0.3.0", optional = true}
 llama-index = {version = "^0.11.0", optional = true}

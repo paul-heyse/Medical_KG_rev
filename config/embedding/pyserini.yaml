@@ -1,0 +1,21 @@
+service:
+  host: 0.0.0.0
+  port: 8002
+  gpu_memory_utilization: 0.6
+
+model:
+  name: "naver/splade-cocondenser-ensembledistil"
+  cache_dir: "/models/splade"
+
+expansion:
+  doc_side:
+    enabled: true
+    top_k_terms: 400
+    normalize_weights: true
+  query_side:
+    enabled: false
+    top_k_terms: 200
+
+opensearch:
+  rank_features_field: "splade_terms"
+  max_weight: 10.0

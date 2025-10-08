@@ -630,7 +630,7 @@ dev = [
     "ipython>=8.20.0",
     "ipykernel>=6.29.0",
     "jupyter>=1.0.0",
-    "respx>=0.20.2",
+    "respx>=0.22.0",
 ]
 
 gpu = [
@@ -643,7 +643,7 @@ docs = [
     "mkdocs>=1.5.3",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24.0",
-    "pdoc>=14.0.0",
+    "pdoc>=15.0.4",
 ]
 
 chunking = [
@@ -651,18 +651,18 @@ chunking = [
     "llama-index-core",
     "haystack-ai>=2.18.1",
     "unstructured>=0.11.8",
-    "hdbscan>=0.8.33",
+    "hdbscan>=0.8.40",
     "networkx>=3.2.1",
     "layoutparser>=0.3.4",
-    "docling>=0.0.4",
-    "gensim>=4.3.0",
+    "docling>=2.55.1",
+    "gensim>=4.3.3",
     "nltk>=3.9.2",
     "pysbd>=0.3.4",
     "scikit-learn>=1.7.2",
     "spacy>=3.7.2",
 ]
 reranking = [
-    "xgboost>=1.7.6",
+    "xgboost>=3.0.5",
 ]
 
 [project.entry-points."medical_kg.adapters"]

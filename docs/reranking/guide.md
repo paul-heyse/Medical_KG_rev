@@ -20,6 +20,13 @@ All rerankers implement the `RerankerPort` interface defined under `Medical_KG_r
 | ColBERT late interaction | `late_interaction:colbert_index` | Fetches token vectors from an external ColBERT index. |
 | OpenSearch first/second phase ranking | `ltr:opensearch` | Integrates with SLTR feature stores. |
 
+## Model Registry & Selection
+
+- **Configuration**: `config/retrieval/reranking_models.yaml` lists supported rerankers, their HuggingFace identifiers, and rollout metadata. Update this file when onboarding a new model; manifests are cached under `model_cache/rerankers/`.
+- **API Overrides**: Clients may select a model via `GET /v1/search?rerank_model=ms-marco-minilm-l12-v2` (REST), GraphQL `RetrieveInput.rerank_model`, or the pipeline query payload. Unknown models gracefully fall back to the default while annotating the response metadata with a `warnings: ["model_fallback"]` entry.
+- **Versioning**: Retrieval responses expose `rerank.metrics.model.version` so dashboards and CI checks can track upgrades across deployments.
+- **A/B Testing**: Pair the model registry with `Medical_KG_rev.services.evaluation.ABTestRunner` to compare `nDCG@10` deltas before promoting a challenger model. A +5% uplift is required before enabling reranking by default for a tenant.
+
 ## Fusion Algorithms & Trade-offs
 
 - **Reciprocal Rank Fusion (RRF)**: Fast heuristic that blends rankings from multiple retrievers. Tie-breaking now honours original retrieval scores to maintain deterministic ordering.
@@ -59,7 +66,7 @@ Legacy configuration documents can be converted with `Medical_KG_rev.config.migr
 | --- | --- | --- |
 | `GPUUnavailableError` | Reranker requires CUDA but none detected | Update deployment targets or disable GPU-only rerankers. |
 | Low cache hit rate | Index updates invalidated cache | Use cache warming via `RerankingEngine.warm_cache` for popular queries. |
-| Slow reranking latency | Oversized batches triggering splits | Check `retrieval_pipeline_stage_duration_seconds` metrics and reduce `rerank_candidates`. |
+| Slow reranking latency | Oversized batches triggering splits | Check `reranking_duration_seconds` histogram and reduce `rerank_candidates`. |
 
 ## Evaluation Harness Usage
 

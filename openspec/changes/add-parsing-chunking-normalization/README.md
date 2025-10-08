@@ -1,8 +1,8 @@
 # Clinical-Aware Parsing, Chunking & Normalization - Change Proposal
 
-**Change ID**: `add-parsing-chunking-normalization`  
-**Status**: Ready for Review  
-**Created**: 2025-10-08  
+**Change ID**: `add-parsing-chunking-normalization`
+**Status**: Ready for Review
+**Created**: 2025-10-08
 **Validation**: ✅ PASS (`openspec validate --strict`)
 
 ---
@@ -54,7 +54,7 @@ Current codebase has **fragmented, source-specific parsing/chunking logic** caus
 ```python
 class ChunkerPort(Protocol):
     """Unified interface for all chunking strategies."""
-    
+
     def chunk(self, document: Document, profile: str) -> list[Chunk]:
         """Chunk document according to named profile."""
         ...
@@ -77,6 +77,7 @@ preserve_tables_as_html: true
 ```
 
 **4 Profiles**:
+
 - **IMRaD** (PMC JATS): Heading-aware, preserve figures
 - **Registry** (CT.gov): Atomic outcomes, eligibility, AEs
 - **SPL** (DailyMed): LOINC-coded sections
@@ -308,11 +309,13 @@ transformers>=4.38.0
 ### Trigger Conditions
 
 **Automated**:
+
 - Token overflow rate >10% for >15 minutes
 - Chunking latency P95 >5s for >10 minutes
 - Section label coverage <80% for >15 minutes
 
 **Manual**:
+
 - Critical quality issues (mid-sentence splits, corrupted tables)
 - Downstream extraction failures
 
@@ -335,12 +338,12 @@ kubectl rollout undo deployment/chunking-service
 
 ## Benefits
 
-✅ **Maintainability**: Single ChunkerPort interface, library delegation  
-✅ **Clinical Fidelity**: Profile-based chunking respects domain structure  
-✅ **Provenance**: Complete tracking (doc_id, offsets, section labels, intent)  
-✅ **GPU Policy**: Explicit MinerU gate, no CPU fallbacks  
-✅ **Span-Grounded**: Precise offsets enable downstream extraction  
-✅ **Code Reduction**: 43% reduction in parsing/chunking code  
+✅ **Maintainability**: Single ChunkerPort interface, library delegation
+✅ **Clinical Fidelity**: Profile-based chunking respects domain structure
+✅ **Provenance**: Complete tracking (doc_id, offsets, section labels, intent)
+✅ **GPU Policy**: Explicit MinerU gate, no CPU fallbacks
+✅ **Span-Grounded**: Precise offsets enable downstream extraction
+✅ **Code Reduction**: 43% reduction in parsing/chunking code
 
 ---
 
@@ -358,18 +361,21 @@ kubectl rollout undo deployment/chunking-service
 ## Files Modified
 
 ### Created
+
 - `src/Medical_KG_rev/services/chunking/port.py` (ChunkerPort interface)
 - `src/Medical_KG_rev/services/chunking/profiles/` (4 profile YAML files)
 - `src/Medical_KG_rev/services/chunking/wrappers/` (library wrappers)
 - `tests/chunking/test_profiles.py` (profile tests)
 
 ### Deleted
+
 - `src/Medical_KG_rev/services/chunking/custom_splitters.py` (420 lines)
 - `src/Medical_KG_rev/services/parsing/pdf_parser.py` (180 lines)
 - `src/Medical_KG_rev/services/parsing/xml_parser.py` (95 lines)
 - `src/Medical_KG_rev/services/parsing/sentence_splitters.py` (140 lines)
 
 ### Modified
+
 - `src/Medical_KG_rev/gateway/rest/routes/ingestion.py` (add chunking_profile param)
 - `src/Medical_KG_rev/orchestration/orchestrator.py` (PDF two-phase gate)
 - All adapter `split_document()` calls → delegate to ChunkerPort

@@ -63,18 +63,18 @@ class StageFactory:
 
     registry: StageRegistry = field(default_factory=StageRegistry)
 
-    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
+    def resolve(self, topology: PipelineTopologyConfig, stage: StageDefinition) -> object:
         try:
             builder = self.registry.get_builder(stage.stage_type)
             metadata = self.registry.get_metadata(stage.stage_type)
         except StageRegistryError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
-                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
+                f"Pipeline '{topology.name}' declared unknown stage type '{stage.stage_type}'"
             ) from exc
-        instance = builder(stage)
+        instance = builder(topology, stage)
         logger.debug(
             "dagster.stage.resolved",
-            pipeline=pipeline,
+            pipeline=topology.name,
             stage=stage.name,
             stage_type=stage.stage_type,
             description=metadata.description,
@@ -88,7 +88,7 @@ class StageFactory:
         self,
         *,
         metadata: StageMetadata,
-        builder: Callable[[StageDefinition], object],
+        builder: Callable[[PipelineTopologyConfig, StageDefinition], object],
         replace: bool = False,
     ) -> None:
         self.registry.register_stage(metadata=metadata, builder=builder, replace=replace)
@@ -218,7 +218,7 @@ def _make_stage_op(
     )
     def _stage_op(context, state: dict[str, Any]) -> dict[str, Any]:
         stage_factory: StageFactory = context.resources.stage_factory
-        stage = stage_factory.resolve(topology.name, stage_definition)
+        stage = stage_factory.resolve(topology, stage_definition)
         metadata = stage_factory.get_metadata(stage_type)
         policy_loader: ResiliencePolicyLoader = context.resources.resilience_policies
 

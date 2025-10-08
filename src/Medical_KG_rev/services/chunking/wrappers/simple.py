@@ -22,14 +22,15 @@ class SimpleChunker(BaseProfileChunker):
         self._overlap_tokens = profile.get("overlap_tokens", 0)
 
     def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
-        groups = self._prepare_groups(document)
+        filtered_document, groups = self._prepare_groups(document)
         chunk_texts: List[str] = []
         chunk_to_group: List[int] = []
         for index, group in enumerate(groups):
             sentences: list[str] = []
             for ctx in group:
                 if ctx.text:
-                    sentences.extend(self._sentence_split(ctx.text))
+                    for _, _, sentence in self._sentence_split(ctx.text):
+                        sentences.append(sentence)
             if not sentences:
                 continue
             current: list[str] = []
@@ -49,7 +50,7 @@ class SimpleChunker(BaseProfileChunker):
                 chunk_texts.append(" ".join(current))
                 chunk_to_group.append(index)
         return self._assemble(
-            document=document,
+            document=filtered_document,
             groups=groups,
             chunk_texts=chunk_texts,
             chunk_to_group_index=chunk_to_group,

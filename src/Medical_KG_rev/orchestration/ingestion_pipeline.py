@@ -23,6 +23,8 @@ from Medical_KG_rev.observability.metrics import (
     record_ingestion_document,
     record_ingestion_error,
 )
+from Medical_KG_rev.embeddings.utils.tokenization import TokenLimitExceededError
+from Medical_KG_rev.services import GpuNotAvailableError
 from Medical_KG_rev.services.embedding import EmbeddingRequest, EmbeddingWorker
 from Medical_KG_rev.services.ingestion import IngestionService
 from Medical_KG_rev.services.mineru.service import MineruProcessor
@@ -327,6 +329,43 @@ class EmbeddingStage(PipelineStage):
         except StageFailure:
             record_ingestion_error(self.name, "circuit")
             raise
+        except TokenLimitExceededError as exc:
+            record_ingestion_error(self.name, "token_limit")
+            raise StageFailure(
+                "Embedding token limit exceeded",
+                status=400,
+                detail=str(exc),
+                stage=self.name,
+                error_type="token_limit_exceeded",
+                retriable=False,
+                extra={
+                    "embedding": {
+                        "status": "embed_failed",
+                        "error": "token_limit_exceeded",
+                        "detail": str(exc),
+                        "gpu_available": True,
+                    }
+                },
+            ) from exc
+        except GpuNotAvailableError as exc:
+            record_ingestion_error(self.name, "gpu_unavailable")
+            raise StageFailure(
+                "Embedding GPU unavailable",
+                status=503,
+                detail=str(exc),
+                stage=self.name,
+                error_type="gpu_unavailable",
+                retriable=False,
+                extra={
+                    "embedding": {
+                        "status": "embed_failed",
+                        "error": "gpu_unavailable",
+                        "detail": str(exc),
+                        "gpu_available": False,
+                        "retry_allowed": False,
+                    }
+                },
+            ) from exc
         except Exception as exc:  # pragma: no cover - service level guard
             record_ingestion_error(self.name, "failure")
             raise StageFailure(
@@ -349,10 +388,32 @@ class EmbeddingStage(PipelineStage):
             for vector in response.vectors
         ]
         context.data["embeddings"] = vectors
-        context.data.setdefault("metrics", {})["embedding"] = {
+        namespace_rollup: dict[str, dict[str, object]] = {}
+        for vector in vectors:
+            summary = namespace_rollup.setdefault(
+                vector["namespace"],
+                {
+                    "count": 0,
+                    "storage": vector["metadata"].get("storage_target"),
+                    "dimension": vector.get("dimension"),
+                    "kind": vector.get("kind"),
+                },
+            )
+            summary["count"] += 1
+        embedding_metrics = {
             "vectors": len(vectors),
-            "namespaces": sorted({vector["namespace"] for vector in vectors}),
+            "namespaces": sorted(namespace_rollup),
             "duration_ms": round(duration * 1000, 3),
+            "per_namespace": namespace_rollup,
+            "gpu_available": True,
+        }
+        context.data.setdefault("metrics", {})["embedding"] = {
+            **embedding_metrics,
+        }
+        context.data["embedding_summary"] = {
+            **embedding_metrics,
+            "status": "embedding_completed",
+            "duration_seconds": duration,
         }
         observe_ingestion_stage_latency(self.name, duration)
         record_business_event("ingestion.embedded", context.tenant_id)

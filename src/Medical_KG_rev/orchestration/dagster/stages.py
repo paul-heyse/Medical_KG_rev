@@ -29,6 +29,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     IndexStage,
     KGStage,
     ParseStage,
+    PipelineState,
     StageContext,
 )
 from Medical_KG_rev.orchestration.stages.contracts import RawPayload
@@ -54,7 +55,8 @@ class AdapterIngestStage(IngestStage):
         self._default_domain = default_domain
         self._extra_parameters = dict(extra_parameters or {})
 
-    def execute(self, ctx: StageContext, request: AdapterRequest) -> list[RawPayload]:
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[RawPayload]:
+        request = state.adapter_request
         merged_parameters = {**self._extra_parameters, **dict(request.parameters)}
         domain = request.domain or self._default_domain  # type: ignore[union-attr]
         invocation_request = request.model_copy(update={"parameters": merged_parameters, "domain": domain})
@@ -92,7 +94,8 @@ class AdapterParseStage(ParseStage):
     def __init__(self, *, default_source: str = "unknown") -> None:
         self._default_source = default_source
 
-    def execute(self, ctx: StageContext, payloads: list[RawPayload]) -> Document:
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document:
+        payloads = list(state.require_payloads())
         doc_id = ctx.doc_id or f"doc-{ctx.correlation_id or uuid4().hex}"
         source = ctx.metadata.get("dataset") if isinstance(ctx.metadata, Mapping) else None
         source = str(source or self._default_source)
@@ -134,9 +137,8 @@ class AdapterParseStage(ParseStage):
 class IRValidationStage(ParseStage):
     """Validate that the parsed document contains content for downstream stages."""
 
-    def execute(self, ctx: StageContext, document: Document) -> Document:
-        if not isinstance(document, Document):
-            raise TypeError("IRValidationStage expects a Document instance")
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document:
+        document = state.require_document()
         if not document.sections or not any(section.blocks for section in document.sections):
             raise ValueError("Document contains no content for downstream processing")
         return document
@@ -145,15 +147,18 @@ class IRValidationStage(ParseStage):
 class NoOpExtractStage(ExtractStage):
     """Stub extraction stage returning empty entity and claim collections."""
 
-    def execute(self, ctx: StageContext, document: Document) -> tuple[list[Entity], list[Claim]]:
+    def execute(self, ctx: StageContext, state: PipelineState) -> tuple[list[Entity], list[Claim]]:
+        state.require_document()
         return ([], [])
 
 
 class NoOpKnowledgeGraphStage(KGStage):
     """Return an empty write receipt for pipelines without KG integration."""
 
-    def execute(self, ctx: StageContext, entities: list[Entity], claims: list[Claim]) -> GraphWriteReceipt:
+    def execute(self, ctx: StageContext, state: PipelineState) -> GraphWriteReceipt:
         correlation_id = ctx.correlation_id or uuid4().hex
+        entities = list(state.entities)
+        claims = list(state.claims)
         return GraphWriteReceipt(
             nodes_written=len(entities),
             edges_written=len(claims),

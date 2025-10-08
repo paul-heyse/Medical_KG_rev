@@ -721,13 +721,13 @@
 
 ### 11.3 gRPC API Updates
 
-- [ ] 11.3.1 Update `IngestionJobRequest` proto:
-  - [ ] Add `chunking_profile` field
-  - [ ] Add `ChunkingOptions` message type
+- [x] 11.3.1 Update `IngestionJobRequest` proto:
+  - [x] Add `chunking_profile` field
+  - [x] Add `ChunkingOptions` message type
 
-- [ ] 11.3.2 Update `IngestionJobResponse` proto:
-  - [ ] Add `estimated_chunks` field
-  - [ ] Add `profile_used` field
+- [x] 11.3.2 Update `IngestionJobResponse` proto:
+  - [x] Add `estimated_chunks` field
+  - [x] Add `profile_used` field
 
 - [ ] 11.3.3 Compile proto files:
   - [ ] Run `buf generate`
@@ -739,43 +739,43 @@
 
 ### 12.1 Define Error Types
 
-- [ ] 12.1.1 **ProfileNotFoundError**:
-  - [ ] Raised when requested profile doesn't exist
-  - [ ] HTTP 400 Bad Request
-  - [ ] Message: "Chunking profile '{profile}' not found. Available: {profiles}"
+- [x] 12.1.1 **ProfileNotFoundError**:
+  - [x] Raised when requested profile doesn't exist
+  - [x] HTTP 400 Bad Request
+  - [x] Message: "Chunking profile '{profile}' not found. Available: {profiles}"
 
-- [ ] 12.1.2 **TokenizerMismatchError**:
-  - [ ] Raised when tokenizer doesn't align with embedding model
-  - [ ] HTTP 500 Internal Server Error
-  - [ ] Message: "Tokenizer '{tokenizer}' incompatible with embedding model '{model}'"
+- [x] 12.1.2 **TokenizerMismatchError**:
+  - [x] Raised when tokenizer doesn't align with embedding model
+  - [x] HTTP 500 Internal Server Error
+  - [x] Message: "Tokenizer '{tokenizer}' incompatible with embedding model '{model}'"
 
-- [ ] 12.1.3 **ChunkingFailedError**:
-  - [ ] Raised when chunking process fails
-  - [ ] HTTP 500 Internal Server Error
-  - [ ] Includes detailed error message and stack trace
+- [x] 12.1.3 **ChunkingFailedError**:
+  - [x] Raised when chunking process fails
+  - [x] HTTP 500 Internal Server Error
+  - [x] Includes detailed error message and stack trace
 
-- [ ] 12.1.4 **MineruOutOfMemoryError**:
-  - [ ] Raised when GPU runs out of memory during PDF processing
-  - [ ] HTTP 503 Service Unavailable
-  - [ ] Message: "GPU out of memory. Retry later or reduce PDF size."
+- [x] 12.1.4 **MineruOutOfMemoryError**:
+  - [x] Raised when GPU runs out of memory during PDF processing
+  - [x] HTTP 503 Service Unavailable
+  - [x] Message: "GPU out of memory. Retry later or reduce PDF size."
 
-- [ ] 12.1.5 **MineruGpuUnavailableError**:
-  - [ ] Raised when GPU not available for MinerU
-  - [ ] HTTP 503 Service Unavailable
-  - [ ] Message: "GPU required for PDF processing. Check GPU availability."
+- [x] 12.1.5 **MineruGpuUnavailableError**:
+  - [x] Raised when GPU not available for MinerU
+  - [x] HTTP 503 Service Unavailable
+  - [x] Message: "GPU required for PDF processing. Check GPU availability."
 
 ### 12.2 Error Handling Implementation
 
-- [ ] 12.2.1 Add error handlers to gateway:
-  - [ ] Map custom exceptions to HTTP status codes
-  - [ ] Return RFC 7807 Problem Details format
+- [x] 12.2.1 Add error handlers to gateway:
+  - [x] Map custom exceptions to HTTP status codes
+  - [x] Return RFC 7807 Problem Details format
 
-- [ ] 12.2.2 Add error logging:
-  - [ ] Log all errors with correlation ID
-  - [ ] Include context (profile, document ID, stage)
+- [x] 12.2.2 Add error logging:
+  - [x] Log all errors with correlation ID
+  - [x] Include context (profile, document ID, stage)
 
-- [ ] 12.2.3 Add error metrics:
-  - [ ] Count errors by type: `medicalkg_chunking_errors_total{error_type}`
+- [x] 12.2.3 Add error metrics:
+  - [x] Count errors by type: `medicalkg_chunking_errors_total{error_type}`
 
 ---
 
@@ -791,23 +791,23 @@
 
 ## 12. Monitoring & Observability
 
-- [ ] 12.1 Add Prometheus metrics:
-  - [ ] `chunking_documents_total` (by profile)
-  - [ ] `chunking_duration_seconds` (P50, P95, P99 by profile)
-  - [ ] `chunking_chunks_per_document` (histogram by profile)
-  - [ ] `chunking_failures_total` (by profile, error type)
-  - [ ] `mineru_gate_triggered_total`
-  - [ ] `postpdf_start_triggered_total`
-- [ ] 12.2 Add CloudEvents for chunking lifecycle:
-  - [ ] `chunking.started`
-  - [ ] `chunking.completed`
-  - [ ] `chunking.failed`
-  - [ ] `mineru.gate.waiting`
-  - [ ] `postpdf.start.triggered`
-- [ ] 12.3 Log chunk quality metrics:
-  - [ ] Average chunk length (chars, tokens)
-  - [ ] Section label distribution
-  - [ ] Intent hint distribution
+- [x] 12.1 Add Prometheus metrics:
+  - [x] `chunking_documents_total` (by profile)
+  - [x] `chunking_duration_seconds` (P50, P95, P99 by profile)
+  - [x] `chunking_chunks_per_document` (histogram by profile)
+  - [x] `chunking_failures_total` (by profile, error type)
+  - [x] `mineru_gate_triggered_total`
+  - [x] `postpdf_start_triggered_total`
+- [x] 12.2 Add CloudEvents for chunking lifecycle:
+  - [x] `chunking.started`
+  - [x] `chunking.completed`
+  - [x] `chunking.failed`
+  - [x] `mineru.gate.waiting`
+  - [x] `postpdf.start.triggered`
+- [x] 12.3 Log chunk quality metrics:
+  - [x] Average chunk length (chars, tokens)
+  - [x] Section label distribution
+  - [x] Intent hint distribution
 - [ ] 12.4 Create Grafana dashboard: `Medical_KG_Chunking_Quality.json`
 
 ---

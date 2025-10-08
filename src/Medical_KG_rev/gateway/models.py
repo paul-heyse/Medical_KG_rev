@@ -156,6 +156,7 @@ class IngestionRequest(BaseModel):
     priority: Literal["low", "normal", "high"] = "normal"
     metadata: dict[str, Any] = Field(default_factory=dict)
     profile: str | None = None
+    chunking_options: dict[str, Any] | None = None
 
 
 class PipelineIngestionRequest(IngestionRequest):

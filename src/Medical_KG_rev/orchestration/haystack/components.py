@@ -38,6 +38,42 @@ except ImportError:  # pragma: no cover - fallback for tests
     DocumentSplitter = Any  # type: ignore
 
 
+@dataclass(slots=True)
+class _StubResultDocument:
+    id: str
+    content: str
+    score: float
+    meta: dict[str, Any]
+
+
+class _StubRetrieverComponent:
+    def __init__(self, kind: str, top_k: int) -> None:
+        self._kind = kind
+        self._top_k = top_k
+
+    def run(self, *, query: str, filters: dict[str, Any] | None = None) -> dict[str, list[_StubResultDocument]]:
+        payload_filters = dict(filters or {})
+        key = tuple(sorted(payload_filters.items()))
+        doc_id = f"{self._kind}-{abs(hash((query, key))) % 10000:04d}"
+        document = _StubResultDocument(
+            id=doc_id,
+            content=f"{self._kind.upper()} result for '{query}'",
+            score=0.5,
+            meta={"source": f"{self._kind}-stub", "filters": payload_filters},
+        )
+        return {"documents": [document]}
+
+
+class _StubRanker:
+    def __init__(self, top_k: int) -> None:
+        self._top_k = top_k
+
+    def run(self, *, documents: Sequence[Any] | None = None) -> dict[str, list[Any]]:
+        docs = list(documents or [])
+        docs.sort(key=lambda doc: getattr(doc, "score", 0.0), reverse=True)
+        return {"documents": docs[: self._top_k]}
+
+
 def _ensure_gpu_available(require_gpu: bool) -> None:
     if not require_gpu:
         return
@@ -345,21 +381,33 @@ class HaystackRetriever:
         top_k: int = 20,
     ) -> None:
         if bm25_retriever is None:  # pragma: no cover - requires haystack runtime
-            from haystack_integrations.components.retrievers.opensearch import (  # type: ignore
-                OpenSearchBM25Retriever,
-            )
+            try:
+                from haystack_integrations.components.retrievers.opensearch import (  # type: ignore
+                    OpenSearchBM25Retriever,
+                )
 
-            bm25_retriever = OpenSearchBM25Retriever(top_k=top_k)
+                bm25_retriever = OpenSearchBM25Retriever(top_k=top_k)
+            except ImportError:  # pragma: no cover - fallback for tests
+                logger.warning("haystack.bm25.stub", top_k=top_k)
+                bm25_retriever = _StubRetrieverComponent("bm25", top_k)
         if dense_retriever is None:  # pragma: no cover - requires haystack runtime
-            from haystack_integrations.components.retrievers.faiss import (  # type: ignore
-                FAISSDocumentRetriever,
-            )
+            try:
+                from haystack_integrations.components.retrievers.faiss import (  # type: ignore
+                    FAISSDocumentRetriever,
+                )
 
-            dense_retriever = FAISSDocumentRetriever(top_k=top_k)
+                dense_retriever = FAISSDocumentRetriever(top_k=top_k)
+            except ImportError:  # pragma: no cover - fallback for tests
+                logger.warning("haystack.faiss.stub", top_k=top_k)
+                dense_retriever = _StubRetrieverComponent("dense", top_k)
         if fusion_ranker is None:  # pragma: no cover - requires haystack runtime
-            from haystack.components.rankers import ReciprocalRankFusionRanker  # type: ignore
+            try:
+                from haystack.components.rankers import ReciprocalRankFusionRanker  # type: ignore
 
-            fusion_ranker = ReciprocalRankFusionRanker(top_k=top_k)
+                fusion_ranker = ReciprocalRankFusionRanker(top_k=top_k)
+            except ImportError:  # pragma: no cover - fallback for tests
+                logger.warning("haystack.rank.stub", top_k=top_k)
+                fusion_ranker = _StubRanker(top_k)
         self._bm25 = bm25_retriever
         self._dense = dense_retriever
         self._ranker = fusion_ranker

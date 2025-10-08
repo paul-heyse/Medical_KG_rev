@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any
-
-import json
 
 import structlog
 from Medical_KG_rev.chunking.exceptions import (
@@ -20,22 +17,14 @@ from Medical_KG_rev.chunking.exceptions import (
 )
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
-<<<<<<< HEAD
 from ..adapters.plugins.models import AdapterRequest
 
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import (
+    HaystackRetriever,
     JobLedger,
     JobLedgerEntry,
-    ParallelExecutor,
-    PipelineConfigManager,
-    PipelineContext,
-    PipelineProfile,
-    ProfileDetector,
-    ProfileManager,
-    QueryPipelineBuilder,
-    StrategySpec,
 )
 from ..orchestration.dagster import (
     DagsterOrchestrator,
@@ -48,33 +37,7 @@ from ..orchestration.dagster import (
 from ..orchestration.stages.contracts import StageContext
 from ..services.extraction.templates import TemplateValidationError, validate_template
 from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
-from ..services.retrieval.reranker import CrossEncoderReranker
-from ..services.retrieval.router import (
-    RetrievalRouter,
-    RetrievalStrategy,
-    RouterMatch,
-    RoutingRequest,
-=======
-from ..auth.context import SecurityContext
-from ..config import AppSettings, RerankingSettings
-from ..kg import ShaclValidator, ValidationError
-from ..observability.metrics import observe_job_duration, record_business_event
-from ..orchestration import JobLedger, JobLedgerEntry, Orchestrator
-from ..orchestration.kafka import KafkaClient
-from ..orchestration.worker import IngestWorker, MappingWorker, WorkerBase
-from ..services.evaluation import (
-    EvaluationConfig,
-    EvaluationResult,
-    EvaluationRunner,
-    TestSetManager,
-    build_test_set,
->>>>>>> main
-)
-from ..services.extraction.templates import TemplateValidationError, validate_template
-from ..services.retrieval import FAISSIndex, OpenSearchClient, RetrievalService
-from ..services.retrieval.chunking import ChunkingOptions, ChunkingService
-from ..services.retrieval.routing import IntentClassifier, QueryIntent
-from ..services.reranking import PipelineSettings
+from ..utils.errors import ProblemDetail as PipelineProblemDetail
 from ..validation import UCUMValidator
 from ..validation.fhir import FHIRValidationError, FHIRValidator
 from .models import (
@@ -92,7 +55,6 @@ from .models import (
     EntityLinkResult,
     ExtractionRequest,
     ExtractionResult,
-    EvaluationRequest,
     IngestionRequest,
     JobEvent,
     JobHistoryEntry,
@@ -110,8 +72,6 @@ from .sse.manager import EventStreamManager
 
 logger = structlog.get_logger(__name__)
 
-RETRIEVAL_PIPELINE_VERSION = "retrieval-service:v1"
-
 
 class GatewayError(RuntimeError):
     """Domain specific exception carrying problem detail information."""
@@ -119,22 +79,6 @@ class GatewayError(RuntimeError):
     def __init__(self, detail: ProblemDetail):
         super().__init__(detail.title)
         self.detail = detail
-
-
-def _is_table_document(metadata: Mapping[str, Any] | None) -> bool:
-    if not isinstance(metadata, Mapping):
-        return False
-    if bool(metadata.get("is_table")):
-        return True
-    segment = str(metadata.get("segment_type", ""))
-    if segment.lower() == "table":
-        return True
-    intent_hint = str(metadata.get("intent_hint", "")).lower()
-    if intent_hint in {"ae", "adverse_events", "table"}:
-        return True
-    if "table_html" in metadata:
-        return True
-    return False
 
 
 @dataclass
@@ -146,67 +90,19 @@ class GatewayService:
     ledger: JobLedger
     adapter_manager: AdapterPluginManager = field(default_factory=get_plugin_manager)
     chunker: ChunkingService = field(default_factory=ChunkingService)
-    intent_classifier: IntentClassifier = field(default_factory=IntentClassifier)
+    retriever: HaystackRetriever = field(default_factory=HaystackRetriever)
     shacl: ShaclValidator = field(default_factory=ShaclValidator.default)
     ucum: UCUMValidator = field(default_factory=UCUMValidator)
     fhir: FHIRValidator = field(default_factory=FHIRValidator)
-    app_settings: AppSettings | None = None
-    reranking_settings: RerankingSettings | None = None
-    opensearch_client: OpenSearchClient | None = None
-    faiss_index: FAISSIndex | None = None
-    retrieval_service: RetrievalService | None = None
-    test_set_manager: TestSetManager = field(default_factory=TestSetManager)
-    _evaluation_runner: EvaluationRunner | None = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def __post_init__(self) -> None:
-        self._ensure_retrieval_components()
-
-    def _ensure_retrieval_components(self) -> None:
-        if self.app_settings is None:
-            self.app_settings = AppSettings()
-        if self.reranking_settings is None:
-            self.reranking_settings = self.app_settings.reranking
-        if self.opensearch_client is None:
-            self.opensearch_client = OpenSearchClient()
-        if self.retrieval_service is None:
-            pipeline_cfg = getattr(self.reranking_settings, "pipeline", None)
-            pipeline_settings = PipelineSettings(
-                retrieve_candidates=(
-                    int(pipeline_cfg.retrieve_candidates)
-                    if pipeline_cfg is not None
-                    else 1000
-                ),
-                rerank_candidates=max(
-                    200,
-                    int(pipeline_cfg.rerank_candidates) if pipeline_cfg is not None else 100,
-                ),
-                return_top_k=max(
-                    50,
-                    int(pipeline_cfg.return_top_k) if pipeline_cfg is not None else 10,
-                ),
-            )
-            self.retrieval_service = RetrievalService(
-                self.opensearch_client,
-                self.faiss_index,
-                reranking_settings=self.reranking_settings,
-                pipeline_settings=pipeline_settings,
-            )
-
-    def _index_for_request(
-        self, request: RetrieveRequest, metadata: Mapping[str, Any]
-    ) -> str:
-        candidate = metadata.get("index")
-        if isinstance(candidate, str) and candidate.strip():
-            return candidate.strip()
-        if request.profile:
-            return f"{request.profile}-chunks"
-        dataset = metadata.get("dataset") or metadata.get("source")
-        if isinstance(dataset, str) and dataset.strip():
-            return f"{dataset.strip()}-chunks"
-        return "chunks"
+    def _convert_problem(self, problem: PipelineProblemDetail) -> ProblemDetail:
+        payload = problem.to_response()
+        extensions = payload.pop("extra", {})
+        payload.setdefault("extensions", extensions)
+        return ProblemDetail.model_validate(payload)
 
     def _to_job_status(self, entry: JobLedgerEntry) -> JobStatus:
         history = [
@@ -574,283 +470,83 @@ class GatewayService:
             embeddings.append(
                 EmbeddingVector(
                     id=f"emb-{index}",
-                    model=request.model,
-                    namespace=request.namespace,
-                    kind="single_vector",
-                    dimension=len(vector),
                     vector=vector,
-                    metadata={
-                        "length": len(text),
-                        "normalized": request.normalize,
-                        "namespace": request.namespace,
-                    },
+                    model=request.model,
+                    metadata={"length": len(text), "normalized": request.normalize},
                 )
             )
         self.ledger.update_metadata(job_id, {"embeddings": len(embeddings)})
-        self._complete_job(
-            job_id,
-            payload={
-                "embeddings": len(embeddings),
-                "namespace": request.namespace,
-                "model": request.model,
-            },
-        )
+        self._complete_job(job_id, payload={"embeddings": len(embeddings)})
         return embeddings
 
     def retrieve(self, request: RetrieveRequest) -> RetrievalResult:
-        self._ensure_retrieval_components()
         started = perf_counter()
         job_id = self._new_job(request.tenant_id, "retrieve")
-        metadata: dict[str, Any] = {"filters": request.filters, **request.metadata}
+        filters = dict(request.filters or {})
+        metadata = dict(request.metadata)
         if request.profile:
-            metadata.setdefault("profile", request.profile)
-
-        classification = self.intent_classifier.classify(
-            request.query, override=request.query_intent
-        )
-        intent_payload = {
-            "detected": classification.intent.value,
-            "confidence": classification.confidence,
-            "override": classification.override.value if classification.override else None,
-            "matched_patterns": list(classification.matched_patterns),
-            "table_only": request.table_only,
-        }
-        metadata.setdefault("intent", intent_payload.copy())
-
-        index_name = self._index_for_request(request, metadata)
-        rerank_flag = request.rerank if request.rerank is not None else True
-        retrieval_service = self.retrieval_service
-        assert retrieval_service is not None
-        security_context = SecurityContext(
-            subject="gateway",
-            tenant_id=request.tenant_id,
-            scopes={"*", "retrieve:read"},
-        )
-
+            metadata['profile'] = request.profile
         try:
-            service_results = retrieval_service.search(
-                index=index_name,
-                query=request.query,
-                filters=request.filters,
-                k=request.top_k,
-                rerank=rerank_flag,
-                rerank_model=request.rerank_model,
-                context=security_context,
-                explain=request.explain,
-            )
-        except Exception as exc:  # pragma: no cover - defensive guardrail
+            results = self.retriever.retrieve(request.query, filters=filters or None)
+        except Exception as exc:
             detail = ProblemDetail(
                 title="Retrieval failed",
-                status=500,
-                type="https://medical-kg/errors/retrieval",
+                status=502,
+                type="https://httpstatuses.com/502",
                 detail=str(exc),
             )
             self._fail_job(job_id, detail.detail or detail.title)
             raise GatewayError(detail) from exc
-
         documents: list[DocumentSummary] = []
-        table_documents: list[DocumentSummary] = []
-        rerank_metadata: dict[str, Any] = {}
-        stage_timings: dict[str, float] = {}
-        component_errors: list[str] = []
-
-        for result in service_results:
-            metadata_payload = dict(result.metadata)
-            if metadata_payload:
-                payload_rerank = metadata_payload.get("reranking")
-                if isinstance(payload_rerank, Mapping):
-                    rerank_metadata = dict(payload_rerank)
-                components = metadata_payload.get("components")
-                if isinstance(components, Mapping):
-                    errors = components.get("errors", [])
-                    if isinstance(errors, Sequence):
-                        component_errors.extend(str(error) for error in errors if error)
-                metrics_payload = metadata_payload.get("pipeline_metrics")
-                if isinstance(metrics_payload, Mapping):
-                    timings = metrics_payload.get("timing")
-                    if isinstance(timings, Mapping):
-                        for name, duration in timings.items():
-                            try:
-                                stage_timings[name] = float(duration)
-                            except (TypeError, ValueError):
-                                continue
-            title = str(
-                metadata_payload.get("title")
-                or metadata_payload.get("document_id")
-                or metadata_payload.get("id")
-                or result.id
+        for index, item in enumerate(results[: request.top_k]):
+            meta = dict(item.get('meta') or {})
+            doc_id = str(item.get('id') or meta.pop('id', None) or f"retrieved-{index}")
+            title = meta.pop('title', None) or doc_id
+            summary = meta.pop('summary', None)
+            source = meta.pop('source', None) or 'hybrid'
+            score = float(item.get('score') or meta.pop('score', 0.0) or 0.0)
+            content = item.get('content')
+            if content and 'content' not in meta:
+                meta['content'] = content
+            documents.append(
+                DocumentSummary(
+                    id=doc_id,
+                    title=title,
+                    score=score,
+                    summary=summary,
+                    source=source,
+                    metadata=meta,
+                    explain=item.get('explain') if request.explain else None,
+                )
             )
-            summary_text = metadata_payload.get("summary")
-            source = str(
-                metadata_payload.get("source")
-                or metadata_payload.get("strategy")
-                or metadata_payload.get("profile")
-                or "hybrid"
-            )
-            explain_payload = (
-                metadata_payload.get("component_scores") if request.explain else None
-            )
-            score = (
-                float(result.rerank_score)
-                if result.rerank_score is not None
-                else float(result.retrieval_score)
-            )
-            document = DocumentSummary(
-                id=result.id,
-                title=title,
-                score=score,
-                summary=summary_text if isinstance(summary_text, str) else None,
-                source=source,
-                metadata=metadata_payload,
-                explain=explain_payload,
-            )
-            documents.append(document)
-            if _is_table_document(metadata_payload):
-                table_documents.append(document)
-
-        if request.table_only:
-            if table_documents:
-                selected_documents = table_documents[: request.top_k]
-            else:
-                intent_payload.setdefault("warnings", []).append("table_only_fallback")
-                selected_documents = documents[: request.top_k]
-        else:
-            selected_documents = documents[: request.top_k]
-
-        unique_errors = sorted({error for error in component_errors if error})
-        problem_details = [
-            ProblemDetail(
-                type="https://medical-kg/errors/retrieval-component",
-                title="Retrieval component error",
-                status=502,
-                detail=error,
-            )
-            for error in unique_errors
-        ]
-
-        stage_timings_ms = {
-            name: round(value * 1000.0, 3) for name, value in stage_timings.items()
-        }
-        rerank_metrics = dict(rerank_metadata)
-        if stage_timings_ms:
-            rerank_metrics.setdefault("stage_timings_ms", stage_timings_ms)
-        if request.rerank_model:
-            rerank_metrics.setdefault("requested_model", request.rerank_model)
-        if unique_errors:
-            rerank_metrics.setdefault("component_errors", unique_errors)
-
+        retrieval_duration = perf_counter() - started
+        observe_job_duration('retrieve', retrieval_duration)
+        record_business_event('retrieval_requests', request.tenant_id)
+        if documents:
+            record_business_event('documents_retrieved', request.tenant_id)
+        stage_timings = {'retrieve': round(retrieval_duration, 6)}
         result = RetrievalResult(
             query=request.query,
-            documents=selected_documents,
-            total=len(selected_documents),
-            rerank_metrics=rerank_metrics,
-            pipeline_version=RETRIEVAL_PIPELINE_VERSION,
-            partial=bool(unique_errors),
-            degraded=bool(unique_errors),
-            errors=problem_details,
-            stage_timings={name: round(value, 6) for name, value in stage_timings.items()},
-            intent=intent_payload,
+            documents=documents,
+            total=len(documents),
+            rerank_metrics={'stage_timings_ms': {name: round(value * 1000, 3) for name, value in stage_timings.items()}},
+            pipeline_version='haystack-hybrid/v1',
+            partial=False,
+            degraded=False,
+            errors=[],
+            stage_timings=stage_timings,
         )
-
-        duration = perf_counter() - started
-        observe_job_duration("retrieve", duration)
-        record_business_event("retrieval_requests", request.tenant_id)
-        if result.total:
-            record_business_event("documents_retrieved", request.tenant_id)
-
         ledger_metadata = {
-            "documents": result.total,
-            "pipeline_version": result.pipeline_version,
-            "partial": result.partial,
-            "degraded": result.degraded,
-            "index": index_name,
+            'documents': result.total,
+            'pipeline_version': result.pipeline_version,
+            'filters': filters,
+            'metadata': metadata,
         }
-        if unique_errors:
-            ledger_metadata["component_errors"] = unique_errors
-
-        if not result.documents and problem_details:
-            problem = problem_details[0]
-            self._fail_job(job_id, problem.detail or problem.title)
-            raise GatewayError(problem)
-
         self.ledger.update_metadata(job_id, ledger_metadata)
-        if result.partial:
-            partial_payload = dict(ledger_metadata)
-            partial_payload["status"] = "partial"
-            self._complete_job(job_id, payload=partial_payload)
-        else:
-            self._complete_job(job_id, payload=ledger_metadata)
+        if result.total == 0 and request.rerank:
+            ledger_metadata['status'] = 'no-results'
+        self._complete_job(job_id, payload=ledger_metadata)
         return result
-
-    def evaluate_retrieval(self, request: EvaluationRequest) -> EvaluationResult:
-        self._ensure_retrieval_components()
-        if self._evaluation_runner is None:
-            self._evaluation_runner = EvaluationRunner()
-        if request.test_set_name:
-            test_set = self.test_set_manager.load(
-                request.test_set_name,
-                expected_version=request.test_set_version,
-            )
-        else:
-            inline_queries = [
-                {
-                    "query_id": query.query_id,
-                    "query_text": query.query_text,
-                    "query_type": query.query_type,
-                    "relevant_docs": [
-                        {"doc_id": doc.doc_id, "grade": doc.grade} for doc in query.relevant_docs
-                    ],
-                    "metadata": dict(query.metadata),
-                }
-                for query in request.queries or []
-            ]
-            version = request.test_set_version or "inline"
-            serialised = json.dumps(inline_queries, sort_keys=True).encode("utf-8")
-            inline_id = hashlib.sha256(serialised).hexdigest()[:8]
-            name = request.test_set_name or f"inline-{inline_id}"
-            test_set = build_test_set(name=name, queries=inline_queries, version=version)
-        config = EvaluationConfig(
-            top_k=request.top_k,
-            components=tuple(request.components) if request.components else None,
-            rerank=request.rerank,
-        )
-
-        def _run(record) -> Sequence[str]:
-            metadata = dict(request.metadata)
-            evaluation_meta = dict(metadata.get("evaluation", {}))
-            evaluation_meta.update(
-                {
-                    "query_id": record.query_id,
-                    "query_type": record.query_type.value,
-                    "test_set_version": test_set.version,
-                }
-            )
-            if record.metadata:
-                evaluation_meta.setdefault("query_metadata", dict(record.metadata))
-            if config.components:
-                evaluation_meta["components"] = list(config.components)
-            metadata["evaluation"] = evaluation_meta
-            retrieval_request = RetrieveRequest(
-                tenant_id=request.tenant_id,
-                query=record.query_text,
-                top_k=request.top_k,
-                filters=dict(request.filters),
-                rerank=request.rerank if request.rerank is not None else True,
-                rerank_top_k=request.rerank_top_k,
-                rerank_overflow=request.rerank_overflow,
-                profile=request.profile,
-                metadata=metadata,
-                explain=False,
-            )
-            response = self.retrieve(retrieval_request)
-            return [document.id for document in response.documents]
-
-        return self._evaluation_runner.evaluate(
-            test_set,
-            _run,
-            config=config,
-            use_cache=request.use_cache,
-        )
 
     def entity_link(self, request: EntityLinkRequest) -> Sequence[EntityLinkResult]:
         job_id = self._new_job(request.tenant_id, "entity-link")
@@ -1067,10 +763,6 @@ class GatewayService:
 
     def search(self, args: SearchArguments) -> RetrievalResult:
         job_id = self._new_job("system", "search")
-        intent_payload = {
-            "detected": args.query_intent.value if args.query_intent else None,
-            "table_only": args.table_only,
-        }
         request = RetrievalResult(
             query=args.query,
             documents=[
@@ -1084,7 +776,6 @@ class GatewayService:
                 )
             ],
             total=1,
-            intent=intent_payload,
         )
         self.ledger.update_metadata(job_id, {"query": args.query})
         self._complete_job(job_id, payload={"documents": 1})

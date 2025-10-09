@@ -1,0 +1,108 @@
+graph TD
+    %% External Data Sources
+    OpenAlexAPI[OpenAlex API]
+    COREAPI[CORE API]
+    PMCAPI[PMC API]
+    UnpaywallAPI[Unpaywall API]
+    TerminologyAPI[Terminology API]
+
+    %% Adapter Layer
+    OpenAlexAdapter[OpenAlex Adapter]
+    COREAdapter[CORE Adapter]
+    PMCAdapter[PMC Adapter]
+    UnpaywallAdapter[Unpaywall Adapter]
+    TerminologyAdapter[Terminology Adapter]
+
+    %% Adapter Base
+    BaseAdapter[Base Adapter]
+    AdapterRegistry[Adapter Registry]
+    AdapterConfig[Adapter Configuration]
+
+    %% Data Processing
+    DataParser[Data Parser]
+    DataValidator[Data Validator]
+    DataTransformer[Data Transformer]
+
+    %% Service Layer
+    IngestionService[Ingestion Service]
+    ProcessingService[Processing Service]
+    ValidationService[Validation Service]
+
+    %% Storage
+    DocumentStore[Document Store]
+    MetadataStore[Metadata Store]
+    CacheStore[Cache Store]
+
+    %% Error Handling
+    ErrorHandler[Error Handler]
+    RetryLogic[Retry Logic]
+    CircuitBreaker[Circuit Breaker]
+
+    %% Monitoring
+    Metrics[Metrics Collection]
+    Logging[Structured Logging]
+    HealthCheck[Health Check]
+
+    %% Data Flow
+    OpenAlexAPI --> OpenAlexAdapter
+    COREAPI --> COREAdapter
+    PMCAPI --> PMCAdapter
+    UnpaywallAPI --> UnpaywallAdapter
+    TerminologyAPI --> TerminologyAdapter
+
+    OpenAlexAdapter --> BaseAdapter
+    COREAdapter --> BaseAdapter
+    PMCAdapter --> BaseAdapter
+    UnpaywallAdapter --> BaseAdapter
+    TerminologyAdapter --> BaseAdapter
+
+    BaseAdapter --> AdapterRegistry
+    AdapterRegistry --> AdapterConfig
+
+    BaseAdapter --> DataParser
+    DataParser --> DataValidator
+    DataValidator --> DataTransformer
+
+    DataTransformer --> IngestionService
+    IngestionService --> ProcessingService
+    ProcessingService --> ValidationService
+
+    ValidationService --> DocumentStore
+    ValidationService --> MetadataStore
+    BaseAdapter --> CacheStore
+
+    %% Error Flow
+    BaseAdapter --> ErrorHandler
+    ErrorHandler --> RetryLogic
+    RetryLogic --> CircuitBreaker
+
+    %% Monitoring Flow
+    BaseAdapter --> Metrics
+    BaseAdapter --> Logging
+    BaseAdapter --> HealthCheck
+
+    %% Configuration Flow
+    AdapterConfig --> OpenAlexAdapter
+    AdapterConfig --> COREAdapter
+    AdapterConfig --> PMCAdapter
+    AdapterConfig --> UnpaywallAdapter
+    AdapterConfig --> TerminologyAdapter
+
+    %% Styling
+    classDef external fill:#ffebee
+    classDef adapter fill:#e8f5e8
+    classDef base fill:#e1f5fe
+    classDef processing fill:#f3e5f5
+    classDef service fill:#fff3e0
+    classDef storage fill:#f1f8e9
+    classDef error fill:#fce4ec
+    classDef monitoring fill:#f5f5f5
+
+    class OpenAlexAPI,COREAPI,PMCAPI,UnpaywallAPI,TerminologyAPI external
+    class OpenAlexAdapter,COREAdapter,PMCAdapter,UnpaywallAdapter,TerminologyAdapter adapter
+    class BaseAdapter,AdapterRegistry,AdapterConfig base
+    class DataParser,DataValidator,DataTransformer processing
+    class IngestionService,ProcessingService,ValidationService service
+    class DocumentStore,MetadataStore,CacheStore storage
+    class ErrorHandler,RetryLogic,CircuitBreaker error
+    class Metrics,Logging,HealthCheck monitoring

@@ -1,0 +1,64 @@
+graph TD
+    %% Gateway Layer
+    Gateway[Gateway Layer]
+
+    %% Core Services
+    EmbeddingService[Embedding Service]
+    ChunkingService[Chunking Service]
+    RetrievalService[Retrieval Service]
+    EvaluationService[Evaluation Service]
+    MinerUService[MinerU Service]
+    HealthService[Health Service]
+
+    %% Service Dependencies
+    VectorStoreService[Vector Store Service]
+    CacheService[Cache Service]
+    ValidationService[Validation Service]
+
+    %% External Dependencies
+    GPUResources[GPU Resources]
+    ExternalAPIs[External APIs]
+    Database[Database]
+
+    %% Data Flow
+    Gateway --> EmbeddingService
+    Gateway --> ChunkingService
+    Gateway --> RetrievalService
+    Gateway --> EvaluationService
+    Gateway --> MinerUService
+    Gateway --> HealthService
+
+    %% Service Interactions
+    ChunkingService --> EmbeddingService
+    EmbeddingService --> VectorStoreService
+    RetrievalService --> VectorStoreService
+    RetrievalService --> CacheService
+    EvaluationService --> RetrievalService
+    EvaluationService --> EmbeddingService
+
+    %% External Dependencies
+    MinerUService --> GPUResources
+    EmbeddingService --> GPUResources
+    RetrievalService --> Database
+    ValidationService --> ExternalAPIs
+
+    %% Health Check Flow
+    HealthService --> EmbeddingService
+    HealthService --> ChunkingService
+    HealthService --> RetrievalService
+    HealthService --> EvaluationService
+    HealthService --> MinerUService
+    HealthService --> VectorStoreService
+    HealthService --> CacheService
+    HealthService --> ValidationService
+
+    %% Styling
+    classDef gateway fill:#e1f5fe
+    classDef service fill:#f3e5f5
+    classDef dependency fill:#fff3e0
+    classDef external fill:#ffebee
+
+    class Gateway gateway
+    class EmbeddingService,ChunkingService,RetrievalService,EvaluationService,MinerUService,HealthService service
+    class VectorStoreService,CacheService,ValidationService dependency
+    class GPUResources,ExternalAPIs,Database external

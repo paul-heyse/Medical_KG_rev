@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -66,7 +66,7 @@ from .base import AdapterContext, BaseAdapter
 from .biomedical import ResilientHTTPAdapter
 
 # ==============================================================================
-# TYPE DEFINITIONS & CONSTANTS
+# TYPE DEFINITIONS
 # ==============================================================================
 
 TOKEN_PATTERN = re.compile(r"[^\[\].]+|\[\d+\]")
@@ -210,9 +210,6 @@ class AdapterConfig:
     rate_limit: RateLimitConfig | None = None
 
 
-# ==============================================================================
-# PYDANTIC VALIDATION MODELS
-# ==============================================================================
 
 class RateLimitModel(BaseModel):
     """Pydantic model for validating rate limit configuration.
@@ -306,62 +303,7 @@ class AdapterConfigModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-# ==============================================================================
-# CONFIGURATION LOADING
-# ==============================================================================
 
-def load_adapter_config(path: Path) -> AdapterConfig:
-    """Load and validate adapter configuration from YAML file.
-
-    Args:
-        path: Path to YAML configuration file.
-
-    Returns:
-        Validated adapter configuration.
-
-    Raises:
-        ValueError: If configuration file is empty or invalid.
-        ValidationError: If configuration fails Pydantic validation.
-
-    Example:
-        >>> config = load_adapter_config(Path("adapters/config/openalex.yaml"))
-        >>> print(config.name)
-        openalex
-    """
-    data = yaml.safe_load(path.read_text())
-    if not data:
-        raise ValueError("Adapter configuration is empty")
-    model = AdapterConfigModel.model_validate(data)
-    request = RequestConfig(
-        method=model.request.method.upper(),
-        path=model.request.path,
-        params=model.request.params,
-        headers=model.request.headers,
-    )
-    response = ResponseConfig(items_path=model.response.items_path)
-    mapping = MappingConfig(
-        document_id=model.mapping.document_id,
-        title=model.mapping.title,
-        summary=model.mapping.summary,
-        body=model.mapping.body,
-        metadata=model.mapping.metadata,
-    )
-    rate_limit = (
-        RateLimitConfig(
-            requests=model.rate_limit.requests, per_seconds=model.rate_limit.per_seconds
-        )
-        if model.rate_limit
-        else None
-    )
-    return AdapterConfig(
-        name=model.name or path.stem,
-        source=model.source,
-        base_url=model.base_url,
-        request=request,
-        response=response,
-        mapping=mapping,
-        rate_limit=rate_limit,
-    )
 
 
 # ==============================================================================
@@ -532,8 +474,67 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
 
 
 # ==============================================================================
+# ERROR HANDLING
+# ==============================================================================
+
+
+# ==============================================================================
 # FACTORY FUNCTIONS
 # ==============================================================================
+
+def load_adapter_config(path: Path) -> AdapterConfig:
+    """Load and validate adapter configuration from YAML file.
+
+    Args:
+        path: Path to YAML configuration file.
+
+    Returns:
+        Validated adapter configuration.
+
+    Raises:
+        ValueError: If configuration file is empty or invalid.
+        ValidationError: If configuration fails Pydantic validation.
+
+    Example:
+        >>> config = load_adapter_config(Path("adapters/config/openalex.yaml"))
+        >>> print(config.name)
+        openalex
+    """
+    data = yaml.safe_load(path.read_text())
+    if not data:
+        raise ValueError("Adapter configuration is empty")
+    model = AdapterConfigModel.model_validate(data)
+    request = RequestConfig(
+        method=model.request.method.upper(),
+        path=model.request.path,
+        params=model.request.params,
+        headers=model.request.headers,
+    )
+    response = ResponseConfig(items_path=model.response.items_path)
+    mapping = MappingConfig(
+        document_id=model.mapping.document_id,
+        title=model.mapping.title,
+        summary=model.mapping.summary,
+        body=model.mapping.body,
+        metadata=model.mapping.metadata,
+    )
+    rate_limit = (
+        RateLimitConfig(
+            requests=model.rate_limit.requests, per_seconds=model.rate_limit.per_seconds
+        )
+        if model.rate_limit
+        else None
+    )
+    return AdapterConfig(
+        name=model.name or path.stem,
+        source=model.source,
+        base_url=model.base_url,
+        request=request,
+        response=response,
+        mapping=mapping,
+        rate_limit=rate_limit,
+    )
+
 
 def create_adapter_from_config(
     config: AdapterConfig, client: HttpClient | None = None
@@ -554,7 +555,7 @@ def create_adapter_from_config(
     return YAMLConfiguredAdapter(config, client=client)
 
 # ==============================================================================
-# PRIVATE HELPERS
+# HELPER FUNCTIONS
 # ==============================================================================
 
 class _FormatDict(dict):

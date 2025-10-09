@@ -1,7 +1,32 @@
-"""CloudEvents helpers for orchestration stage lifecycle."""
+"""CloudEvents helpers for orchestration stage lifecycle.
+
+This module provides CloudEvents-based event publishing for orchestration
+stage lifecycle management. It implements event factories and emitters for
+tracking stage transitions, failures, and retries.
+
+The module supports:
+- CloudEvents specification compliance
+- Stage lifecycle event publishing
+- Kafka-based event distribution
+- Optional dependency handling for cloudevents library
+
+Thread Safety:
+    Thread-safe for concurrent event publishing.
+
+Performance:
+    O(1) event creation and publishing operations.
+
+Example:
+    >>> factory = CloudEventFactory()
+    >>> emitter = StageEventEmitter(kafka_client)
+    >>> emitter.emit_started(ctx, "processing", attempt=1)
+"""
 
 from __future__ import annotations
 
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +34,10 @@ from uuid import uuid4
 
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.stages.contracts import StageContext
+
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
 
 try:  # pragma: no cover - optional dependency for structured CloudEvents
     from cloudevents.http import CloudEvent  # type: ignore
@@ -23,21 +52,37 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
         def data(self) -> dict[str, Any]:
             return self["data"]
 
-        def get_data(self) -> dict[str, Any]:  # noqa: D401 - mirror cloudevents API
+        def get_data(self) -> dict[str, Any]:
+            """Get event data payload."""
             return self.data
 
         def __getitem__(self, item: str) -> Any:  # type: ignore[override]
             return super().__getitem__(item)
 
-        def to_dict(self) -> dict[str, Any]:  # noqa: D401 - convenience helper
+        def to_dict(self) -> dict[str, Any]:
+            """Convert event to dictionary representation."""
             return dict(self)
 
 
+# ==============================================================================
+# STAGE CONTEXT DATA MODELS
+# ==============================================================================
+
+
+# ==============================================================================
+# STAGE IMPLEMENTATIONS
+# ==============================================================================
+
 def _to_message(event: CloudEvent) -> dict[str, Any]:
-    if hasattr(event, "to_dict"):
-        payload = event.to_dict()  # type: ignore[call-arg]
-    else:  # pragma: no cover - cloudevents fallback path
-        payload = {**event}
+    """Convert CloudEvent to Kafka message format.
+
+    Args:
+        event: CloudEvent instance to convert.
+
+    Returns:
+        Kafka message with attributes and data separated.
+    """
+    payload = event.to_dict() if hasattr(event, "to_dict") else {**event}  # type: ignore[call-arg]
     attributes = {key: value for key, value in payload.items() if key != "data"}
     data = payload.get("data", {})
     return {"attributes": attributes, "data": data}
@@ -45,12 +90,29 @@ def _to_message(event: CloudEvent) -> dict[str, Any]:
 
 @dataclass(slots=True)
 class CloudEventFactory:
-    """Create CloudEvents for stage lifecycle transitions."""
+    """Create CloudEvents for stage lifecycle transitions.
+
+    Factory for generating CloudEvents compliant with the CloudEvents
+    specification for orchestration stage lifecycle events.
+
+    Attributes:
+        source_prefix: Prefix for event source identifiers.
+    """
 
     source_prefix: str = "medical-kg/orchestration"
 
     def _base_attributes(self, event_type: str, ctx: StageContext, stage: str) -> dict[str, Any]:
-        now = datetime.now(timezone.utc).isoformat()
+        """Generate base CloudEvent attributes.
+
+        Args:
+            event_type: Type of event being created.
+            ctx: Stage context containing metadata.
+            stage: Stage name where event occurred.
+
+        Returns:
+            Base attributes for CloudEvent.
+        """
+        now = datetime.now(timezone.UTC).isoformat()
         subject = ctx.doc_id or ctx.correlation_id or "unknown"
         return {
             "id": uuid4().hex,
@@ -62,6 +124,16 @@ class CloudEventFactory:
         }
 
     def stage_started(self, ctx: StageContext, stage: str, attempt: int) -> CloudEvent:
+        """Create CloudEvent for stage start.
+
+        Args:
+            ctx: Stage context with pipeline metadata.
+            stage: Name of the stage being started.
+            attempt: Attempt number for this stage.
+
+        Returns:
+            CloudEvent representing stage start.
+        """
         attributes = self._base_attributes("stage.started", ctx, stage)
         data = {
             "pipeline": ctx.pipeline_name,
@@ -141,7 +213,16 @@ class CloudEventFactory:
 
 
 class StageEventEmitter:
-    """Publish stage lifecycle CloudEvents to the orchestration topic."""
+    """Publish stage lifecycle CloudEvents to the orchestration topic.
+
+    Event emitter that publishes CloudEvents for stage lifecycle transitions
+    to a Kafka topic for downstream processing and observability.
+
+    Attributes:
+        _kafka: Kafka client for publishing events.
+        _topic: Kafka topic name for events.
+        _factory: CloudEvent factory for creating events.
+    """
 
     def __init__(
         self,
@@ -150,6 +231,13 @@ class StageEventEmitter:
         factory: CloudEventFactory | None = None,
         topic: str = "orchestration.events.v1",
     ) -> None:
+        """Initialize event emitter.
+
+        Args:
+            kafka: Kafka client for publishing events.
+            factory: Optional CloudEvent factory.
+            topic: Kafka topic name for events.
+        """
         self._kafka = kafka
         self._topic = topic
         self._factory = factory or CloudEventFactory()
@@ -224,4 +312,23 @@ class StageEventEmitter:
         self._kafka.publish(self._topic, message)
 
 
-__all__ = ["CloudEventFactory", "StageEventEmitter", "CloudEvent"]
+# ==============================================================================
+# PLUGIN REGISTRATION
+# ==============================================================================
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = ["CloudEvent", "CloudEventFactory", "StageEventEmitter"]

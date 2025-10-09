@@ -1,0 +1,106 @@
+graph TD
+    %% Pipeline Input
+    PipelineInput[Pipeline Input]
+    JobRequest[Job Request]
+    DocumentData[Document Data]
+
+    %% Orchestration Engine
+    OrchestrationEngine[Orchestration Engine]
+    JobLedger[Job Ledger]
+    EventEmitter[Event Emitter]
+    StageManager[Stage Manager]
+
+    %% Pipeline Stages
+    ValidationStage[Validation Stage]
+    ChunkingStage[Chunking Stage]
+    EmbeddingStage[Embedding Stage]
+    IndexingStage[Indexing Stage]
+    QualityCheckStage[Quality Check Stage]
+
+    %% Stage Dependencies
+    ValidationService[Validation Service]
+    ChunkingService[Chunking Service]
+    EmbeddingService[Embedding Service]
+    VectorStoreService[Vector Store Service]
+    EvaluationService[Evaluation Service]
+
+    %% External Systems
+    MessageQueue[Message Queue]
+    Database[Database]
+    Cache[Cache]
+    Monitoring[Monitoring]
+
+    %% Pipeline Output
+    PipelineOutput[Pipeline Output]
+    ProcessedDocument[Processed Document]
+    IndexedDocument[Indexed Document]
+    QualityReport[Quality Report]
+
+    %% Data Flow
+    PipelineInput --> JobRequest
+    PipelineInput --> DocumentData
+
+    JobRequest --> OrchestrationEngine
+    DocumentData --> OrchestrationEngine
+
+    OrchestrationEngine --> JobLedger
+    OrchestrationEngine --> EventEmitter
+    OrchestrationEngine --> StageManager
+
+    %% Stage Execution Flow
+    StageManager --> ValidationStage
+    ValidationStage --> ChunkingStage
+    ChunkingStage --> EmbeddingStage
+    EmbeddingStage --> IndexingStage
+    IndexingStage --> QualityCheckStage
+
+    %% Service Dependencies
+    ValidationStage --> ValidationService
+    ChunkingStage --> ChunkingService
+    EmbeddingStage --> EmbeddingService
+    IndexingStage --> VectorStoreService
+    QualityCheckStage --> EvaluationService
+
+    %% External Dependencies
+    OrchestrationEngine --> MessageQueue
+    JobLedger --> Database
+    EventEmitter --> MessageQueue
+    StageManager --> Cache
+    OrchestrationEngine --> Monitoring
+
+    %% Output Flow
+    QualityCheckStage --> PipelineOutput
+    PipelineOutput --> ProcessedDocument
+    PipelineOutput --> IndexedDocument
+    PipelineOutput --> QualityReport
+
+    %% Error Handling
+    ErrorHandler[Error Handler]
+    RetryLogic[Retry Logic]
+    DeadLetterQueue[Dead Letter Queue]
+
+    ValidationStage --> ErrorHandler
+    ChunkingStage --> ErrorHandler
+    EmbeddingStage --> ErrorHandler
+    IndexingStage --> ErrorHandler
+    QualityCheckStage --> ErrorHandler
+
+    ErrorHandler --> RetryLogic
+    RetryLogic --> DeadLetterQueue
+
+    %% Styling
+    classDef input fill:#e8f5e8
+    classDef orchestration fill:#e1f5fe
+    classDef stage fill:#f3e5f5
+    classDef service fill:#fff3e0
+    classDef external fill:#ffebee
+    classDef output fill:#f1f8e9
+    classDef error fill:#fce4ec
+
+    class PipelineInput,JobRequest,DocumentData input
+    class OrchestrationEngine,JobLedger,EventEmitter,StageManager orchestration
+    class ValidationStage,ChunkingStage,EmbeddingStage,IndexingStage,QualityCheckStage stage
+    class ValidationService,ChunkingService,EmbeddingService,VectorStoreService,EvaluationService service
+    class MessageQueue,Database,Cache,Monitoring external
+    class PipelineOutput,ProcessedDocument,IndexedDocument,QualityReport output
+    class ErrorHandler,RetryLogic,DeadLetterQueue error

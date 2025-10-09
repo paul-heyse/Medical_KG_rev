@@ -4,34 +4,30 @@ This module provides a high-level interface to Neo4j operations, including
 convenience methods for common graph operations like node creation, relationship
 linking, and transaction management.
 
-Key Responsibilities:
-    - Provide session management with automatic cleanup
-    - Validate graph operations using SHACL constraints
-    - Generate Cypher queries using templates
-    - Execute write operations with proper transaction handling
-
-Collaborators:
-    - Upstream: Graph construction services, ingestion pipelines
-    - Downstream: Neo4j driver, CypherTemplates, ShaclValidator
-
-Side Effects:
-    - Creates Neo4j sessions and transactions
-    - Executes write operations on the graph database
-    - Validates graph structure using SHACL
+The module supports:
+- Session management with automatic cleanup
+- Graph operation validation using SHACL constraints
+- Cypher query generation using templates
+- Write operations with proper transaction handling
 
 Thread Safety:
-    - Not thread-safe: Each instance should be used by a single thread
-    - Session management is per-operation
+    Not thread-safe: Each instance should be used by a single thread.
+    Session management is per-operation.
 
-Performance Characteristics:
-    - Connection pooling handled by Neo4j driver
-    - Automatic session cleanup prevents resource leaks
-    - Transaction batching supported via with_transaction
+Performance:
+    Connection pooling handled by Neo4j driver.
+    Automatic session cleanup prevents resource leaks.
+    Transaction batching supported via with_transaction.
+
+Example:
+    >>> client = Neo4jClient(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    >>> with client.with_transaction() as tx:
+    ...     client.create_node(tx, "Document", {"document_id": "doc1"})
 """
 
-# ============================================================================
+# ==============================================================================
 # IMPORTS
-# ============================================================================
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -44,9 +40,22 @@ from .cypher_templates import CypherTemplates
 from .schema import GRAPH_SCHEMA
 from .shacl import ShaclValidator
 
-# ============================================================================
-# NEO4J CLIENT IMPLEMENTATION
-# ============================================================================
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# SCHEMA DATA MODELS
+# ==============================================================================
+
+
+# ==============================================================================
+# CLIENT IMPLEMENTATION
+# ==============================================================================
+
+class Neo4jError(Exception):
+    """Raised when Neo4j operations fail."""
 
 
 @dataclass(slots=True)
@@ -246,3 +255,25 @@ class Neo4jClient:
         """
         with self._session() as session:
             return session.execute_write(func)
+
+
+# ==============================================================================
+# TEMPLATES
+# ==============================================================================
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = ["Neo4jClient", "Neo4jError"]

@@ -3,42 +3,50 @@
 This module provides template-based Cypher query generation for common
 graph operations, ensuring idempotent operations and proper parameterization.
 
-Key Responsibilities:
-    - Generate MERGE queries for node creation/updates
-    - Generate relationship creation queries with proper matching
-    - Validate node labels against schema definitions
-    - Provide parameterized queries to prevent injection attacks
-
-Collaborators:
-    - Upstream: Neo4jClient, graph construction services
-    - Downstream: Neo4j driver, schema definitions
-
-Side Effects:
-    - None (pure query generation)
+The module supports:
+- MERGE queries for node creation/updates
+- Relationship creation queries with proper matching
+- Node label validation against schema definitions
+- Parameterized queries to prevent injection attacks
 
 Thread Safety:
-    - Thread-safe: All methods are stateless and immutable
+    Thread-safe: All methods are stateless and immutable.
 
-Performance Characteristics:
-    - O(1) schema lookup for label validation
-    - Template-based generation avoids string concatenation overhead
-    - Parameterized queries enable query plan caching
+Performance:
+    O(1) schema lookup for label validation.
+    Template-based generation avoids string concatenation overhead.
+    Parameterized queries enable query plan caching.
+
+Example:
+    >>> templates = CypherTemplates(GRAPH_SCHEMA)
+    >>> query, params = templates.merge_node("Document", {"document_id": "doc1"})
+    >>> print(query)
+    MERGE (n:Document {document_id: $props.document_id}) SET n.document_id = $props.document_id RETURN n
 """
-
-# ============================================================================
-# IMPORTS
-# ============================================================================
 
 from __future__ import annotations
 
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from .schema import GRAPH_SCHEMA, NodeSchema
 
-# ============================================================================
-# CYPHER TEMPLATES IMPLEMENTATION
-# ============================================================================
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# SCHEMA DATA MODELS
+# ==============================================================================
+
+
+# ==============================================================================
+# CLIENT IMPLEMENTATION
+# ==============================================================================
 
 
 @dataclass(slots=True, frozen=True)
@@ -204,10 +212,9 @@ class CypherTemplates:
         return ", ".join(assignments)
 
 
-# ============================================================================
-# TEMPLATE CONSTANTS
-# ============================================================================
-
+# ==============================================================================
+# TEMPLATES
+# ==============================================================================
 
 # Default CypherTemplates instance using the canonical graph schema.
 # Provides pre-configured templates for all standard node types and
@@ -216,3 +223,20 @@ class CypherTemplates:
 # Example:
 #     >>> query, params = DEFAULT_TEMPLATES.merge_node("Document", {"document_id": "doc1"})
 DEFAULT_TEMPLATES = CypherTemplates(GRAPH_SCHEMA)
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = ["DEFAULT_TEMPLATES", "CypherTemplates"]

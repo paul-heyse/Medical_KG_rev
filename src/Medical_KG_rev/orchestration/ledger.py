@@ -1,12 +1,50 @@
-"""Job ledger tracking orchestration state."""
+"""Job ledger tracking orchestration state.
+
+This module provides in-memory job tracking and state management for orchestration
+workflows. It implements a ledger pattern for maintaining job lifecycle state,
+transition tracking, and metrics collection.
+
+The ledger supports:
+- Job creation and idempotent operations
+- Status transitions with validation
+- Stage tracking and retry management
+- Metadata persistence and querying
+- Metrics collection for observability
+
+Thread Safety:
+    Not thread-safe. External synchronization required for concurrent access.
+
+Performance:
+    O(1) job lookup and updates. O(n) listing operations.
+    Memory usage scales linearly with active job count.
+
+Example:
+    >>> ledger = JobLedger()
+    >>> job = ledger.create(
+    ...     job_id="job-123",
+    ...     doc_key="doc-456",
+    ...     tenant_id="tenant-789"
+    ... )
+    >>> ledger.mark_processing(job.job_id, "processing")
+    >>> ledger.mark_completed(job.job_id)
+"""
 
 from __future__ import annotations
 
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 import builtins
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
+
+from Medical_KG_rev.observability.metrics import update_job_status_metrics
+
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 ALLOWED_TRANSITIONS = {
@@ -17,9 +55,23 @@ ALLOWED_TRANSITIONS = {
     "cancelled": set(),
 }
 
+# ==============================================================================
+# STAGE CONTEXT DATA MODELS
+# ==============================================================================
+
 
 @dataclass
 class JobTransition:
+    """Represents a state transition in job lifecycle.
+
+    Attributes:
+        from_status: Previous job status.
+        to_status: New job status.
+        stage: Processing stage where transition occurred.
+        reason: Optional reason for the transition.
+        timestamp: When the transition occurred.
+    """
+
     from_status: str
     to_status: str
     stage: str
@@ -29,6 +81,31 @@ class JobTransition:
 
 @dataclass
 class JobLedgerEntry:
+    """Complete job state record with lifecycle tracking.
+
+    Attributes:
+        job_id: Unique job identifier.
+        doc_key: Document key for idempotency.
+        tenant_id: Tenant identifier.
+        status: Current job status.
+        stage: Current processing stage.
+        current_stage: Active stage name.
+        pipeline: Pipeline identifier.
+        pipeline_name: Human-readable pipeline name.
+        metadata: Additional job metadata.
+        attempts: Total attempt count.
+        created_at: Job creation timestamp.
+        updated_at: Last update timestamp.
+        history: Transition history.
+        completed_at: Completion timestamp.
+        duration_seconds: Total processing time.
+        error_reason: Failure reason if applicable.
+        retry_count: Total retry count.
+        retry_count_per_stage: Retry count by stage.
+        pdf_downloaded: PDF download status.
+        pdf_ir_ready: PDF IR readiness status.
+    """
+
     job_id: str
     doc_key: str
     tenant_id: str
@@ -51,10 +128,19 @@ class JobLedgerEntry:
     pdf_ir_ready: bool = False
 
     def is_terminal(self) -> bool:
+        """Check if job is in a terminal state.
+
+        Returns:
+            True if job status is completed, failed, or cancelled.
+        """
         return self.status in TERMINAL_STATUSES
 
     def snapshot(self) -> JobLedgerEntry:
-        """Return a copy suitable for external consumption."""
+        """Return a copy suitable for external consumption.
+
+        Returns:
+            Deep copy of the job entry with immutable collections.
+        """
 
         return JobLedgerEntry(
             job_id=self.job_id,
@@ -80,14 +166,30 @@ class JobLedgerEntry:
         )
 
 
+# ==============================================================================
+# STAGE IMPLEMENTATIONS
+# ==============================================================================
+
 class JobLedgerError(RuntimeError):
-    pass
+    """Raised when ledger operations fail due to invalid state or operations."""
 
 
 class JobLedger:
-    """In-memory ledger implementation with idempotency helpers."""
+    """In-memory ledger implementation with idempotency helpers.
+
+    Provides job lifecycle tracking, state management, and metrics collection
+    for orchestration workflows. Supports idempotent operations and maintains
+    transition history for audit trails.
+
+    Thread Safety:
+        Not thread-safe. External synchronization required.
+
+    Performance:
+        O(1) lookups and updates. O(n) listing operations.
+    """
 
     def __init__(self) -> None:
+        """Initialize empty job ledger."""
         self._entries: dict[str, JobLedgerEntry] = {}
         self._doc_index: dict[str, str] = {}
 
@@ -318,6 +420,24 @@ class JobLedger:
         update_job_status_metrics(counts)
 
 
+# ==============================================================================
+# PLUGIN REGISTRATION
+# ==============================================================================
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
 __all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
-from Medical_KG_rev.observability.metrics import update_job_status_metrics
 

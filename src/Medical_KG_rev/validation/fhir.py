@@ -1,21 +1,60 @@
-"""FHIR resource validation using JSON Schemas."""
+"""FHIR resource validation using JSON Schemas.
+
+This module provides FHIR resource validation using JSON Schema validation
+with terminology checks for coding systems and code values.
+
+The module supports:
+- JSON Schema validation for FHIR resources
+- Terminology validation for coding systems
+- Multiple resource types (Evidence, ResearchStudy, MedicationStatement)
+- Custom schema support
+
+Thread Safety:
+    Thread-safe: Validator instances are stateless.
+
+Performance:
+    Schema compilation happens once during initialization.
+    Validation performance depends on resource complexity.
+
+Example:
+    >>> validator = FHIRValidator()
+    >>> resource = {"resourceType": "Evidence", "status": "active"}
+    >>> validator.validate(resource)
+"""
 
 from __future__ import annotations
 
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator
 
-
-class FHIRValidationError(ValueError):
-    """Raised when a FHIR resource fails schema or terminology validation."""
-
-    def __init__(self, errors: Sequence[str]) -> None:
-        super().__init__("; ".join(errors))
-        self.errors = list(errors)
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
 
 
+# ==============================================================================
+# DATA MODELS
+# ==============================================================================
+
+@dataclass
+class _CompiledSchema:
+    """Internal data model for compiled schema information.
+
+    Attributes:
+        validator: Compiled JSON Schema validator.
+        resource_type: FHIR resource type name.
+    """
+
+    validator: Draft202012Validator
+    resource_type: str
+
+
+# FHIR JSON Schema definitions for resource validation
 _CODING_SCHEMA: dict[str, object] = {
     "type": "object",
     "required": ["system", "code"],
@@ -46,7 +85,6 @@ _CHARACTERISTIC_SCHEMA: dict[str, object] = {
         "valueCodeableConcept": _CODEABLE_CONCEPT_SCHEMA,
     },
 }
-
 
 FHIR_SCHEMAS: dict[str, dict[str, object]] = {
     "Evidence": {
@@ -163,16 +201,31 @@ FHIR_SCHEMAS: dict[str, dict[str, object]] = {
 }
 
 
-@dataclass
-class _CompiledSchema:
-    validator: Draft202012Validator
-    resource_type: str
+# ==============================================================================
+# VALIDATOR IMPLEMENTATION
+# ==============================================================================
+
+class FHIRValidationError(ValueError):
+    """Raised when a FHIR resource fails schema or terminology validation."""
+
+    def __init__(self, errors: Sequence[str]) -> None:
+        super().__init__("; ".join(errors))
+        self.errors = list(errors)
 
 
 class FHIRValidator:
-    """Validate FHIR resources against curated schemas."""
+    """Validate FHIR resources against curated schemas.
+
+    Validates FHIR resources using JSON Schema validation and terminology
+    checks for coding systems and code values.
+    """
 
     def __init__(self, *, schemas: Mapping[str, Mapping[str, object]] | None = None) -> None:
+        """Initialize validator with schemas.
+
+        Args:
+            schemas: Optional custom schemas to use instead of defaults.
+        """
         source = schemas or FHIR_SCHEMAS
         self._validators: MutableMapping[str, _CompiledSchema] = {}
         for resource_type, schema in source.items():
@@ -182,6 +235,14 @@ class FHIRValidator:
             )
 
     def validate(self, resource: Mapping[str, object]) -> None:
+        """Validate a FHIR resource against its schema.
+
+        Args:
+            resource: FHIR resource to validate.
+
+        Raises:
+            FHIRValidationError: If validation fails.
+        """
         resource_type = resource.get("resourceType")
         if not resource_type:
             raise FHIRValidationError(["Missing resourceType"])
@@ -194,12 +255,36 @@ class FHIRValidator:
             raise FHIRValidationError(errors)
 
     def validate_evidence(self, resource: Mapping[str, object]) -> None:
+        """Validate an Evidence resource.
+
+        Args:
+            resource: Evidence resource to validate.
+
+        Raises:
+            FHIRValidationError: If validation fails.
+        """
         self.validate(resource)
 
     def validate_research_study(self, resource: Mapping[str, object]) -> None:
+        """Validate a ResearchStudy resource.
+
+        Args:
+            resource: ResearchStudy resource to validate.
+
+        Raises:
+            FHIRValidationError: If validation fails.
+        """
         self.validate(resource)
 
     def validate_medication_statement(self, resource: Mapping[str, object]) -> None:
+        """Validate a MedicationStatement resource.
+
+        Args:
+            resource: MedicationStatement resource to validate.
+
+        Raises:
+            FHIRValidationError: If validation fails.
+        """
         self.validate(resource)
 
     # ------------------------------------------------------------------
@@ -239,5 +324,24 @@ class FHIRValidator:
             elif isinstance(current, Sequence) and not isinstance(current, (str, bytes)):
                 stack.extend(current)
 
+
+# ==============================================================================
+# ERROR HANDLING
+# ==============================================================================
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
 
 __all__ = ["FHIR_SCHEMAS", "FHIRValidationError", "FHIRValidator"]

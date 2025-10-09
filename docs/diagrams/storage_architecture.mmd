@@ -1,0 +1,111 @@
+graph TD
+    %% Storage Layer
+    StorageLayer[Storage Layer]
+
+    %% Storage Interfaces
+    ObjectStore[Object Store Interface]
+    VectorStore[Vector Store Interface]
+    CacheBackend[Cache Backend Interface]
+    LedgerStore[Ledger Store Interface]
+
+    %% Object Store Implementations
+    S3ObjectStore[S3 Object Store]
+    LocalObjectStore[Local Object Store]
+    MinIOObjectStore[MinIO Object Store]
+
+    %% Vector Store Implementations
+    FAISSVectorStore[FAISS Vector Store]
+    QdrantVectorStore[Qdrant Vector Store]
+    WeaviateVectorStore[Weaviate Vector Store]
+    PineconeVectorStore[Pinecone Vector Store]
+
+    %% Cache Implementations
+    RedisCache[Redis Cache]
+    MemcachedCache[Memcached Cache]
+    InMemoryCache[In-Memory Cache]
+
+    %% Ledger Implementations
+    RedisLedger[Redis Ledger]
+    PostgreSQLedger[PostgreSQL Ledger]
+    MongoDBLedger[MongoDB Ledger]
+
+    %% Storage Services
+    VectorStoreService[Vector Store Service]
+    ObjectStoreService[Object Store Service]
+    CacheService[Cache Service]
+    LedgerService[Ledger Service]
+
+    %% External Storage Systems
+    S3[S3 Storage]
+    LocalFS[Local File System]
+    MinIO[MinIO Storage]
+    Redis[Redis]
+    Memcached[Memcached]
+    PostgreSQL[PostgreSQL]
+    MongoDB[MongoDB]
+    Qdrant[Qdrant]
+    Weaviate[Weaviate]
+    Pinecone[Pinecone]
+
+    %% Data Flow
+    StorageLayer --> ObjectStore
+    StorageLayer --> VectorStore
+    StorageLayer --> CacheBackend
+    StorageLayer --> LedgerStore
+
+    %% Object Store Flow
+    ObjectStore --> S3ObjectStore
+    ObjectStore --> LocalObjectStore
+    ObjectStore --> MinIOObjectStore
+
+    S3ObjectStore --> S3
+    LocalObjectStore --> LocalFS
+    MinIOObjectStore --> MinIO
+
+    %% Vector Store Flow
+    VectorStore --> FAISSVectorStore
+    VectorStore --> QdrantVectorStore
+    VectorStore --> WeaviateVectorStore
+    VectorStore --> PineconeVectorStore
+
+    FAISSVectorStore --> LocalFS
+    QdrantVectorStore --> Qdrant
+    WeaviateVectorStore --> Weaviate
+    PineconeVectorStore --> Pinecone
+
+    %% Cache Flow
+    CacheBackend --> RedisCache
+    CacheBackend --> MemcachedCache
+    CacheBackend --> InMemoryCache
+
+    RedisCache --> Redis
+    MemcachedCache --> Memcached
+    InMemoryCache --> LocalFS
+
+    %% Ledger Flow
+    LedgerStore --> RedisLedger
+    LedgerStore --> PostgreSQLedger
+    LedgerStore --> MongoDBLedger
+
+    RedisLedger --> Redis
+    PostgreSQLedger --> PostgreSQL
+    MongoDBLedger --> MongoDB
+
+    %% Service Connections
+    VectorStoreService --> VectorStore
+    ObjectStoreService --> ObjectStore
+    CacheService --> CacheBackend
+    LedgerService --> LedgerStore
+
+    %% Styling
+    classDef storage fill:#e1f5fe
+    classDef interface fill:#f3e5f5
+    classDef implementation fill:#fff3e0
+    classDef service fill:#e8f5e8
+    classDef external fill:#ffebee
+
+    class StorageLayer storage
+    class ObjectStore,VectorStore,CacheBackend,LedgerStore interface
+    class S3ObjectStore,LocalObjectStore,MinIOObjectStore,FAISSVectorStore,QdrantVectorStore,WeaviateVectorStore,PineconeVectorStore,RedisCache,MemcachedCache,InMemoryCache,RedisLedger,PostgreSQLedger,MongoDBLedger implementation
+    class VectorStoreService,ObjectStoreService,CacheService,LedgerService service
+    class S3,LocalFS,MinIO,Redis,Memcached,PostgreSQL,MongoDB,Qdrant,Weaviate,Pinecone external

@@ -1,5 +1,34 @@
+"""HTTP client utilities with retry, circuit breaker, and rate limiting.
+
+This module provides HTTP client utilities with advanced features including
+retry mechanisms, circuit breakers, rate limiting, and observability.
+
+The module supports:
+- Synchronous and asynchronous HTTP clients
+- Configurable retry strategies with backoff
+- Circuit breaker pattern for fault tolerance
+- Rate limiting with AsyncLimiter
+- OpenTelemetry tracing integration
+
+Thread Safety:
+    Thread-safe: Clients can be shared across threads.
+
+Performance:
+    Connection pooling handled by httpx.
+    Rate limiting prevents overwhelming downstream services.
+    Circuit breaker reduces cascading failures.
+
+Example:
+    >>> config = RetryConfig(attempts=3, backoff_strategy=BackoffStrategy.EXPONENTIAL)
+    >>> client = HttpClient(config=config)
+    >>> response = client.get("https://api.example.com/data")
+"""
+
 from __future__ import annotations
 
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 import asyncio
 import threading
 import time
@@ -24,6 +53,9 @@ from tenacity import (
 )
 from tenacity.wait import wait_base, wait_exponential, wait_incrementing, wait_none
 
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
 
 class BackoffStrategy(str, Enum):
     """Supported retry backoff strategies for HTTP clients."""
@@ -347,6 +379,30 @@ class AsyncHttpClient:
         finally:
             await self.aclose()
 
+
+# ==============================================================================
+# UTILITY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER CLASSES
+# ==============================================================================
+
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
 
 __all__ = [
     "AsyncHttpClient",

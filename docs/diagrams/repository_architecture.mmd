@@ -1,0 +1,157 @@
+graph TD
+    %% Gateway Layer
+    Gateway[Gateway Layer]
+    REST[REST API]
+    GraphQL[GraphQL API]
+    gRPC[gRPC API]
+    SOAP[SOAP API]
+    AsyncAPI[AsyncAPI/SSE]
+
+    %% Service Layer
+    Services[Service Layer]
+    Embedding[Embedding Service]
+    Chunking[Chunking Service]
+    Retrieval[Retrieval Service]
+    Evaluation[Evaluation Service]
+    MinerU[MinerU Service]
+    Health[Health Service]
+
+    %% Adapter Layer
+    Adapters[Adapter Layer]
+    OpenAlex[OpenAlex Adapter]
+    CORE[CORE Adapter]
+    PMC[PMC Adapter]
+    Unpaywall[Unpaywall Adapter]
+    Terminology[Terminology Adapter]
+
+    %% Orchestration Layer
+    Orchestration[Orchestration Layer]
+    Dagster[Dagster Runtime]
+    Stages[Pipeline Stages]
+    Events[Event Management]
+    Ledger[Job Ledger]
+
+    %% Knowledge Graph Layer
+    KG[Knowledge Graph Layer]
+    Neo4j[Neo4j Client]
+    Schema[Graph Schema]
+    Templates[Cypher Templates]
+    SHACL[SHACL Validation]
+
+    %% Storage Layer
+    Storage[Storage Layer]
+    VectorStore[Vector Store]
+    ObjectStore[Object Store]
+    Cache[Cache Backend]
+
+    %% Validation Layer
+    Validation[Validation Layer]
+    FHIR[FHIR Validation]
+    UCUM[UCUM Validation]
+
+    %% Utility Layer
+    Utils[Utility Layer]
+    HTTPClient[HTTP Client]
+    Errors[Error Handling]
+    Logging[Logging]
+
+    %% External Systems
+    External[External Systems]
+    APIs[External APIs]
+    Databases[Databases]
+    MessageQueue[Message Queue]
+
+    %% Connections
+    Gateway --> Services
+    Gateway --> Adapters
+    Gateway --> Validation
+
+    Services --> Adapters
+    Services --> Storage
+    Services --> Validation
+    Services --> Utils
+
+    Orchestration --> Services
+    Orchestration --> Adapters
+    Orchestration --> Storage
+
+    KG --> Storage
+    KG --> Validation
+
+    Adapters --> External
+    Storage --> External
+    Orchestration --> External
+
+    %% Protocol connections
+    REST --> Gateway
+    GraphQL --> Gateway
+    gRPC --> Gateway
+    SOAP --> Gateway
+    AsyncAPI --> Gateway
+
+    %% Service connections
+    Gateway --> Embedding
+    Gateway --> Chunking
+    Gateway --> Retrieval
+    Gateway --> Evaluation
+    Gateway --> MinerU
+    Gateway --> Health
+
+    %% Adapter connections
+    Services --> OpenAlex
+    Services --> CORE
+    Services --> PMC
+    Services --> Unpaywall
+    Services --> Terminology
+
+    %% Orchestration connections
+    Orchestration --> Dagster
+    Orchestration --> Stages
+    Orchestration --> Events
+    Orchestration --> Ledger
+
+    %% KG connections
+    KG --> Neo4j
+    KG --> Schema
+    KG --> Templates
+    KG --> SHACL
+
+    %% Storage connections
+    Storage --> VectorStore
+    Storage --> ObjectStore
+    Storage --> Cache
+
+    %% Validation connections
+    Validation --> FHIR
+    Validation --> UCUM
+
+    %% Utility connections
+    Utils --> HTTPClient
+    Utils --> Errors
+    Utils --> Logging
+
+    %% External connections
+    External --> APIs
+    External --> Databases
+    External --> MessageQueue
+
+    %% Styling
+    classDef gateway fill:#e1f5fe
+    classDef service fill:#f3e5f5
+    classDef adapter fill:#e8f5e8
+    classDef orchestration fill:#fff3e0
+    classDef kg fill:#fce4ec
+    classDef storage fill:#f1f8e9
+    classDef validation fill:#e0f2f1
+    classDef utils fill:#f5f5f5
+    classDef external fill:#ffebee
+
+    class Gateway,REST,GraphQL,gRPC,SOAP,AsyncAPI gateway
+    class Services,Embedding,Chunking,Retrieval,Evaluation,MinerU,Health service
+    class Adapters,OpenAlex,CORE,PMC,Unpaywall,Terminology adapter
+    class Orchestration,Dagster,Stages,Events,Ledger orchestration
+    class KG,Neo4j,Schema,Templates,SHACL kg
+    class Storage,VectorStore,ObjectStore,Cache storage
+    class Validation,FHIR,UCUM validation
+    class Utils,HTTPClient,Errors,Logging utils
+    class External,APIs,Databases,MessageQueue external

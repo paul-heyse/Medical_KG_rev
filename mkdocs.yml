@@ -23,20 +23,46 @@ nav:
           - REST OpenAPI: openapi.yaml
           - GraphQL SDL: schema.graphql
           - AsyncAPI: asyncapi.yaml
-    - Pipeline API:
-          - Coordinators: api/coordinators.md
+    - API Reference:
+          - Gateway: api/gateway.md
           - Services: api/services.md
-          - Embedding: api/embedding.md
+          - Adapters: api/adapters.md
           - Orchestration: api/orchestration.md
+          - Knowledge Graph: api/kg.md
+          - Storage: api/storage.md
+          - Validation: api/validation.md
+          - Utilities: api/utils.md
 plugins:
     - search
     - mkdocstrings:
           handlers:
               python:
                   options:
+                      # Docstring parsing
+                      docstring_style: google
+                      docstring_section_style: table
+
+                      # Rendering options
                       show_source: true
                       show_root_heading: true
-                      heading_level: 2
-                      docstring_style: google
-                      merge_init_into_class: true
+                      show_root_toc_entry: true
+                      show_root_full_path: false
+                      show_object_full_path: false
+                      show_category_heading: true
+                      show_if_no_docstring: false
+                      show_signature: true
                       show_signature_annotations: true
+                      separate_signature: true
+
+                      # Member filtering
+                      members_order: source
+                      group_by_category: true
+                      show_submodules: true
+
+                      # Signature options
+                      line_length: 80
+                      merge_init_into_class: true
+
+                      # Cross-references
+                      show_symbol_type_heading: true
+                      show_symbol_type_toc: true

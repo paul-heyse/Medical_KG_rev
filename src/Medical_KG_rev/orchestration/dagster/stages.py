@@ -21,9 +21,12 @@ from Medical_KG_rev.orchestration.haystack.components import (
     HaystackIndexWriter,
 )
 
+# Import additional plugin framework classes from plugins.py module
+# (These are in plugins.py, not plugin_manager.py)
+from Medical_KG_rev.orchestration.stages import plugins as _plugins_module
+
 # Import plugin framework from the plugins.py module (not the plugins/ package)
 # Python resolves "plugins" as the package directory, so we import the module differently
-from Medical_KG_rev.orchestration.stages import plugins as plugins_module
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
     DownloadStage,
@@ -49,8 +52,11 @@ from Medical_KG_rev.orchestration.stages.plugin_manager import (
     hookimpl,
 )
 
-# Import built-in plugins from the plugins/ package
-from Medical_KG_rev.orchestration.stages.plugins import CoreStagePlugin, PdfTwoPhasePlugin
+StagePluginResources = _plugins_module.StagePluginResources
+StagePluginRegistration = _plugins_module.StagePluginRegistration
+
+# Note: CoreStagePlugin and PdfTwoPhasePlugin are imported lazily where needed
+# to avoid circular imports (plugins/builtin.py imports from dagster/configuration.py)
 
 try:  # pragma: no cover - optional import for typing only
     from Medical_KG_rev.orchestration.ledger import JobLedger

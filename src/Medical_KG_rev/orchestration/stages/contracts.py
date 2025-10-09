@@ -1803,49 +1803,6 @@ class PipelineState:
         _STATE_SERIALISATION_LATENCY.labels(format="compressed").observe(elapsed)
         return compressed
 
-    def serialise_base64(self) -> str:
-        """Return a base64 encoded compressed snapshot."""
-        start = time.perf_counter()
-        compressed = self.serialise_compressed()
-        encoded = base64.b64encode(compressed).decode("ascii")
-        elapsed = time.perf_counter() - start
-        _STATE_SERIALISATION_LATENCY.labels(format="base64").observe(elapsed)
-        return encoded
-
-    def persist_with_retry(self, persist: Callable[[dict[str, Any]], None]) -> None:
-        """Persist the current snapshot using tenacity-backed retries."""
-        snapshot = self.serialise()
-
-        @retry(
-            reraise=True,
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=0.1, min=0.1, max=1.0),
-            retry=retry_if_exception_type(Exception),
-        )
-        def _attempt(payload: dict[str, Any]) -> None:
-            persist(payload)
-
-        _attempt(snapshot)
-        _STATE_MUTATIONS.labels(operation="persist").inc()
-        _state_logger.debug(
-            "pipeline_state.persisted",
-            tenant_id=self._tenant_id,
-            job_id=self.job_id,
-        )
-        if not self._dirty and self._cache.compressed is not None:
-            return self._cache.compressed
-        json_bytes = self._cache.json_bytes
-        if json_bytes is None or self._dirty:
-            json_bytes = orjson.dumps(self.serialise())
-            self._cache.json_bytes = json_bytes
-        start = time.perf_counter()
-        compressed = zlib.compress(json_bytes)
-        duration = time.perf_counter() - start
-        _STATE_SERIALISE_COUNTER.labels(format="compressed").inc()
-        _STATE_SERIALISE_LATENCY.labels(format="compressed").observe(duration)
-        self._cache.compressed = compressed
-        return compressed
-
     def serialise_base64(self, *, use_cache: bool = True) -> str:
         """Return a base64 encoded compressed snapshot."""
         payload = self.serialise(use_cache=use_cache)
@@ -1853,12 +1810,6 @@ class PipelineState:
         if use_cache and not self._dirty:
             self._SERIALISATION_CACHE.set(self._cache_key(), blob)
         return encode_base64(blob)
-        if not self._dirty and self._cache.base64_payload is not None:
-            return self._cache.base64_payload
-        compressed = self.serialise_compressed()
-        encoded = base64.b64encode(compressed).decode("ascii")
-        self._cache.base64_payload = encoded
-        return encoded
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.2, max=2.0))
     def persist_with_retry(

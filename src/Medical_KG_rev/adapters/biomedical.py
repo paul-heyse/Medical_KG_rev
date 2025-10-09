@@ -1,4 +1,60 @@
-"""Biomedical adapter implementations for external data sources."""
+"""Biomedical adapter implementations for external data sources.
+
+This module provides specialized adapters for biomedical and healthcare data sources,
+including clinical trials, drug databases, medical terminologies, and academic publications.
+Each adapter implements the BaseAdapter interface to fetch, parse, and transform data
+from external APIs into standardized Document objects.
+
+Supported data sources:
+- ClinicalTrials.gov: Clinical trial protocols and results
+- OpenFDA: Drug labels, adverse events, and device classifications
+- Unpaywall: Open access status for academic papers
+- Crossref: Citation metadata and references
+- CORE: Academic paper full-text access
+- Europe PMC: PubMed Central full-text XML
+- RxNorm: Drug name normalization
+- ICD-11: International disease classification
+- MeSH: Medical subject headings
+- ChEMBL: Chemical compound database
+- Semantic Scholar: Academic paper citations
+
+Responsibilities:
+- Fetch data from biomedical APIs with appropriate rate limiting
+- Parse API responses into structured Document objects
+- Validate biomedical identifiers (DOI, NCT ID, RxCUI, etc.)
+- Handle XML and JSON response formats
+- Extract relevant metadata and content sections
+
+Collaborators:
+- BaseAdapter: Interface for all adapter implementations
+- HttpClient: HTTP client with retry and circuit breaker support
+- Document, Section, Block: Data models for structured content
+- Validation utilities: Identifier validation functions
+
+Side Effects:
+- Makes HTTP requests to external biomedical APIs
+- Parses XML and JSON responses
+- Creates Document objects with structured content
+- Validates biomedical identifiers
+
+Thread Safety:
+- Adapter instances are not thread-safe
+- HTTP client handles concurrent requests internally
+- Configuration is immutable after initialization
+
+Performance Characteristics:
+- Rate limiting: 2-5 requests per second depending on API
+- Retry strategy: Linear backoff with 3-5 attempts
+- Response parsing: O(n) where n is response size
+- Document creation: O(k) where k is number of items
+
+Example:
+    >>> adapter = ClinicalTrialsAdapter()
+    >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+# IMPORTS
 
 from __future__ import annotations
 
@@ -7,8 +63,10 @@ from typing import Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+from Medical_KG_rev.adapters.openalex import (
+    OpenAlexAdapter,  # noqa: F401 - re-export for backwards compatibility
+)
 from Medical_KG_rev.models import Block, BlockType, Document, Section
-from Medical_KG_rev.adapters.openalex import OpenAlexAdapter  # noqa: F401 - re-export for backwards compatibility
 from Medical_KG_rev.utils.http_client import (
     BackoffStrategy,
     CircuitBreakerConfig,
@@ -31,8 +89,27 @@ from Medical_KG_rev.utils.validation import (
 
 from .base import AdapterContext, BaseAdapter
 
+# UTILITY FUNCTIONS
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
+    """Extract and validate a required string parameter from adapter context.
+
+    Args:
+        context: Adapter context containing parameters
+        key: Parameter name to extract
+
+    Returns:
+        String value of the parameter
+
+    Raises:
+        ValueError: If parameter is missing or not a string
+
+    Example:
+        >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
+        >>> nct_id = _require_parameter(context, "nct_id")
+        >>> nct_id
+        "NCT04267848"
+    """
     try:
         value = context.parameters[key]
     except KeyError as exc:  # pragma: no cover - defensive branch
@@ -43,6 +120,20 @@ def _require_parameter(context: AdapterContext, key: str) -> str:
 
 
 def _to_text(value: Any) -> str:
+    """Convert any value to string representation.
+
+    Args:
+        value: Value to convert
+
+    Returns:
+        String representation of value
+
+    Example:
+        >>> _to_text(123)
+        "123"
+        >>> _to_text(None)
+        ""
+    """
     if value is None:
         return ""
     if isinstance(value, str):
@@ -51,10 +142,35 @@ def _to_text(value: Any) -> str:
 
 
 def _listify(items: Iterable[Any]) -> list[Any]:
+    """Filter out falsy items from an iterable.
+
+    Args:
+        items: Iterable to filter
+
+    Returns:
+        List containing only truthy items
+
+    Example:
+        >>> _listify([1, None, 2, "", 3])
+        [1, 2, 3]
+    """
     return [item for item in items if item]
 
 
 def _collect_text(element: Element | None) -> str:
+    """Extract text content from XML element.
+
+    Args:
+        element: XML element to extract text from
+
+    Returns:
+        Concatenated text content from element and descendants
+
+    Example:
+        >>> elem = ElementTree.fromstring("<p>Hello <b>world</b></p>")
+        >>> _collect_text(elem)
+        "Hello world"
+    """
     if element is None:
         return ""
     parts = [segment.strip() for segment in element.itertext() if segment and segment.strip()]
@@ -62,6 +178,20 @@ def _collect_text(element: Element | None) -> str:
 
 
 def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
+    """Create linear retry configuration for HTTP requests.
+
+    Args:
+        attempts: Number of retry attempts
+        initial: Initial delay in seconds
+
+    Returns:
+        Retry configuration with linear backoff
+
+    Example:
+        >>> config = _linear_retry_config(3, 1.0)
+        >>> config.attempts
+        3
+    """
     initial = max(initial, 0.0)
     if initial == 0:
         return RetryConfig(attempts=attempts, backoff_strategy=BackoffStrategy.NONE, jitter=False)
@@ -74,8 +204,32 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
     )
 
 
+# BASE ADAPTER CLASSES
+
 class ResilientHTTPAdapter(BaseAdapter):
-    """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
+    """Base adapter that wraps HttpClient with sensible defaults.
+
+    This class provides a foundation for HTTP-based adapters with built-in
+    resilience features including rate limiting, retry logic, and circuit
+    breaker patterns. It handles HTTP client lifecycle management and
+    provides convenient methods for common HTTP operations.
+
+    Attributes:
+        _client: HTTP client instance
+        _owns_client: Whether this adapter owns the client and should close it
+
+    Thread Safety:
+        Not thread-safe. Instances should not be shared between threads.
+
+    Example:
+        >>> class MyAdapter(ResilientHTTPAdapter):
+        ...     def __init__(self):
+        ...         super().__init__(
+        ...             name="my-adapter",
+        ...             base_url="https://api.example.com",
+        ...             rate_limit_per_second=2.0
+        ...         )
+    """
 
     def __init__(
         self,
@@ -86,6 +240,22 @@ class ResilientHTTPAdapter(BaseAdapter):
         retry: RetryConfig | None = None,
         client: HttpClient | None = None,
     ) -> None:
+        """Initialize resilient HTTP adapter.
+
+        Args:
+            name: Adapter name identifier
+            base_url: Base URL for HTTP requests
+            rate_limit_per_second: Rate limit in requests per second
+            retry: Retry configuration (uses default if None)
+            client: HTTP client instance (creates default if None)
+
+        Example:
+            >>> adapter = ResilientHTTPAdapter(
+            ...     name="test",
+            ...     base_url="https://api.example.com",
+            ...     rate_limit_per_second=1.0
+            ... )
+        """
         super().__init__(name=name)
         self._owns_client = client is None
         if client is None:
@@ -99,11 +269,41 @@ class ResilientHTTPAdapter(BaseAdapter):
             self._client = client
 
     def _get_json(self, path: str, *, params: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
+        """Make GET request and return JSON response.
+
+        Args:
+            path: Request path relative to base URL
+            params: Query parameters
+
+        Returns:
+            Parsed JSON response
+
+        Raises:
+            HTTPError: If request fails
+
+        Example:
+            >>> data = adapter._get_json("/users", params={"limit": 10})
+        """
         response = self._client.request("GET", path, params=params)
         response.raise_for_status()
         return response.json()
 
     def _get_text(self, path: str, *, params: Mapping[str, Any] | None = None) -> str:
+        """Make GET request and return text response.
+
+        Args:
+            path: Request path relative to base URL
+            params: Query parameters
+
+        Returns:
+            Response text content
+
+        Raises:
+            HTTPError: If request fails
+
+        Example:
+            >>> text = adapter._get_text("/status")
+        """
         response = self._client.request("GET", path, params=params)
         response.raise_for_status()
         return response.text
@@ -111,18 +311,56 @@ class ResilientHTTPAdapter(BaseAdapter):
     def write(
         self, documents: Sequence[Document], context: AdapterContext
     ) -> None:  # pragma: no cover - passthrough
+        """Write documents (no-op implementation).
+
+        Args:
+            documents: Documents to write
+            context: Adapter context
+
+        Note:
+            Persistence is handled by downstream ingestion pipeline;
+            adapters simply return documents.
+        """
         # Persistence is handled by downstream ingestion pipeline; adapters simply return documents.
         return None
 
     def close(self) -> None:
+        """Close HTTP client if owned by this adapter.
+
+        Example:
+            >>> adapter.close()
+        """
         if self._owns_client:
             self._client.close()
 
 
+# BIOMEDICAL ADAPTER IMPLEMENTATIONS
+
 class ClinicalTrialsAdapter(ResilientHTTPAdapter):
-    """Adapter for ClinicalTrials.gov API v2."""
+    """Adapter for ClinicalTrials.gov API v2.
+
+    This adapter fetches clinical trial data from the ClinicalTrials.gov API,
+    including study protocols, eligibility criteria, interventions, and outcomes.
+    It validates NCT IDs and extracts structured metadata for downstream processing.
+
+    Required Parameters:
+        nct_id: ClinicalTrials.gov identifier (e.g., "NCT04267848")
+
+    Example:
+        >>> adapter = ClinicalTrialsAdapter()
+        >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize ClinicalTrials adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+
+        Example:
+            >>> adapter = ClinicalTrialsAdapter()
+        """
         super().__init__(
             name="clinicaltrials",
             base_url="https://clinicaltrials.gov/api/v2",
@@ -132,6 +370,22 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch clinical trial data from ClinicalTrials.gov API.
+
+        Args:
+            context: Adapter context containing nct_id parameter
+
+        Returns:
+            Iterable of study data mappings
+
+        Raises:
+            ValueError: If nct_id parameter is missing or invalid
+            HTTPError: If API request fails
+
+        Example:
+            >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
+            >>> studies = adapter.fetch(context)
+        """
         nct_id = validate_nct_id(_require_parameter(context, "nct_id"))
         payload = self._get_json(f"/studies/{nct_id}", params={"format": "json"})
         study = payload.get("study") or payload
@@ -140,6 +394,22 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse clinical trial data into Document objects.
+
+        Args:
+            payloads: Raw study data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+
+        Raises:
+            ValueError: If study data is missing required fields
+
+        Example:
+            >>> studies = [{"protocolSection": {...}}]
+            >>> documents = adapter.parse(studies, context)
+        """
         documents: list[Document] = []
         for study in payloads:
             protocol = study.get("protocolSection", {})
@@ -213,9 +483,33 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
 
 
 class OpenFDAAdapter(ResilientHTTPAdapter):
-    """Base adapter for OpenFDA endpoints."""
+    """Base adapter for OpenFDA endpoints.
+
+    This adapter provides common functionality for accessing FDA data through
+    the OpenFDA API, including drug labels, adverse events, and device
+    classifications. It handles API-specific query patterns and response
+    formatting.
+
+    Attributes:
+        _endpoint: OpenFDA API endpoint path
+
+    Example:
+        >>> class MyFDAAdapter(OpenFDAAdapter):
+        ...     def __init__(self):
+        ...         super().__init__(name="my-fda", endpoint="/drug/label.json")
+    """
 
     def __init__(self, *, name: str, endpoint: str, client: HttpClient | None = None) -> None:
+        """Initialize OpenFDA adapter.
+
+        Args:
+            name: Adapter name identifier
+            endpoint: OpenFDA API endpoint path
+            client: Optional HTTP client (creates default if None)
+
+        Example:
+            >>> adapter = OpenFDAAdapter(name="test", endpoint="/drug/label.json")
+        """
         super().__init__(
             name=name,
             base_url="https://api.fda.gov",
@@ -226,17 +520,66 @@ class OpenFDAAdapter(ResilientHTTPAdapter):
         self._endpoint = endpoint
 
     def _query(self, params: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
+        """Execute OpenFDA query and return results.
+
+        Args:
+            params: Query parameters for OpenFDA API
+
+        Returns:
+            Sequence of result items from API response
+
+        Example:
+            >>> results = adapter._query({"search": "brand_name:aspirin", "limit": 5})
+        """
         payload = self._get_json(self._endpoint, params=params)
         return payload.get("results", [])
 
 
 class OpenFDADrugLabelAdapter(OpenFDAAdapter):
-    """Adapter for SPL drug labels."""
+    """Adapter for SPL drug labels.
+
+    This adapter fetches Structured Product Labeling (SPL) data from OpenFDA,
+    including drug indications, dosage information, and warnings. It supports
+    querying by NDC (National Drug Code) or set_id identifiers.
+
+    Required Parameters (one of):
+        ndc: National Drug Code identifier
+        set_id: OpenFDA set identifier
+
+    Example:
+        >>> adapter = OpenFDADrugLabelAdapter()
+        >>> context = AdapterContext(parameters={"ndc": "12345-678-90"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize OpenFDA drug label adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+
+        Example:
+            >>> adapter = OpenFDADrugLabelAdapter()
+        """
         super().__init__(name="openfda-drug-label", endpoint="/drug/label.json", client=client)
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch drug label data from OpenFDA.
+
+        Args:
+            context: Adapter context containing ndc or set_id parameter
+
+        Returns:
+            Iterable of drug label data mappings
+
+        Raises:
+            ValueError: If neither ndc nor set_id parameter is provided
+            HTTPError: If API request fails
+
+        Example:
+            >>> context = AdapterContext(parameters={"ndc": "12345-678-90"})
+            >>> labels = adapter.fetch(context)
+        """
         ndc = context.parameters.get("ndc")
         set_id = context.parameters.get("set_id")
         params: dict[str, Any] = {"limit": 1}
@@ -251,6 +594,22 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse drug label data into Document objects.
+
+        Args:
+            payloads: Raw drug label data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+
+        Raises:
+            ValueError: If label data is missing set identifier
+
+        Example:
+            >>> labels = [{"set_id": "123", "indications_and_usage": "..."}]
+            >>> documents = adapter.parse(labels, context)
+        """
         documents: list[Document] = []
         for payload in payloads:
             openfda = payload.get("openfda", {})
@@ -293,12 +652,41 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
 
 
 class OpenFDADrugEventAdapter(OpenFDAAdapter):
-    """Adapter for adverse event data."""
+    """Adapter for adverse event data.
+
+    This adapter fetches adverse event reports from OpenFDA for specific drugs,
+    including patient reactions, indications, and safety report details.
+
+    Required Parameters:
+        drug: Drug name to search for adverse events
+
+    Example:
+        >>> adapter = OpenFDADrugEventAdapter()
+        >>> context = AdapterContext(parameters={"drug": "aspirin"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize OpenFDA drug event adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(name="openfda-drug-event", endpoint="/drug/event.json", client=client)
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch adverse event data from OpenFDA.
+
+        Args:
+            context: Adapter context containing drug parameter
+
+        Returns:
+            Iterable of adverse event data mappings
+
+        Raises:
+            ValueError: If drug parameter is missing
+            HTTPError: If API request fails
+        """
         drug_name = normalize_identifier(_require_parameter(context, "drug"))
         params = {"search": f'patient.drug.medicinalproduct:"{drug_name}"', "limit": 5}
         return self._query(params)
@@ -306,6 +694,15 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse adverse event data into Document objects.
+
+        Args:
+            payloads: Raw adverse event data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             report_id = payload.get("safetyreportid")
@@ -341,14 +738,43 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
 
 
 class OpenFDADeviceAdapter(OpenFDAAdapter):
-    """Adapter for medical device classifications."""
+    """Adapter for medical device classifications.
+
+    This adapter fetches medical device classification data from OpenFDA,
+    including device names, classes, and medical specialties.
+
+    Required Parameters:
+        device_id: Device product code identifier
+
+    Example:
+        >>> adapter = OpenFDADeviceAdapter()
+        >>> context = AdapterContext(parameters={"device_id": "KGS"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize OpenFDA device adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="openfda-device", endpoint="/device/classification.json", client=client
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch device classification data from OpenFDA.
+
+        Args:
+            context: Adapter context containing device_id parameter
+
+        Returns:
+            Iterable of device classification data mappings
+
+        Raises:
+            ValueError: If device_id parameter is missing
+            HTTPError: If API request fails
+        """
         device_id = _require_parameter(context, "device_id")
         params = {"search": f'product_code:"{device_id}"', "limit": 1}
         return self._query(params)
@@ -356,6 +782,15 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse device classification data into Document objects.
+
+        Args:
+            payloads: Raw device classification data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             product_code = payload.get("product_code")
@@ -383,11 +818,29 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
 
 
 class UnpaywallAdapter(ResilientHTTPAdapter):
-    """Adapter for Unpaywall open access status."""
+    """Adapter for Unpaywall open access status.
+
+    This adapter fetches open access status information from Unpaywall
+    for academic papers, including access URLs and licensing information.
+
+    Required Parameters:
+        doi: Digital Object Identifier for the paper
+
+    Example:
+        >>> adapter = UnpaywallAdapter()
+        >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(
         self, email: str = "oss@medical-kg.local", client: HttpClient | None = None
     ) -> None:
+        """Initialize Unpaywall adapter.
+
+        Args:
+            email: Email address for API requests (required by Unpaywall)
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="unpaywall",
             base_url="https://api.unpaywall.org/v2",
@@ -398,6 +851,18 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
         self._email = email
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch open access status from Unpaywall.
+
+        Args:
+            context: Adapter context containing doi parameter
+
+        Returns:
+            Iterable of open access status data mappings
+
+        Raises:
+            ValueError: If doi parameter is missing or invalid
+            HTTPError: If API request fails
+        """
         doi = validate_doi(_require_parameter(context, "doi"))
         payload = self._get_json(f"/{doi}", params={"email": self._email})
         return [payload]
@@ -405,6 +870,15 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse open access status data into Document objects.
+
+        Args:
+            payloads: Raw open access status data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             doi = payload.get("doi")
@@ -435,9 +909,26 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
 
 
 class CrossrefAdapter(ResilientHTTPAdapter):
-    """Adapter for Crossref citation metadata."""
+    """Adapter for Crossref citation metadata.
+
+    This adapter fetches citation metadata from Crossref, including
+    publication details, references, and citation counts.
+
+    Required Parameters:
+        doi: Digital Object Identifier for the paper
+
+    Example:
+        >>> adapter = CrossrefAdapter()
+        >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize Crossref adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="crossref",
             base_url="https://api.crossref.org",
@@ -447,6 +938,18 @@ class CrossrefAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch citation metadata from Crossref.
+
+        Args:
+            context: Adapter context containing doi parameter
+
+        Returns:
+            Iterable of citation metadata mappings
+
+        Raises:
+            ValueError: If doi parameter is missing or invalid
+            HTTPError: If API request fails
+        """
         doi = validate_doi(_require_parameter(context, "doi"))
         payload = self._get_json(f"/works/{doi}")
         message = payload.get("message", {})
@@ -455,6 +958,15 @@ class CrossrefAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse citation metadata into Document objects.
+
+        Args:
+            payloads: Raw citation metadata from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for message in payloads:
             doi = message.get("DOI")
@@ -488,9 +1000,27 @@ class CrossrefAdapter(ResilientHTTPAdapter):
 
 
 class COREAdapter(ResilientHTTPAdapter):
-    """Adapter for CORE PDF access."""
+    """Adapter for CORE PDF access.
+
+    This adapter fetches academic paper metadata and full-text access
+    information from CORE, including download URLs and publication details.
+
+    Required Parameters (one of):
+        core_id: CORE identifier for the paper
+        doi: Digital Object Identifier for the paper
+
+    Example:
+        >>> adapter = COREAdapter()
+        >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize CORE adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="core",
             base_url="https://core.ac.uk/api-v3",
@@ -500,6 +1030,18 @@ class COREAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch paper data from CORE.
+
+        Args:
+            context: Adapter context containing core_id or doi parameter
+
+        Returns:
+            Iterable of paper data mappings
+
+        Raises:
+            ValueError: If neither core_id nor doi parameter is provided
+            HTTPError: If API request fails
+        """
         core_id = context.parameters.get("core_id")
         doi = context.parameters.get("doi")
         if core_id:
@@ -514,6 +1056,15 @@ class COREAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse CORE paper data into Document objects.
+
+        Args:
+            payloads: Raw CORE paper data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             raw_entries = payload.get("data")
@@ -546,9 +1097,26 @@ class COREAdapter(ResilientHTTPAdapter):
 
 
 class PMCAdapter(ResilientHTTPAdapter):
-    """Adapter for Europe PMC full-text XML retrieval."""
+    """Adapter for Europe PMC full-text XML retrieval.
+
+    This adapter fetches full-text XML content from Europe PMC,
+    including abstracts and body text from PubMed Central articles.
+
+    Required Parameters:
+        pmcid: PubMed Central identifier (e.g., "PMC1234567")
+
+    Example:
+        >>> adapter = PMCAdapter()
+        >>> context = AdapterContext(parameters={"pmcid": "PMC1234567"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize PMC adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="pmc",
             base_url="https://www.ebi.ac.uk/europepmc",
@@ -558,11 +1126,32 @@ class PMCAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[str]:
+        """Fetch full-text XML from Europe PMC.
+
+        Args:
+            context: Adapter context containing pmcid parameter
+
+        Returns:
+            Iterable of XML text strings
+
+        Raises:
+            ValueError: If pmcid parameter is missing or invalid
+            HTTPError: If API request fails
+        """
         pmcid = validate_pmcid(_require_parameter(context, "pmcid"))
         xml_text = self._get_text(f"/webservices/rest/{pmcid}/fullTextXML")
         return [xml_text]
 
     def parse(self, payloads: Iterable[str], context: AdapterContext) -> Sequence[Document]:
+        """Parse PMC XML content into Document objects.
+
+        Args:
+            payloads: Raw XML text strings from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for xml_text in payloads:
             root = ElementTree.fromstring(xml_text)
@@ -589,9 +1178,26 @@ class PMCAdapter(ResilientHTTPAdapter):
 
 
 class RxNormAdapter(ResilientHTTPAdapter):
-    """Adapter for RxNorm normalization."""
+    """Adapter for RxNorm normalization.
+
+    This adapter fetches drug name normalization data from RxNorm,
+    including standardized drug names and RxCUI identifiers.
+
+    Required Parameters:
+        drug_name: Drug name to normalize
+
+    Example:
+        >>> adapter = RxNormAdapter()
+        >>> context = AdapterContext(parameters={"drug_name": "aspirin"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize RxNorm adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="rxnorm",
             base_url="https://rxnav.nlm.nih.gov",
@@ -601,6 +1207,18 @@ class RxNormAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch drug normalization data from RxNorm.
+
+        Args:
+            context: Adapter context containing drug_name parameter
+
+        Returns:
+            Iterable of drug normalization data mappings
+
+        Raises:
+            ValueError: If drug_name parameter is missing
+            HTTPError: If API request fails
+        """
         drug_name = normalize_identifier(_require_parameter(context, "drug_name"))
         payload = self._get_json("/REST/drugs", params={"name": drug_name})
         return [payload]
@@ -608,6 +1226,15 @@ class RxNormAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse RxNorm drug normalization data into Document objects.
+
+        Args:
+            payloads: Raw RxNorm data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             concepts = payload.get("rxnormConceptProperties", [])
@@ -640,9 +1267,27 @@ class RxNormAdapter(ResilientHTTPAdapter):
 
 
 class ICD11Adapter(ResilientHTTPAdapter):
-    """Adapter for ICD-11 terminology search."""
+    """Adapter for ICD-11 terminology search.
+
+    This adapter fetches International Classification of Diseases (ICD-11)
+    terminology data, including disease codes, titles, and definitions.
+
+    Required Parameters (one of):
+        code: ICD-11 code to look up
+        term: Search term for ICD-11 entities
+
+    Example:
+        >>> adapter = ICD11Adapter()
+        >>> context = AdapterContext(parameters={"code": "A00-B99"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize ICD-11 adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="icd11",
             base_url="https://id.who.int/icd/release/11",
@@ -652,6 +1297,18 @@ class ICD11Adapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch ICD-11 terminology data.
+
+        Args:
+            context: Adapter context containing code or term parameter
+
+        Returns:
+            Iterable of ICD-11 terminology data mappings
+
+        Raises:
+            ValueError: If neither code nor term parameter is provided
+            HTTPError: If API request fails
+        """
         term = context.parameters.get("code")
         if term:
             code = validate_icd11(str(term))
@@ -664,6 +1321,15 @@ class ICD11Adapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse ICD-11 terminology data into Document objects.
+
+        Args:
+            payloads: Raw ICD-11 terminology data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for entity in payloads:
             code = entity.get("theCode") or entity.get("code")
@@ -695,9 +1361,27 @@ class ICD11Adapter(ResilientHTTPAdapter):
 
 
 class MeSHAdapter(ResilientHTTPAdapter):
-    """Adapter for MeSH descriptor lookups."""
+    """Adapter for MeSH descriptor lookups.
+
+    This adapter fetches Medical Subject Headings (MeSH) data,
+    including descriptor names, tree numbers, and hierarchical relationships.
+
+    Required Parameters (one of):
+        descriptor_id: MeSH descriptor identifier
+        term: Search term for MeSH descriptors
+
+    Example:
+        >>> adapter = MeSHAdapter()
+        >>> context = AdapterContext(parameters={"term": "aspirin"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize MeSH adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="mesh",
             base_url="https://id.nlm.nih.gov/mesh",
@@ -707,6 +1391,18 @@ class MeSHAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch MeSH descriptor data.
+
+        Args:
+            context: Adapter context containing descriptor_id or term parameter
+
+        Returns:
+            Iterable of MeSH descriptor data mappings
+
+        Raises:
+            ValueError: If neither descriptor_id nor term parameter is provided
+            HTTPError: If API request fails
+        """
         descriptor_id = context.parameters.get("descriptor_id")
         if descriptor_id:
             mesh_id = validate_mesh_id(str(descriptor_id))
@@ -719,6 +1415,15 @@ class MeSHAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse MeSH descriptor data into Document objects.
+
+        Args:
+            payloads: Raw MeSH descriptor data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for descriptor in payloads:
             identifier = descriptor.get("descriptorUI") or descriptor.get("resource")
@@ -756,9 +1461,27 @@ class MeSHAdapter(ResilientHTTPAdapter):
 
 
 class ChEMBLAdapter(ResilientHTTPAdapter):
-    """Adapter for ChEMBL compound data."""
+    """Adapter for ChEMBL compound data.
+
+    This adapter fetches chemical compound data from ChEMBL,
+    including molecular properties, structures, and target information.
+
+    Required Parameters (one of):
+        chembl_id: ChEMBL compound identifier
+        smiles: SMILES molecular structure string
+
+    Example:
+        >>> adapter = ChEMBLAdapter()
+        >>> context = AdapterContext(parameters={"chembl_id": "CHEMBL25"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize ChEMBL adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="chembl",
             base_url="https://www.ebi.ac.uk/chembl/api/data",
@@ -768,6 +1491,18 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch compound data from ChEMBL.
+
+        Args:
+            context: Adapter context containing chembl_id or smiles parameter
+
+        Returns:
+            Iterable of compound data mappings
+
+        Raises:
+            ValueError: If neither chembl_id nor smiles parameter is provided
+            HTTPError: If API request fails
+        """
         chembl_id = context.parameters.get("chembl_id")
         smiles = context.parameters.get("smiles")
         if chembl_id:
@@ -784,6 +1519,15 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse ChEMBL compound data into Document objects.
+
+        Args:
+            payloads: Raw ChEMBL compound data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for molecule in payloads:
             chembl_id = molecule.get("molecule_chembl_id")
@@ -821,9 +1565,27 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
 
 
 class SemanticScholarAdapter(ResilientHTTPAdapter):
-    """Adapter for Semantic Scholar citation enrichment."""
+    """Adapter for Semantic Scholar citation enrichment.
+
+    This adapter fetches academic paper citation data from Semantic Scholar,
+    including citation counts, references, and external identifiers.
+
+    Required Parameters (one of):
+        doi: Digital Object Identifier for the paper
+        paper_id: Semantic Scholar paper identifier
+
+    Example:
+        >>> adapter = SemanticScholarAdapter()
+        >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
+        >>> documents = adapter.fetch_and_parse(context)
+    """
 
     def __init__(self, client: HttpClient | None = None) -> None:
+        """Initialize Semantic Scholar adapter.
+
+        Args:
+            client: Optional HTTP client (creates default if None)
+        """
         super().__init__(
             name="semantic-scholar",
             base_url="https://api.semanticscholar.org/graph/v1",
@@ -833,6 +1595,18 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
         )
 
     def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+        """Fetch citation data from Semantic Scholar.
+
+        Args:
+            context: Adapter context containing doi or paper_id parameter
+
+        Returns:
+            Iterable of citation data mappings
+
+        Raises:
+            ValueError: If neither doi nor paper_id parameter is provided
+            HTTPError: If API request fails
+        """
         doi = context.parameters.get("doi")
         if doi:
             identifier = f"DOI:{validate_doi(str(doi))}"
@@ -847,6 +1621,15 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
     ) -> Sequence[Document]:
+        """Parse Semantic Scholar citation data into Document objects.
+
+        Args:
+            payloads: Raw citation data from API
+            context: Adapter context (unused but required by interface)
+
+        Returns:
+            Sequence of parsed Document objects
+        """
         documents: list[Document] = []
         for payload in payloads:
             paper_id = payload.get("paperId") or payload.get("paper_id")
@@ -881,3 +1664,5 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+# EXPORTS

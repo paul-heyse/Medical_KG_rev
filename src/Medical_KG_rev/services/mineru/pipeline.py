@@ -1,7 +1,61 @@
-"""Reusable MinerU pipeline orchestration helpers."""
+"""Reusable MinerU pipeline orchestration helpers.
+
+This module provides orchestration utilities for running MinerU CLI
+batches, including metrics collection, error handling, and result
+processing. It coordinates between the CLI wrapper, output parser,
+and post-processor to produce structured document outputs.
+
+Key Components:
+    - MineruPipeline: Main orchestration class for batch processing
+    - PipelineMetrics: Prometheus metrics collection for batches
+    - Error handling and logging for pipeline operations
+
+Responsibilities:
+    - Orchestrate MinerU CLI execution for batches
+    - Collect and emit Prometheus metrics
+    - Handle errors and logging throughout the pipeline
+    - Coordinate parsing and post-processing of results
+    - Track processing duration and resource usage
+
+Collaborators:
+    - MinerU CLI wrapper for execution
+    - Output parser for result processing
+    - Post-processor for document construction
+    - Metrics system for observability
+
+Side Effects:
+    - Emits Prometheus metrics for monitoring
+    - Logs pipeline operations and statistics
+    - May raise exceptions for processing failures
+
+Thread Safety:
+    - Thread-safe: Pipeline instances are stateless
+    - Metrics collection is thread-safe
+
+Performance Characteristics:
+    - O(n) processing time for n documents in batch
+    - Memory usage scales with batch size
+    - Efficient metrics collection with minimal overhead
+    - Supports concurrent batch processing
+
+Example:
+    >>> pipeline = MineruPipeline(parser=parser, postprocessor=postprocessor, metrics=metrics)
+    >>> response = pipeline.execute(
+    ...     requests=requests,
+    ...     cli_inputs=cli_inputs,
+    ...     execute_cli=execute_cli,
+    ...     metadata_builder=metadata_builder,
+    ...     batch_index=0,
+    ...     total_batches=1
+    ... )
+    >>> assert len(response.documents) > 0
+"""
 
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
 import time
 from datetime import datetime, timezone
 from typing import Callable, Sequence
@@ -19,21 +73,74 @@ from .output_parser import MineruOutputParser, MineruOutputParserError, ParsedDo
 from .postprocessor import MineruPostProcessor
 from .types import Document, MineruBatchResponse, MineruRequest, ProcessingMetadata
 
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
 logger = structlog.get_logger(__name__)
 
 
+# ============================================================================
+# METRICS COLLECTION
+# ============================================================================
+
 class PipelineMetrics:
-    """Encapsulates Prometheus metric emission for MinerU batches."""
+    """Encapsulates Prometheus metric emission for MinerU batches.
+
+    This class provides a convenient interface for collecting and emitting
+    Prometheus metrics during MinerU batch processing. It handles metric
+    labeling and aggregation for monitoring pipeline performance.
+
+    Attributes:
+        _worker_id: Unique identifier for the worker instance
+
+    Thread Safety:
+        - Thread-safe: Prometheus client handles concurrent access
+        - All metric operations are atomic
+
+    Example:
+        >>> metrics = PipelineMetrics("worker-1")
+        >>> metrics.record_cli_duration("cuda:0", 120.5)
+        >>> metrics.record_extraction(parsed_document)
+    """
 
     def __init__(self, worker_id: str) -> None:
+        """Initialize pipeline metrics collector.
+
+        Args:
+            worker_id: Unique identifier for the worker instance
+
+        Example:
+            >>> metrics = PipelineMetrics("worker-1")
+            >>> assert metrics._worker_id == "worker-1"
+        """
         self._worker_id = worker_id
 
     def record_cli_duration(self, gpu_label: str, duration: float) -> None:
+        """Record CLI execution duration.
+
+        Args:
+            gpu_label: GPU identifier (e.g., "cuda:0")
+            duration: Duration in seconds
+
+        Example:
+            >>> metrics = PipelineMetrics("worker-1")
+            >>> metrics.record_cli_duration("cuda:0", 120.5)
+        """
         MINERU_PROCESSING_DURATION_SECONDS.labels(
             worker_id=self._worker_id, gpu_id=gpu_label
         ).observe(duration)
 
     def record_extraction(self, parsed: ParsedDocument) -> None:
+        """Record extraction statistics for a parsed document.
+
+        Args:
+            parsed: Parsed document with extracted content
+
+        Example:
+            >>> metrics = PipelineMetrics("worker-1")
+            >>> metrics.record_extraction(parsed_document)
+        """
         unique_pages = {block.page for block in parsed.blocks}
         MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(
             len(unique_pages)
@@ -46,8 +153,42 @@ class PipelineMetrics:
         )
 
 
+# ============================================================================
+# PIPELINE ORCHESTRATION
+# ============================================================================
+
 class MineruPipeline:
-    """Runs the MinerU CLI, parser, and post-processor for a batch of requests."""
+    """Runs the MinerU CLI, parser, and post-processor for a batch of requests.
+
+    This class orchestrates the complete MinerU processing pipeline for
+    batches of documents, including CLI execution, output parsing,
+    post-processing, and metrics collection. It handles error recovery
+    and provides comprehensive logging throughout the process.
+
+    Attributes:
+        _parser: Output parser for MinerU results
+        _postprocessor: Post-processor for document construction
+        _metrics: Metrics collector for observability
+
+    Thread Safety:
+        - Thread-safe: Pipeline instances are stateless
+        - All operations are atomic within a single batch
+
+    Example:
+        >>> pipeline = MineruPipeline(
+        ...     parser=parser,
+        ...     postprocessor=postprocessor,
+        ...     metrics=metrics
+        ... )
+        >>> response = pipeline.execute(
+        ...     requests=requests,
+        ...     cli_inputs=cli_inputs,
+        ...     execute_cli=execute_cli,
+        ...     metadata_builder=metadata_builder,
+        ...     batch_index=0,
+        ...     total_batches=1
+        ... )
+    """
 
     def __init__(
         self,
@@ -56,6 +197,20 @@ class MineruPipeline:
         postprocessor: MineruPostProcessor,
         metrics: PipelineMetrics,
     ) -> None:
+        """Initialize MinerU pipeline.
+
+        Args:
+            parser: Output parser for MinerU results
+            postprocessor: Post-processor for document construction
+            metrics: Metrics collector for observability
+
+        Example:
+            >>> pipeline = MineruPipeline(
+            ...     parser=parser,
+            ...     postprocessor=postprocessor,
+            ...     metrics=metrics
+            ... )
+        """
         self._parser = parser
         self._postprocessor = postprocessor
         self._metrics = metrics
@@ -71,6 +226,35 @@ class MineruPipeline:
         total_batches: int,
         record_gpu_memory: Callable[[str], None] | None = None,
     ) -> MineruBatchResponse:
+        """Execute MinerU pipeline for a batch of requests.
+
+        Args:
+            requests: Sequence of MinerU requests to process
+            cli_inputs: Sequence of CLI inputs for execution
+            execute_cli: Function to execute MinerU CLI
+            metadata_builder: Function to build processing metadata
+            batch_index: Index of current batch
+            total_batches: Total number of batches
+            record_gpu_memory: Optional function to record GPU memory usage
+
+        Returns:
+            Batch response with processed documents and metadata
+
+        Raises:
+            MineruCliError: If CLI execution fails
+            MineruOutputParserError: If output parsing fails
+
+        Example:
+            >>> response = pipeline.execute(
+            ...     requests=requests,
+            ...     cli_inputs=cli_inputs,
+            ...     execute_cli=execute_cli,
+            ...     metadata_builder=metadata_builder,
+            ...     batch_index=0,
+            ...     total_batches=1
+            ... )
+            >>> assert len(response.documents) > 0
+        """
         if not requests:
             now = datetime.now(timezone.utc)
             return MineruBatchResponse(
@@ -158,6 +342,11 @@ class MineruPipeline:
             duration_seconds=duration,
             metadata=metadata_entries,
         )
+
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
 
 
 __all__ = ["MineruPipeline", "PipelineMetrics"]

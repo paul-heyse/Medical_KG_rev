@@ -1,7 +1,68 @@
-"""Hybrid retrieval service coordinating lexical, sparse, and dense signals."""
+"""Hybrid retrieval service coordinating lexical, sparse, and dense signals.
+
+This module provides a comprehensive retrieval service that coordinates
+multiple retrieval components including lexical search (OpenSearch),
+dense vector search (FAISS), and hybrid fusion with reranking capabilities.
+
+Key Components:
+    - RetrievalService: Main service coordinating all retrieval operations
+    - RetrievalResult: Data model for retrieval results with scores
+    - Hybrid coordination: Combines multiple retrieval signals
+    - Reranking pipeline: Two-stage reranking with fusion
+    - Router: Intelligent routing based on query characteristics
+
+Responsibilities:
+    - Coordinate fan-out to multiple retrieval components
+    - Perform hybrid fusion of lexical and dense signals
+    - Execute two-stage reranking pipelines
+    - Handle query routing and component selection
+    - Manage model registry and circuit breakers
+    - Provide security context and namespace mapping
+
+Collaborators:
+    - OpenSearch client for lexical search
+    - FAISS index for dense vector search
+    - Vector store service for hybrid search
+    - Reranking engine and model registry
+    - Fusion service for signal combination
+    - Router for intelligent query routing
+
+Side Effects:
+    - Logs retrieval operations and performance metrics
+    - Updates circuit breaker states
+    - Manages model handles and caching
+    - Generates security contexts for operations
+
+Thread Safety:
+    - Thread-safe: Uses thread pools for concurrent operations
+    - Circuit breakers provide thread-safe failure handling
+    - Model handles are cached per thread
+
+Performance Characteristics:
+    - Hybrid search combines multiple signals efficiently
+    - Reranking pipeline optimizes result quality
+    - Circuit breakers prevent cascading failures
+    - Concurrent execution improves response times
+
+Example:
+    >>> service = RetrievalService(
+    ...     opensearch=opensearch_client,
+    ...     faiss=faiss_index,
+    ...     vector_store=vector_store
+    ... )
+    >>> results = await service.search(
+    ...     query="medical diagnosis",
+    ...     tenant_id="tenant1",
+    ...     limit=10
+    ... )
+    >>> print(f"Retrieved {len(results)} results")
+"""
 
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -18,14 +79,14 @@ from Medical_KG_rev.services.reranking import (
     FusionService,
     FusionSettings,
     FusionStrategy,
+    ModelDownloadError,
+    ModelHandle,
     NormalizationStrategy,
     PipelineSettings,
     RerankCacheManager,
     RerankerFactory,
-    RerankingEngine,
     RerankerModelRegistry,
-    ModelHandle,
-    ModelDownloadError,
+    RerankingEngine,
     ScoredDocument,
 )
 from Medical_KG_rev.services.reranking.errors import RerankingError
@@ -41,14 +102,59 @@ from .rerank_policy import TenantRerankPolicy
 from .reranker import CrossEncoderReranker
 from .router import RetrievalRouter, RouterMatch
 
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
 logger = structlog.get_logger(__name__)
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
 
 DEFAULT_POLICY_PATH = Path("config/retrieval/reranking.yaml")
 DEFAULT_COMPONENT_CONFIG_PATH = Path("config/retrieval/components.yaml")
 
 
+# ============================================================================
+# DATA MODELS
+# ============================================================================
+
 @dataclass(slots=True)
 class RetrievalResult:
+    """Data model for retrieval results with scores and metadata.
+
+    Represents a single retrieval result with both initial retrieval
+    scores and optional reranking scores, along with highlights and
+    metadata.
+
+    Attributes:
+        id: Unique identifier for the result
+        text: Text content of the retrieved document/chunk
+        retrieval_score: Initial retrieval score from search engine
+        rerank_score: Optional reranking score after fusion
+        highlights: Sequence of highlight information
+        metadata: Additional metadata about the result
+        granularity: Granularity level (e.g., "chunk", "document")
+
+    Invariants:
+        - id is never empty
+        - text is never empty
+        - retrieval_score is always non-negative
+        - rerank_score is None or non-negative
+        - granularity defaults to "chunk"
+
+    Example:
+        >>> result = RetrievalResult(
+        ...     id="chunk_123",
+        ...     text="Sample medical text",
+        ...     retrieval_score=0.85,
+        ...     rerank_score=0.92,
+        ...     highlights=[{"field": "text", "fragment": "medical"}],
+        ...     metadata={"source": "document.pdf"}
+        ... )
+        >>> print(f"Final score: {result.rerank_score or result.retrieval_score}")
+    """
     id: str
     text: str
     retrieval_score: float
@@ -58,8 +164,58 @@ class RetrievalResult:
     granularity: str = "chunk"
 
 
+# ============================================================================
+# SERVICE IMPLEMENTATION
+# ============================================================================
+
 class RetrievalService:
-    """Coordinates fan-out to retrieval components, fusion and reranking."""
+    """Coordinates fan-out to retrieval components, fusion and reranking.
+
+    Main service class that orchestrates hybrid retrieval operations by
+    coordinating multiple retrieval components, performing fusion of
+    different signals, and executing reranking pipelines.
+
+    Attributes:
+        opensearch: OpenSearch client for lexical search
+        faiss: FAISS index for dense vector search
+        vector_store: Vector store service for hybrid search
+        vector_namespace: Namespace for vector operations
+        router: Router for intelligent query routing
+        _context_factory: Factory for security contexts
+        _namespace_map: Mapping of namespaces
+        _rerank_policy: Policy for reranking decisions
+        _model_registry: Registry for reranking models
+        _model_handles: Cache of model handles
+        _hybrid: Hybrid search coordinator
+
+    Invariants:
+        - opensearch is never None
+        - router is never None
+        - _rerank_policy is never None
+        - _model_registry is never None
+
+    Thread Safety:
+        - Thread-safe: Uses thread pools for concurrent operations
+        - Circuit breakers provide thread-safe failure handling
+        - Model handles are cached per thread
+
+    Lifecycle:
+        - Initialized with required and optional components
+        - Model handles are loaded on demand
+        - Circuit breakers are configured during initialization
+
+    Example:
+        >>> service = RetrievalService(
+        ...     opensearch=opensearch_client,
+        ...     faiss=faiss_index,
+        ...     vector_store=vector_store
+        ... )
+        >>> results = await service.search(
+        ...     query="medical diagnosis",
+        ...     tenant_id="tenant1",
+        ...     limit=10
+        ... )
+    """
 
     def __init__(
         self,
@@ -81,6 +237,31 @@ class RetrievalService:
         hybrid_coordinator: HybridSearchCoordinator | None = None,
         hybrid_settings: HybridComponentSettings | None = None,
     ) -> None:
+        """Initialize retrieval service with required and optional components.
+
+        Args:
+            opensearch: OpenSearch client for lexical search
+            faiss: Optional FAISS index for dense vector search
+            reranker: Optional reranker callable (legacy parameter)
+            vector_store: Optional vector store service for hybrid search
+            vector_namespace: Namespace for vector operations
+            context_factory: Optional factory for security contexts
+            fusion_service: Optional fusion service for signal combination
+            pipeline_settings: Optional pipeline settings for reranking
+            reranking_engine: Optional reranking engine
+            reranking_settings: Optional reranking configuration
+            router: Optional router for intelligent query routing
+            namespace_map: Optional mapping of namespaces
+            rerank_policy: Optional policy for reranking decisions
+            model_registry: Optional registry for reranking models
+            hybrid_coordinator: Optional hybrid search coordinator
+            hybrid_settings: Optional hybrid component settings
+
+        Note:
+            The service initializes with sensible defaults for optional
+            components. Model handles are loaded on demand to improve
+            startup performance.
+        """
         self.opensearch = opensearch
         self.faiss = faiss
         self.vector_store = vector_store
@@ -168,6 +349,37 @@ class RetrievalService:
         context: SecurityContext | None = None,
         explain: bool = False,
     ) -> list[RetrievalResult]:
+        """Execute hybrid search with optional reranking.
+
+        Args:
+            index: Search index name
+            query: Search query string
+            filters: Optional filters to apply
+            k: Number of results to return
+            rerank: Whether to perform reranking
+            embedding_kind: Type of embedding to use
+            reranker_id: Specific reranker to use
+            rerank_model: Specific rerank model to use
+            context: Security context for the operation
+            explain: Whether to include explanation in results
+
+        Returns:
+            List of retrieval results with scores and metadata
+
+        Note:
+            This method coordinates hybrid search across multiple
+            components and optionally applies reranking based on
+            the provided parameters.
+
+        Example:
+            >>> results = await service.search(
+            ...     index="medical_docs",
+            ...     query="diabetes treatment",
+            ...     k=5,
+            ...     rerank=True
+            ... )
+            >>> print(f"Found {len(results)} results")
+        """
         security_context = context or (
             self._context_factory()
             if self._context_factory

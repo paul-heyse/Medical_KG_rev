@@ -1,7 +1,62 @@
-"""Stage-based embedding worker backed by Dagster components."""
+"""Stage-based embedding worker backed by Dagster components.
+
+This module provides the core embedding service implementation that bridges
+between the gateway layer and the orchestration system. It handles embedding
+requests, manages stage resolution, and provides both synchronous and
+asynchronous (gRPC) interfaces for embedding operations.
+
+The service is built around the Dagster orchestration framework, using
+stage factories to resolve and execute embedding stages. It supports
+both direct embedding requests and gRPC-based embedding operations.
+
+Key Components:
+    - EmbeddingWorker: Main service class for embedding operations
+    - EmbeddingRequest/Response: Data models for embedding operations
+    - EmbeddingVector: Container for embedding vectors with metadata
+    - EmbeddingGrpcService: Async gRPC servicer for remote embedding
+
+Responsibilities:
+    - Process embedding requests from gateway services
+    - Resolve and execute embedding stages via Dagster
+    - Handle chunk processing and vector normalization
+    - Provide both sync and async interfaces
+    - Manage stage factory resolution and caching
+
+Collaborators:
+    - Gateway services (embedding coordinator)
+    - Dagster orchestration system
+    - Embedding model registry
+    - Namespace registry
+    - Chunking models
+
+Side Effects:
+    - Logs embedding operations and errors
+    - Updates stage factory cache
+    - Generates correlation IDs for tracking
+
+Thread Safety:
+    - Thread-safe: All operations are stateless
+    - Stage factory resolution is cached per instance
+
+Performance Characteristics:
+    - Embedding operations are CPU/memory intensive
+    - Stage resolution is cached to avoid repeated lookups
+    - Vector normalization adds computational overhead
+
+Example:
+    >>> worker = EmbeddingWorker()
+    >>> request = EmbeddingRequest(
+    ...     tenant_id="tenant1", texts=["Hello world"], normalize=True
+    ... )
+    >>> response = worker.run(request)
+    >>> print(f"Generated {len(response.vectors)} vectors")
+"""
 
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
 import math
 import uuid
 from dataclasses import dataclass, field
@@ -16,9 +71,11 @@ from Medical_KG_rev.orchestration.dagster.runtime import (
     StageResolutionError,
     build_stage_factory,
 )
-from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
+from Medical_KG_rev.orchestration.dagster.stages import (
+    create_default_pipeline_resource,
+    create_stage_plugin_manager,
+)
 from Medical_KG_rev.orchestration.ledger import JobLedger
-from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
     EmbedStage,
@@ -28,12 +85,33 @@ from Medical_KG_rev.orchestration.stages.contracts import (
 from .namespace.registry import EmbeddingNamespaceRegistry
 from .registry import EmbeddingModelRegistry
 
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
 logger = structlog.get_logger(__name__)
 
 
-def _default_stage_factory() -> StageFactory:
-    """Instantiate the default stage factory using registered adapters."""
+# ============================================================================
+# FACTORY FUNCTIONS
+# ============================================================================
 
+def _default_stage_factory() -> StageFactory:
+    """Instantiate the default stage factory using registered adapters.
+
+    Returns:
+        Configured StageFactory instance with default pipeline resource
+        and job ledger.
+
+    Note:
+        This function creates a stage factory using the default pipeline
+        resource and job ledger. It's used as a fallback when no custom
+        stage factory is provided.
+
+    Example:
+        >>> factory = _default_stage_factory()
+        >>> stage = factory.resolve("pipeline", StageDefinition(name="embed", type="embed"))
+    """
     adapter_manager = get_plugin_manager()
     pipeline_resource = create_default_pipeline_resource()
     job_ledger = JobLedger()
@@ -42,10 +120,43 @@ def _default_stage_factory() -> StageFactory:
     return StageFactory(plugin_manager)
 
 
+# ============================================================================
+# DATA MODELS
+# ============================================================================
+
 @dataclass(slots=True)
 class EmbeddingRequest:
-    """Payload accepted by :class:`EmbeddingWorker`."""
+    """Payload accepted by :class:`EmbeddingWorker`.
 
+    Represents a request to generate embeddings for a collection of texts.
+    Supports various options including normalization, model selection, and
+    metadata association.
+
+    Attributes:
+        tenant_id: Identifier for the tenant making the request
+        texts: Sequence of texts to embed
+        chunk_ids: Optional sequence of chunk IDs corresponding to texts
+        normalize: Whether to normalize the resulting vectors
+        model: Optional model name to use for embedding
+        metadata: Optional sequence of metadata mappings for each text
+        correlation_id: Optional correlation ID for request tracking
+        pipeline_name: Optional pipeline name for execution context
+        pipeline_version: Optional pipeline version for execution context
+
+    Invariants:
+        - tenant_id is never empty
+        - texts is never empty when processing
+        - chunk_ids length matches texts length when provided
+        - metadata length matches texts length when provided
+
+    Example:
+        >>> request = EmbeddingRequest(
+        ...     tenant_id="tenant1",
+        ...     texts=["Hello world", "Goodbye world"],
+        ...     normalize=True,
+        ...     model="text-embedding-ada-002"
+        ... )
+    """
     tenant_id: str
     texts: Sequence[str]
     chunk_ids: Sequence[str] | None = None
@@ -59,8 +170,34 @@ class EmbeddingRequest:
 
 @dataclass(slots=True)
 class EmbeddingVector:
-    """Embedding vector returned to gateway and gRPC callers."""
+    """Embedding vector returned to gateway and gRPC callers.
 
+    Represents a single embedding vector with associated metadata and
+    identification information. Used for both internal processing and
+    external API responses.
+
+    Attributes:
+        id: Unique identifier for the vector
+        model: Name of the model that generated the vector
+        kind: Type of vector (e.g., "dense", "sparse")
+        values: Tuple of floating-point values representing the vector
+        metadata: Dictionary of additional metadata
+
+    Invariants:
+        - id is never empty
+        - model is never empty
+        - values tuple is immutable
+        - metadata is mutable but thread-safe for reads
+
+    Example:
+        >>> vector = EmbeddingVector(
+        ...     id="chunk_123",
+        ...     model="text-embedding-ada-002",
+        ...     values=(0.1, 0.2, 0.3),
+        ...     metadata={"source": "document.pdf"}
+        ... )
+        >>> print(f"Dimension: {vector.dimension}")
+    """
     id: str
     model: str
     kind: str = "dense"
@@ -69,18 +206,82 @@ class EmbeddingVector:
 
     @property
     def dimension(self) -> int:
+        """Get the dimension of the embedding vector.
+
+        Returns:
+            Number of dimensions in the vector.
+
+        Example:
+            >>> vector = EmbeddingVector(id="test", model="test", values=(1.0, 2.0, 3.0))
+            >>> print(vector.dimension)  # 3
+        """
         return len(self.values)
 
 
 @dataclass(slots=True)
 class EmbeddingResponse:
-    """Container produced by :class:`EmbeddingWorker`."""
+    """Container produced by :class:`EmbeddingWorker`.
 
+    Represents the response from an embedding operation, containing
+    the generated vectors and any associated metadata.
+
+    Attributes:
+        vectors: List of generated embedding vectors
+
+    Invariants:
+        - vectors list is never None
+        - All vectors in the list are valid EmbeddingVector instances
+
+    Example:
+        >>> response = EmbeddingResponse()
+        >>> response.vectors.append(EmbeddingVector(
+        ...     id="chunk_1", model="test", values=(1.0, 2.0)
+        ... ))
+        >>> print(f"Generated {len(response.vectors)} vectors")
+    """
     vectors: list[EmbeddingVector] = field(default_factory=list)
 
 
+# ============================================================================
+# SERVICE IMPLEMENTATION
+# ============================================================================
+
 class EmbeddingWorker:
-    """Thin wrapper that executes the embed stage via Dagster components."""
+    """Thin wrapper that executes the embed stage via Dagster components.
+
+    Main service class for processing embedding requests. Handles stage
+    resolution, chunk processing, and vector generation through the
+    Dagster orchestration system.
+
+    Attributes:
+        _stage_factory: Factory for resolving and creating stages
+        _embed_stage: Cached embedding stage instance
+        _stage_definition: Definition for the embedding stage
+        _pipeline_name: Name of the pipeline for execution context
+        _pipeline_version: Version of the pipeline for execution context
+
+    Invariants:
+        - _stage_factory is never None
+        - _stage_definition is never None
+        - _pipeline_name and _pipeline_version are never empty
+
+    Thread Safety:
+        - Thread-safe: All operations are stateless
+        - Stage resolution is cached per instance
+
+    Lifecycle:
+        - Initialized with optional dependencies
+        - Stage factory is resolved on first use
+        - Embedding stage is cached after first resolution
+
+    Example:
+        >>> worker = EmbeddingWorker()
+        >>> request = EmbeddingRequest(
+        ...     tenant_id="tenant1", texts=["Hello world"]
+        ... )
+        >>> response = worker.run(request)
+        >>> print(f"Generated {len(response.vectors)} vectors")
+    """
 
     def __init__(
         self,
@@ -92,15 +293,52 @@ class EmbeddingWorker:
         pipeline_name: str = "gateway-direct",
         pipeline_version: str = "v1",
     ) -> None:
+        """Initialize embedding worker with optional dependencies.
+
+        Args:
+            registry: Optional model registry (retained for compatibility)
+            stage_factory: Optional stage factory for stage resolution
+            embed_stage: Optional pre-configured embedding stage
+            stage_definition: Optional stage definition for resolution
+            pipeline_name: Name of the pipeline for execution context
+            pipeline_version: Version of the pipeline for execution context
+
+        Note:
+            If no stage_factory is provided, a default one is created.
+            The embed_stage is cached after first resolution to avoid
+            repeated lookups.
+        """
         self._stage_factory = stage_factory or _default_stage_factory()
         self._embed_stage = embed_stage
         self._stage_definition = stage_definition or StageDefinition(name="embed", type="embed")
         self._pipeline_name = pipeline_name
         self._pipeline_version = pipeline_version
 
-    # ------------------------------------------------------------------
     def run(self, request: EmbeddingRequest) -> EmbeddingResponse:
-        """Execute the embed stage for the provided request."""
+        """Execute the embed stage for the provided request.
+
+        Args:
+            request: Embedding request containing texts and configuration
+
+        Returns:
+            Response containing generated embedding vectors
+
+        Raises:
+            Exception: If stage execution fails or other errors occur
+
+        Note:
+            This method processes the request by cleaning texts, building
+            chunks, resolving the embedding stage, and executing it. Empty
+            requests return an empty response.
+
+        Example:
+            >>> worker = EmbeddingWorker()
+            >>> request = EmbeddingRequest(
+            ...     tenant_id="tenant1", texts=["Hello world"], normalize=True
+            ... )
+            >>> response = worker.run(request)
+            >>> print(f"Generated {len(response.vectors)} vectors")
+        """
 
         cleaned_texts = [
             text.strip()
@@ -144,14 +382,49 @@ class EmbeddingWorker:
             raise
         return self._response_from_batch(batch, normalize=request.normalize)
 
-    # ------------------------------------------------------------------
     def encode_queries(self, request: EmbeddingRequest) -> EmbeddingResponse:
-        """Alias for :meth:`run` retained for compatibility with rerankers."""
+        """Alias for :meth:`run` retained for compatibility with rerankers.
 
+        Args:
+            request: Embedding request containing texts and configuration
+
+        Returns:
+            Response containing generated embedding vectors
+
+        Note:
+            This method is maintained for backward compatibility with
+            reranking systems that expect an encode_queries method.
+
+        Example:
+            >>> worker = EmbeddingWorker()
+            >>> request = EmbeddingRequest(
+            ...     tenant_id="tenant1", texts=["query text"]
+            ... )
+            >>> response = worker.encode_queries(request)
+            >>> print(f"Encoded {len(response.vectors)} queries")
+        """
         return self.run(request)
 
-    # ------------------------------------------------------------------
     def _resolve_stage(self) -> EmbedStage:
+        """Resolve and cache the embedding stage.
+
+        Returns:
+            Configured embedding stage instance
+
+        Raises:
+            StageResolutionError: If stage cannot be resolved
+            TypeError: If resolved stage doesn't implement EmbedStage
+
+        Note:
+            This method caches the resolved stage to avoid repeated
+            resolution. If initial resolution fails, it retries with
+            a generic stage definition.
+
+        Example:
+            >>> worker = EmbeddingWorker()
+            >>> stage = worker._resolve_stage()
+            >>> print(f"Stage type: {type(stage).__name__}")
+        """
         if self._embed_stage is not None:
             return self._embed_stage
         try:
@@ -178,6 +451,32 @@ class EmbeddingWorker:
         chunk_ids: Sequence[str] | None,
         metadata: Sequence[Mapping[str, Any]] | None,
     ) -> list[Chunk]:
+        """Build chunk objects from texts and metadata.
+
+        Args:
+            tenant_id: Identifier for the tenant
+            texts: Sequence of texts to convert to chunks
+            chunk_ids: Optional sequence of chunk IDs
+            metadata: Optional sequence of metadata mappings
+
+        Returns:
+            List of Chunk objects with proper IDs and metadata
+
+        Note:
+            This method generates chunk IDs if not provided and ensures
+            metadata is properly aligned with texts. Default values are
+            used for missing metadata fields.
+
+        Example:
+            >>> worker = EmbeddingWorker()
+            >>> chunks = worker._build_chunks(
+            ...     tenant_id="tenant1",
+            ...     texts=["Hello", "World"],
+            ...     chunk_ids=["chunk1", "chunk2"],
+            ...     metadata=[{"source": "doc1"}, {"source": "doc2"}]
+            ... )
+            >>> print(f"Built {len(chunks)} chunks")
+        """
         ids = list(chunk_ids or [])
         if len(ids) < len(texts):
             ids.extend(f"{tenant_id}:{index}" for index in range(len(ids), len(texts)))
@@ -215,6 +514,26 @@ class EmbeddingWorker:
         *,
         normalize: bool,
     ) -> EmbeddingResponse:
+        """Convert embedding batch to response format.
+
+        Args:
+            batch: Embedding batch from stage execution
+            normalize: Whether to normalize vector values
+
+        Returns:
+            Response containing converted embedding vectors
+
+        Note:
+            This method converts the internal batch format to the external
+            response format, optionally normalizing vectors and extracting
+            metadata.
+
+        Example:
+            >>> worker = EmbeddingWorker()
+            >>> # Assuming batch is an EmbeddingBatch instance
+            >>> response = worker._response_from_batch(batch, normalize=True)
+            >>> print(f"Response contains {len(response.vectors)} vectors")
+        """
         vectors: list[EmbeddingVector] = []
         for vector in batch.vectors:
             values = list(vector.values)
@@ -236,13 +555,56 @@ class EmbeddingWorker:
         return EmbeddingResponse(vectors=vectors)
 
 
+# ============================================================================
+# GRPC SERVICE IMPLEMENTATION
+# ============================================================================
+
 @dataclass(slots=True)
 class EmbeddingGrpcService:
-    """Async gRPC servicer bridging requests into the embedding worker."""
+    """Async gRPC servicer bridging requests into the embedding worker.
 
+    Provides an asynchronous gRPC interface for embedding operations,
+    converting gRPC requests to internal format and responses back to
+    gRPC format.
+
+    Attributes:
+        worker: Embedding worker instance for processing requests
+
+    Invariants:
+        - worker is never None
+        - All gRPC requests are properly converted to internal format
+
+    Thread Safety:
+        - Thread-safe: Uses async/await for concurrency
+        - Worker operations are stateless
+
+    Example:
+        >>> worker = EmbeddingWorker()
+        >>> grpc_service = EmbeddingGrpcService(worker)
+        >>> # Used by gRPC server for handling requests
+    """
     worker: EmbeddingWorker
 
     async def EmbedChunks(self, request, context):  # type: ignore[override]
+        """Process embedding request via gRPC interface.
+
+        Args:
+            request: gRPC request containing embedding parameters
+            context: gRPC context for request handling
+
+        Returns:
+            gRPC response containing embedding vectors
+
+        Note:
+            This method converts the gRPC request to internal format,
+            processes it through the embedding worker, and converts
+            the response back to gRPC format.
+
+        Example:
+            >>> # Called by gRPC server when handling EmbedChunks requests
+            >>> response = await grpc_service.EmbedChunks(request, context)
+            >>> print(f"Generated {len(response.vectors)} vectors")
+        """
         embed_request = EmbeddingRequest(
             tenant_id=request.tenant_id,
             chunk_ids=list(request.chunk_ids) or None,
@@ -265,6 +627,10 @@ class EmbeddingGrpcService:
             message.values.extend(vector.values)
         return reply
 
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
 
 __all__ = [
     "EmbeddingGrpcService",

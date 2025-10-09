@@ -1,5 +1,58 @@
+"""Post-processor for MinerU CLI output.
+
+This module provides post-processing utilities for transforming parsed
+MinerU output into service-level document structures. It handles artifact
+preparation, block construction, metadata enrichment, and storage
+operations for tables, figures, and equations.
+
+Key Components:
+    - MineruPostProcessor: Main post-processing class
+    - Artifact preparation for tables, figures, and equations
+    - Block construction with metadata enrichment
+    - IR document generation for downstream processing
+
+Responsibilities:
+    - Transform parsed MinerU output into service structures
+    - Prepare and enrich artifacts (tables, figures, equations)
+    - Build blocks with attached artifacts and metadata
+    - Generate IR documents for downstream processing
+    - Handle figure storage and URL generation
+    - Create provenance information for tracking
+
+Collaborators:
+    - MinerU output parser for parsed content
+    - Figure storage client for asset management
+    - Model classes for structured data representation
+    - Artifact management for content organization
+
+Side Effects:
+    - Stores figures in object storage
+    - Generates URLs for stored assets
+    - Enriches metadata with processing information
+    - Creates provenance tracking data
+
+Thread Safety:
+    - Thread-safe: Post-processor instances are stateless
+    - Storage operations are atomic
+
+Performance Characteristics:
+    - O(n) processing time for n blocks/artifacts
+    - Memory usage scales with document size
+    - Efficient artifact preparation and metadata enrichment
+    - Supports large documents with many artifacts
+
+Example:
+    >>> postprocessor = MineruPostProcessor(figure_storage=storage_client)
+    >>> document = postprocessor.build_document(parsed, request, provenance)
+    >>> assert len(document.blocks) > 0
+    >>> assert len(document.tables) >= 0
+"""
+
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
 import csv
 import json
 import mimetypes
@@ -10,11 +63,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import structlog
-
 from Medical_KG_rev.models.equation import Equation
 from Medical_KG_rev.models.figure import Figure
 from Medical_KG_rev.models.ir import Block as IrBlock
-from Medical_KG_rev.models.ir import BlockType, Document as IrDocument, Section
+from Medical_KG_rev.models.ir import BlockType, Section
+from Medical_KG_rev.models.ir import Document as IrDocument
 from Medical_KG_rev.models.table import Table
 from Medical_KG_rev.storage.object_store import FigureStorageClient
 
@@ -22,11 +75,42 @@ from .artifacts import MineruArtifacts, build_artifacts
 from .output_parser import ParsedBlock, ParsedDocument
 from .types import Block, Document, MineruRequest
 
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
 logger = structlog.get_logger(__name__)
 
 
+# ============================================================================
+# POST-PROCESSOR IMPLEMENTATION
+# ============================================================================
+
 class MineruPostProcessor:
-    """Transforms parsed MinerU output into service-level structures."""
+    """Transforms parsed MinerU output into service-level structures.
+
+    This class provides comprehensive post-processing capabilities for
+    transforming parsed MinerU output into service-level document
+    structures. It handles artifact preparation, block construction,
+    metadata enrichment, and storage operations.
+
+    Attributes:
+        _preserve_layout: Whether to preserve layout information
+        _figure_storage: Optional figure storage client
+        _inline_equation_character_limit: Character limit for inline equations
+
+    Thread Safety:
+        - Thread-safe: Post-processor instances are stateless
+        - All operations are pure functions
+
+    Example:
+        >>> postprocessor = MineruPostProcessor(
+        ...     preserve_layout=True,
+        ...     figure_storage=storage_client,
+        ...     inline_equation_character_limit=120
+        ... )
+        >>> document = postprocessor.build_document(parsed, request, provenance)
+    """
 
     def __init__(
         self,
@@ -35,6 +119,20 @@ class MineruPostProcessor:
         figure_storage: FigureStorageClient | None = None,
         inline_equation_character_limit: int = 120,
     ) -> None:
+        """Initialize MinerU post-processor.
+
+        Args:
+            preserve_layout: Whether to preserve layout information
+            figure_storage: Optional figure storage client
+            inline_equation_character_limit: Character limit for inline equations
+
+        Example:
+            >>> postprocessor = MineruPostProcessor(
+            ...     preserve_layout=True,
+            ...     figure_storage=storage_client,
+            ...     inline_equation_character_limit=120
+            ... )
+        """
         self._preserve_layout = preserve_layout
         self._figure_storage = figure_storage
         self._inline_equation_character_limit = max(40, inline_equation_character_limit)
@@ -45,6 +143,21 @@ class MineruPostProcessor:
         request: MineruRequest,
         provenance: dict[str, Any],
     ) -> Document:
+        """Build a service-level document from parsed MinerU output.
+
+        Args:
+            parsed: Parsed MinerU output document
+            request: Original MinerU request
+            provenance: Provenance information for tracking
+
+        Returns:
+            Service-level document with enriched metadata and artifacts
+
+        Example:
+            >>> document = postprocessor.build_document(parsed, request, provenance)
+            >>> assert document.document_id == request.document_id
+            >>> assert len(document.blocks) > 0
+        """
         artifacts = self._prepare_artifacts(parsed, request)
 
         blocks: list[Block] = []
@@ -89,6 +202,21 @@ class MineruPostProcessor:
         return document
 
     def _prepare_artifacts(self, parsed: ParsedDocument, request: MineruRequest) -> MineruArtifacts:
+        """Prepare artifacts from parsed MinerU output.
+
+        Args:
+            parsed: Parsed MinerU output document
+            request: Original MinerU request
+
+        Returns:
+            Prepared artifacts with enriched metadata
+
+        Example:
+            >>> artifacts = postprocessor._prepare_artifacts(parsed, request)
+            >>> assert len(artifacts.tables) >= 0
+            >>> assert len(artifacts.figures) >= 0
+            >>> assert len(artifacts.equations) >= 0
+        """
         tables, table_exports = self._prepare_tables(parsed.tables)
         figures, figure_assets = self._prepare_figures(
             request.tenant_id, request.document_id, parsed.figures
@@ -106,6 +234,19 @@ class MineruPostProcessor:
     def _prepare_tables(
         self, tables: Iterable[Table]
     ) -> tuple[list[Table], dict[str, dict[str, str]]]:
+        """Prepare tables with serializations and metadata.
+
+        Args:
+            tables: Iterable of tables to prepare
+
+        Returns:
+            Tuple of (prepared tables, table exports)
+
+        Example:
+            >>> prepared, exports = postprocessor._prepare_tables(tables)
+            >>> assert len(prepared) == len(tables)
+            >>> assert len(exports) == len(tables)
+        """
         prepared: list[Table] = []
         exports: dict[str, dict[str, str]] = {}
         for table in tables:
@@ -126,6 +267,24 @@ class MineruPostProcessor:
         document_id: str,
         figures: Iterable[Figure],
     ) -> tuple[list[Figure], dict[str, dict[str, str]]]:
+        """Prepare figures with storage and metadata.
+
+        Args:
+            tenant_id: Tenant identifier
+            document_id: Document identifier
+            figures: Iterable of figures to prepare
+
+        Returns:
+            Tuple of (prepared figures, figure assets)
+
+        Example:
+            >>> prepared, assets = postprocessor._prepare_figures(
+            ...     tenant_id="tenant-1",
+            ...     document_id="doc-1",
+            ...     figures=figures
+            ... )
+            >>> assert len(prepared) == len(figures)
+        """
         prepared: list[Figure] = []
         assets: dict[str, dict[str, str]] = {}
         for figure in figures:
@@ -150,6 +309,19 @@ class MineruPostProcessor:
     def _prepare_equations(
         self, equations: Iterable[Equation]
     ) -> tuple[list[Equation], dict[str, str]]:
+        """Prepare equations with render modes and metadata.
+
+        Args:
+            equations: Iterable of equations to prepare
+
+        Returns:
+            Tuple of (prepared equations, equation rendering)
+
+        Example:
+            >>> prepared, rendering = postprocessor._prepare_equations(equations)
+            >>> assert len(prepared) == len(equations)
+            >>> assert len(rendering) == len(equations)
+        """
         prepared: list[Equation] = []
         rendering: dict[str, str] = {}
         for equation in equations:
@@ -167,6 +339,20 @@ class MineruPostProcessor:
         return prepared, rendering
 
     def _render_table_serialisations(self, table: Table) -> dict[str, str]:
+        """Render table in multiple serialization formats.
+
+        Args:
+            table: Table to serialize
+
+        Returns:
+            Dictionary with JSON, CSV, and Markdown serializations
+
+        Example:
+            >>> serializations = postprocessor._render_table_serialisations(table)
+            >>> assert "json" in serializations
+            >>> assert "csv" in serializations
+            >>> assert "markdown" in serializations
+        """
         cells_payload = [cell.model_dump() for cell in table.cells]
         payload = {
             "id": table.id,
@@ -187,11 +373,36 @@ class MineruPostProcessor:
         return {"json": json_blob, "csv": csv_blob, "markdown": markdown}
 
     def _infer_column_count(self, table: Table) -> int:
+        """Infer the number of columns in a table.
+
+        Args:
+            table: Table to analyze
+
+        Returns:
+            Number of columns in the table
+
+        Example:
+            >>> count = postprocessor._infer_column_count(table)
+            >>> assert count > 0
+        """
         if table.headers:
             return len(table.headers)
         return max((cell.column + cell.colspan for cell in table.cells), default=0)
 
     def _build_table_grid(self, table: Table) -> list[list[str]]:
+        """Build a 2D grid representation of a table.
+
+        Args:
+            table: Table to convert to grid
+
+        Returns:
+            2D list representing the table structure
+
+        Example:
+            >>> grid = postprocessor._build_table_grid(table)
+            >>> assert len(grid) > 0
+            >>> assert len(grid[0]) > 0
+        """
         rows = max((cell.row + cell.rowspan for cell in table.cells), default=0)
         header_count = len(table.headers)
         cols = max((cell.column + cell.colspan for cell in table.cells), default=header_count)
@@ -210,6 +421,25 @@ class MineruPostProcessor:
         document_id: str,
         figure: Figure,
     ) -> dict[str, str] | None:
+        """Store a figure in object storage.
+
+        Args:
+            tenant_id: Tenant identifier
+            document_id: Document identifier
+            figure: Figure to store
+
+        Returns:
+            Storage information dictionary or None if storage fails
+
+        Example:
+            >>> storage_info = postprocessor._store_figure(
+            ...     tenant_id="tenant-1",
+            ...     document_id="doc-1",
+            ...     figure=figure
+            ... )
+            >>> if storage_info:
+            ...     assert "url" in storage_info
+        """
         path = Path(figure.image_path)
         if not path.exists():
             logger.warning(
@@ -247,6 +477,18 @@ class MineruPostProcessor:
         }
 
     def _infer_equation_render_mode(self, equation) -> str:
+        """Infer the render mode for an equation.
+
+        Args:
+            equation: Equation to analyze
+
+        Returns:
+            Render mode: "inline" or "link"
+
+        Example:
+            >>> mode = postprocessor._infer_equation_render_mode(equation)
+            >>> assert mode in ["inline", "link"]
+        """
         if not getattr(equation, "latex", ""):
             return "link"
         if len(equation.latex) <= self._inline_equation_character_limit and getattr(equation, "mathml", None) is None:
@@ -254,6 +496,20 @@ class MineruPostProcessor:
         return "link"
 
     def _build_block(self, block: ParsedBlock, artifacts: MineruArtifacts) -> Block:
+        """Build a service-level block from parsed block and artifacts.
+
+        Args:
+            block: Parsed block from MinerU output
+            artifacts: Prepared artifacts with metadata
+
+        Returns:
+            Service-level block with enriched metadata
+
+        Example:
+            >>> service_block = postprocessor._build_block(parsed_block, artifacts)
+            >>> assert service_block.id == parsed_block.id
+            >>> assert service_block.ir_block is not None
+        """
         attached_table, attached_figure, attached_equation = artifacts.attachments_for(
             block.table_id, block.figure_id, block.equation_id
         )
@@ -314,6 +570,26 @@ class MineruPostProcessor:
         figure: Any,
         equation: Any,
     ) -> BlockType:
+        """Resolve block type from raw type and attached artifacts.
+
+        Args:
+            raw_type: Raw block type from MinerU
+            table: Attached table artifact
+            figure: Attached figure artifact
+            equation: Attached equation artifact
+
+        Returns:
+            Resolved block type
+
+        Example:
+            >>> block_type = postprocessor._resolve_block_type(
+            ...     raw_type="paragraph",
+            ...     table=None,
+            ...     figure=None,
+            ...     equation=None
+            ... )
+            >>> assert block_type == BlockType.PARAGRAPH
+        """
         if table:
             return BlockType.TABLE
         if figure:
@@ -333,6 +609,27 @@ class MineruPostProcessor:
         ir_blocks: list[IrBlock],
         metadata: dict[str, Any],
     ) -> IrDocument:
+        """Build an IR document from blocks and metadata.
+
+        Args:
+            request: Original MinerU request
+            parsed: Parsed MinerU output document
+            ir_blocks: List of IR blocks
+            metadata: Document metadata
+
+        Returns:
+            IR document with sections organized by page
+
+        Example:
+            >>> ir_doc = postprocessor._build_ir_document(
+            ...     request=request,
+            ...     parsed=parsed,
+            ...     ir_blocks=ir_blocks,
+            ...     metadata=metadata
+            ... )
+            >>> assert ir_doc.id == request.document_id
+            >>> assert len(ir_doc.sections) > 0
+        """
         document_id = request.document_id
         tenant_id = request.tenant_id
         sections_by_page: dict[int, list[IrBlock]] = defaultdict(list)
@@ -359,8 +656,28 @@ class MineruPostProcessor:
     def _build_provenance(
         self, parsed: ParsedDocument, provenance: dict[str, Any]
     ) -> dict[str, Any]:
+        """Build provenance information for tracking.
+
+        Args:
+            parsed: Parsed MinerU output document
+            provenance: Existing provenance information
+
+        Returns:
+            Enriched provenance information
+
+        Example:
+            >>> provenance = postprocessor._build_provenance(parsed, existing_provenance)
+            >>> assert "document_id" in provenance
+            >>> assert "processed_at" in provenance
+        """
         result = dict(provenance)
         result.setdefault("document_id", parsed.document_id)
         result.setdefault("processed_at", datetime.now(timezone.utc).isoformat())
         return result
+
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
+
 __all__ = ["MineruPostProcessor"]

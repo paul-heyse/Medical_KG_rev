@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Section header checker for Medical_KG_rev pipeline components.
+Section header checker for Medical_KG_rev pipeline and authentication components.
 
 This script validates that all pipeline components follow the established
 section header standards including:
@@ -88,6 +88,7 @@ TEST_SECTIONS = [
 
 # Pipeline component paths to check
 PIPELINE_PATHS = [
+    "src/Medical_KG_rev/auth/",
     "src/Medical_KG_rev/gateway/coordinators/",
     "src/Medical_KG_rev/services/",
     "src/Medical_KG_rev/orchestration/",

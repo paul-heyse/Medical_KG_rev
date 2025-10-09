@@ -1,6 +1,17 @@
 """FastAPI dependencies for authentication and authorization."""
 
 from __future__ import annotations
+"""FastAPI dependencies wiring authentication subsystems together.
+
+This module exposes dependency factories and helper utilities used by the REST
+gateway. The helpers integrate API key validation, OAuth token verification,
+and rate limiting into a cohesive dependency graph that can be re-used by any
+endpoint requiring authenticated access.
+"""
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
 
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
@@ -14,16 +25,32 @@ from .jwt import AuthenticationError, JWTAuthenticator, build_authenticator
 from .rate_limit import RateLimiter, RateLimitExceeded, build_rate_limiter
 
 
+# ============================================================================
+# DEPENDENCY FACTORIES
+# ============================================================================
+
+
 def _get_authenticator() -> JWTAuthenticator:
+    """Return a configured :class:`JWTAuthenticator` instance."""
+
     return build_authenticator()
 
 
 def _get_rate_limiter() -> RateLimiter:
+    """Return the process-wide :class:`RateLimiter`."""
+
     return build_rate_limiter()
 
 
 def _get_api_key_manager() -> APIKeyManager:
+    """Return the API key manager used for header authentication."""
+
     return build_api_key_manager()
+
+
+# ============================================================================
+# AUTHENTICATION HELPERS
+# ============================================================================
 
 
 async def get_security_context(
@@ -33,7 +60,21 @@ async def get_security_context(
     authenticator: JWTAuthenticator = Depends(_get_authenticator),
     api_keys: APIKeyManager = Depends(_get_api_key_manager),
 ) -> SecurityContext:
-    """Authenticate the current request using OAuth bearer tokens or API keys."""
+    """Authenticate the incoming request and populate :class:`SecurityContext`.
+
+    Args:
+        request: Current FastAPI request instance.
+        authorization: Optional bearer token header.
+        api_key: Optional API key header.
+        authenticator: JWT authenticator dependency.
+        api_keys: API key manager dependency.
+
+    Returns:
+        Authenticated :class:`SecurityContext` with scopes and claims.
+
+    Raises:
+        HTTPException: When authentication fails for any reason.
+    """
 
     if api_key:
         try:
@@ -103,10 +144,29 @@ async def get_security_context(
 
 
 def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., SecurityContext]:
+    """Create a dependency enforcing scopes and rate limits for an endpoint.
+
+    Args:
+        scopes: Required scopes for accessing the endpoint.
+        endpoint: Logical endpoint identifier used for rate limiting.
+
+    Returns:
+        FastAPI dependency that yields an authenticated :class:`SecurityContext`.
+    """
+
     async def dependency(
         context: SecurityContext = Depends(get_security_context),
         rate_limiter: RateLimiter = Depends(_get_rate_limiter),
     ) -> SecurityContext:
+        """Validate rate limits and scope membership for the request.
+
+        Returns:
+            Authenticated security context passed through when checks succeed.
+
+        Raises:
+            HTTPException: When rate limits are exceeded or scopes are missing.
+        """
+
         try:
             rate_limiter.check(context.identity, endpoint)
         except RateLimitExceeded as exc:
@@ -124,3 +184,10 @@ def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., Se
         return context
 
     return dependency
+
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
+
+__all__ = ["get_security_context", "secure_endpoint"]

@@ -1,0 +1,368 @@
+[INFO] Checking pipeline directory: src/Medical_KG_rev/auth
+[INFO] Checking src/Medical_KG_rev/auth/context.py
+[INFO] Checking src/Medical_KG_rev/auth/scopes.py
+[INFO] Checking src/Medical_KG_rev/auth/jwt.py
+[INFO] Checking src/Medical_KG_rev/auth/audit.py
+[INFO] Checking src/Medical_KG_rev/auth/rate_limit.py
+[INFO] Checking src/Medical_KG_rev/auth/dependencies.py
+[INFO] Checking src/Medical_KG_rev/auth/api_keys.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/gateway/coordinators
+[INFO] Checking src/Medical_KG_rev/gateway/coordinators/chunking.py
+[INFO] Checking src/Medical_KG_rev/gateway/coordinators/base.py
+[INFO] Checking src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py
+[INFO] Checking src/Medical_KG_rev/gateway/coordinators/embedding.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/services
+[INFO] Checking src/Medical_KG_rev/services/health.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/persister.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/telemetry.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/registry.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/policy.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/service.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/events.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/cache.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/types.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/monitoring.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/models.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/registry.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/evaluation.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/service.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/factory.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/errors.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/gpu.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/compression.py
+[INFO] Checking src/Medical_KG_rev/services/ingestion/vector_ingestion.py
+[INFO] Checking src/Medical_KG_rev/services/ingestion/service.py
+[INFO] Checking src/Medical_KG_rev/services/grpc/server.py
+[INFO] Checking src/Medical_KG_rev/services/parsing/unstructured_parser.py
+[INFO] Checking src/Medical_KG_rev/services/parsing/docling.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/sentence_splitters.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/registry.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/port.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/profile_chunkers.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/validation.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/runtime.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/events.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/benchmark_sentence_segmenters.py
+[INFO] Checking src/Medical_KG_rev/services/gpu/manager.py
+[INFO] Checking src/Medical_KG_rev/services/gpu/metrics.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/types.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/postprocessor.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/vllm_client.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/artifacts.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/pipeline.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/circuit_breaker.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/metrics.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/service.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/cli_wrapper.py
+[INFO] Checking src/Medical_KG_rev/services/mineru/output_parser.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/reranker.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/chunking.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/opensearch_client.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/retrieval_service.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/faiss_index.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/hybrid.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/router.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/benchmarks.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/sparse.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/query_dsl.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/rerank_policy.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/chunking_command.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/rerank_engine.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/utils.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/cross_encoder.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/lexical.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/models.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/base.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/ports.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/late_interaction.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/factory.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/ltr.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/errors.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/features.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/model_registry.py
+[INFO] Checking src/Medical_KG_rev/services/evaluation/test_sets.py
+[INFO] Checking src/Medical_KG_rev/services/evaluation/metrics.py
+[INFO] Checking src/Medical_KG_rev/services/evaluation/ci.py
+[INFO] Checking src/Medical_KG_rev/services/evaluation/runner.py
+[INFO] Checking src/Medical_KG_rev/services/evaluation/ab_test.py
+[INFO] Checking src/Medical_KG_rev/services/extraction/templates.py
+[INFO] Checking src/Medical_KG_rev/services/extraction/service.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/namespace/access.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/namespace/registry.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/namespace/loader.py
+[INFO] Checking src/Medical_KG_rev/services/embedding/namespace/schema.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/external.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/faiss.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/qdrant.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/milvus.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/opensearch.py
+[INFO] Checking src/Medical_KG_rev/services/vector_store/stores/memory.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/base.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/simple.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/profiles/models.py
+[INFO] Checking src/Medical_KG_rev/services/chunking/profiles/loader.py
+[INFO] Checking src/Medical_KG_rev/services/retrieval/routing/intent_classifier.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/pipeline/batch_processor.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/pipeline/circuit.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/pipeline/runtime.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/pipeline/cache.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/pipeline/two_stage.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/fusion/rrf.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/fusion/deduplicate.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/fusion/weighted.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/fusion/normalization.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/fusion/service.py
+[INFO] Checking src/Medical_KG_rev/services/reranking/evaluation/harness.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/orchestration
+[INFO] Checking src/Medical_KG_rev/orchestration/ledger.py
+[INFO] Checking src/Medical_KG_rev/orchestration/openlineage.py
+[INFO] Checking src/Medical_KG_rev/orchestration/events.py
+[INFO] Checking src/Medical_KG_rev/orchestration/kafka.py
+[INFO] Checking src/Medical_KG_rev/orchestration/state/models.py
+[INFO] Checking src/Medical_KG_rev/orchestration/state/metrics.py
+[INFO] Checking src/Medical_KG_rev/orchestration/state/serialization.py
+[INFO] Checking src/Medical_KG_rev/orchestration/state/cache.py
+[INFO] Checking src/Medical_KG_rev/orchestration/state/persistence.py
+[INFO] Checking src/Medical_KG_rev/orchestration/dagster/types.py
+[INFO] Checking src/Medical_KG_rev/orchestration/dagster/configuration.py
+[INFO] Checking src/Medical_KG_rev/orchestration/dagster/stages.py
+[INFO] Checking src/Medical_KG_rev/orchestration/dagster/runtime.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/pdf_download.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/pdf_gate.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/contracts.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/plugins.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/plugin_manager.py
+[INFO] Checking src/Medical_KG_rev/orchestration/haystack/components.py
+[INFO] Checking src/Medical_KG_rev/orchestration/stages/plugins/builtin.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/adapters
+[INFO] Checking src/Medical_KG_rev/adapters/yaml_parser.py
+[INFO] Checking src/Medical_KG_rev/adapters/base.py
+[INFO] Checking src/Medical_KG_rev/adapters/biomedical.py
+[INFO] Checking src/Medical_KG_rev/adapters/core/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/semanticscholar/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/pmc/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/unpaywall/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/terminology/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/models.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/config.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/resilience.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/base.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/manager.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/pipeline.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/example.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/bootstrap.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/runtime.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/errors.py
+[INFO] Checking src/Medical_KG_rev/adapters/openfda/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/openalex/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/clinicaltrials/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/mixins/pagination.py
+[INFO] Checking src/Medical_KG_rev/adapters/mixins/storage_helpers.py
+[INFO] Checking src/Medical_KG_rev/adapters/mixins/http_wrapper.py
+[INFO] Checking src/Medical_KG_rev/adapters/mixins/doi_normalization.py
+[INFO] Checking src/Medical_KG_rev/adapters/mixins/open_access_metadata.py
+[INFO] Checking src/Medical_KG_rev/adapters/crossref/adapter.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/domains/registry.py
+[INFO] Checking src/Medical_KG_rev/adapters/plugins/domains/metadata.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/validation
+[INFO] Checking src/Medical_KG_rev/validation/fhir.py
+[INFO] Checking src/Medical_KG_rev/validation/ucum.py
+[INFO] Checking pipeline directory: src/Medical_KG_rev/kg
+[INFO] Checking src/Medical_KG_rev/kg/cypher_templates.py
+[INFO] Checking src/Medical_KG_rev/kg/neo4j_client.py
+[INFO] Checking src/Medical_KG_rev/kg/shacl.py
+[INFO] Checking src/Medical_KG_rev/kg/schema.py
+============================================================
+DOCSTRING COVERAGE REPORT
+============================================================
+
+OVERALL COVERAGE: 100.0% (23/23 items documented)
+
+PER-FILE COVERAGE:
+  ✅ src/Medical_KG_rev/auth/context.py: 100.0% (5/5 items documented)
+  ✅ src/Medical_KG_rev/auth/scopes.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/auth/jwt.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/auth/audit.py: 100.0% (5/5 items documented)
+  ✅ src/Medical_KG_rev/auth/rate_limit.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/auth/dependencies.py: 100.0% (4/4 items documented)
+  ✅ src/Medical_KG_rev/auth/api_keys.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/gateway/coordinators/chunking.py: 100.0% (4/4 items documented)
+  ✅ src/Medical_KG_rev/gateway/coordinators/base.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/gateway/coordinators/embedding.py: 100.0% (4/4 items documented)
+  ✅ src/Medical_KG_rev/services/health.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/persister.py: 100.0% (23/23 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/telemetry.py: 100.0% (19/19 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/registry.py: 100.0% (11/11 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/policy.py: 100.0% (20/20 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/service.py: 100.0% (10/10 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/events.py: 40.0% (4/10 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/cache.py: 29.4% (5/17 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/types.py: 100.0% (11/11 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/monitoring.py: 25.0% (1/4 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/models.py: 91.7% (11/12 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/registry.py: 33.3% (2/6 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/evaluation.py: 10.0% (1/10 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/service.py: 33.3% (2/6 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/factory.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/errors.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/gpu.py: 66.7% (8/12 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/compression.py: 73.3% (11/15 items documented)
+  ✅ src/Medical_KG_rev/services/ingestion/vector_ingestion.py: 28.6% (2/7 items documented)
+  ✅ src/Medical_KG_rev/services/ingestion/service.py: 41.7% (5/12 items documented)
+  ✅ src/Medical_KG_rev/services/grpc/server.py: 57.1% (4/7 items documented)
+  ✅ src/Medical_KG_rev/services/parsing/unstructured_parser.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/parsing/docling.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/sentence_splitters.py: 100.0% (1/1 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/registry.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/port.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/profile_chunkers.py: 40.0% (4/10 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/validation.py: 28.6% (2/7 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/runtime.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/events.py: 33.3% (4/12 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/benchmark_sentence_segmenters.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/services/gpu/manager.py: 85.7% (6/7 items documented)
+  ✅ src/Medical_KG_rev/services/gpu/metrics.py: 100.0% (1/1 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/types.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/postprocessor.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/vllm_client.py: 100.0% (16/16 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/artifacts.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/pipeline.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/circuit_breaker.py: 100.0% (12/12 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/metrics.py: 100.0% (1/1 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/service.py: 90.9% (10/11 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/cli_wrapper.py: 100.0% (15/15 items documented)
+  ✅ src/Medical_KG_rev/services/mineru/output_parser.py: 100.0% (8/8 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/reranker.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/chunking.py: 44.4% (4/9 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/opensearch_client.py: 22.2% (2/9 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/retrieval_service.py: 100.0% (4/4 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/faiss_index.py: 20.0% (2/10 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/hybrid.py: 33.3% (6/18 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/router.py: 83.3% (5/6 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/benchmarks.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/sparse.py: 36.8% (7/19 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/query_dsl.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/rerank_policy.py: 50.0% (3/6 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/chunking_command.py: 33.3% (3/9 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/rerank_engine.py: 20.0% (1/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/utils.py: 80.0% (4/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/cross_encoder.py: 83.3% (5/6 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/lexical.py: 20.0% (1/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/models.py: 85.7% (12/14 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/base.py: 60.0% (3/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/ports.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/late_interaction.py: 100.0% (5/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/factory.py: 37.5% (3/8 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/ltr.py: 42.1% (8/19 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/errors.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/features.py: 50.0% (8/16 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/model_registry.py: 42.9% (6/14 items documented)
+  ✅ src/Medical_KG_rev/services/evaluation/test_sets.py: 100.0% (16/16 items documented)
+  ✅ src/Medical_KG_rev/services/evaluation/metrics.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/services/evaluation/ci.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/services/evaluation/runner.py: 42.9% (3/7 items documented)
+  ✅ src/Medical_KG_rev/services/evaluation/ab_test.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/extraction/templates.py: 10.0% (2/20 items documented)
+  ✅ src/Medical_KG_rev/services/extraction/service.py: 33.3% (3/9 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/namespace/access.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/namespace/registry.py: 20.0% (2/10 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/namespace/loader.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/services/embedding/namespace/schema.py: 55.6% (5/9 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/external.py: 33.3% (12/36 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/faiss.py: 5.9% (1/17 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/qdrant.py: 18.2% (2/11 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/milvus.py: 13.8% (4/29 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/opensearch.py: 14.3% (2/14 items documented)
+  ✅ src/Medical_KG_rev/services/vector_store/stores/memory.py: 18.2% (2/11 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/langchain_splitter.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/tokenizers.py: 25.0% (1/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/scispacy_segmenter.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/base.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/llamaindex_parser.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/syntok_segmenter.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/simple.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py: 50.0% (2/4 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/profiles/models.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/services/chunking/profiles/loader.py: 60.0% (3/5 items documented)
+  ✅ src/Medical_KG_rev/services/retrieval/routing/intent_classifier.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/pipeline/batch_processor.py: 25.0% (2/8 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/pipeline/circuit.py: 14.3% (1/7 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/pipeline/runtime.py: 40.0% (4/10 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/pipeline/cache.py: 11.8% (2/17 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/pipeline/two_stage.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/fusion/rrf.py: 50.0% (1/2 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/fusion/deduplicate.py: 50.0% (1/2 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/fusion/weighted.py: 50.0% (1/2 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/fusion/normalization.py: 20.0% (1/5 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/fusion/service.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/services/reranking/evaluation/harness.py: 62.5% (5/8 items documented)
+  ✅ src/Medical_KG_rev/orchestration/ledger.py: 14.3% (3/21 items documented)
+  ✅ src/Medical_KG_rev/orchestration/openlineage.py: 60.0% (9/15 items documented)
+  ✅ src/Medical_KG_rev/orchestration/events.py: 26.7% (4/15 items documented)
+  ✅ src/Medical_KG_rev/orchestration/kafka.py: 50.0% (5/10 items documented)
+  ✅ src/Medical_KG_rev/orchestration/state/models.py: 60.0% (3/5 items documented)
+  ✅ src/Medical_KG_rev/orchestration/state/metrics.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/orchestration/state/serialization.py: 40.0% (2/5 items documented)
+  ✅ src/Medical_KG_rev/orchestration/state/cache.py: 63.6% (7/11 items documented)
+  ✅ src/Medical_KG_rev/orchestration/state/persistence.py: 71.4% (5/7 items documented)
+  ✅ src/Medical_KG_rev/orchestration/dagster/types.py: 100.0% (1/1 items documented)
+  ✅ src/Medical_KG_rev/orchestration/dagster/configuration.py: 39.4% (13/33 items documented)
+  ✅ src/Medical_KG_rev/orchestration/dagster/stages.py: 35.9% (14/39 items documented)
+  ✅ src/Medical_KG_rev/orchestration/dagster/runtime.py: 55.6% (10/18 items documented)
+  ✅ src/Medical_KG_rev/orchestration/stages/pdf_download.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/orchestration/stages/pdf_gate.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/orchestration/stages/contracts.py: 47.9% (80/167 items documented)
+  ✅ src/Medical_KG_rev/orchestration/stages/plugin_manager.py: 79.2% (19/24 items documented)
+  ✅ src/Medical_KG_rev/orchestration/haystack/components.py: 35.7% (5/14 items documented)
+  ✅ src/Medical_KG_rev/orchestration/stages/plugins/builtin.py: 100.0% (11/11 items documented)
+  ✅ src/Medical_KG_rev/adapters/yaml_parser.py: 100.0% (18/18 items documented)
+  ✅ src/Medical_KG_rev/adapters/base.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/adapters/biomedical.py: 100.0% (44/44 items documented)
+  ✅ src/Medical_KG_rev/adapters/core/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/semanticscholar/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/pmc/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/unpaywall/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/terminology/adapter.py: 100.0% (16/16 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/models.py: 72.7% (16/22 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/config.py: 33.3% (5/15 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/resilience.py: 29.4% (5/17 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/base.py: 55.6% (5/9 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/manager.py: 61.1% (11/18 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/pipeline.py: 31.8% (7/22 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/example.py: 66.7% (2/3 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/bootstrap.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/runtime.py: 40.0% (4/10 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/errors.py: 100.0% (2/2 items documented)
+  ✅ src/Medical_KG_rev/adapters/openfda/adapter.py: 100.0% (14/14 items documented)
+  ✅ src/Medical_KG_rev/adapters/openalex/adapter.py: 50.0% (3/6 items documented)
+  ✅ src/Medical_KG_rev/adapters/clinicaltrials/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/mixins/pagination.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/adapters/mixins/storage_helpers.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/mixins/http_wrapper.py: 100.0% (3/3 items documented)
+  ✅ src/Medical_KG_rev/adapters/mixins/doi_normalization.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/adapters/mixins/open_access_metadata.py: 100.0% (5/5 items documented)
+  ✅ src/Medical_KG_rev/adapters/crossref/adapter.py: 100.0% (7/7 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/domains/registry.py: 33.3% (2/6 items documented)
+  ✅ src/Medical_KG_rev/adapters/plugins/domains/metadata.py: 85.7% (6/7 items documented)
+  ✅ src/Medical_KG_rev/validation/fhir.py: 42.9% (3/7 items documented)
+  ✅ src/Medical_KG_rev/validation/ucum.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/kg/cypher_templates.py: 100.0% (4/4 items documented)
+  ✅ src/Medical_KG_rev/kg/neo4j_client.py: 100.0% (6/6 items documented)
+  ✅ src/Medical_KG_rev/kg/shacl.py: 100.0% (9/9 items documented)
+  ✅ src/Medical_KG_rev/kg/schema.py: 100.0% (4/4 items documented)
+
+ERRORS (1):
+  ❌ Syntax error in src/Medical_KG_rev/orchestration/stages/plugins.py: unexpected indent (<unknown>, line 489)
+
+SUMMARY:
+  Minimum Coverage Required: 0.0%
+  Total Errors: 1
+  Total Warnings: 0
+  Status: ❌ COVERAGE BELOW THRESHOLD

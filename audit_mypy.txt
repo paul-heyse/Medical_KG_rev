@@ -1,2 +1,3 @@
+src/Medical_KG_rev/embeddings/utils/tokenization.py:32: error: Invalid "type: ignore" comment  [syntax]
 src/Medical_KG_rev/gateway/rest/router.py:64: error: Parameter without a default follows parameter with a default  [syntax]
-Found 1 error in 1 file (errors prevented further checking)
+Found 2 errors in 2 files (errors prevented further checking)

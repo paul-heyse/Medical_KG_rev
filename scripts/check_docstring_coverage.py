@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Docstring coverage checker for Medical_KG_rev pipeline and authentication components.
+Docstring coverage checker for Medical_KG_rev repository-wide components.
 
 This script calculates docstring coverage for Python files and fails if
-coverage falls below the minimum threshold.
+coverage falls below the minimum threshold. Provides detailed reporting
+by module type and domain.
 
 Usage:
     python scripts/check_docstring_coverage.py [--min-coverage 90] [--verbose] [path]
+    python scripts/check_docstring_coverage.py --report-html [path]
 """
 
 import argparse
@@ -15,15 +17,17 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-# Pipeline component paths to check
-PIPELINE_PATHS = [
-    "src/Medical_KG_rev/auth/",
-    "src/Medical_KG_rev/gateway/coordinators/",
+# Repository-wide paths to check
+REPOSITORY_PATHS = [
+    "src/Medical_KG_rev/gateway/",
     "src/Medical_KG_rev/services/",
-    "src/Medical_KG_rev/orchestration/",
     "src/Medical_KG_rev/adapters/",
-    "src/Medical_KG_rev/validation/",
+    "src/Medical_KG_rev/orchestration/",
     "src/Medical_KG_rev/kg/",
+    "src/Medical_KG_rev/storage/",
+    "src/Medical_KG_rev/validation/",
+    "src/Medical_KG_rev/utils/",
+    "tests/",
 ]
 
 # Files to exclude from checks
@@ -53,11 +57,37 @@ class DocstringCoverageChecker:
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.coverage_data: Dict[str, Dict[str, any]] = {}
+        self.domain_coverage: Dict[str, Dict[str, any]] = {}
 
     def log(self, message: str, level: str = "INFO"):
         """Log a message if verbose mode is enabled."""
         if self.verbose or level in ("ERROR", "WARNING"):
             print(f"[{level}] {message}")
+
+    def get_domain_type(self, file_path: Path) -> str:
+        """Determine the domain type of a file based on its path."""
+        file_str = str(file_path)
+
+        if "gateway" in file_str:
+            return "Gateway"
+        elif "services" in file_str:
+            return "Service"
+        elif "adapters" in file_str:
+            return "Adapter"
+        elif "orchestration" in file_str or "stages" in file_str:
+            return "Orchestration"
+        elif "kg" in file_str:
+            return "Knowledge Graph"
+        elif "storage" in file_str or "vector_store" in file_str:
+            return "Storage"
+        elif "validation" in file_str:
+            return "Validation"
+        elif "utils" in file_str:
+            return "Utility"
+        elif "test" in file_str:
+            return "Test"
+        else:
+            return "Other"
 
     def has_docstring(self, node: ast.AST) -> bool:
         """Check if an AST node has a docstring."""
@@ -154,12 +184,27 @@ class DocstringCoverageChecker:
             # Calculate coverage for this file
             if file_total > 0:
                 file_coverage = (file_documented / file_total) * 100
+                domain_type = self.get_domain_type(file_path)
+
                 self.coverage_data[str(file_path)] = {
                     'total': file_total,
                     'documented': file_documented,
                     'coverage': file_coverage,
-                    'missing': file_missing
+                    'missing': file_missing,
+                    'domain': domain_type
                 }
+
+                # Track domain coverage
+                if domain_type not in self.domain_coverage:
+                    self.domain_coverage[domain_type] = {
+                        'total': 0,
+                        'documented': 0,
+                        'files': 0
+                    }
+
+                self.domain_coverage[domain_type]['total'] += file_total
+                self.domain_coverage[domain_type]['documented'] += file_documented
+                self.domain_coverage[domain_type]['files'] += 1
 
                 if file_coverage < self.min_coverage:
                     self.errors.append(
@@ -202,6 +247,16 @@ class DocstringCoverageChecker:
                 overall = self.coverage_data['OVERALL']
                 report.append(f"\nOVERALL COVERAGE: {overall['coverage']:.1f}% "
                             f"({overall['documented']}/{overall['total']} items documented)")
+
+            # Show domain coverage
+            if self.domain_coverage:
+                report.append(f"\nDOMAIN COVERAGE:")
+                for domain, data in sorted(self.domain_coverage.items()):
+                    if data['total'] > 0:
+                        domain_coverage = (data['documented'] / data['total']) * 100
+                        status = "✅" if domain_coverage >= self.min_coverage else "❌"
+                        report.append(f"  {status} {domain}: {domain_coverage:.1f}% "
+                                    f"({data['documented']}/{data['total']} items, {data['files']} files)")
 
             # Show per-file coverage
             report.append(f"\nPER-FILE COVERAGE:")
@@ -270,16 +325,16 @@ def main():
         else:
             success = True
     else:
-        # Check all pipeline directories
+        # Check all repository directories
         success = True
-        for pipeline_path in PIPELINE_PATHS:
-            full_path = Path(pipeline_path)
+        for repo_path in REPOSITORY_PATHS:
+            full_path = Path(repo_path)
             if full_path.exists():
-                checker.log(f"Checking pipeline directory: {full_path}")
+                checker.log(f"Checking repository directory: {full_path}")
                 if not checker.check_directory(full_path):
                     success = False
             else:
-                checker.log(f"Pipeline directory not found: {full_path}", "WARNING")
+                checker.log(f"Repository directory not found: {full_path}", "WARNING")
 
     # Generate and print report
     report = checker.generate_report()

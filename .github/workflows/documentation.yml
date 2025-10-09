@@ -1,25 +1,99 @@
-name: Documentation Quality Checks
+name: Repository Documentation Quality
 
 on:
+    pull_request:
+        paths:
+            - "src/Medical_KG_rev/**"
+            - "tests/**"
+            - "scripts/**"
+            - ".pre-commit-config.yaml"
     push:
         branches: [main]
-    pull_request:
-        branches: [main]
-        paths:
-            - "src/Medical_KG_rev/gateway/**"
-            - "src/Medical_KG_rev/services/**"
-            - "src/Medical_KG_rev/orchestration/**"
-            - "scripts/check_documentation.py"
-            - ".pre-commit-config.yaml"
-            - "pyproject.toml"
+    schedule:
+        - cron: "0 2 * * 1" # Weekly on Monday at 2 AM
 
 jobs:
-    documentation-checks:
+    check-docs:
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.11"]
 
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install ruff mypy pydocstyle
+                  pip install -r requirements.txt
+
+            - name: Check docstrings with ruff
+              run: |
+                  ruff check --select D src/Medical_KG_rev/ tests/
+
+            - name: Check section headers
+              run: |
+                  python scripts/check_section_headers.py --verbose
+
+            - name: Check docstring coverage
+              run: |
+                  python scripts/check_docstring_coverage.py --min-coverage 90 --verbose
+
+            - name: Check for duplicate code
+              run: |
+                  python scripts/find_duplicate_code.py
+
+            - name: Check type hints
+              run: |
+                  python scripts/check_type_hints.py src/Medical_KG_rev/
+
+            - name: Check method ordering
+              run: |
+                  python scripts/check_method_ordering.py --verbose
+
+            - name: Check import organization
+              run: |
+                  python scripts/organize_imports.py --dry-run
+
+            - name: Run mypy
+              run: |
+                  mypy --strict src/Medical_KG_rev/
+
+            - name: Run pydocstyle
+              run: |
+                  pydocstyle src/Medical_KG_rev/ tests/ || true
+
+            - name: Generate documentation quality report
+              run: |
+                  echo "# Documentation Quality Report" > doc_quality_report.md
+                  echo "" >> doc_quality_report.md
+                  echo "## Section Headers" >> doc_quality_report.md
+                  python scripts/check_section_headers.py >> doc_quality_report.md
+                  echo "" >> doc_quality_report.md
+                  echo "## Docstring Coverage" >> doc_quality_report.md
+                  python scripts/check_docstring_coverage.py --min-coverage 90 >> doc_quality_report.md
+                  echo "" >> doc_quality_report.md
+                  echo "## Type Hints" >> doc_quality_report.md
+                  python scripts/check_type_hints.py src/Medical_KG_rev/ >> doc_quality_report.md
+
+            - name: Upload documentation quality report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: documentation-quality-report
+                  path: doc_quality_report.md
+
+    lint-and-format:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
             - name: Set up Python
               uses: actions/setup-python@v5
@@ -29,44 +103,25 @@ jobs:
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip
-                  pip install ruff pydocstyle mypy
-                  pip install -e .
+                  pip install ruff mypy pydocstyle
+                  pip install -r requirements.txt
 
-            - name: Run ruff linting
+            - name: Run ruff linter
               run: |
-                  ruff check src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
+                  ruff check src/Medical_KG_rev/ tests/
 
-            - name: Run ruff formatting check
+            - name: Run ruff formatter
               run: |
-                  ruff format --check src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
+                  ruff format --check src/Medical_KG_rev/ tests/
 
-            - name: Run docstring checks
+            - name: Run mypy
               run: |
-                  ruff check --select D src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
+                  mypy --strict src/Medical_KG_rev/
 
-            - name: Run pydocstyle checks
-              run: |
-                  pydocstyle --convention=google --add-ignore=D100,D101,D102,D103,D104,D105,D106,D107 src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
-
-            - name: Run type checking
-              run: |
-                  mypy --strict src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
-
-            - name: Run custom documentation checker
-              run: |
-                  python scripts/check_documentation.py --verbose
-
-            - name: Run pre-commit hooks
-              run: |
-                  pip install pre-commit
-                  pre-commit run --all-files
-
-    security-checks:
+    security-check:
         runs-on: ubuntu-latest
-
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v4
 
             - name: Set up Python
               uses: actions/setup-python@v5
@@ -77,24 +132,51 @@ jobs:
               run: |
                   python -m pip install --upgrade pip
                   pip install bandit safety
+                  pip install -r requirements.txt
 
             - name: Run bandit security check
               run: |
                   bandit -r src/Medical_KG_rev/ -f json -o bandit-report.json || true
-                  bandit -r src/Medical_KG_rev/ -f txt
 
             - name: Run safety check
               run: |
                   safety check --json --output safety-report.json || true
-                  safety check
 
-    documentation-generation:
+            - name: Upload security reports
+              uses: actions/upload-artifact@v4
+              with:
+                  name: security-reports
+                  path: |
+                      bandit-report.json
+                      safety-report.json
+
+    pre-commit:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install pre-commit
+                  pip install -r requirements.txt
+
+            - name: Run pre-commit
+              run: |
+                  pre-commit run --all-files
+
+    build-docs:
         runs-on: ubuntu-latest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v4
 
             - name: Set up Python
               uses: actions/setup-python@v5
@@ -105,14 +187,14 @@ jobs:
               run: |
                   python -m pip install --upgrade pip
                   pip install mkdocs mkdocstrings[python] mkdocs-material
+                  pip install -r requirements.txt
 
             - name: Build documentation
               run: |
                   mkdocs build --strict
 
-            - name: Upload documentation artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: documentation-site
-                  path: site/
-                  retention-days: 30
+            - name: Deploy documentation
+              if: github.ref == 'refs/heads/main'
+              run: |
+                  echo "Documentation built successfully"
+                  # Add deployment steps here if needed

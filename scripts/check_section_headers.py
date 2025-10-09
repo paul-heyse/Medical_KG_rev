@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Section header checker for Medical_KG_rev pipeline and authentication components.
+Section header checker for Medical_KG_rev repository-wide components.
 
-This script validates that all pipeline components follow the established
+This script validates that all Python modules follow the established
 section header standards including:
 - Required section headers are present
 - Sections appear in correct order
 - Each section contains appropriate content
+- Module type detection and validation
 
 Usage:
     python scripts/check_section_headers.py [--verbose] [path]
+    python scripts/check_section_headers.py --auto-fix [path]
 """
 
 import argparse
@@ -22,8 +24,105 @@ from typing import Dict, List, Optional, Set, Tuple
 # Section header patterns - must match exactly
 SECTION_PATTERN = r"^# ={10,} ([A-Z][A-Z_/ ]*[A-Z]) ={10,}$"
 
-# Expected sections for different module types
-COORDINATOR_SECTIONS = [
+# Expected sections for different module types (from section_headers.md)
+GATEWAY_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "REQUEST/RESPONSE MODELS",
+    "COORDINATOR IMPLEMENTATION",
+    "ERROR TRANSLATION",
+    "FACTORY FUNCTIONS",
+    "EXPORTS"
+]
+
+SERVICE_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "DATA MODELS",
+    "INTERFACES",
+    "IMPLEMENTATIONS",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+ADAPTER_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "DATA MODELS",
+    "ADAPTER IMPLEMENTATION",
+    "ERROR HANDLING",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+ORCHESTRATION_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "STAGE CONTEXT DATA MODELS",
+    "STAGE IMPLEMENTATIONS",
+    "PLUGIN REGISTRATION",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+KG_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "SCHEMA DATA MODELS",
+    "CLIENT IMPLEMENTATION",
+    "TEMPLATES",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+STORAGE_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "DATA MODELS",
+    "INTERFACES",
+    "IMPLEMENTATIONS",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+VALIDATION_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "DATA MODELS",
+    "VALIDATOR IMPLEMENTATION",
+    "ERROR HANDLING",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+UTILITY_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "UTILITY FUNCTIONS",
+    "HELPER CLASSES",
+    "FACTORY FUNCTIONS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+TEST_SECTIONS = [
+    "IMPORTS",
+    "TYPE DEFINITIONS",
+    "FIXTURES",
+    "UNIT TESTS",
+    "INTEGRATION TESTS",
+    "HELPER FUNCTIONS",
+    "EXPORTS"
+]
+
+# Legacy sections for backward compatibility
+LEGACY_COORDINATOR_SECTIONS = [
     "IMPORTS",
     "REQUEST/RESPONSE MODELS",
     "COORDINATOR IMPLEMENTATION",
@@ -31,22 +130,7 @@ COORDINATOR_SECTIONS = [
     "EXPORTS"
 ]
 
-BASE_COORDINATOR_SECTIONS = [
-    "IMPORTS",
-    "DATA MODELS",
-    "METRICS",
-    "BASE COORDINATOR INTERFACE",
-    "EXPORTS"
-]
-
-JOB_LIFECYCLE_SECTIONS = [
-    "IMPORTS",
-    "JOB STATE DATA MODEL",
-    "LIFECYCLE MANAGER",
-    "EXPORTS"
-]
-
-SERVICE_SECTIONS = [
+LEGACY_SERVICE_SECTIONS = [
     "IMPORTS",
     "TYPE DEFINITIONS & CONSTANTS",
     "SERVICE CLASS DEFINITION",
@@ -61,40 +145,17 @@ SERVICE_SECTIONS = [
     "PRIVATE HELPERS"
 ]
 
-POLICY_SECTIONS = [
-    "IMPORTS",
-    "DATA MODELS",
-    "INTERFACE",
-    "IMPLEMENTATIONS",
-    "FACTORY FUNCTIONS",
-    "EXPORTS"
-]
-
-ORCHESTRATION_SECTIONS = [
-    "IMPORTS",
-    "STAGE CONTEXT DATA MODELS",
-    "STAGE IMPLEMENTATIONS",
-    "PLUGIN REGISTRATION",
-    "EXPORTS"
-]
-
-TEST_SECTIONS = [
-    "IMPORTS",
-    "FIXTURES",
-    "UNIT TESTS",
-    "INTEGRATION TESTS",
-    "HELPER FUNCTIONS"
-]
-
-# Pipeline component paths to check
-PIPELINE_PATHS = [
-    "src/Medical_KG_rev/auth/",
-    "src/Medical_KG_rev/gateway/coordinators/",
+# Repository-wide paths to check
+REPOSITORY_PATHS = [
+    "src/Medical_KG_rev/gateway/",
     "src/Medical_KG_rev/services/",
-    "src/Medical_KG_rev/orchestration/",
     "src/Medical_KG_rev/adapters/",
-    "src/Medical_KG_rev/validation/",
+    "src/Medical_KG_rev/orchestration/",
     "src/Medical_KG_rev/kg/",
+    "src/Medical_KG_rev/storage/",
+    "src/Medical_KG_rev/validation/",
+    "src/Medical_KG_rev/utils/",
+    "tests/",
 ]
 
 # Files to exclude from checks
@@ -132,21 +193,49 @@ class SectionHeaderChecker:
         """Get expected sections for a file based on its type."""
         file_str = str(file_path)
 
-        if "coordinators" in file_str:
-            if "base" in file_str:
-                return BASE_COORDINATOR_SECTIONS
-            elif "job_lifecycle" in file_str:
-                return JOB_LIFECYCLE_SECTIONS
+        # Gateway modules
+        if "gateway" in file_str:
+            if "coordinators" in file_str:
+                return GATEWAY_SECTIONS
             else:
-                return COORDINATOR_SECTIONS
+                return GATEWAY_SECTIONS
+
+        # Service modules
         elif "services" in file_str:
             return SERVICE_SECTIONS
-        elif "policy" in file_str or "persister" in file_str or "telemetry" in file_str:
-            return POLICY_SECTIONS
+
+        # Adapter modules
+        elif "adapters" in file_str:
+            return ADAPTER_SECTIONS
+
+        # Orchestration modules
         elif "orchestration" in file_str or "stages" in file_str:
             return ORCHESTRATION_SECTIONS
+
+        # Knowledge Graph modules
+        elif "kg" in file_str:
+            return KG_SECTIONS
+
+        # Storage modules
+        elif "storage" in file_str or "vector_store" in file_str:
+            return STORAGE_SECTIONS
+
+        # Validation modules
+        elif "validation" in file_str:
+            return VALIDATION_SECTIONS
+
+        # Utility modules
+        elif "utils" in file_str:
+            return UTILITY_SECTIONS
+
+        # Test modules
         elif "test" in file_str:
             return TEST_SECTIONS
+
+        # Legacy compatibility
+        elif "policy" in file_str or "persister" in file_str or "telemetry" in file_str:
+            return LEGACY_SERVICE_SECTIONS
+
         else:
             # Default minimal sections
             return ["IMPORTS", "EXPORTS"]
@@ -158,11 +247,22 @@ class SectionHeaderChecker:
 
         for i, line in enumerate(lines):
             line = line.strip()
-            if line.startswith('# =') and line.endswith('= #'):
+            # Match section headers like: # ==============================================================================
+            # SECTION NAME
+            # ==============================================================================
+            if line.startswith('# =') and line.endswith('='):
                 # Extract section name between the equals signs
                 parts = line.split(' ')
                 if len(parts) >= 3:
                     section_name = ' '.join(parts[1:-1])
+                    sections.append((i + 1, section_name))
+            # Also match single-line headers like: # ============================================================================== SECTION NAME ==============================================================================
+            elif line.startswith('# =') and '=' in line[3:]:
+                # Find the section name between equals signs
+                start_idx = line.find(' ', 3)
+                end_idx = line.rfind(' =')
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    section_name = line[start_idx+1:end_idx].strip()
                     sections.append((i + 1, section_name))
 
         return sections
@@ -278,16 +378,16 @@ def main():
     if path.is_file():
         success = checker.check_file(path)
     else:
-        # Check all pipeline directories
+        # Check all repository directories
         success = True
-        for pipeline_path in PIPELINE_PATHS:
-            full_path = Path(pipeline_path)
+        for repo_path in REPOSITORY_PATHS:
+            full_path = Path(repo_path)
             if full_path.exists():
-                checker.log(f"Checking pipeline directory: {full_path}")
+                checker.log(f"Checking repository directory: {full_path}")
                 if not checker.check_directory(full_path):
                     success = False
             else:
-                checker.log(f"Pipeline directory not found: {full_path}", "WARNING")
+                checker.log(f"Repository directory not found: {full_path}", "WARNING")
 
     # Generate and print report
     report = checker.generate_report()

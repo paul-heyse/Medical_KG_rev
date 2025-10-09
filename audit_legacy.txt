@@ -1,0 +1,241 @@
+tests/quality/test_mineru_quality.py:    legacy_tables = 0  # legacy stub had no structured tables
+tests/quality/test_mineru_quality.py:    assert len(document.tables) > legacy_tables
+src/Medical_KG_rev/utils/http_client.py:    failure_threshold: int = 5
+src/Medical_KG_rev/utils/http_client.py:                fail_max=circuit_breaker.failure_threshold,
+src/Medical_KG_rev/utils/http_client.py:                fail_max=circuit_breaker.failure_threshold,
+tests/utils/test_http_client.py:        circuit_breaker=CircuitBreakerConfig(failure_threshold=2, recovery_timeout=60.0),
+tests/adapters/test_extracted_adapters.py:        "oa_status": "gold",
+tests/adapters/test_extracted_adapters.py:    assert document.metadata["oa_status"] == "gold"
+tests/adapters/test_extracted_adapters.py:    # Test that we can still import from the old biomedical module
+tests/adapters/test_extracted_adapters.py:    # Verify that both old and new adapters exist and are different classes
+src/Medical_KG_rev/embeddings/multi_vector/colbert.py:            # Remove the oldest document to keep the shard bounded.
+src/Medical_KG_rev/adapters/mixins/open_access_metadata.py:            "gold": ["gold", "journal", "publisher"],
+src/Medical_KG_rev/adapters/mixins/open_access_metadata.py:                return "gold"
+tests/adapters/test_biomedical_adapters.py:        "oa_status": "gold",
+tests/adapters/test_biomedical_adapters.py:    assert document.metadata["oa_status"] == "gold"
+tests/adapters/test_plugin_framework.py:        circuit_breaker_failure_threshold=1,
+src/Medical_KG_rev/embeddings/ports.py:        # Ensure we hold independent copies of mutable defaults
+tests/chunking/test_chunking_service.py:        failure_threshold=3,
+tests/performance/vllm_load_test.py:    assert p95 < 10.0, f"P95 latency {p95:.2f}s exceeds 10s threshold"
+src/Medical_KG_rev/observability/alerts.py:class AlertThresholds:
+src/Medical_KG_rev/observability/alerts.py:    error_rate_threshold: float = 0.05
+src/Medical_KG_rev/observability/alerts.py:    dlq_threshold: int = 50
+src/Medical_KG_rev/observability/alerts.py:    def __init__(self, thresholds: AlertThresholds | None = None) -> None:
+src/Medical_KG_rev/observability/alerts.py:        self.thresholds = thresholds or AlertThresholds()
+src/Medical_KG_rev/observability/alerts.py:        if duration_ms > self.thresholds.latency_ms:
+src/Medical_KG_rev/observability/alerts.py:                threshold_ms=self.thresholds.latency_ms,
+src/Medical_KG_rev/observability/alerts.py:        if depth > self.thresholds.dlq_threshold:
+src/Medical_KG_rev/observability/alerts.py:                threshold=self.thresholds.dlq_threshold,
+src/Medical_KG_rev/observability/alerts.py:__all__ = ["AlertManager", "AlertThresholds", "get_alert_manager"]
+src/Medical_KG_rev/adapters/yaml_parser.py:        path: Request path with optional parameter placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:        params: Query parameters with optional placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:        headers: HTTP headers with optional placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:        path: Request path with optional parameter placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:        params: Query parameters with optional placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:        headers: HTTP headers with optional placeholders
+src/Medical_KG_rev/adapters/yaml_parser.py:            template: String template with {parameter} placeholders
+src/Medical_KG_rev/adapters/plugins/resilience.py:    circuit_breaker_failure_threshold: PositiveInt = Field(
+src/Medical_KG_rev/adapters/plugins/resilience.py:        fail_max=config.circuit_breaker_failure_threshold,
+src/Medical_KG_rev/adapters/plugins/resilience.py:            fail_max=self.config.circuit_breaker_failure_threshold,
+src/Medical_KG_rev/adapters/plugins/resilience.py:else:  # pragma: no cover - fallback placeholders
+src/Medical_KG_rev/adapters/plugins/config.py:    """Convert legacy YAML configuration to environment variables."""
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:"""Biomedical adapter plugins implemented on top of the legacy adapters."""
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    """Specialised plugin base class wiring a legacy biomedical adapter."""
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls: type[BaseAdapter]
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:        self._adapter = adapter or self.legacy_adapter_cls()
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = ClinicalTrialsAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = OpenFDADrugLabelAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = OpenFDADrugEventAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = OpenFDADeviceAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = OpenAlexAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = UnpaywallAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = CrossrefAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = COREAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = PMCAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = RxNormAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = ICD11Adapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = MeSHAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = ChEMBLAdapter
+src/Medical_KG_rev/adapters/plugins/domains/biomedical/__init__.py:    legacy_adapter_cls = SemanticScholarAdapter
+src/Medical_KG_rev/orchestration/stages/contracts.py:    def to_legacy_dict(self) -> dict[str, Any]:
+src/Medical_KG_rev/orchestration/stages/contracts.py:        """Return a dictionary compatible with legacy dict-based state consumers."""
+src/Medical_KG_rev/orchestration/stages/contracts.py:    def hydrate_legacy(self, payload: Mapping[str, Any]) -> None:
+src/Medical_KG_rev/orchestration/stages/contracts.py:        """Populate the state using a legacy dictionary payload."""
+src/Medical_KG_rev/orchestration/stages/contracts.py:    def from_legacy(
+src/Medical_KG_rev/orchestration/stages/contracts.py:        """Rehydrate a typed state from a legacy dictionary payload."""
+src/Medical_KG_rev/orchestration/stages/contracts.py:        state.hydrate_legacy(payload)
+src/Medical_KG_rev/auth/__init__.py:        """Placeholder that signals FastAPI is required for authentication hooks.
+src/Medical_KG_rev/auth/__init__.py:        """Placeholder that signals FastAPI is required to secure endpoints.
+src/Medical_KG_rev/orchestration/dagster/runtime.py:    """Convenience helper mirroring the legacy orchestration API."""
+tests/config/test_vector_store_config.py:def test_migrate_legacy_structure() -> None:
+src/Medical_KG_rev/orchestration/dagster/configuration.py:    failure_threshold: int = Field(ge=3, le=10)
+src/Medical_KG_rev/orchestration/dagster/configuration.py:            def state_change(self, cb, old_state, new_state):  # type: ignore[override]
+src/Medical_KG_rev/orchestration/dagster/configuration.py:            fail_max=cfg.failure_threshold,
+tests/orchestration/test_resilience_policies.py:    r"ignore:datetime.datetime.utcnow\(\) is deprecated:DeprecationWarning"
+tests/orchestration/test_resilience_policies.py:              failure_threshold: 3
+tests/orchestration/test_pipeline_state.py:def test_legacy_round_trip_preserves_core_fields() -> None:
+tests/orchestration/test_pipeline_state.py:    state.apply_stage_output("ingest", "ingest", [{"id": "legacy"}])
+tests/orchestration/test_pipeline_state.py:    legacy = state.to_legacy_dict()
+tests/orchestration/test_pipeline_state.py:    restored = PipelineState.from_legacy(
+tests/orchestration/test_pipeline_state.py:        legacy,
+tests/storage/test_integration.py:            # Verify upload completed within reasonable time (adjust threshold as needed)
+src/Medical_KG_rev/models/config/mineru.py:    failure_threshold: int = Field(default=5, ge=1)
+src/Medical_KG_rev/models/config/mineru.py:    success_threshold: int = Field(default=2, ge=1)
+src/Medical_KG_rev/config/vector_store.py:    """Migrate legacy configuration structures into the current schema."""
+tests/services/vector_store/stores/test_qdrant_store.py:        metadata={"gpu": {"enabled": True, "indexing_threshold": 10_000}},
+tests/services/mineru/test_vllm_client_circuit_breaker.py:    breaker = CircuitBreaker(failure_threshold=2, recovery_timeout=0.05, success_threshold=1)
+src/Medical_KG_rev/config/settings.py:    """Circuit breaker thresholds for the MinerU vLLM client."""
+src/Medical_KG_rev/config/settings.py:    failure_threshold: int = Field(default=5, ge=1)
+src/Medical_KG_rev/config/settings.py:    success_threshold: int = Field(default=2, ge=1)
+src/Medical_KG_rev/config/settings.py:    """Convert legacy reranking configuration dictionaries into the new schema."""
+src/Medical_KG_rev/config/settings.py:    legacy_model = migrated.pop("model_name", None)
+src/Medical_KG_rev/config/settings.py:    if legacy_model and "model" not in migrated:
+src/Medical_KG_rev/config/settings.py:        migrated["model"] = {"model": legacy_model}
+tests/services/reranking/test_engine.py:        circuit_breaker=CircuitBreaker(failure_threshold=3, reset_timeout=1.0),
+tests/services/reranking/test_engine.py:        circuit_breaker=CircuitBreaker(failure_threshold=2, reset_timeout=1.0),
+tests/services/evaluation/test_ci.py:from Medical_KG_rev.services.evaluation.ci import enforce_recall_threshold
+tests/services/evaluation/test_ci.py:def test_enforce_recall_threshold_allows_small_drop() -> None:
+tests/services/evaluation/test_ci.py:    enforce_recall_threshold(0.8, 0.77, tolerance=0.05)
+tests/services/evaluation/test_ci.py:def test_enforce_recall_threshold_raises_on_large_drop() -> None:
+tests/services/evaluation/test_ci.py:        enforce_recall_threshold(0.8, 0.7, tolerance=0.05)
+tests/services/evaluation/test_test_sets.py:    eval_set, holdout = test_set.split(holdout_ratio=0.2, seed=1)
+tests/services/evaluation/test_test_sets.py:    assert len(eval_set.queries) + len(holdout.queries) == len(test_set.queries)
+tests/services/evaluation/test_test_sets.py:    assert eval_set.version == holdout.version == "v1"
+src/Medical_KG_rev/chunking/segmentation.py:        whitespace_threshold: float = 0.25,
+src/Medical_KG_rev/chunking/segmentation.py:        font_delta_threshold: float = 2.0,
+src/Medical_KG_rev/chunking/segmentation.py:        self.whitespace_threshold = whitespace_threshold
+src/Medical_KG_rev/chunking/segmentation.py:        self.font_delta_threshold = font_delta_threshold
+src/Medical_KG_rev/chunking/segmentation.py:                    and abs(font_size - last_font_size) >= self.font_delta_threshold
+src/Medical_KG_rev/chunking/segmentation.py:                if whitespace_ratio >= self.whitespace_threshold:
+tests/services/mineru/test_circuit_breaker.py:        breaker = CircuitBreaker(failure_threshold=2, recovery_timeout=60.0, success_threshold=1)
+tests/services/mineru/test_circuit_breaker.py:        breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, success_threshold=1)
+tests/services/mineru/test_circuit_breaker.py:        breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, success_threshold=2)
+tests/services/mineru/test_circuit_breaker.py:        breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, success_threshold=2)
+tests/services/vector_store/test_faiss_helpers.py:def test_training_threshold_uses_compression() -> None:
+tests/services/vector_store/test_faiss_helpers.py:    assert faiss_store._training_threshold(params, compression) >= 128 * 4
+tests/services/vector_store/test_faiss_helpers.py:    assert faiss_store._training_threshold(params, compression) == 50
+src/Medical_KG_rev/chunking/coherence.py:        threshold: float = 0.8,
+src/Medical_KG_rev/chunking/coherence.py:        self.threshold = threshold
+src/Medical_KG_rev/chunking/coherence.py:            if token_budget >= self.min_tokens and sim < self.threshold:
+src/Medical_KG_rev/chunking/service.py:        failure_threshold: int,
+src/Medical_KG_rev/chunking/service.py:        self.failure_threshold = max(failure_threshold, 1)
+src/Medical_KG_rev/chunking/service.py:        if self._failure_count >= self.failure_threshold:
+src/Medical_KG_rev/chunking/service.py:        failure_threshold: int = 5,
+src/Medical_KG_rev/chunking/service.py:            failure_threshold=failure_threshold,
+src/Medical_KG_rev/chunking/chunkers/layout.py:        whitespace_threshold: float = 0.25,
+src/Medical_KG_rev/chunking/chunkers/layout.py:        font_delta_threshold: float = 2.0,
+src/Medical_KG_rev/chunking/chunkers/layout.py:            whitespace_threshold=whitespace_threshold,
+src/Medical_KG_rev/chunking/chunkers/layout.py:            font_delta_threshold=font_delta_threshold,
+src/Medical_KG_rev/chunking/chunkers/layout.py:        self.whitespace_threshold = strategy.whitespace_threshold
+src/Medical_KG_rev/chunking/chunkers/layout.py:        self.font_delta_threshold = strategy.font_delta_threshold
+src/Medical_KG_rev/chunking/chunkers/layout.py:            "whitespace_threshold": self.whitespace_threshold,
+src/Medical_KG_rev/chunking/chunkers/layout.py:            "font_delta_threshold": self.font_delta_threshold,
+src/Medical_KG_rev/services/chunking/sentence_splitters.py:    if name == "scispacy":  # pragma: no cover - deprecated path
+src/Medical_KG_rev/chunking/chunkers/classical.py:        coherence_threshold: float = 0.3,
+src/Medical_KG_rev/chunking/chunkers/classical.py:        self.coherence_threshold = coherence_threshold
+src/Medical_KG_rev/chunking/chunkers/classical.py:            "coherence_threshold": self.coherence_threshold,
+src/Medical_KG_rev/services/vector_store/compression.py:    thresholded = (matrix >= 0).astype(np.uint8)
+src/Medical_KG_rev/services/vector_store/compression.py:    packed = np.packbits(thresholded, axis=1)
+src/Medical_KG_rev/services/vector_store/compression.py:    return {"values": packed, "bits": thresholded}
+src/Medical_KG_rev/services/embedding/policy.py:                # Remove oldest entry if cache is full
+src/Medical_KG_rev/chunking/chunkers/llm.py:        coherence_threshold: float = 0.78,
+src/Medical_KG_rev/chunking/chunkers/llm.py:        self.coherence_threshold = coherence_threshold
+src/Medical_KG_rev/chunking/chunkers/llm.py:            "coherence_threshold": self.coherence_threshold,
+src/Medical_KG_rev/chunking/chunkers/llm.py:            if token_budget >= self.min_tokens and sim <= self.coherence_threshold:
+src/Medical_KG_rev/chunking/chunkers/llm.py:            threshold=self.coherence_threshold,
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        overlap_threshold: float = 0.3,
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        self.overlap_threshold = overlap_threshold
+src/Medical_KG_rev/chunking/chunkers/advanced.py:                "overlap_threshold": self.overlap_threshold,
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        return {"overlap_threshold": self.overlap_threshold}
+src/Medical_KG_rev/chunking/chunkers/advanced.py:            if overlap < self.overlap_threshold:
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        similarity_threshold: float = 0.18,
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        self.similarity_threshold = similarity_threshold
+src/Medical_KG_rev/chunking/chunkers/advanced.py:        return {"similarity_threshold": self.similarity_threshold}
+src/Medical_KG_rev/chunking/chunkers/advanced.py:                if score >= self.similarity_threshold:
+src/Medical_KG_rev/services/vector_store/stores/qdrant.py:                optimizer_config=qm.OptimizersConfigDiff(indexing_threshold=0 if force else None),
+src/Medical_KG_rev/services/vector_store/stores/qdrant.py:            full_scan_threshold=0,
+src/Medical_KG_rev/services/vector_store/stores/qdrant.py:        indexing_threshold = int(gpu_config.get("indexing_threshold", 20_000))
+src/Medical_KG_rev/services/vector_store/stores/qdrant.py:        return qm.OptimizersConfigDiff(indexing_threshold=indexing_threshold)
+src/Medical_KG_rev/chunking/chunkers/semantic.py:        distance_threshold: float = 0.35,
+src/Medical_KG_rev/chunking/chunkers/semantic.py:        self.distance_threshold = distance_threshold
+src/Medical_KG_rev/chunking/chunkers/semantic.py:            "distance_threshold": self.distance_threshold,
+src/Medical_KG_rev/chunking/chunkers/semantic.py:            distance_threshold=self.distance_threshold,
+src/Medical_KG_rev/chunking/chunkers/semantic.py:        similarity_threshold: float = 0.55,
+src/Medical_KG_rev/chunking/chunkers/semantic.py:        self.similarity_threshold = similarity_threshold
+src/Medical_KG_rev/chunking/chunkers/semantic.py:            "similarity_threshold": self.similarity_threshold,
+src/Medical_KG_rev/chunking/chunkers/semantic.py:                if weight >= self.similarity_threshold:
+src/Medical_KG_rev/services/reranking/model_registry.py:        folder = self.cache_subdir or self.key
+src/Medical_KG_rev/services/reranking/model_registry.py:        return base_dir / folder
+src/Medical_KG_rev/services/reranking/pipeline/circuit.py:    failure_threshold: int = 5
+src/Medical_KG_rev/services/reranking/pipeline/circuit.py:        if state.failures >= self.failure_threshold:
+src/Medical_KG_rev/services/evaluation/__init__.py:from .ci import enforce_recall_threshold
+src/Medical_KG_rev/services/evaluation/__init__.py:    "enforce_recall_threshold",
+src/Medical_KG_rev/services/evaluation/ci.py:def enforce_recall_threshold(
+src/Medical_KG_rev/services/evaluation/ci.py:__all__ = ["enforce_recall_threshold"]
+src/Medical_KG_rev/services/reranking/factory.py:    """Placeholder index that raises helpful errors until configured."""
+src/Medical_KG_rev/services/reranking/factory.py:    """Placeholder client providing descriptive errors until configured."""
+src/Medical_KG_rev/services/retrieval/rerank_policy.py:        threshold = int.from_bytes(digest, "big") / float(1 << (8 * len(digest)))
+src/Medical_KG_rev/services/retrieval/rerank_policy.py:        enabled = threshold < self.experiment_ratio
+src/Medical_KG_rev/services/retrieval/retrieval_service.py:            reranker: Optional reranker callable (legacy parameter)
+src/Medical_KG_rev/services/retrieval/retrieval_service.py:        failure_threshold = (
+src/Medical_KG_rev/services/retrieval/retrieval_service.py:                failure_threshold=failure_threshold, reset_timeout=reset_timeout
+src/Medical_KG_rev/services/evaluation/test_sets.py:    eval_set, holdout_set = test_set.split(holdout_ratio=0.2)
+src/Medical_KG_rev/services/evaluation/test_sets.py:        eval_set, holdout_set = test_set.split(holdout_ratio=0.2)
+src/Medical_KG_rev/services/evaluation/test_sets.py:    def split(self, *, holdout_ratio: float = 0.2, seed: int = 7) -> tuple[TestSet, TestSet]:
+src/Medical_KG_rev/services/evaluation/test_sets.py:        """Return (evaluation, hold-out) splits preserving stratification.
+src/Medical_KG_rev/services/evaluation/test_sets.py:            holdout_ratio: Fraction of queries to reserve for holdout
+src/Medical_KG_rev/services/evaluation/test_sets.py:            Tuple of (evaluation_set, holdout_set)
+src/Medical_KG_rev/services/evaluation/test_sets.py:            ValueError: If holdout_ratio is not between 0 and 1
+src/Medical_KG_rev/services/evaluation/test_sets.py:        if not 0 < holdout_ratio < 1:
+src/Medical_KG_rev/services/evaluation/test_sets.py:            raise ValueError("holdout_ratio must be between 0 and 1")
+src/Medical_KG_rev/services/evaluation/test_sets.py:        holdout: list[QueryJudgment] = []
+src/Medical_KG_rev/services/evaluation/test_sets.py:            cutoff = max(1, int(len(items) * holdout_ratio)) if len(items) > 1 else 0
+src/Medical_KG_rev/services/evaluation/test_sets.py:            holdout.extend(items[:cutoff])
+src/Medical_KG_rev/services/evaluation/test_sets.py:            TestSet(name=f"{self.name}-holdout", version=self.version, queries=tuple(holdout)),
+src/Medical_KG_rev/services/mineru/service.py:                failure_threshold=breaker_settings.failure_threshold,
+src/Medical_KG_rev/services/mineru/service.py:                success_threshold=breaker_settings.success_threshold,
+src/Medical_KG_rev/services/embedding/persister.py:            Evicts oldest records if cache limit is exceeded.
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:thresholds to prevent resource exhaustion.
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:    - Automatically open circuit on failure threshold
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:    - Close circuit after success threshold in half-open state
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:    - Configurable thresholds for different environments
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:    >>> breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:    rates and automatically opens/closes based on configured thresholds.
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        failure_threshold: Number of failures before opening circuit
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        success_threshold: Number of successes needed to close circuit
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        - failure_threshold >= 1
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        - success_threshold >= 1
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        >>> breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        failure_threshold: int = 5,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        success_threshold: int = 2,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            failure_threshold: Number of failures before opening circuit
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            success_threshold: Number of successes needed to close circuit
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            ValueError: If thresholds or timeout are invalid
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            >>> breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        if failure_threshold < 1:
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            raise ValueError("failure_threshold must be >= 1")
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        if success_threshold < 1:
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            raise ValueError("success_threshold must be >= 1")
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        self.failure_threshold = failure_threshold
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        self.success_threshold = success_threshold
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            failure_threshold=failure_threshold,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            success_threshold=success_threshold,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:                    threshold=self.success_threshold,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:                if self.success_count >= self.success_threshold:
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        breaker to the OPEN state if thresholds are exceeded.
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:            >>> breaker = CircuitBreaker(failure_threshold=2)
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:                    threshold=self.failure_threshold,
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:                if self.failure_count >= self.failure_threshold:
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        This method is called when the failure threshold is exceeded
+src/Medical_KG_rev/services/mineru/circuit_breaker.py:        This method is called when the success threshold is reached
+src/Medical_KG_rev/services/mineru/metrics.py:    - Enable alerting on critical thresholds
+src/Medical_KG_rev/services/mineru/metrics.py:    - Alerting systems for threshold monitoring
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:        placeholders = ",".join("?" for _ in vector_ids)
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:            f"SELECT vector_id, payload FROM vectors WHERE vector_id IN ({placeholders})",
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:        placeholders = ",".join("?" for _ in vector_ids)
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:            f"SELECT vector_id, vector FROM vectors WHERE vector_id IN ({placeholders})",
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:    training_threshold: int
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:            training_threshold=_training_threshold(params, compression),
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:        if len(state.training_buffer) < max(state.training_threshold, 1):
+src/Medical_KG_rev/services/vector_store/stores/faiss.py:def _training_threshold(params: IndexParams, compression: CompressionPolicy) -> int:
+src/Medical_KG_rev/services/chunking/wrappers/huggingface_segmenter.py:    """Lightweight fallback that mirrors the legacy heuristic splitter."""

@@ -81,18 +81,46 @@ repos:
             entry: ruff check --select D
             language: system
             types: [python]
-            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/
+            files: ^src/Medical_KG_rev/
 
           - id: section-header-check
             name: Check section headers
             entry: python scripts/check_section_headers.py
             language: system
             types: [python]
-            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/
+            files: ^src/Medical_KG_rev/
 
           - id: docstring-coverage
             name: Check docstring coverage
             entry: python scripts/check_docstring_coverage.py --min-coverage 90
             language: system
             types: [python]
-            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/
+            files: ^src/Medical_KG_rev/
+
+          - id: duplicate-code-check
+            name: Check for duplicate code
+            entry: python scripts/find_duplicate_code.py
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/
+
+          - id: type-hint-check
+            name: Check type hints
+            entry: python scripts/check_type_hints.py
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/
+
+          - id: method-ordering-check
+            name: Check method ordering
+            entry: python scripts/check_method_ordering.py
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/
+
+          - id: organize-imports
+            name: Organize imports
+            entry: python scripts/organize_imports.py --fix
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/

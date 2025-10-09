@@ -1,6 +1,19 @@
-"""Scope definitions and helpers."""
+"""Scope definitions shared across authentication and authorization flows."""
 
 from __future__ import annotations
+
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+
+# (No additional imports required; section present for consistency.)
+
+
+# ============================================================================
+# SCOPE CONSTANTS
+# ============================================================================
 
 
 class Scopes:
@@ -20,6 +33,11 @@ class Scopes:
     EVALUATE_WRITE = "evaluate:write"
 
 
+# ============================================================================
+# DESCRIPTIONS
+# ============================================================================
+
+
 SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.INGEST_WRITE: "Submit ingestion jobs",
     Scopes.JOBS_READ: "Read job status",
@@ -34,3 +52,11 @@ SCOPE_DESCRIPTIONS: dict[str, str] = {
     Scopes.ADAPTERS_READ: "List and inspect adapter plugins",
     Scopes.EVALUATE_WRITE: "Run retrieval evaluation jobs",
 }
+"""Human-readable descriptions for each defined scope."""
+
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
+
+__all__ = ["SCOPE_DESCRIPTIONS", "Scopes"]

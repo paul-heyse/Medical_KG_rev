@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Docstring coverage checker for Medical_KG_rev pipeline components.
+Docstring coverage checker for Medical_KG_rev pipeline and authentication components.
 
 This script calculates docstring coverage for Python files and fails if
 coverage falls below the minimum threshold.
@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 # Pipeline component paths to check
 PIPELINE_PATHS = [
+    "src/Medical_KG_rev/auth/",
     "src/Medical_KG_rev/gateway/coordinators/",
     "src/Medical_KG_rev/services/",
     "src/Medical_KG_rev/orchestration/",

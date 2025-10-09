@@ -116,30 +116,106 @@ class RedisCacheSettings(BaseModel):
 class OpenAlexSettings(BaseModel):
     """Configuration for the OpenAlex adapter."""
 
-    contact_email: str = Field(
-        default="oss@medical-kg.local",
-        description="Contact email used for OpenAlex polite pool compliance",
-    )
-    user_agent: str | None = Field(
-        default=None,
-        description="Custom User-Agent identifying this deployment",
-    )
     max_results: int = Field(
         default=5,
         ge=1,
         le=200,
         description="Maximum number of OpenAlex results to fetch per request",
     )
-    requests_per_second: float = Field(
-        default=5.0,
-        gt=0,
-        description="Polite pool target RPS used by rate limiter",
+    pdf: ConnectorPdfSettings = Field(
+        default_factory=lambda: ConnectorPdfSettings(
+            contact_email="oss@medical-kg.local",
+            requests_per_second=5.0,
+            burst=5,
+            timeout_seconds=30.0,
+        )
     )
-    timeout_seconds: float = Field(
-        default=30.0,
-        gt=0,
-        description="HTTP timeout applied to OpenAlex requests",
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fields(cls, values: Mapping[str, Any]) -> Mapping[str, Any]:
+        if not isinstance(values, Mapping):
+            return values
+        payload = dict(values)
+        pdf_payload = dict(payload.get("pdf") or {})
+        for key in ("contact_email", "user_agent", "requests_per_second", "timeout_seconds"):
+            if key in payload and key not in pdf_payload:
+                pdf_payload[key] = payload.pop(key)
+        if pdf_payload:
+            payload["pdf"] = pdf_payload
+        return payload
+
+    @property
+    def contact_email(self) -> str:
+        return self.pdf.contact_email
+
+    @property
+    def user_agent(self) -> str | None:
+        return self.pdf.user_agent
+
+    @property
+    def requests_per_second(self) -> float:
+        return self.pdf.requests_per_second
+
+    @property
+    def timeout_seconds(self) -> float:
+        return self.pdf.timeout_seconds
+
+    def polite_headers(self) -> dict[str, str]:
+        """Expose polite headers for HTTP clients."""
+
+        return self.pdf.polite_headers()
+
+
+class UnpaywallSettings(BaseModel):
+    """Configuration block for the Unpaywall adapter."""
+
+    pdf: ConnectorPdfSettings = Field(
+        default_factory=lambda: ConnectorPdfSettings(
+            contact_email="oss@medical-kg.local",
+            requests_per_second=5.0,
+            burst=5,
+            timeout_seconds=20.0,
+        )
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fields(cls, values: Mapping[str, Any]) -> Mapping[str, Any]:
+        if not isinstance(values, Mapping):
+            return values
+        payload = dict(values)
+        pdf_payload = dict(payload.get("pdf") or {})
+        if "email" in payload and "contact_email" not in pdf_payload:
+            pdf_payload["contact_email"] = payload.pop("email")
+        if pdf_payload:
+            payload["pdf"] = pdf_payload
+        return payload
+
+    @property
+    def email(self) -> str:
+        return self.pdf.contact_email
+
+    def polite_headers(self) -> dict[str, str]:
+        return self.pdf.polite_headers()
+
+
+class CrossrefSettings(BaseModel):
+    """Configuration block for the Crossref adapter."""
+
+    pdf: ConnectorPdfSettings = Field(default_factory=ConnectorPdfSettings)
+
+    def polite_headers(self) -> dict[str, str]:
+        return self.pdf.polite_headers()
+
+
+class PMCSettings(BaseModel):
+    """Configuration for the PMC adapter."""
+
+    pdf: ConnectorPdfSettings = Field(default_factory=ConnectorPdfSettings)
+
+    def polite_headers(self) -> dict[str, str]:
+        return self.pdf.polite_headers()
 
 
 class MineruCircuitBreakerSettings(BaseModel):
@@ -549,6 +625,70 @@ class RedisCacheSettings(BaseModel):
     max_connections: int = Field(default=10, ge=1, description="Maximum connection pool size")
 
 
+class ConnectorPdfSettings(BaseModel):
+    """Shared configuration for PDF-capable connectors."""
+
+    contact_email: str = Field(
+        default="oss@medical-kg.local",
+        description="Contact email supplied for polite pool compliance",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        description="Custom user agent string used for outbound requests",
+    )
+    requests_per_second: float = Field(
+        default=3.0,
+        gt=0,
+        description="Target requests-per-second budget enforced per connector",
+    )
+    burst: int = Field(
+        default=3,
+        ge=1,
+        description="Burst size for short spikes above the steady RPS budget",
+    )
+    timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="HTTP client timeout applied to download requests",
+    )
+    max_file_size_mb: float = Field(
+        default=100.0,
+        gt=0,
+        description="Maximum PDF size accepted from the connector in megabytes",
+    )
+    retry_attempts: int = Field(
+        default=3,
+        ge=0,
+        description="Number of retry attempts for failed downloads",
+    )
+    retry_backoff_seconds: float = Field(
+        default=1.0,
+        ge=0.0,
+        description="Base backoff delay between retries",
+    )
+    max_redirects: int = Field(
+        default=5,
+        ge=0,
+        description="Maximum number of redirects followed during downloads",
+    )
+
+    def polite_headers(self) -> dict[str, str]:
+        """Return polite pool headers used by HTTP clients."""
+
+        headers: dict[str, str] = {}
+        if self.contact_email:
+            headers.setdefault("From", self.contact_email)
+        if self.user_agent:
+            headers.setdefault("User-Agent", self.user_agent)
+        return headers
+
+    @property
+    def max_file_size_bytes(self) -> int:
+        """Expose the configured maximum PDF size in bytes."""
+
+        return int(self.max_file_size_mb * 1024 * 1024)
+
+
 def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:
     """Convert legacy reranking configuration dictionaries into the new schema."""
     migrated: dict[str, Any] = dict(payload)
@@ -578,6 +718,9 @@ class AppSettings(BaseSettings):
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
     redis_cache: RedisCacheSettings = Field(default_factory=RedisCacheSettings)
     openalex: OpenAlexSettings = Field(default_factory=OpenAlexSettings)
+    unpaywall: UnpaywallSettings = Field(default_factory=UnpaywallSettings)
+    crossref: CrossrefSettings = Field(default_factory=CrossrefSettings)
+    pmc: PMCSettings = Field(default_factory=PMCSettings)
     domains_config_path: Path | None = Field(default=None)
     security: SecuritySettings = Field(
         default_factory=lambda: SecuritySettings(

@@ -1,26 +1,27 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import httpx
 import pytest
+
+httpx = pytest.importorskip("httpx")
 
 from Medical_KG_rev.adapters import AdapterDomain, AdapterRequest, create_adapter_from_config, load_adapter_config
 from Medical_KG_rev.adapters.biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
     COREAdapter,
-    CrossrefAdapter,
     ICD11Adapter,
     MeSHAdapter,
     OpenFDADeviceAdapter,
     OpenFDADrugEventAdapter,
     OpenFDADrugLabelAdapter,
-    PMCAdapter,
     RxNormAdapter,
     SemanticScholarAdapter,
-    UnpaywallAdapter,
 )
+from Medical_KG_rev.adapters.crossref import CrossrefAdapter
+from Medical_KG_rev.config.settings import ConnectorPdfSettings
 from Medical_KG_rev.adapters.openalex import OpenAlexAdapter
+from Medical_KG_rev.adapters.pmc import PMCAdapter
 from Medical_KG_rev.adapters.plugins.domains.biomedical import (
     ChEMBLAdapterPlugin,
     ClinicalTrialsAdapterPlugin,
@@ -37,6 +38,7 @@ from Medical_KG_rev.adapters.plugins.domains.biomedical import (
     SemanticScholarAdapterPlugin,
     UnpaywallAdapterPlugin,
 )
+from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter
 from Medical_KG_rev.adapters.plugins.models import AdapterResponse
 from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
 from Medical_KG_rev.config.settings import get_settings
@@ -304,7 +306,22 @@ def test_openalex_adapter_surfaces_pdf_metadata():
         records={"https://doi.org/10.1000/example": work_payload},
         search_results={"lung cancer": [work_payload]},
     )
-    plugin = OpenAlexAdapterPlugin(adapter=OpenAlexAdapter(client=client, max_results=3))
+    pdf_settings = ConnectorPdfSettings(
+        contact_email="alex@example.com",
+        user_agent="MedicalKG/OpenAlex-Test",
+        requests_per_second=1.0,
+        burst=1,
+        timeout_seconds=5.0,
+        retry_attempts=1,
+        retry_backoff_seconds=0.1,
+    )
+    plugin = OpenAlexAdapterPlugin(
+        adapter=OpenAlexAdapter(
+            client=client,
+            max_results=3,
+            pdf_settings=pdf_settings,
+        )
+    )
 
     response = _run_plugin(plugin, parameters={"query": "lung cancer"})
     document = response.items[0]
@@ -317,6 +334,10 @@ def test_openalex_adapter_surfaces_pdf_metadata():
         "https://example.org/alternate.pdf",
     ]
     assert document.metadata["document_type"] == "pdf"
+    manifest = document.metadata["pdf_manifest"]
+    assert manifest["assets"][0]["url"] == "https://example.org/paper.pdf"
+    assert manifest["assets"][0]["landing_page_url"] == "https://example.org/paper"
+    assert manifest["polite_headers"]["From"] == "alex@example.com"
     assert document.sections[0].blocks[0].text == "Immune therapy"
 
 
@@ -339,23 +360,48 @@ def test_unpaywall_adapter_returns_metadata():
         "title": "Sample",
         "is_oa": True,
         "oa_status": "gold",
-        "best_oa_location": {"url": "https://example.com/paper.pdf"},
+        "best_oa_location": {
+            "url_for_pdf": "https://example.com/paper.pdf",
+            "url": "https://example.com/landing",
+            "license": "cc-by",
+            "version": "publishedVersion",
+            "host_type": "repository",
+        },
     }
+
+    pdf_settings = ConnectorPdfSettings(
+        contact_email="oa@example.com",
+        user_agent="MedicalKG/Unpaywall-Test",
+        requests_per_second=1.0,
+        burst=1,
+        timeout_seconds=5.0,
+        retry_attempts=1,
+        retry_backoff_seconds=0.1,
+    )
 
     plugin = UnpaywallAdapterPlugin(
         adapter=UnpaywallAdapter(
             client=_client(
                 "https://api.unpaywall.org/v2",
                 _mock_transport(lambda request: httpx.Response(200, json=payload)),
-            )
+            ),
+            pdf_settings=pdf_settings,
         )
     )
     response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
     document = response.items[0]
     assert document.metadata["oa_status"] == "gold"
+    assert document.metadata["document_type"] == "pdf"
+    assert document.metadata["pdf_urls"] == ["https://example.com/paper.pdf"]
+    manifest = document.metadata["pdf_manifest"]
+    assert manifest["assets"][0]["url"] == "https://example.com/paper.pdf"
+    assert manifest["assets"][0]["landing_page_url"] == "https://example.com/landing"
+    assert manifest["assets"][0]["license"] == "cc-by"
+    assert manifest["polite_headers"]["From"] == "oa@example.com"
+    assert plugin.adapter.polite_headers()["From"] == "oa@example.com"
 
 
-def test_crossref_adapter_extracts_references():
+def test_crossref_adapter_emits_manifest_and_references():
     payload = {
         "message": {
             "DOI": "10.1000/example",
@@ -363,20 +409,47 @@ def test_crossref_adapter_extracts_references():
             "publisher": "Publisher",
             "reference-count": 2,
             "reference": [{"DOI": "10.1000/ref1"}, {"DOI": "10.1000/ref2"}],
+            "URL": "https://doi.org/10.1000/example",
+            "link": [
+                {
+                    "URL": "https://example.org/files/study.pdf",
+                    "content-type": "application/pdf",
+                    "content-version": "vor",
+                    "intended-application": "text-mining",
+                }
+            ],
+            "license": [{"URL": "https://creativecommons.org/licenses/by/4.0/"}],
         }
     }
+
+    pdf_settings = ConnectorPdfSettings(
+        contact_email="ops@example.com",
+        user_agent="MedicalKG/Test",
+        requests_per_second=1.0,
+        burst=1,
+        timeout_seconds=5.0,
+        retry_attempts=1,
+        retry_backoff_seconds=0.1,
+    )
 
     plugin = CrossrefAdapterPlugin(
         adapter=CrossrefAdapter(
             client=_client(
                 "https://api.crossref.org",
                 _mock_transport(lambda request: httpx.Response(200, json=payload)),
-            )
+            ),
+            pdf_settings=pdf_settings,
         )
     )
     response = _run_plugin(plugin, parameters={"doi": "10.1000/example"})
     document = response.items[0]
     assert document.metadata["references"] == ["10.1000/ref1", "10.1000/ref2"]
+    assert document.metadata["document_type"] == "pdf"
+    assert document.metadata["pdf_urls"] == ["https://example.org/files/study.pdf"]
+    manifest = document.metadata["pdf_manifest"]
+    assert manifest["assets"][0]["url"] == "https://example.org/files/study.pdf"
+    assert manifest["polite_headers"]["From"] == "ops@example.com"
+    assert plugin.adapter.polite_headers()["From"] == "ops@example.com"
 
 
 def test_core_adapter_handles_multiple_entries():
@@ -407,10 +480,11 @@ def test_core_adapter_handles_multiple_entries():
 
 def test_pmc_adapter_parses_xml():
     xml_payload = """
-    <article>
+    <article xmlns:xlink="http://www.w3.org/1999/xlink">
         <front>
             <article-meta>
                 <title-group><article-title>Article Title</article-title></title-group>
+                <self-uri xlink:href="https://europepmc.org/articles/PMC123456.pdf" content-type="pdf" />
             </article-meta>
         </front>
         <abstract><p>Abstract text</p></abstract>
@@ -419,18 +493,35 @@ def test_pmc_adapter_parses_xml():
     </article>
     """
 
+    pdf_settings = ConnectorPdfSettings(
+        contact_email="pmc@example.com",
+        user_agent="MedicalKG/PMC-Test",
+        requests_per_second=1.0,
+        burst=1,
+        timeout_seconds=5.0,
+        retry_attempts=1,
+        retry_backoff_seconds=0.1,
+    )
+
     plugin = PMCAdapterPlugin(
         adapter=PMCAdapter(
             client=_client(
                 "https://www.ebi.ac.uk/europepmc",
                 _mock_transport(lambda request: httpx.Response(200, text=xml_payload)),
-            )
+            ),
+            pdf_settings=pdf_settings,
         )
     )
     response = _run_plugin(plugin, parameters={"pmcid": "PMC123456"})
     document = response.items[0]
     assert document.metadata["pmcid"] == "PMC123456"
     assert any(block.text == "Body paragraph one." for block in document.sections[0].blocks)
+    assert document.metadata["document_type"] == "pdf"
+    assert document.metadata["pdf_urls"] == ["https://europepmc.org/articles/PMC123456.pdf"]
+    manifest = document.metadata["pdf_manifest"]
+    assert manifest["assets"][0]["url"] == "https://europepmc.org/articles/PMC123456.pdf"
+    assert manifest["polite_headers"]["From"] == "pmc@example.com"
+    assert plugin.adapter.polite_headers()["From"] == "pmc@example.com"
 
 
 def test_rxnorm_adapter_normalizes_name():

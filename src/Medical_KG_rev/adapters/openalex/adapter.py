@@ -53,7 +53,8 @@ from typing import Any, cast
 
 import structlog
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
-from Medical_KG_rev.adapters.mixins import StorageHelperMixin
+from Medical_KG_rev.adapters.mixins import PdfManifestMixin, StorageHelperMixin
+from Medical_KG_rev.config.settings import ConnectorPdfSettings, get_settings
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_doi
@@ -78,7 +79,7 @@ logger = structlog.get_logger(__name__)
 # ==============================================================================
 
 
-class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
+class OpenAlexAdapter(BaseAdapter, PdfManifestMixin, StorageHelperMixin):
     """Adapter that retrieves scholarly works via the OpenAlex API.
 
     The adapter relies on the official :mod:`pyalex` client so that we benefit
@@ -95,10 +96,21 @@ class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
         client: Any | None = None,
         contact_email: str | None = None,
         user_agent: str | None = None,
+        pdf_settings: ConnectorPdfSettings | None = None,
         max_results: int = DEFAULT_MAX_RESULTS,
     ) -> None:
         super().__init__(name="openalex")
-        self._client = client or self._build_client(contact_email, user_agent)
+        settings = pdf_settings or get_settings().openalex.pdf
+        overrides: dict[str, Any] = {}
+        if contact_email:
+            overrides["contact_email"] = contact_email
+        if user_agent:
+            overrides["user_agent"] = user_agent
+        if overrides:
+            settings = settings.model_copy(update=overrides)
+        self._pdf_settings = settings
+        self._polite_headers = settings.polite_headers()
+        self._client = client or self._build_client()
         self._max_results = max(1, int(max_results))
 
     # ------------------------------------------------------------------
@@ -164,8 +176,19 @@ class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
         for payload in payloads:
             work = dict(payload)
             document = self._build_document(work)
+            manifest_assets = work.get("pdf_assets")
+            if isinstance(manifest_assets, Sequence) and manifest_assets:
+                manifest = self.build_pdf_manifest(
+                    connector="openalex",
+                    assets=cast(Sequence[Mapping[str, Any]], manifest_assets),
+                    polite_headers=self._polite_headers,
+                )
+                self.attach_manifest_to_documents([document], manifest)
             documents.append(document)
         return documents
+
+    def polite_headers(self) -> Mapping[str, str]:
+        return self._polite_headers
 
     def write(
         self, documents: Sequence[Document], context: AdapterContext
@@ -175,12 +198,12 @@ class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
     # ------------------------------------------------------------------
     # Client helpers
     # ------------------------------------------------------------------
-    def _build_client(self, contact_email: str | None, user_agent: str | None) -> Any:
+    def _build_client(self) -> Any:
         if Works is None or pyalex_config is None:  # pragma: no cover - validated in tests
             raise RuntimeError("pyalex>=0.18 is required for OpenAlexAdapter")
 
-        email = contact_email or os.getenv("OPENALEX_CONTACT_EMAIL")
-        agent = user_agent or os.getenv("OPENALEX_USER_AGENT")
+        email = self._pdf_settings.contact_email or os.getenv("OPENALEX_CONTACT_EMAIL")
+        agent = self._pdf_settings.user_agent or os.getenv("OPENALEX_USER_AGENT")
 
         if email:
             pyalex_config["email"] = email

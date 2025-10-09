@@ -66,8 +66,17 @@ from typing import Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+from Medical_KG_rev.adapters.crossref import (
+    CrossrefAdapter as CrossrefAdapterV2,  # noqa: F401 - re-export for backwards compatibility
+)
 from Medical_KG_rev.adapters.openalex import (
     OpenAlexAdapter,  # noqa: F401 - re-export for backwards compatibility
+)
+from Medical_KG_rev.adapters.pmc import (
+    PMCAdapter as PMCAdapterV2,  # noqa: F401 - re-export for backwards compatibility
+)
+from Medical_KG_rev.adapters.unpaywall import (
+    UnpaywallAdapter as UnpaywallAdapterV2,  # noqa: F401 - re-export for backwards compatibility
 )
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
@@ -1743,3 +1752,8 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
 # ==============================================================================
 # EXPORTS
 # ==============================================================================
+
+# Re-export updated PDF-capable adapters to ensure unified manifest support.
+CrossrefAdapter = CrossrefAdapterV2
+PMCAdapter = PMCAdapterV2
+UnpaywallAdapter = UnpaywallAdapterV2

@@ -1,6 +1,7 @@
 """Adapter SDK exports."""
 
 from .base import AdapterContext, AdapterResult, BaseAdapter
+from .interfaces import PdfAssetManifest, PdfCapableAdapter, PdfManifest
 from .biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
@@ -132,6 +133,9 @@ __all__ = [
     "OpenFDADeviceAdapter",
     "OpenFDADrugEventAdapter",
     "OpenFDADrugLabelAdapter",
+    "PdfAssetManifest",
+    "PdfCapableAdapter",
+    "PdfManifest",
     "PMCAdapter",
     "Pagination",
     "ReadOnlyAdapterPlugin",

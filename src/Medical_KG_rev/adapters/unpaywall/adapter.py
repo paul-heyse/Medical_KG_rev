@@ -52,6 +52,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
+from Medical_KG_rev.adapters.mixins import PdfManifestMixin
+from Medical_KG_rev.config.settings import ConnectorPdfSettings, get_settings
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
     BackoffStrategy,
@@ -88,17 +90,24 @@ def _to_text(value: Any) -> str:
     return str(value)
 
 
-def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
+def _linear_retry_config(attempts: int, initial: float, timeout: float) -> RetryConfig:
     """Create a linear retry configuration."""
     initial = max(initial, 0.0)
+    timeout = max(timeout, 0.0)
     if initial == 0:
-        return RetryConfig(attempts=attempts, backoff_strategy=BackoffStrategy.NONE, jitter=False)
+        return RetryConfig(
+            attempts=attempts,
+            backoff_strategy=BackoffStrategy.NONE,
+            jitter=False,
+            timeout=timeout,
+        )
     return RetryConfig(
         attempts=attempts,
         backoff_strategy=BackoffStrategy.LINEAR,
         backoff_initial=initial,
         backoff_max=max(initial * attempts, initial),
         jitter=False,
+        timeout=timeout,
     )
 
 
@@ -115,16 +124,22 @@ class ResilientHTTPAdapter(BaseAdapter):
         name: str,
         base_url: str,
         rate_limit_per_second: float,
+        burst: int | None = None,
         retry: RetryConfig | None = None,
         client: HttpClient | None = None,
+        default_headers: Mapping[str, str] | None = None,
     ) -> None:
         super().__init__(name=name)
         self._owns_client = client is None
+        self._default_headers = dict(default_headers or {})
         if client is None:
             self._client = HttpClient(
                 base_url=base_url,
                 retry=retry or RetryConfig(),
-                rate_limit=RateLimitConfig(rate_per_second=rate_limit_per_second),
+                rate_limit=RateLimitConfig(
+                    rate_per_second=rate_limit_per_second,
+                    burst=burst,
+                ),
                 circuit_breaker=CircuitBreakerConfig(),
             )
         else:
@@ -132,13 +147,17 @@ class ResilientHTTPAdapter(BaseAdapter):
 
     def _get_json(self, path: str, *, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Make a GET request and return JSON response."""
-        response = self._client.request("GET", path, params=params)
+        response = self._client.request(
+            "GET", path, params=params, headers=self._default_headers or None
+        )
         response.raise_for_status()
         return response.json()
 
     def _get_text(self, path: str, *, params: Mapping[str, Any] | None = None) -> str:
         """Make a GET request and return text response."""
-        response = self._client.request("GET", path, params=params)
+        response = self._client.request(
+            "GET", path, params=params, headers=self._default_headers or None
+        )
         response.raise_for_status()
         return response.text
 
@@ -154,25 +173,44 @@ class ResilientHTTPAdapter(BaseAdapter):
             self._client.close()
 
 
-class UnpaywallAdapter(ResilientHTTPAdapter):
+class UnpaywallAdapter(PdfManifestMixin, ResilientHTTPAdapter):
     """Adapter for Unpaywall open access status."""
 
     def __init__(
-        self, email: str | None = None, client: HttpClient | None = None
+        self,
+        email: str | None = None,
+        client: HttpClient | None = None,
+        pdf_settings: ConnectorPdfSettings | None = None,
     ) -> None:
+        settings = pdf_settings or get_settings().unpaywall.pdf
+        if email:
+            settings = settings.model_copy(update={"contact_email": email})
+        else:
+            legacy_email = os.getenv("UNPAYWALL_EMAIL")
+            if legacy_email:
+                settings = settings.model_copy(update={"contact_email": legacy_email})
+        self._pdf_settings = settings
+        self._polite_headers = settings.polite_headers()
         super().__init__(
             name="unpaywall",
             base_url="https://api.unpaywall.org/v2",
-            rate_limit_per_second=5,
-            retry=_linear_retry_config(3, 0.5),
+            rate_limit_per_second=settings.requests_per_second,
+            burst=settings.burst,
+            retry=_linear_retry_config(
+                settings.retry_attempts,
+                settings.retry_backoff_seconds,
+                settings.timeout_seconds,
+            ),
             client=client,
+            default_headers=self._polite_headers,
         )
-        self._email = email or os.getenv("UNPAYWALL_EMAIL", "oss@medical-kg.local")
 
     def fetch(self, context: AdapterContext) -> Iterable[dict[str, Any]]:
         """Fetch open access status for a DOI."""
         doi = validate_doi(_require_parameter(context, "doi"))
-        payload = self._get_json(f"/{doi}", params={"email": self._email})
+        payload = self._get_json(
+            f"/{doi}", params={"email": self._pdf_settings.contact_email}
+        )
         return [payload]
 
     def parse(
@@ -193,10 +231,25 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
 
             # Extract PDF URL if available
             location = payload.get("best_oa_location", {})
-            pdf_url = location.get("url")
-            if pdf_url:
-                metadata["pdf_urls"] = [pdf_url]
-                metadata["document_type"] = "pdf"
+            pdf_assets: list[Mapping[str, Any]] = []
+            pdf_url = None
+            if isinstance(location, Mapping):
+                candidate_url = location.get("url_for_pdf") or location.get("url")
+                if isinstance(candidate_url, str):
+                    pdf_url = candidate_url
+                    pdf_assets.append(
+                        {
+                            "url": candidate_url,
+                            "landing_page_url": location.get("url"),
+                            "license": location.get("license"),
+                            "version": location.get("version"),
+                            "source": location.get("host_type"),
+                            "is_open_access": True,
+                            "content_type": "application/pdf",
+                        }
+                    )
+            if pdf_assets:
+                metadata["pdf_assets"] = pdf_assets
 
             text = pdf_url or "No open access location available"
             section = Section(
@@ -212,16 +265,25 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
                 ],
             )
 
-            documents.append(
-                Document(
-                    id=build_document_id("unpaywall", doi or "unknown"),
-                    source="unpaywall",
-                    title=payload.get("title"),
-                    sections=[section],
-                    metadata=metadata,
-                )
+            document = Document(
+                id=build_document_id("unpaywall", doi or "unknown"),
+                source="unpaywall",
+                title=payload.get("title"),
+                sections=[section],
+                metadata=metadata,
             )
+            if pdf_assets:
+                manifest = self.build_pdf_manifest(
+                    connector="unpaywall",
+                    assets=pdf_assets,
+                    polite_headers=self._polite_headers,
+                )
+                self.attach_manifest_to_documents([document], manifest)
+            documents.append(document)
         return documents
+
+    def polite_headers(self) -> Mapping[str, str]:
+        return self._polite_headers
 
 
 # ==============================================================================

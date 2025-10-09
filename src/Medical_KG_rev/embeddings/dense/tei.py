@@ -51,7 +51,9 @@ class TEIHTTPEmbedder:
             raise ValueError("Unexpected TEI response format")
         return [list(map(float, vector)) for vector in vectors]
 
-    def _records(self, request: EmbeddingRequest, vectors: list[list[float]]) -> list[EmbeddingRecord]:
+    def _records(
+        self, request: EmbeddingRequest, vectors: list[list[float]]
+    ) -> list[EmbeddingRecord]:
         if self._normalize:
             vectors = normalize_batch(vectors)
         ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(vectors))])

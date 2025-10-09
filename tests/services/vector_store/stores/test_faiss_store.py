@@ -7,7 +7,10 @@ import faiss
 import numpy as np
 import pytest
 
-from Medical_KG_rev.services.vector_store.errors import DimensionMismatchError, InvalidNamespaceConfigError
+from Medical_KG_rev.services.vector_store.errors import (
+    DimensionMismatchError,
+    InvalidNamespaceConfigError,
+)
 from Medical_KG_rev.services.vector_store.models import (
     CompressionPolicy,
     IndexParams,

@@ -140,8 +140,12 @@ class C99Chunker(BaseChunker):
         n = matrix.shape[0]
         scores: list[float] = []
         for i in range(1, n - 1):
-            left = matrix[max(0, i - self.similarity_window) : i, max(0, i - self.similarity_window) : i]
-            right = matrix[i : min(n, i + self.similarity_window), i : min(n, i + self.similarity_window)]
+            left = matrix[
+                max(0, i - self.similarity_window) : i, max(0, i - self.similarity_window) : i
+            ]
+            right = matrix[
+                i : min(n, i + self.similarity_window), i : min(n, i + self.similarity_window)
+            ]
             left_mean = float(np.mean(left)) if left.size else 0.0
             right_mean = float(np.mean(right)) if right.size else 0.0
             scores.append((left_mean + right_mean) / 2)
@@ -326,9 +330,7 @@ class LDATopicChunker(BaseChunker):
             from gensim.corpora import Dictionary  # type: ignore
             from gensim.models import LdaModel  # type: ignore
         except Exception as exc:
-            raise ChunkerConfigurationError(
-                "gensim must be installed for LDATopicChunker"
-            ) from exc
+            raise ChunkerConfigurationError("gensim must be installed for LDATopicChunker") from exc
         self.Dictionary = Dictionary
         self.LdaModel = LdaModel
         self.num_topics = num_topics
@@ -426,4 +428,3 @@ class LDATopicChunker(BaseChunker):
             "passes": self.passes,
             "coherence_threshold": self.coherence_threshold,
         }
-

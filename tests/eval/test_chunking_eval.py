@@ -15,10 +15,12 @@ def _load_runner():
 
 def test_chunking_evaluation_runner() -> None:
     ChunkingEvaluationRunner = _load_runner()
-    runner = ChunkingEvaluationRunner([
-        "section_aware",
-        "semantic_splitter",
-    ])
+    runner = ChunkingEvaluationRunner(
+        [
+            "section_aware",
+            "semantic_splitter",
+        ]
+    )
     summaries = runner.run()
     assert "section_aware" in summaries
     summary = summaries["section_aware"]

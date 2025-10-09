@@ -53,7 +53,9 @@ def load_namespace_configs(
 ) -> dict[str, NamespaceConfig]:
     """Load namespace configurations from YAML files or configuration fallback."""
 
-    namespace_dir = directory or Path(os.environ.get("MK_EMBEDDING_NAMESPACE_DIR", DEFAULT_NAMESPACE_DIR))
+    namespace_dir = directory or Path(
+        os.environ.get("MK_EMBEDDING_NAMESPACE_DIR", DEFAULT_NAMESPACE_DIR)
+    )
     configs: dict[str, NamespaceConfig] = {}
     aggregated_path = namespace_dir.parent / "namespaces.yaml"
     if aggregated_path.exists():

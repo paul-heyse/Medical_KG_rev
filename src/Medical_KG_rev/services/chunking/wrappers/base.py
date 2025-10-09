@@ -67,7 +67,9 @@ class BaseProfileChunker(ChunkerPort):
         splitter_name = self.profile.get("sentence_splitter", "syntok")
         return get_sentence_splitter(splitter_name)
 
-    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:  # pragma: no cover - defined in subclasses
+    def chunk(
+        self, document: Document, *, profile: str
+    ) -> list[Chunk]:  # pragma: no cover - defined in subclasses
         raise NotImplementedError
 
     def _metadata_provider(self, document: Document):

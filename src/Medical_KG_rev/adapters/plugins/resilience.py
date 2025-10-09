@@ -45,8 +45,12 @@ class ResilienceConfig(BaseModel):
 
     max_attempts: PositiveInt = Field(3, description="Maximum retry attempts before failing.")
     backoff_strategy: BackoffStrategy = BackoffStrategy.EXPONENTIAL
-    backoff_multiplier: NonNegativeFloat = Field(1.0, description="Multiplier applied to backoff intervals.")
-    backoff_max_seconds: NonNegativeFloat = Field(60.0, description="Maximum backoff duration in seconds.")
+    backoff_multiplier: NonNegativeFloat = Field(
+        1.0, description="Multiplier applied to backoff intervals."
+    )
+    backoff_max_seconds: NonNegativeFloat = Field(
+        60.0, description="Maximum backoff duration in seconds."
+    )
     rate_limit_per_second: NonNegativeFloat = Field(5.0, description="Token bucket fill rate.")
     rate_limit_capacity: PositiveInt = Field(10, description="Maximum tokens in the bucket.")
     circuit_breaker_failure_threshold: PositiveInt = Field(

@@ -15,6 +15,7 @@ try:
         record_business_event,
     )
 except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
+
     class _CounterProxy:
         def labels(self, *args: object, **kwargs: object) -> "_CounterProxy":  # noqa: D401 - mimic prometheus API
             return self
@@ -29,6 +30,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
 
     def record_business_event(event: str, tenant_id: str) -> None:  # type: ignore[override]
         return None
+
 
 if TYPE_CHECKING:
     from .persister import PersistenceReport
@@ -88,7 +90,9 @@ class EmbeddingTelemetry(ABC):
         self._snapshot.policy_denials += 1
         self._record_decision("denied", decision)
 
-    def record_embedding_started(self, *, namespace: str, tenant_id: str, model: str | None = None) -> None:
+    def record_embedding_started(
+        self, *, namespace: str, tenant_id: str, model: str | None = None
+    ) -> None:
         if self._settings.enable_logging:
             self._logger.info(
                 "embedding.started",

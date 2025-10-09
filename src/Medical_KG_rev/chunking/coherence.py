@@ -58,9 +58,7 @@ class SemanticDriftDetector:
         self.min_tokens = min_tokens
         self.counter = token_counter or default_token_counter()
 
-    def detect(
-        self, contexts: Sequence[BlockContext], similarities: Iterable[float]
-    ) -> list[int]:
+    def detect(self, contexts: Sequence[BlockContext], similarities: Iterable[float]) -> list[int]:
         boundaries: list[int] = []
         token_budget = 0
         for idx, (ctx, sim) in enumerate(zip(contexts[1:], similarities, strict=False), start=1):
@@ -70,4 +68,3 @@ class SemanticDriftDetector:
                 token_budget = 0
         boundaries.append(len(contexts))
         return boundaries
-

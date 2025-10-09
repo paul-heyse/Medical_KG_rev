@@ -93,7 +93,9 @@ class NamespaceAccessPolicy(ABC):
         self._settings = NamespacePolicySettings(**new_values)
         self.invalidate()
 
-    def evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access for the supplied namespace/tenant/scope."""
 
         cache_key = (namespace, tenant_id, required_scope)
@@ -104,7 +106,9 @@ class NamespaceAccessPolicy(ABC):
             return entry.decision
 
         started = perf_counter()
-        decision = self._evaluate(namespace=namespace, tenant_id=tenant_id, required_scope=required_scope)
+        decision = self._evaluate(
+            namespace=namespace, tenant_id=tenant_id, required_scope=required_scope
+        )
         duration_ms = (perf_counter() - started) * 1000
         decision = replace(decision, duration_ms=duration_ms)
 
@@ -162,7 +166,9 @@ class NamespaceAccessPolicy(ABC):
         }
 
     @abstractmethod
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Perform the actual policy evaluation."""
 
     def operational_metrics(self) -> Mapping[str, object]:
@@ -179,7 +185,9 @@ class NamespaceAccessPolicy(ABC):
 class StandardNamespacePolicy(NamespaceAccessPolicy):
     """Default namespace access policy backed by the namespace registry."""
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         try:
             config = self.registry.get(namespace)
         except ValueError as exc:
@@ -233,7 +241,9 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         )
         self._delegate = delegate
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         decision = self._delegate.evaluate(
             namespace=namespace,
             tenant_id=tenant_id,
@@ -291,7 +301,9 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         )
         self._decisions[(namespace, tenant_id, scope)] = decision
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         key = (namespace, tenant_id, required_scope)
         if key not in self._decisions:
             raise KeyError(f"Mock policy missing decision for {key}")
@@ -312,7 +324,9 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         super().__init__(registry, telemetry=telemetry, settings=settings)
         self._resolver = resolver
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         decision = self._resolver(namespace, tenant_id, required_scope)
         if decision.config is None:
             try:
@@ -330,11 +344,14 @@ def build_policy_chain(
     telemetry: EmbeddingTelemetry | None = None,
     settings: NamespacePolicySettings | None = None,
     dry_run: bool = False,
-    extra_policies: Iterable[Callable[[NamespaceAccessPolicy], NamespaceAccessPolicy]] | None = None,
+    extra_policies: Iterable[Callable[[NamespaceAccessPolicy], NamespaceAccessPolicy]]
+    | None = None,
 ) -> NamespaceAccessPolicy:
     """Build a composed namespace access policy."""
 
-    policy: NamespaceAccessPolicy = StandardNamespacePolicy(registry, telemetry=telemetry, settings=settings)
+    policy: NamespaceAccessPolicy = StandardNamespacePolicy(
+        registry, telemetry=telemetry, settings=settings
+    )
     if dry_run:
         policy = DryRunNamespacePolicy(policy, telemetry=telemetry)
     for factory in extra_policies or ():

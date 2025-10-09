@@ -88,20 +88,14 @@ class RetrievalService:
         self._context_factory = context_factory
         self.router = router or RetrievalRouter()
         self._namespace_map = dict(namespace_map or {})
-        self._rerank_policy = rerank_policy or TenantRerankPolicy.from_file(
-            DEFAULT_POLICY_PATH
-        )
+        self._rerank_policy = rerank_policy or TenantRerankPolicy.from_file(DEFAULT_POLICY_PATH)
         self._model_registry = model_registry or RerankerModelRegistry()
         self._model_handles: dict[str, ModelHandle] = {}
-        self._hybrid = hybrid_coordinator or self._build_hybrid_coordinator(
-            hybrid_settings
-        )
+        self._hybrid = hybrid_coordinator or self._build_hybrid_coordinator(hybrid_settings)
 
         fusion_cfg = reranking_settings.fusion if reranking_settings else None
         fusion_settings = FusionSettings(
-            strategy=FusionStrategy(fusion_cfg.strategy)
-            if fusion_cfg
-            else FusionStrategy.RRF,
+            strategy=FusionStrategy(fusion_cfg.strategy) if fusion_cfg else FusionStrategy.RRF,
             rrf_k=fusion_cfg.rrf_k if fusion_cfg else 60,
             weights=fusion_cfg.weights if fusion_cfg else {},
             normalization=NormalizationStrategy(fusion_cfg.normalization)
@@ -112,12 +106,8 @@ class RetrievalService:
         self._fusion = fusion_service or FusionService(fusion_settings)
 
         ttl = reranking_settings.cache_ttl if reranking_settings else 3600
-        failure_threshold = (
-            reranking_settings.circuit_breaker_failures if reranking_settings else 5
-        )
-        reset_timeout = (
-            reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
-        )
+        failure_threshold = reranking_settings.circuit_breaker_failures if reranking_settings else 5
+        reset_timeout = reranking_settings.circuit_breaker_reset if reranking_settings else 30.0
         batch_size = reranking_settings.model.batch_size if reranking_settings else 64
         self._reranking_engine = reranking_engine or RerankingEngine(
             factory=RerankerFactory(),
@@ -150,9 +140,7 @@ class RetrievalService:
             if reranking_settings and reranking_settings.model.reranker_id
             else None
         )
-        self._default_reranker = (
-            configured_reranker or self._default_model_handle.model.reranker_id
-        )
+        self._default_reranker = configured_reranker or self._default_model_handle.model.reranker_id
 
     def search(
         self,
@@ -188,12 +176,8 @@ class RetrievalService:
             for component, results in component_results.items()
         }
 
-        decision = self._rerank_policy.decide(
-            security_context.tenant_id, query, rerank
-        )
-        model_handle, model_key, requested_model, model_fallback = self._resolve_model(
-            rerank_model
-        )
+        decision = self._rerank_policy.decide(security_context.tenant_id, query, rerank)
+        model_handle, model_key, requested_model, model_fallback = self._resolve_model(rerank_model)
         reranker_key = reranker_id or model_handle.model.reranker_id or self._default_reranker
         metrics: dict[str, object]
         rerank_applied = decision.enabled
@@ -369,9 +353,7 @@ class RetrievalService:
         resolved_settings = settings
         if resolved_settings is None:
             try:
-                resolved_settings = HybridComponentSettings.from_file(
-                    DEFAULT_COMPONENT_CONFIG_PATH
-                )
+                resolved_settings = HybridComponentSettings.from_file(DEFAULT_COMPONENT_CONFIG_PATH)
             except FileNotFoundError:
                 resolved_settings = HybridComponentSettings()
         components = {
@@ -572,12 +554,12 @@ class RetrievalService:
         self._model_handles[key] = handle
         return handle
 
-    def _resolve_model(
-        self, identifier: str | None
-    ) -> tuple[ModelHandle, str, str | None, bool]:
+    def _resolve_model(self, identifier: str | None) -> tuple[ModelHandle, str, str | None, bool]:
         key = self._resolve_model_key(identifier)
-        fallback = bool(identifier) and key == self._default_model_key and (
-            identifier != self._default_model_key
+        fallback = (
+            bool(identifier)
+            and key == self._default_model_key
+            and (identifier != self._default_model_key)
         )
         handle = self._ensure_model(key)
         if handle is not self._default_model_handle and key not in self._model_handles:
@@ -593,4 +575,3 @@ class RetrievalService:
 
 
 __all__ = ["RetrievalResult", "RetrievalService"]
-

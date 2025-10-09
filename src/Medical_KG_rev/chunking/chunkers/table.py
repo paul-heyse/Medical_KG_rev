@@ -29,9 +29,7 @@ class TableChunker(BaseChunker):
             raise ValueError("Unsupported table chunking mode")
         self.mode = mode
         self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
-        self.table_handler = TableHandler(
-            token_counter=self.counter, mode=mode
-        )
+        self.table_handler = TableHandler(token_counter=self.counter, mode=mode)
 
     def chunk(
         self,

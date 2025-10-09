@@ -35,9 +35,7 @@ class ProfileNotFoundError(ChunkingError):
     def __init__(self, profile: str, available: Sequence[str]) -> None:
         self.profile = profile
         self.available = tuple(sorted(available))
-        message = (
-            f"Chunking profile '{profile}' not found. Available: {', '.join(self.available) or 'none'}"
-        )
+        message = f"Chunking profile '{profile}' not found. Available: {', '.join(self.available) or 'none'}"
         super().__init__(message)
 
 
@@ -47,9 +45,7 @@ class TokenizerMismatchError(ChunkingError):
     def __init__(self, tokenizer: str, model: str) -> None:
         self.tokenizer = tokenizer
         self.model = model or "unknown"
-        message = (
-            f"Tokenizer '{self.tokenizer}' incompatible with embedding model '{self.model}'"
-        )
+        message = f"Tokenizer '{self.tokenizer}' incompatible with embedding model '{self.model}'"
         super().__init__(message)
 
 

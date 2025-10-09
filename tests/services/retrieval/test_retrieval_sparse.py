@@ -11,9 +11,17 @@ from Medical_KG_rev.services.retrieval.sparse import (
 
 def _documents() -> list[SparseDocument]:
     return [
-        SparseDocument(doc_id="1", text="hypertension treatment reduces systolic blood pressure", fields={"arm": "treatment"}),
-        SparseDocument(doc_id="2", text="placebo arm recorded minimal improvement", fields={"arm": "control"}),
-        SparseDocument(doc_id="3", text="adverse events were rare in cohort", fields={"arm": "treatment"}),
+        SparseDocument(
+            doc_id="1",
+            text="hypertension treatment reduces systolic blood pressure",
+            fields={"arm": "treatment"},
+        ),
+        SparseDocument(
+            doc_id="2", text="placebo arm recorded minimal improvement", fields={"arm": "control"}
+        ),
+        SparseDocument(
+            doc_id="3", text="adverse events were rare in cohort", fields={"arm": "treatment"}
+        ),
     ]
 
 

@@ -53,16 +53,16 @@ class HybridComponentSettings:
     enable_query_expansion: bool = False
     timeout_ms: int = 300
     cache_ttl_seconds: int = 300
-    default_components: Sequence[str] = field(
-        default_factory=lambda: ("bm25", "splade", "dense")
-    )
+    default_components: Sequence[str] = field(default_factory=lambda: ("bm25", "splade", "dense"))
     component_timeouts: Mapping[str, int] = field(default_factory=dict)
     synonyms: Mapping[str, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
     def from_file(cls, path: Path | str) -> "HybridComponentSettings":
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-        defaults: Mapping[str, object] = data.get("defaults", {}) if isinstance(data, Mapping) else {}
+        defaults: Mapping[str, object] = (
+            data.get("defaults", {}) if isinstance(data, Mapping) else {}
+        )
         components_cfg: Mapping[str, object] = (
             data.get("components", {}) if isinstance(data, Mapping) else {}
         )
@@ -76,7 +76,8 @@ class HybridComponentSettings:
             timeout_ms=int(defaults.get("timeout_ms", 300)),
             cache_ttl_seconds=int(defaults.get("cache_ttl_seconds", 300)),
             default_components=tuple(
-                str(component) for component in defaults.get("components", ("bm25", "splade", "dense"))
+                str(component)
+                for component in defaults.get("components", ("bm25", "splade", "dense"))
             ),
             component_timeouts={
                 str(name): int(cfg.get("timeout_ms", defaults.get("timeout_ms", 300)))
@@ -301,7 +302,9 @@ class HybridSearchCoordinator:
             correlation_id=correlation_id,
         )
         if use_cache and not outcome.cache_hit and not errors:
-            await self._cache.set(cache_key, outcome.to_cache(), ttl=self._settings.cache_ttl_seconds)
+            await self._cache.set(
+                cache_key, outcome.to_cache(), ttl=self._settings.cache_ttl_seconds
+            )
         return outcome
 
     def search_sync(
@@ -335,7 +338,9 @@ class HybridSearchCoordinator:
             )
         else:  # pragma: no cover - sync calls should not occur inside event loop
             if loop.is_running():
-                raise RuntimeError("HybridSearchCoordinator.search_sync called from running event loop")
+                raise RuntimeError(
+                    "HybridSearchCoordinator.search_sync called from running event loop"
+                )
             return loop.run_until_complete(
                 self.search(
                     index=index,
@@ -423,7 +428,9 @@ class HybridSearchCoordinator:
             if isinstance(value, Mapping):
                 serialised[key] = HybridSearchCoordinator._serialise_filters(value)
             elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
-                serialised[key] = [HybridSearchCoordinator._normalise_scalar(item) for item in value]
+                serialised[key] = [
+                    HybridSearchCoordinator._normalise_scalar(item) for item in value
+                ]
             else:
                 serialised[key] = HybridSearchCoordinator._normalise_scalar(value)
         return serialised

@@ -112,7 +112,9 @@ class CTGovRegistryChunker(BaseProfileChunker):
                 profile_name=profile,
                 contexts=contexts,
                 text=text,
-                intent_hint=self._intent_hint_for_section(contexts[0].section if contexts else None),
+                intent_hint=self._intent_hint_for_section(
+                    contexts[0].section if contexts else None
+                ),
                 extra_metadata=extra,
             )
             chunks.append(chunk)
@@ -273,7 +275,9 @@ class GuidelineChunker(BaseProfileChunker):
                 profile_name=profile,
                 contexts=contexts,
                 text=text,
-                intent_hint=self._intent_hint_for_section(contexts[0].section if contexts else None),
+                intent_hint=self._intent_hint_for_section(
+                    contexts[0].section if contexts else None
+                ),
                 extra_metadata=extra,
             )
             chunks.append(chunk)
@@ -358,6 +362,8 @@ def _build_chunk_from_contexts(
 def register() -> None:
     from .port import register_chunker
 
-    register_chunker(CTGovRegistryChunker.name, lambda *, profile: CTGovRegistryChunker(profile=profile))
+    register_chunker(
+        CTGovRegistryChunker.name, lambda *, profile: CTGovRegistryChunker(profile=profile)
+    )
     register_chunker(SPLLabelChunker.name, lambda *, profile: SPLLabelChunker(profile=profile))
     register_chunker(GuidelineChunker.name, lambda *, profile: GuidelineChunker(profile=profile))

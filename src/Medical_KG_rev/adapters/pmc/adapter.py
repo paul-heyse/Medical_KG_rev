@@ -128,7 +128,9 @@ class PMCAdapter(ResilientHTTPAdapter):
         xml_text = self._get_text(f"/webservices/rest/{pmcid}/fullTextXML")
         return [{"xml_content": xml_text}]
 
-    def parse(self, payloads: Iterable[dict[str, Any]], context: AdapterContext) -> Sequence[Document]:
+    def parse(
+        self, payloads: Iterable[dict[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
         """Parse PMC XML into documents."""
         documents: list[Document] = []
         for payload in payloads:
@@ -141,19 +143,18 @@ class PMCAdapter(ResilientHTTPAdapter):
 
             blocks: list[Block] = []
             if abstract_text:
-                blocks.append(Block(
-                    id="pmc-abstract",
-                    type=BlockType.PARAGRAPH,
-                    text=abstract_text,
-                    spans=[]
-                ))
+                blocks.append(
+                    Block(id="pmc-abstract", type=BlockType.PARAGRAPH, text=abstract_text, spans=[])
+                )
             for idx, paragraph in enumerate(body_paragraphs[:5]):
-                blocks.append(Block(
-                    id=f"pmc-body-{idx}",
-                    type=BlockType.PARAGRAPH,
-                    text=_to_text(paragraph),
-                    spans=[]
-                ))
+                blocks.append(
+                    Block(
+                        id=f"pmc-body-{idx}",
+                        type=BlockType.PARAGRAPH,
+                        text=_to_text(paragraph),
+                        spans=[],
+                    )
+                )
 
             section = Section(id="pmc", title="Europe PMC", blocks=blocks)
 

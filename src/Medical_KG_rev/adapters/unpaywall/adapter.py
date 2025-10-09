@@ -104,9 +104,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 class UnpaywallAdapter(ResilientHTTPAdapter):
     """Adapter for Unpaywall open access status."""
 
-    def __init__(
-        self, email: str | None = None, client: HttpClient | None = None
-    ) -> None:
+    def __init__(self, email: str | None = None, client: HttpClient | None = None) -> None:
         super().__init__(
             name="unpaywall",
             base_url="https://api.unpaywall.org/v2",
@@ -150,12 +148,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
                 id="unpaywall",
                 title="Open Access",
                 blocks=[
-                    Block(
-                        id="oa-block",
-                        type=BlockType.PARAGRAPH,
-                        text=_to_text(text),
-                        spans=[]
-                    )
+                    Block(id="oa-block", type=BlockType.PARAGRAPH, text=_to_text(text), spans=[])
                 ],
             )
 

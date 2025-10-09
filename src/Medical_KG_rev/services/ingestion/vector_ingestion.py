@@ -84,4 +84,3 @@ class VectorIngestionService:
 
 
 __all__ = ["VectorIngestionService"]
-

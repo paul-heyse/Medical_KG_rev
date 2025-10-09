@@ -64,7 +64,9 @@ async def test_embedding_service_serializes_response(monkeypatch: pytest.MonkeyP
                 metadata={"tenant_id": "tenant"},
             )
         ],
-        metadata=EmbeddingMetadata(provider="vllm", dimension=3, duration_ms=5.0, model="stub-model"),
+        metadata=EmbeddingMetadata(
+            provider="vllm", dimension=3, duration_ms=5.0, model="stub-model"
+        ),
     )
     monkeypatch.setattr(service, "embed", lambda request: stub_response)
 

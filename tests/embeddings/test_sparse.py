@@ -5,7 +5,10 @@ from types import ModuleType
 import pytest
 
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRequest
-from Medical_KG_rev.embeddings.sparse.splade import PyseriniSparseEmbedder, build_rank_features_mapping
+from Medical_KG_rev.embeddings.sparse.splade import (
+    PyseriniSparseEmbedder,
+    build_rank_features_mapping,
+)
 
 
 @pytest.fixture(autouse=True)

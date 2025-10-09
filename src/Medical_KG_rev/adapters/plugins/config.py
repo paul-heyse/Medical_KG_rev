@@ -42,7 +42,9 @@ class AdapterSettings(BaseSettings):
     @classmethod
     def load(cls) -> "AdapterSettings":
         settings = cls()
-        logger.debug("adapter.settings.loaded", settings=settings.model_dump(exclude={"vault_token"}))
+        logger.debug(
+            "adapter.settings.loaded", settings=settings.model_dump(exclude={"vault_token"})
+        )
         return settings
 
 
@@ -66,7 +68,9 @@ class VaultSecretProvider:
         if cached and cached[0] > datetime.now(UTC):
             return cached[1]
         try:
-            response = self._client.secrets.kv.v2.read_secret_version(path=path, mount_point=self._mount_point)
+            response = self._client.secrets.kv.v2.read_secret_version(
+                path=path, mount_point=self._mount_point
+            )
         except Exception as exc:  # pragma: no cover - network failure
             logger.warning("adapter.vault.unavailable", path=path, exc_info=exc)
             return {}
@@ -78,13 +82,17 @@ class VaultSecretProvider:
 class SettingsHotReloader:
     """Background watcher that refreshes adapter settings periodically."""
 
-    def __init__(self, settings_factory: Callable[[], AdapterSettings], interval_seconds: float = 30.0) -> None:
+    def __init__(
+        self, settings_factory: Callable[[], AdapterSettings], interval_seconds: float = 30.0
+    ) -> None:
         self._settings_factory = settings_factory
         self._interval = interval_seconds
         self._current = settings_factory()
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, name="adapter-settings-hot-reload", daemon=True)
+        self._thread = threading.Thread(
+            target=self._loop, name="adapter-settings-hot-reload", daemon=True
+        )
 
     def start(self) -> None:
         self._thread.start()
@@ -139,7 +147,9 @@ class ConfigValidationResult:
         return cls(False, [str(error["msg"]) for error in exc.errors()])
 
 
-def validate_on_startup(settings_cls: type[AdapterSettings] = AdapterSettings) -> ConfigValidationResult:
+def validate_on_startup(
+    settings_cls: type[AdapterSettings] = AdapterSettings,
+) -> ConfigValidationResult:
     try:
         settings_cls.load()
     except ValidationError as exc:

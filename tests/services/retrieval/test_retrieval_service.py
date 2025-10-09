@@ -20,10 +20,14 @@ def _setup_clients():
 
 
 def _policy(**overrides: bool) -> TenantRerankPolicy:
-    return TenantRerankPolicy(default_enabled=False, tenant_defaults=overrides, experiment_ratio=0.0)
+    return TenantRerankPolicy(
+        default_enabled=False, tenant_defaults=overrides, experiment_ratio=0.0
+    )
 
 
-def _service(opensearch: OpenSearchClient, faiss: FAISSIndex, **policy_overrides: bool) -> RetrievalService:
+def _service(
+    opensearch: OpenSearchClient, faiss: FAISSIndex, **policy_overrides: bool
+) -> RetrievalService:
     return RetrievalService(
         opensearch,
         faiss,
@@ -143,10 +147,7 @@ def test_chunking_profile_filter_limits_results():
     )
 
     assert results
-    assert all(
-        result.metadata.get("chunking_profile") == "ctgov-registry"
-        for result in results
-    )
+    assert all(result.metadata.get("chunking_profile") == "ctgov-registry" for result in results)
 
 
 def test_rerank_fallback_records_error():

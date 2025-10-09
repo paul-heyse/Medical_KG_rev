@@ -61,12 +61,16 @@ def test_load_namespace_configs_from_directory(tmp_path: Path) -> None:
 
 def test_namespace_bulk_register_overwrites() -> None:
     registry = EmbeddingNamespaceRegistry()
-    registry.bulk_register({
-        "single_vector.test.4.v1": _sample_config(provider="initial"),
-    })
-    registry.bulk_register({
-        "single_vector.test.4.v1": _sample_config(provider="updated"),
-    })
+    registry.bulk_register(
+        {
+            "single_vector.test.4.v1": _sample_config(provider="initial"),
+        }
+    )
+    registry.bulk_register(
+        {
+            "single_vector.test.4.v1": _sample_config(provider="updated"),
+        }
+    )
     assert registry.get("single_vector.test.4.v1").provider == "updated"
 
 
@@ -138,7 +142,10 @@ def test_namespace_config_round_trip(tmp_path: Path) -> None:
     registry.bulk_register(configs)
     config = registry.get("single_vector.roundtrip.32.v1")
     assert config.parameters["max_tokens"] == 1024
-    assert config.to_embedder_config("single_vector.roundtrip.32.v1").parameters["endpoint"] == "http://localhost:8100/v1"
+    assert (
+        config.to_embedder_config("single_vector.roundtrip.32.v1").parameters["endpoint"]
+        == "http://localhost:8100/v1"
+    )
 
 
 def test_load_namespace_configs_from_aggregated_file(tmp_path: Path) -> None:

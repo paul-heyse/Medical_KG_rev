@@ -45,7 +45,9 @@ def _default_loader() -> Callable[[str], Iterable[object]]:  # pragma: no cover 
 class SciSpaCySentenceSegmenter:
     """Biomedical-aware sentence segmenter using scispaCy."""
 
-    def __init__(self, loader: Callable[[], Callable[[str], Iterable[object]]] | None = None) -> None:
+    def __init__(
+        self, loader: Callable[[], Callable[[str], Iterable[object]]] | None = None
+    ) -> None:
         self._loader = loader or _cached_loader
 
     def segment(self, text: str) -> List[Segment]:

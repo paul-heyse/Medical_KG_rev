@@ -37,7 +37,11 @@ class LlamaStyle:
         return [base, base / 2.0, base / 4.0]
 
     def embed_documents(self, texts):  # pragma: no cover - invoked via delegate helper
-        return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]
+        return [
+            [float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts
+        ]
 
     def embed(self, texts):  # pragma: no cover - invoked via delegate helper
-        return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]
+        return [
+            [float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts
+        ]

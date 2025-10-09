@@ -16,9 +16,7 @@ def weighted(
 ) -> FusionResponse:
     if not ranked_lists:
         return FusionResponse(documents=[], metrics={"weights": weights})
-    normalised_weights = {
-        strategy: float(weight) for strategy, weight in weights.items()
-    }
+    normalised_weights = {strategy: float(weight) for strategy, weight in weights.items()}
     weight_sum = sum(normalised_weights.values())
     if weight_sum <= 0:
         raise ValueError("Fusion weights must sum to a positive value")

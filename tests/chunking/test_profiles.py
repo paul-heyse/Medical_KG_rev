@@ -318,7 +318,9 @@ def _assert_spl_metadata(chunks):
 
 
 def _assert_guideline_metadata(chunks):
-    recommendations = [chunk for chunk in chunks if chunk.metadata["guideline_unit"] == "recommendation"]
+    recommendations = [
+        chunk for chunk in chunks if chunk.metadata["guideline_unit"] == "recommendation"
+    ]
     assert recommendations[0].metadata["recommendation_id"] == "R1"
     assert recommendations[0].metadata["strength"] == "strong"
     evidence_chunks = [chunk for chunk in chunks if chunk.metadata["guideline_unit"] == "evidence"]
@@ -472,7 +474,6 @@ def test_profile_chunkers_preserve_annotations(scenario: ProfileScenario, monkey
     assert [chunk.section_label for chunk in chunks] == list(scenario.expected_sections)
     assert [chunk.intent_hint for chunk in chunks] == list(scenario.expected_intents)
     assert all(
-        chunk.metadata.get("chunking_profile") == scenario.profile["name"]
-        for chunk in chunks
+        chunk.metadata.get("chunking_profile") == scenario.profile["name"] for chunk in chunks
     )
     scenario.metadata_assertions(chunks)

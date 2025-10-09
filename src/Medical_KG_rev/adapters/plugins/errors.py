@@ -8,4 +8,3 @@ class AdapterPluginError(RuntimeError):
 
 
 __all__ = ["AdapterPluginError"]
-

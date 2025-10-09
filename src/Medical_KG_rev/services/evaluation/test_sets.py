@@ -125,9 +125,7 @@ class TestSetManager:
         self.root = Path(root) if root is not None else None
         self._resource_root: Traversable | None
         if self.root is None:
-            self._resource_root = (
-                resources.files(_DATA_PACKAGE) / _DEFAULT_DATASET_SUBDIR
-            )
+            self._resource_root = resources.files(_DATA_PACKAGE) / _DEFAULT_DATASET_SUBDIR
         else:
             self._resource_root = None
         self._cache: dict[tuple[str, str | None], TestSet] = {}
@@ -178,7 +176,9 @@ class TestSetManager:
         self._cache[cache_key] = test_set
         return test_set
 
-    def refresh(self, name: str, *, new_queries: Sequence[Mapping[str, object]], version: str) -> TestSet:
+    def refresh(
+        self, name: str, *, new_queries: Sequence[Mapping[str, object]], version: str
+    ) -> TestSet:
         """Create a new version of a dataset replacing the cached entry."""
 
         if self.root is None:
@@ -192,7 +192,9 @@ class TestSetManager:
         serialised = yaml.safe_dump(payload, sort_keys=False)
         archive.write_text(serialised, encoding="utf-8")
         latest.write_text(serialised, encoding="utf-8")
-        test_set = TestSet(name=name, version=version, queries=tuple(_parse_queries(new_queries)), source=archive)
+        test_set = TestSet(
+            name=name, version=version, queries=tuple(_parse_queries(new_queries)), source=archive
+        )
         test_set.ensure_quality()
         self._cache[(name, version)] = test_set
         self._cache[(name, None)] = test_set
@@ -243,7 +245,9 @@ def cohens_kappa(labels_a: Sequence[object], labels_b: Sequence[object]) -> floa
     observed = sum(totals[(category, category)] for category in categories) / total
     marginal_a = Counter(labels_a)
     marginal_b = Counter(labels_b)
-    expected = sum((marginal_a[category] / total) * (marginal_b[category] / total) for category in categories)
+    expected = sum(
+        (marginal_a[category] / total) * (marginal_b[category] / total) for category in categories
+    )
     if expected == 1.0:
         return 1.0
     return (observed - expected) / (1.0 - expected)

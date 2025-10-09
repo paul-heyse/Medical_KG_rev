@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - fallback for local tooling
     try:
         from haystack.dataclasses import Document as HaystackDocument  # type: ignore
     except ImportError:  # pragma: no cover - unit test fallback
+
         @dataclass
         class HaystackDocument:  # type: ignore[override]
             id: str | None = None
@@ -32,6 +33,7 @@ except ImportError:  # pragma: no cover - fallback for local tooling
             meta: dict[str, Any] = field(default_factory=dict)
             embedding: Sequence[float] | None = None
             sparse_embedding: dict[str, float] | None = None
+
 
 try:  # pragma: no cover - optional dependency initialisation
     from haystack.components.preprocessors import DocumentSplitter  # type: ignore
@@ -52,7 +54,9 @@ class _StubRetrieverComponent:
         self._kind = kind
         self._top_k = top_k
 
-    def run(self, *, query: str, filters: dict[str, Any] | None = None) -> dict[str, list[_StubResultDocument]]:
+    def run(
+        self, *, query: str, filters: dict[str, Any] | None = None
+    ) -> dict[str, list[_StubResultDocument]]:
         payload_filters = dict(filters or {})
         key = tuple(sorted(payload_filters.items()))
         doc_id = f"{self._kind}-{abs(hash((query, key))) % 10000:04d}"
@@ -129,9 +133,7 @@ class HaystackChunker(ChunkStage):
                     "title_path": title_path,
                     "document_id": document.id,
                 }
-                haystack_documents.append(
-                    HaystackDocument(content=text, meta=dict(meta))
-                )
+                haystack_documents.append(HaystackDocument(content=text, meta=dict(meta)))
                 full_text.append(text)
                 offsets.append((running_offset, meta))
                 running_offset += len(text) + 1  # include newline when reconstructing
@@ -350,7 +352,9 @@ class HaystackIndexWriter(IndexStage):
                 self._sparse_writer.run(documents=payload)
             except Exception as exc:  # pragma: no cover - error propagation
                 opensearch_ok = False
-                logger.exception("opensearch_indexing_failed", index=self._opensearch_index, error=str(exc))
+                logger.exception(
+                    "opensearch_indexing_failed", index=self._opensearch_index, error=str(exc)
+                )
                 raise
 
         faiss_ok = True
@@ -415,7 +419,9 @@ class HaystackRetriever:
         self._ranker = fusion_ranker
         self._top_k = top_k
 
-    def retrieve(self, query: str, *, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def retrieve(
+        self, query: str, *, filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         lexical = self._bm25.run(query=query, filters=filters or {})
         dense = self._dense.run(query=query, filters=filters or {})
         lexical_docs = lexical.get("documents") if isinstance(lexical, dict) else lexical

@@ -78,10 +78,7 @@ def maxsim_score(query: Iterable[list[float]], document: Iterable[list[float]]) 
         return 0.0
     score = 0.0
     for q in query:
-        best = max(
-            sum(qi * di for qi, di in zip(q, d, strict=False))
-            for d in doc_vectors
-        )
+        best = max(sum(qi * di for qi, di in zip(q, d, strict=False)) for d in doc_vectors)
         score += best
     return score
 
@@ -91,7 +88,9 @@ class QdrantMultiVectorAdapter:
     collection: str
     payloads: dict[str, Mapping[str, object]] = field(default_factory=dict)
 
-    def upsert(self, doc_id: str, vectors: list[list[float]], metadata: Mapping[str, object]) -> None:
+    def upsert(
+        self, doc_id: str, vectors: list[list[float]], metadata: Mapping[str, object]
+    ) -> None:
         self.payloads[doc_id] = {"vectors": vectors, **metadata}
 
 
@@ -113,9 +112,7 @@ class ColbertIndexerEmbedder:
         shard_count = int(params.get("shards", 4))
         shard_capacity = int(params.get("shard_capacity", 2048))
         for index in range(shard_count):
-            self._shards.register(
-                f"shard-{index}", dimension=self._dim, capacity=shard_capacity
-            )
+            self._shards.register(f"shard-{index}", dimension=self._dim, capacity=shard_capacity)
         if "qdrant_collection" in params:
             self._qdrant = QdrantMultiVectorAdapter(collection=str(params["qdrant_collection"]))
         self._builder = RecordBuilder(self.config, normalized_override=self.config.normalize)
@@ -126,9 +123,7 @@ class ColbertIndexerEmbedder:
         assert self._builder is not None
         ids = list(request.ids or [])
         if len(ids) < len(texts):
-            ids.extend(
-                f"{request.namespace}:{index}" for index in range(len(ids), len(texts))
-            )
+            ids.extend(f"{request.namespace}:{index}" for index in range(len(ids), len(texts)))
         else:
             ids = ids[: len(texts)]
         vector_groups: list[list[list[float]]] = []

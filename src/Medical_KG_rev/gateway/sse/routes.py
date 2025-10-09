@@ -38,9 +38,7 @@ async def stream_job_events(
     job_id: str,
     service: GatewayService = Depends(get_gateway_service),
     security: SecurityContext = Depends(
-        secure_endpoint(
-            scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}/events/stream"
-        )
+        secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}/events/stream")
     ),
 ) -> StreamingResponse:
     job = service.get_job(job_id, tenant_id=security.tenant_id)

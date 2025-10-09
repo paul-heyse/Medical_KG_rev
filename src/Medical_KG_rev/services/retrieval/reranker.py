@@ -93,7 +93,9 @@ class CrossEncoderReranker:
             if document.doc_id in score_map:
                 payload["rerank_score"] = score_map[document.doc_id]
             ranked.append(payload)
-        ranked.sort(key=lambda entry: entry.get("rerank_score", entry.get("score", 0.0)), reverse=True)
+        ranked.sort(
+            key=lambda entry: entry.get("rerank_score", entry.get("score", 0.0)), reverse=True
+        )
 
         metrics: MutableMapping[str, object] = dict(response.metrics)
         metrics.setdefault("model", self.reranker_id)

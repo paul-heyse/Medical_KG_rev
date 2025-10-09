@@ -70,7 +70,9 @@ class _StubRetrievalService:
         return list(self._results)
 
 
-def _gateway_with_results(results: Sequence[RetrievalResult]) -> tuple[GatewayService, _StubRetrievalService, _DummyLedger]:
+def _gateway_with_results(
+    results: Sequence[RetrievalResult],
+) -> tuple[GatewayService, _StubRetrievalService, _DummyLedger]:
     events = _DummyEvents()
     ledger = _DummyLedger()
     orchestrator = _DummyOrchestrator()

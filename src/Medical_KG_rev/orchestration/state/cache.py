@@ -1,4 +1,5 @@
 """Runtime pipeline state caching utilities."""
+
 """Caching utilities for pipeline state serialisation."""
 
 from __future__ import annotations
@@ -23,9 +24,7 @@ class PipelineStateCache:
 
     max_entries: int = 64
     ttl_seconds: float | None = None
-    _entries: MutableMapping[str, PipelineStateSnapshot] = field(
-        factory=OrderedDict, init=False
-    )
+    _entries: MutableMapping[str, PipelineStateSnapshot] = field(factory=OrderedDict, init=False)
     _timestamps: MutableMapping[str, float] = field(factory=dict, init=False)
 
     def store(self, key: str, snapshot: PipelineStateSnapshot) -> None:
@@ -113,7 +112,9 @@ class PipelineStateCache:
 
     def purge(self) -> None:
         now = time.time()
-        expired = [key for key, entry in self._entries.items() if now - entry.created_at > self._ttl]
+        expired = [
+            key for key, entry in self._entries.items() if now - entry.created_at > self._ttl
+        ]
         for key in expired:
             self._entries.pop(key, None)
 

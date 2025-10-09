@@ -35,12 +35,8 @@ class PipelineMetrics:
 
     def record_extraction(self, parsed: ParsedDocument) -> None:
         unique_pages = {block.page for block in parsed.blocks}
-        MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(
-            len(unique_pages)
-        )
-        MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(
-            len(parsed.tables)
-        )
+        MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(len(unique_pages))
+        MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.tables))
         MINERU_FIGURE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(
             len(parsed.figures)
         )
@@ -127,9 +123,7 @@ class MineruPipeline:
                 cli_result=cli_result,
                 planned_memory_mb=planned_memory_mb,
             )
-            document = self._postprocessor.build_document(
-                parsed, request, metadata.as_dict()
-            )
+            document = self._postprocessor.build_document(parsed, request, metadata.as_dict())
             documents.append(document)
             metadata_entries.append(metadata)
             self._metrics.record_extraction(parsed)

@@ -20,6 +20,7 @@ def _restore_env(monkeypatch):
     monkeypatch.delenv("MEDICAL_KG_SENTENCE_MODEL", raising=False)
     yield
 
+
 def test_huggingface_segmenter_offsets():
     def loader():
         def _segment(text: str):
@@ -119,9 +120,7 @@ def test_tokenizer_sentence_splitter_breaks_on_double_newline():
                 ("Beta", (7, 11)),
             ]
 
-    tokenizer = SimpleNamespace(
-        backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend())
-    )
+    tokenizer = SimpleNamespace(backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend()))
 
     splitter = hf._TokenizerSentenceSplitter(tokenizer)
     text = "Alpha\n\nBeta"
@@ -139,9 +138,7 @@ def test_tokenizer_sentence_splitter_skips_whitespace_segments():
         def pre_tokenize_str(self, _: str):
             return [("   ", (0, 3))]
 
-    tokenizer = SimpleNamespace(
-        backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend())
-    )
+    tokenizer = SimpleNamespace(backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend()))
 
     splitter = hf._TokenizerSentenceSplitter(tokenizer)
     assert splitter("   ") == []
@@ -152,9 +149,7 @@ def test_tokenizer_sentence_splitter_returns_empty_when_no_tokens():
         def pre_tokenize_str(self, _: str):
             return []
 
-    tokenizer = SimpleNamespace(
-        backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend())
-    )
+    tokenizer = SimpleNamespace(backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend()))
 
     splitter = hf._TokenizerSentenceSplitter(tokenizer)
     assert splitter("Anything") == []
@@ -169,9 +164,7 @@ def test_tokenizer_sentence_splitter_respects_special_tokens():
                 ("Omega", (9, 14)),
             ]
 
-    tokenizer = SimpleNamespace(
-        backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend())
-    )
+    tokenizer = SimpleNamespace(backend_tokenizer=SimpleNamespace(pre_tokenizer=FakeBackend()))
 
     splitter = hf._TokenizerSentenceSplitter(tokenizer)
     text = "Alpha</s>Omega"
@@ -184,9 +177,7 @@ def test_tokenizer_sentence_splitter_respects_special_tokens():
 
 def test_heuristic_splitter_handles_whitespace():
     splitter = hf._HeuristicSentenceSplitter()
-    assert splitter("  Leading and trailing  ") == [
-        (2, 22, "Leading and trailing")
-    ]
+    assert splitter("  Leading and trailing  ") == [(2, 22, "Leading and trailing")]
 
 
 def test_heuristic_splitter_handles_missing_segments():

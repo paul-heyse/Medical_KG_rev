@@ -4,8 +4,17 @@ from typing import Any
 import pytest
 
 from Medical_KG_rev.auth.context import SecurityContext
-from Medical_KG_rev.services.vector_store.errors import DimensionMismatchError, NamespaceNotFoundError, ScopeError
-from Medical_KG_rev.services.vector_store.models import IndexParams, NamespaceConfig, VectorQuery, VectorRecord
+from Medical_KG_rev.services.vector_store.errors import (
+    DimensionMismatchError,
+    NamespaceNotFoundError,
+    ScopeError,
+)
+from Medical_KG_rev.services.vector_store.models import (
+    IndexParams,
+    NamespaceConfig,
+    VectorQuery,
+    VectorRecord,
+)
 from Medical_KG_rev.services.vector_store.registry import NamespaceRegistry
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
 from Medical_KG_rev.services.vector_store.types import VectorStorePort

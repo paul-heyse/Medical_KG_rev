@@ -121,10 +121,12 @@ def test_embedder_generates_embedding_batch(sample_document):
     chunker = HaystackChunker(splitter=StubDocumentSplitter())
     ctx = StageContext(tenant_id="tenant-b")
     chunks = chunker.execute(ctx, sample_document)
-    sparse = StubSparseExpander([
-        {"token": 0.5},
-        {"token": 0.75},
-    ])
+    sparse = StubSparseExpander(
+        [
+            {"token": 0.5},
+            {"token": 0.75},
+        ]
+    )
     embedder = HaystackEmbedder(embedder=StubEmbedder(), sparse_expander=sparse, require_gpu=False)
 
     batch = embedder.execute(ctx, chunks)

@@ -5,11 +5,13 @@ from Medical_KG_rev.services.retrieval.reranker import CrossEncoderReranker
 def _documents(count: int = 100) -> list[dict[str, object]]:
     docs: list[dict[str, object]] = []
     for index in range(count):
-        docs.append({
-            "id": f"doc-{index}",
-            "text": f"Document {index} about headaches and treatments",
-            "score": 0.5,
-        })
+        docs.append(
+            {
+                "id": f"doc-{index}",
+                "text": f"Document {index} about headaches and treatments",
+                "score": 0.5,
+            }
+        )
     return docs
 
 

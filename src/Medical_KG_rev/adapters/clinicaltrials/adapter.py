@@ -177,12 +177,14 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
                     Section(
                         id="summary",
                         title="Brief Summary",
-                        blocks=[Block(
-                            id="summary-block",
-                            type=BlockType.PARAGRAPH,
-                            text=_to_text(summary_text),
-                            spans=[]
-                        )],
+                        blocks=[
+                            Block(
+                                id="summary-block",
+                                type=BlockType.PARAGRAPH,
+                                text=_to_text(summary_text),
+                                spans=[],
+                            )
+                        ],
                     )
                 )
             detailed_text = description_module.get("detailedDescription")
@@ -196,7 +198,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
                                 id="description-block",
                                 type=BlockType.PARAGRAPH,
                                 text=_to_text(detailed_text),
-                                spans=[]
+                                spans=[],
                             )
                         ],
                     )

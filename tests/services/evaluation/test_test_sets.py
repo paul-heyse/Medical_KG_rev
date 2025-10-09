@@ -71,5 +71,3 @@ def test_refresh_writes_version(tmp_path: Path) -> None:
 def test_cohens_kappa_handles_agreement() -> None:
     assert cohens_kappa([1, 1, 0, 0], [1, 1, 0, 0]) == pytest.approx(1.0)
     assert cohens_kappa([1, 0, 1, 0], [0, 1, 0, 1]) == pytest.approx(-1.0)
-
-

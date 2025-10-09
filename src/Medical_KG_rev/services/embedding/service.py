@@ -103,9 +103,7 @@ class EmbeddingWorker:
         """Execute the embed stage for the provided request."""
 
         cleaned_texts = [
-            text.strip()
-            for text in request.texts
-            if isinstance(text, str) and text.strip()
+            text.strip() for text in request.texts if isinstance(text, str) and text.strip()
         ]
         if not cleaned_texts:
             logger.warning(
@@ -274,4 +272,3 @@ __all__ = [
     "EmbeddingVector",
     "EmbeddingWorker",
 ]
-

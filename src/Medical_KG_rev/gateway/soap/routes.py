@@ -90,7 +90,7 @@ async def soap_entrypoint(
         request = IngestionRequest(tenant_id=tenant_id, items=items)
         result = service.ingest(dataset, request)
         payload = "".join(
-            f"<operation id=\"{status.job_id}\" message=\"{status.message or ''}\"/>"
+            f'<operation id="{status.job_id}" message="{status.message or ""}"/>'
             for status in result.operations
         )
         get_audit_trail().record(

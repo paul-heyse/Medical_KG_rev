@@ -9,12 +9,7 @@ from typing import Any
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 
 
-MetadataSource = (
-    Sequence[dict[str, Any]]
-    | dict[str, Any]
-    | Callable[[int], dict[str, Any]]
-    | None
-)
+MetadataSource = Sequence[dict[str, Any]] | dict[str, Any] | Callable[[int], dict[str, Any]] | None
 
 
 def _resolve_ids(request: EmbeddingRequest, count: int) -> list[str]:
@@ -25,9 +20,7 @@ def _resolve_ids(request: EmbeddingRequest, count: int) -> list[str]:
     return [*provided, *generated]
 
 
-def _normalize_ids(
-    ids: Sequence[str] | None, request: EmbeddingRequest, count: int
-) -> list[str]:
+def _normalize_ids(ids: Sequence[str] | None, request: EmbeddingRequest, count: int) -> list[str]:
     if ids is None:
         return _resolve_ids(request, count)
     normalized = list(ids[:count])

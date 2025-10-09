@@ -61,8 +61,7 @@ class ContextualChunker(BaseChunker, ABC):
         allowed_blocks: set[str] | None = None
         if blocks is not None:
             allowed_blocks = {
-                str(getattr(block, "id", index) or index)
-                for index, block in enumerate(blocks)
+                str(getattr(block, "id", index) or index) for index, block in enumerate(blocks)
             }
         contexts: list[BlockContext] = []
         for context in self.normalizer.iter_block_contexts(document):
@@ -101,15 +100,11 @@ class ContextualChunker(BaseChunker, ABC):
             token_counter=self.counter,
         )
         chunks: list[Chunk] = []
-        for segment in self.segment_document(
-            document, contexts, blocks=blocks
-        ):
+        for segment in self.segment_document(document, contexts, blocks=blocks):
             if not segment.contexts:
                 continue
             metadata = self._merge_metadata(segment.metadata)
-            chunks.append(
-                assembler.build(list(segment.contexts), metadata=metadata)
-            )
+            chunks.append(assembler.build(list(segment.contexts), metadata=metadata))
         return chunks
 
     def segment_document(
@@ -134,9 +129,7 @@ class ContextualChunker(BaseChunker, ABC):
             return False
         return True
 
-    def _merge_metadata(
-        self, metadata: dict[str, object] | None
-    ) -> dict[str, object]:
+    def _merge_metadata(self, metadata: dict[str, object] | None) -> dict[str, object]:
         merged: dict[str, object] = {}
         if metadata:
             merged.update(metadata)
@@ -148,9 +141,7 @@ class ContextualChunker(BaseChunker, ABC):
         return {}
 
     @abstractmethod
-    def segment_contexts(
-        self, contexts: Sequence[BlockContext]
-    ) -> Iterable[Segment]:
+    def segment_contexts(self, contexts: Sequence[BlockContext]) -> Iterable[Segment]:
         """Yield contiguous segments of contexts for chunk assembly."""
 
 
@@ -175,13 +166,9 @@ def resolve_sentence_encoder(
         try:  # pragma: no cover - optional dependency
             import torch
         except Exception as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError(
-                "GPU semantic checks requested but torch is unavailable"
-            ) from exc
+            raise RuntimeError("GPU semantic checks requested but torch is unavailable") from exc
         if not torch.cuda.is_available():  # pragma: no cover - runtime guard
-            raise RuntimeError(
-                "GPU semantic checks requested but CUDA is not available"
-            )
+            raise RuntimeError("GPU semantic checks requested but CUDA is not available")
         resolved = resolved.to("cuda")
     return resolved
 
@@ -210,9 +197,7 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
             encoder=encoder,
         )
 
-    def encode_contexts(
-        self, contexts: Sequence[BlockContext]
-    ) -> "np.ndarray":  # type: ignore[name-defined]
+    def encode_contexts(self, contexts: Sequence[BlockContext]) -> "np.ndarray":  # type: ignore[name-defined]
         import numpy as np
 
         sentences = [ctx.text for ctx in contexts]
@@ -223,4 +208,3 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
             raise ChunkerConfigurationError("Encoder does not expose an encode() method")
         embeddings = encode(sentences, convert_to_numpy=True)  # type: ignore[arg-type]
         return np.asarray(embeddings)
-

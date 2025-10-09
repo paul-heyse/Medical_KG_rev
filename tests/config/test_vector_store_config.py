@@ -64,7 +64,6 @@ tenants:
         load_vector_store_config(config_path)
 
 
-
 def test_migrate_legacy_structure() -> None:
     raw = {
         "vector_store": {

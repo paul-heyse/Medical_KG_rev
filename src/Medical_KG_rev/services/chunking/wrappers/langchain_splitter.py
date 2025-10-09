@@ -10,13 +10,13 @@ from ..port import Chunk
 from .base import BaseProfileChunker
 
 
-def _ensure_langchain_dependencies() -> tuple[Any, Any]:  # pragma: no cover - import side effects tested separately
+def _ensure_langchain_dependencies() -> tuple[
+    Any, Any
+]:  # pragma: no cover - import side effects tested separately
     try:
         from langchain_text_splitters import RecursiveCharacterTextSplitter
     except ImportError as exc:  # pragma: no cover
-        raise RuntimeError(
-            "langchain-text-splitters is required for LangChainChunker"
-        ) from exc
+        raise RuntimeError("langchain-text-splitters is required for LangChainChunker") from exc
     try:
         from transformers import AutoTokenizer
     except ImportError as exc:  # pragma: no cover
@@ -32,9 +32,7 @@ class LangChainChunker(BaseProfileChunker):
     def __init__(self, *, profile: dict[str, Any]) -> None:
         super().__init__(profile=profile)
         splitter_cls, tokenizer_cls = _ensure_langchain_dependencies()
-        model_id = profile.get("metadata", {}).get(
-            "tokenizer_model", "Qwen/Qwen2.5-Coder-1.5B"
-        )
+        model_id = profile.get("metadata", {}).get("tokenizer_model", "Qwen/Qwen2.5-Coder-1.5B")
         self._tokenizer = tokenizer_cls.from_pretrained(model_id)
         self._splitter = splitter_cls(
             chunk_size=profile.get("target_tokens", 512) * 4,

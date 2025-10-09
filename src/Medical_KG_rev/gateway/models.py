@@ -377,7 +377,9 @@ class EvaluationResponse(BaseModel):
 
     @classmethod
     def from_result(cls, result: EvaluationResult) -> "EvaluationResponse":
-        metrics = {name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()}
+        metrics = {
+            name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()
+        }
         latency = MetricSummaryView.from_metric(result.latency)
         config = json.loads(result.config.to_json())
         return cls(

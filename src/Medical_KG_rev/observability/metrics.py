@@ -380,7 +380,6 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
     JOB_DURATION.labels(operation=operation).observe(max(duration_seconds, 0.0))
 
 
-
 def record_chunking_document(profile: str, duration_seconds: float, chunks: int) -> None:
     """Record metrics for a completed chunking operation."""
 
@@ -407,8 +406,6 @@ def increment_postpdf_start_triggered() -> None:
     """Increment the post-PDF start triggered counter."""
 
     POSTPDF_START_TRIGGERED.inc()
-
-
 
 
 def record_reranking_operation(

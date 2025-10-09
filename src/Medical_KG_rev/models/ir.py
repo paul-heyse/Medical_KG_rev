@@ -20,6 +20,7 @@ from .equation import Equation
 from .figure import Figure
 from .table import Table, TableCell
 
+
 class IRBaseModel(BaseModel):
     """Base model that enforces strict validation across the IR."""
 

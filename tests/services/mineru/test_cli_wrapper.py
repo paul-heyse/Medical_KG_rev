@@ -7,7 +7,11 @@ import pytest
 
 pytest.importorskip("pydantic")
 
-from Medical_KG_rev.services.mineru.cli_wrapper import MineruCliInput, SimulatedMineruCli, create_cli
+from Medical_KG_rev.services.mineru.cli_wrapper import (
+    MineruCliInput,
+    SimulatedMineruCli,
+    create_cli,
+)
 
 
 def test_simulated_cli_generates_structured_output():

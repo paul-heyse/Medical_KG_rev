@@ -50,4 +50,3 @@ def test_worker_generates_chunk_ids_when_missing() -> None:
     ids = [vector.id for vector in response.vectors]
     assert len(ids) == 2
     assert all(id_.startswith("tenant:") for id_ in ids)
-

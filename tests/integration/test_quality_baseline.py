@@ -32,9 +32,7 @@ def test_quality_matches_baseline(simulated_processor):
         for document in batch.documents
     }
 
-    baseline_documents = {
-        entry["document_id"]: entry for entry in baseline.get("documents", [])
-    }
+    baseline_documents = {entry["document_id"]: entry for entry in baseline.get("documents", [])}
 
     for doc_id, expected in baseline_documents.items():
         assert doc_id in observed, f"Missing document {doc_id} in pipeline output"

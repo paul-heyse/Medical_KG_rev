@@ -1,4 +1,5 @@
 """Base coordinator abstractions shared by gateway operations."""
+
 from __future__ import annotations
 
 import asyncio
@@ -44,6 +45,8 @@ class CoordinatorError(RuntimeError):
     def __init__(self, message: str, *, context: Mapping[str, Any] | None = None) -> None:
         super().__init__(message)
         self.context = context or {}
+
+
 _METRICS_CACHE: dict[str, "CoordinatorMetrics"] = {}
 
 
@@ -187,9 +190,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
             ) from last.exception()
 
     @staticmethod
-    async def _consume_limiter(
-        limiter: AsyncLimiter, func: Callable[[], _ResultT]
-    ) -> _ResultT:
+    async def _consume_limiter(limiter: AsyncLimiter, func: Callable[[], _ResultT]) -> _ResultT:
         async with limiter:
             return func()
 

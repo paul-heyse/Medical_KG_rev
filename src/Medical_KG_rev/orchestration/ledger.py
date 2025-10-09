@@ -320,4 +320,3 @@ class JobLedger:
 
 __all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
 from Medical_KG_rev.observability.metrics import update_job_status_metrics
-

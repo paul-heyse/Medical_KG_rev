@@ -51,9 +51,7 @@ def _default_loader() -> Callable[[str], List[Segment]]:  # pragma: no cover - h
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     except Exception as exc:  # pragma: no cover - executed when download fails
-        raise RuntimeError(
-            f"Failed to load Hugging Face tokenizer '{model_name}': {exc}"
-        ) from exc
+        raise RuntimeError(f"Failed to load Hugging Face tokenizer '{model_name}': {exc}") from exc
 
     return _TokenizerSentenceSplitter(tokenizer)
 
@@ -67,9 +65,7 @@ class _TokenizerSentenceSplitter:
     def __call__(self, text: str) -> List[Segment]:
         backend = getattr(self.tokenizer, "backend_tokenizer", None)
         if backend is None:  # pragma: no cover - only happens with slow tokenizers
-            raise RuntimeError(
-                "The selected tokenizer does not expose a fast backend."
-            )
+            raise RuntimeError("The selected tokenizer does not expose a fast backend.")
 
         tokens = backend.pre_tokenizer.pre_tokenize_str(text)
         if not tokens:
@@ -135,7 +131,7 @@ def _should_close_sentence(token: str, text: str, start: int, end: int) -> bool:
         return True
 
     # Break on double newlines which often separate paragraphs.
-    if text[end:end + 2] == "\n\n":
+    if text[end : end + 2] == "\n\n":
         return True
 
     return False

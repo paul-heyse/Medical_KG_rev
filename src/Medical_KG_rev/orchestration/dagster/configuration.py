@@ -259,9 +259,7 @@ class ResiliencePolicy(BaseModel):
                 self._stage_name = stage_name
 
             def state_change(self, cb, old_state, new_state):  # type: ignore[override]
-                record_resilience_circuit_state(
-                    self._policy_name, self._stage_name, str(new_state)
-                )
+                record_resilience_circuit_state(self._policy_name, self._stage_name, str(new_state))
 
         breaker = CircuitBreaker(
             fail_max=cfg.failure_threshold,
@@ -425,7 +423,9 @@ class PipelineConfigLoader:
         with self._lock:
             self._cache.pop(name, None)
 
-    def watch(self, callback: Callable[[str, PipelineTopologyConfig], None], *, interval: float = 2.0) -> None:
+    def watch(
+        self, callback: Callable[[str, PipelineTopologyConfig], None], *, interval: float = 2.0
+    ) -> None:
         self._watchers.append(callback)
         if self._watch_thread is None:
             self._start_watcher(interval)
@@ -445,7 +445,9 @@ class PipelineConfigLoader:
                         self.load(name, force=True)
                 time.sleep(interval)
 
-        self._watch_thread = threading.Thread(target=_run, name="pipeline-config-watcher", daemon=True)
+        self._watch_thread = threading.Thread(
+            target=_run, name="pipeline-config-watcher", daemon=True
+        )
         self._watch_thread.start()
 
     def close(self) -> None:
@@ -547,6 +549,7 @@ class ResiliencePolicyLoader:
                     record_resilience_rate_limit_wait(name, stage, waited)
             call = _invoke
             if circuit_breaker is not None:
+
                 def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
                     return circuit_breaker.call(call, *inner_args, **inner_kwargs)
 
@@ -555,7 +558,9 @@ class ResiliencePolicyLoader:
 
         return _wrapped
 
-    def watch(self, callback: Callable[[str, ResiliencePolicy], None], *, interval: float = 2.0) -> None:
+    def watch(
+        self, callback: Callable[[str, ResiliencePolicy], None], *, interval: float = 2.0
+    ) -> None:
         self._watchers.append(callback)
         if self._watch_thread is None:
             self._start_watcher(interval)
@@ -574,7 +579,9 @@ class ResiliencePolicyLoader:
                     self.load(force=True)
                 time.sleep(interval)
 
-        self._watch_thread = threading.Thread(target=_run, name="resilience-policy-watcher", daemon=True)
+        self._watch_thread = threading.Thread(
+            target=_run, name="resilience-policy-watcher", daemon=True
+        )
         self._watch_thread.start()
 
     def close(self) -> None:

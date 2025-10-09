@@ -33,4 +33,6 @@ def test_tiktoken_budget(monkeypatch):
     tokenizers.get_tiktoken_encoder.cache_clear()
     tokens = tokenizers.count_tokens_tiktoken("abc")
     assert tokens == 3
-    assert tokenizers.ensure_within_budget("abcd", budget=5, counter=tokenizers.count_tokens_tiktoken)
+    assert tokenizers.ensure_within_budget(
+        "abcd", budget=5, counter=tokenizers.count_tokens_tiktoken
+    )

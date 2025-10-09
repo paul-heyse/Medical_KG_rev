@@ -26,7 +26,9 @@ class DoclingParser:
                 "Docling cannot be used for PDF parsing in production. Use MinerU for PDF OCR (GPU-only policy)."
             )
         if fmt_normalized not in self.SUPPORTED_FORMATS:
-            raise ValueError(f"Unsupported format '{fmt}'. Allowed formats: {sorted(self.SUPPORTED_FORMATS)}")
+            raise ValueError(
+                f"Unsupported format '{fmt}'. Allowed formats: {sorted(self.SUPPORTED_FORMATS)}"
+            )
         partitioned = self._partition(content=content, format=fmt_normalized)
         return _map_to_ir(doc_id=doc_id, partitioned=partitioned, fmt=fmt_normalized)
 

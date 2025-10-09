@@ -14,7 +14,7 @@ class PaginationMixin:
         *args: Any,
         page_size: int = 100,
         max_pages: int | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Generator[dict[str, Any], None, None]:
         """Paginate through API results."""
         page = 1

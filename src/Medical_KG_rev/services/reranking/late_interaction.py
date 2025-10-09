@@ -132,9 +132,7 @@ class ColBERTReranker(BaseReranker):
         return prepared
 
     # ------------------------------------------------------------------
-    def _query_vectors_from_metadata(
-        self, view: FeatureView
-    ) -> Sequence[Sequence[float]]:
+    def _query_vectors_from_metadata(self, view: FeatureView) -> Sequence[Sequence[float]]:
         raw = view.get_sequence("query_vectors")
         if not raw:
             return []
@@ -166,8 +164,7 @@ class ColBERTReranker(BaseReranker):
         max_sim = 0.0
         for query_vector in query_vectors:
             similarities = [
-                _cosine_similarity(query_vector, doc_vector)
-                for doc_vector in doc_vectors
+                _cosine_similarity(query_vector, doc_vector) for doc_vector in doc_vectors
             ]
             if similarities:
                 max_sim += max(similarities)

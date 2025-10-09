@@ -10,6 +10,7 @@ from typing import Any
 try:  # pragma: no cover - optional dependency for structured CloudEvents
     from cloudevents.http import CloudEvent  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - fallback used in unit tests
+
     class CloudEvent(dict):  # type: ignore[override]
         """Minimal CloudEvent shim when the official dependency is unavailable."""
 
@@ -20,9 +21,11 @@ except ModuleNotFoundError:  # pragma: no cover - fallback used in unit tests
         def keys(self):  # noqa: D401 - provide mapping-like interface
             return super().keys()
 
+
 try:  # pragma: no cover - orchestration Kafka client optional in CI
     from Medical_KG_rev.orchestration.kafka import KafkaClient
 except Exception:  # pragma: no cover - lightweight fallback
+
     class KafkaClient:  # type: ignore[override]
         """In-memory Kafka stub used when the orchestration stack is unavailable."""
 
@@ -41,7 +44,9 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _base_attributes(event_type: str, *, subject: str, correlation_id: str | None) -> dict[str, Any]:
+def _base_attributes(
+    event_type: str, *, subject: str, correlation_id: str | None
+) -> dict[str, Any]:
     event_id = uuid.uuid4().hex
     return {
         "specversion": "1.0",

@@ -30,12 +30,8 @@ def _load_module(name: str, path: pathlib.Path):
     return module
 
 
-_CONFIG_MODULE = _load_module(
-    "dagster_configuration", _ORCH_PATH / "dagster" / "configuration.py"
-)
-_STAGES_MODULE = _load_module(
-    "stage_contracts", _ORCH_PATH / "stages" / "contracts.py"
-)
+_CONFIG_MODULE = _load_module("dagster_configuration", _ORCH_PATH / "dagster" / "configuration.py")
+_STAGES_MODULE = _load_module("stage_contracts", _ORCH_PATH / "stages" / "contracts.py")
 orch_pkg = types.ModuleType("Medical_KG_rev.orchestration")
 orch_pkg.__path__ = [_ORCH_PATH]
 sys.modules["Medical_KG_rev.orchestration"] = orch_pkg
@@ -129,7 +125,6 @@ class StubChunk:
         self.body = body
         self.title_path = title_path
         self.section = section
-
 
 
 class _BaseStage:
@@ -451,7 +446,9 @@ def test_auto_pipeline_executes_all_stages(orchestrator: DagsterOrchestrator) ->
         if message.value["attributes"]["type"] == "stage.completed"
     ]
     assert all(isinstance(snapshot, str) and snapshot for snapshot in completed_snapshots)
-    decoded_snapshot = json.loads(zlib.decompress(base64.b64decode(completed_snapshots[-1])).decode("utf-8"))
+    decoded_snapshot = json.loads(
+        zlib.decompress(base64.b64decode(completed_snapshots[-1])).decode("utf-8")
+    )
     assert decoded_snapshot["version"] == state.schema_version
 
 
@@ -501,7 +498,9 @@ def test_stage_retry_emits_events(orchestrator: DagsterOrchestrator) -> None:
     stage_count = len(orchestrator._stub_stages)
     assert types.count("stage.started") == stage_count
     assert types.count("stage.completed") == stage_count
-    failure_events = [message for message in messages if message.value["attributes"]["type"] == "stage.failed"]
+    failure_events = [
+        message for message in messages if message.value["attributes"]["type"] == "stage.failed"
+    ]
     assert failure_events, "expected failure event to include snapshot"
     failure_snapshot = failure_events[0].value["data"].get("state_snapshot")
     assert isinstance(failure_snapshot, str) and failure_snapshot

@@ -87,7 +87,9 @@ def test_embed_normalizes_vectors(gateway_service: GatewayService) -> None:
     assert len(response.embeddings) == 1
     vector = response.embeddings[0]
     assert vector.kind == "single_vector"
-    assert pytest.approx(1.0, rel=1e-6) == sum(value * value for value in vector.vector or ()) ** 0.5
+    assert (
+        pytest.approx(1.0, rel=1e-6) == sum(value * value for value in vector.vector or ()) ** 0.5
+    )
     ledger: _StubLedger = gateway_service._ledger_stub  # type: ignore[attr-defined]
     assert ledger.metadata, "expected metadata update for embeddings"
 
@@ -113,16 +115,24 @@ def test_embed_persists_per_tenant(gateway_service: GatewayService) -> None:
     assert tenant_a_records and tenant_b_records
     assert all(record.tenant_id == "tenant-a" for record in tenant_a_records)
     assert all(record.tenant_id == "tenant-b" for record in tenant_b_records)
-    assert tenant_a_records[0].metadata["storage"]["faiss_index"].endswith("tenant-a/single_vector-qwen3-4096-v1.index")
+    assert (
+        tenant_a_records[0]
+        .metadata["storage"]["faiss_index"]
+        .endswith("tenant-a/single_vector-qwen3-4096-v1.index")
+    )
 
 
 def test_embed_rejects_empty_text(gateway_service: GatewayService) -> None:
-    request = EmbedRequest(tenant_id="tenant-a", texts=[" "], namespace="single_vector.qwen3.4096.v1")
+    request = EmbedRequest(
+        tenant_id="tenant-a", texts=[" "], namespace="single_vector.qwen3.4096.v1"
+    )
     with pytest.raises(RuntimeError):
         gateway_service.embed(request)
 
 
-def test_embed_denies_cross_tenant_namespace(monkeypatch: pytest.MonkeyPatch, gateway_service: GatewayService) -> None:
+def test_embed_denies_cross_tenant_namespace(
+    monkeypatch: pytest.MonkeyPatch, gateway_service: GatewayService
+) -> None:
     service = gateway_service
     service.namespace_registry.register(
         "single_vector.private.8.v1",

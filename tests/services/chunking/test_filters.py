@@ -8,7 +8,9 @@ def _document_with_blocks(blocks: list[Block]) -> Document:
 
 
 def test_drop_boilerplate_removes_headers():
-    header = Block(id="b1", type=BlockType.PARAGRAPH, text="Page 1 of 20", metadata={"role": "header"})
+    header = Block(
+        id="b1", type=BlockType.PARAGRAPH, text="Page 1 of 20", metadata={"role": "header"}
+    )
     body = Block(id="b2", type=BlockType.PARAGRAPH, text="Valid content")
     document = _document_with_blocks([header, body])
 

@@ -43,6 +43,8 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
     def get_logger(name: str) -> _FallbackLogger:  # type: ignore[override]
         return _FallbackLogger(name)
+
+
 try:  # pragma: no cover - metrics may be unavailable in lightweight envs
     from Medical_KG_rev.observability.metrics import (
         MINERU_VLLM_CLIENT_FAILURES,
@@ -50,6 +52,7 @@ try:  # pragma: no cover - metrics may be unavailable in lightweight envs
         MINERU_VLLM_REQUEST_DURATION,
     )
 except Exception:  # pragma: no cover - provide dummy metrics for tests without deps
+
     class _DummyMetric:
         def __init__(self) -> None:
             self.labels = lambda *_, **__: self  # type: ignore[assignment]
@@ -181,12 +184,8 @@ class VLLMClient:
         try:
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(self._retry_attempts),
-                wait=wait_exponential(
-                    multiplier=self._retry_backoff_multiplier, min=4, max=60
-                ),
-                retry=retry_if_exception_type(
-                    (httpx.TimeoutException, httpx.NetworkError)
-                ),
+                wait=wait_exponential(multiplier=self._retry_backoff_multiplier, min=4, max=60),
+                retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
                 before_sleep=_record_retry,
                 reraise=True,
             ):

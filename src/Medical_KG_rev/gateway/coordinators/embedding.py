@@ -1,4 +1,5 @@
 """Embedding coordinator implementation."""
+
 from __future__ import annotations
 
 import math
@@ -8,7 +9,10 @@ from time import perf_counter
 from typing import Any, Mapping, Sequence
 
 from Medical_KG_rev.auth.scopes import Scopes
-from Medical_KG_rev.embeddings.ports import EmbeddingRecord, EmbeddingRequest as AdapterEmbeddingRequest
+from Medical_KG_rev.embeddings.ports import (
+    EmbeddingRecord,
+    EmbeddingRequest as AdapterEmbeddingRequest,
+)
 from Medical_KG_rev.gateway.models import (
     EmbeddingMetadata,
     EmbeddingOptions,
@@ -103,7 +107,9 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
                     type="https://httpstatuses.com/400",
                     detail="Embedding texts must be non-empty strings",
                 )
-                self._lifecycle.mark_failed(job_id, reason=detail.detail or detail.title, stage="embed")
+                self._lifecycle.mark_failed(
+                    job_id, reason=detail.detail or detail.title, stage="embed"
+                )
                 raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id})
             body = text.strip()
             chunk_id = f"{job_id}:chunk:{index}"
@@ -128,8 +134,12 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
                 duration_ms=0.0,
                 model=model_name,
             )
-            response = EmbeddingResponse(namespace=request.namespace, embeddings=(), metadata=metadata)
-            return EmbeddingResult(job_id=job_id, duration_s=0.0, response=response, metadata=payload)
+            response = EmbeddingResponse(
+                namespace=request.namespace, embeddings=(), metadata=metadata
+            )
+            return EmbeddingResult(
+                job_id=job_id, duration_s=0.0, response=response, metadata=payload
+            )
 
         embedder = self._registry.get(request.namespace)
         adapter_request = AdapterEmbeddingRequest(
@@ -158,7 +168,9 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
                     tenant_id=request.tenant_id,
                     error=exc,
                 )
-            raise CoordinatorError(detail.title, context={"problem": detail, "job_id": job_id}) from exc
+            raise CoordinatorError(
+                detail.title, context={"problem": detail, "job_id": job_id}
+            ) from exc
 
         embeddings: list[EmbeddingVector] = []
         prepared_records: list[EmbeddingRecord] = []
@@ -172,7 +184,9 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
             meta.setdefault("model", config.model_id)
             meta.setdefault("model_version", config.model_version)
             meta.setdefault("normalized", options.normalize or meta.get("normalized", False))
-            meta.setdefault("pipeline", f"{self._lifecycle.pipeline_name}:{self._lifecycle.pipeline_version}")
+            meta.setdefault(
+                "pipeline", f"{self._lifecycle.pipeline_name}:{self._lifecycle.pipeline_version}"
+            )
             meta.setdefault("correlation_id", correlation_id)
             storage_meta = self._storage_metadata(record.kind, request.tenant_id, request.namespace)
             if storage_meta:

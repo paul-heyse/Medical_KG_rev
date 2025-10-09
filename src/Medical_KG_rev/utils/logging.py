@@ -45,12 +45,14 @@ except Exception:  # pragma: no cover - OTLP exporter optional
 try:  # pragma: no cover - optional settings dependency
     from Medical_KG_rev.config import TelemetrySettings
 except Exception:  # pragma: no cover - fallback for lightweight environments
+
     class TelemetrySettings:  # type: ignore[override]
         """Fallback telemetry settings used when the config package is minimal."""
 
         sample_ratio: float = 1.0
         exporter: str = "console"
         endpoint: str | None = None
+
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from Medical_KG_rev.config.settings import LoggingSettings

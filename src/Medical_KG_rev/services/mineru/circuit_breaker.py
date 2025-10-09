@@ -35,9 +35,12 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
     def get_logger(name: str) -> _FallbackLogger:  # type: ignore[override]
         return _FallbackLogger(name)
+
+
 try:  # pragma: no cover - metrics import may pull optional deps
     from Medical_KG_rev.observability.metrics import MINERU_VLLM_CIRCUIT_BREAKER_STATE
 except Exception:  # pragma: no cover - fallback gauge when metrics unavailable
+
     class _FallbackGauge:
         def set(self, value: float) -> None:  # type: ignore[override]
             return None

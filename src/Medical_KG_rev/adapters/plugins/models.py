@@ -43,7 +43,9 @@ class AdapterConfig(BaseSettings):
         extra="ignore",
     )
 
-    timeout_seconds: PositiveInt = Field(30, description="HTTP timeout in seconds for upstream calls.")
+    timeout_seconds: PositiveInt = Field(
+        30, description="HTTP timeout in seconds for upstream calls."
+    )
     rate_limit_per_second: float = Field(
         5.0,
         ge=0,
@@ -116,7 +118,9 @@ class AdapterCostEstimate(BaseModel):
         """Derive a naive cost estimate based on rate limits and window sizes."""
 
         if requests_per_second <= 0:
-            return cls(estimated_requests=1, estimated_latency_seconds=float(window.total_seconds()))
+            return cls(
+                estimated_requests=1, estimated_latency_seconds=float(window.total_seconds())
+            )
         estimated_requests = max(1, int(window.total_seconds() * requests_per_second))
         latency = estimated_requests / max(requests_per_second, 1e-6)
         return cls(
@@ -164,8 +168,12 @@ class AdapterMetadata(BaseModel):
     summary: str = Field(default="", description="Short human-readable summary of the adapter.")
     capabilities: list[str] = Field(default_factory=list)
     maintainer: str | None = Field(default=None, description="Contact for adapter maintenance.")
-    entry_point: str | None = Field(default=None, description="Entry point path used for registration.")
-    schema_version: str = Field(default="1.0.0", description="Version of the adapter contract schema.")
+    entry_point: str | None = Field(
+        default=None, description="Entry point path used for registration."
+    )
+    schema_version: str = Field(
+        default="1.0.0", description="Version of the adapter contract schema."
+    )
     config_schema: Mapping[str, Any] = Field(default_factory=dict)
     extra: Mapping[str, Any] = Field(default_factory=dict)
 

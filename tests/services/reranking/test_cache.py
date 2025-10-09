@@ -16,7 +16,7 @@ class FakeRedis:
         self.store[key] = value
 
     def scan_iter(self, match: str):
-        return [key for key in self.store if key.startswith(match.split('*')[0])]
+        return [key for key in self.store if key.startswith(match.split("*")[0])]
 
     def delete(self, *keys: str) -> None:
         for key in keys:

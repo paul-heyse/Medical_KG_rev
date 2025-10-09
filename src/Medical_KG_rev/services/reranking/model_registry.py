@@ -183,7 +183,11 @@ class RerankerModelRegistry:
     def ensure(self, identifier: str | None = None) -> ModelHandle:
         model = self.get(identifier)
         try:
-            path = self.downloader.fetch(model) if self.downloader else model.cache_path(self.cache_dir)  # type: ignore[arg-type]
+            path = (
+                self.downloader.fetch(model)
+                if self.downloader
+                else model.cache_path(self.cache_dir)
+            )  # type: ignore[arg-type]
         except Exception as exc:  # pragma: no cover - defensive
             raise ModelDownloadError(str(exc)) from exc
         return ModelHandle(model=model, path=path)

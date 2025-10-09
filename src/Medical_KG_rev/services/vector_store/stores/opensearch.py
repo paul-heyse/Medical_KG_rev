@@ -139,7 +139,9 @@ class OpenSearchKNNStore(VectorStorePort):
         vector_weight = float(filters.pop("vector_weight", 0.5))
         vector_weight = min(max(vector_weight, 0.0), 1.0)
 
-        vector_filters = {key: value for key, value in filters.items() if key not in _SPECIAL_FILTER_KEYS}
+        vector_filters = {
+            key: value for key, value in filters.items() if key not in _SPECIAL_FILTER_KEYS
+        }
         vector_matches: list[VectorMatch] = []
         if mode in {"vector", "hybrid"}:
             vector_matches = list(
@@ -214,7 +216,9 @@ class OpenSearchKNNStore(VectorStorePort):
             data["opensearch"] = {
                 "engine": state.engine,
                 "rank_profiles": {name: dict(cfg) for name, cfg in state.rank_profiles.items()},
-                "lexical_tokens": {key: sorted(tokens) for key, tokens in state.lexical_tokens.items()},
+                "lexical_tokens": {
+                    key: sorted(tokens) for key, tokens in state.lexical_tokens.items()
+                },
                 "trained": state.trained,
             }
         path.write_text(json.dumps(data, sort_keys=True))
@@ -313,7 +317,9 @@ class OpenSearchKNNStore(VectorStorePort):
             "supports_hybrid": True,
             "engines": ["lucene", "faiss"],
             "compression": ["none", "int8", "fp16", "pq"],
-            "requires_training": [key for key, state in self._states.items() if state.engine == "faiss"],
+            "requires_training": [
+                key for key, state in self._states.items() if state.engine == "faiss"
+            ],
         }
 
     def train_index(
@@ -438,4 +444,3 @@ class OpenSearchKNNStore(VectorStorePort):
 
 
 __all__ = ["OpenSearchKNNStore"]
-

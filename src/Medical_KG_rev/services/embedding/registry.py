@@ -81,9 +81,7 @@ class EmbeddingModelRegistry:
     _registry: EmbedderRegistry = field(init=False)
     _factory: EmbedderFactory = field(init=False)
     _configs_by_name: dict[str, EmbedderConfig] = field(init=False, default_factory=dict)
-    _configs_by_namespace: dict[str, EmbedderConfig] = field(
-        init=False, default_factory=dict
-    )
+    _configs_by_namespace: dict[str, EmbedderConfig] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         self.namespace_manager = self.namespace_manager or NamespaceManager()
@@ -112,14 +110,14 @@ class EmbeddingModelRegistry:
                 namespaces={},
             )
 
-    def _load_namespace_configs(
-        self, config_path: str | Path | None
-    ) -> dict[str, NamespaceConfig]:
+    def _load_namespace_configs(self, config_path: str | Path | None) -> dict[str, NamespaceConfig]:
         path_obj = Path(config_path) if config_path else None
         directory = None
         if path_obj is not None:
             directory = path_obj.parent / "embedding" / "namespaces"
-        return load_namespace_configs(directory, fallback_config=self._config) or dict(_DEFAULT_NAMESPACES)
+        return load_namespace_configs(directory, fallback_config=self._config) or dict(
+            _DEFAULT_NAMESPACES
+        )
 
     def _prime_configs(self) -> None:
         self.namespace_registry.reset()
@@ -185,9 +183,7 @@ class EmbeddingModelRegistry:
             missing = [name for name in models if name not in self._configs_by_name]
             if missing:
                 available = ", ".join(sorted(self._configs_by_name))
-                raise ValueError(
-                    f"Models {', '.join(missing)} not found. Available: {available}"
-                )
+                raise ValueError(f"Models {', '.join(missing)} not found. Available: {available}")
             return [self._configs_by_name[name] for name in models]
         return self.active_configs()
 

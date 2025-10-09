@@ -34,9 +34,7 @@ def _load_node_parser(class_name: str, **kwargs):
     }
     parser_cls = mapping.get(class_name)
     if parser_cls is None:
-        raise ChunkerConfigurationError(
-            f"Unsupported LlamaIndex parser '{class_name}'"
-        )
+        raise ChunkerConfigurationError(f"Unsupported LlamaIndex parser '{class_name}'")
     parser = parser_cls(**kwargs)
     return parser, LlamaDocument
 
@@ -82,11 +80,7 @@ class _BaseLlamaIndexChunker(BaseChunker):
         granularity: Granularity | None = None,
         blocks: Iterable | None = None,
     ) -> list[Chunk]:
-        contexts = [
-            ctx
-            for ctx in self.normalizer.iter_block_contexts(document)
-            if ctx.text
-        ]
+        contexts = [ctx for ctx in self.normalizer.iter_block_contexts(document) if ctx.text]
         if not contexts:
             return []
         mapper = OffsetMapper(contexts, token_counter=self.counter)
@@ -180,4 +174,3 @@ class LlamaIndexSentenceChunker(_BaseLlamaIndexChunker):
             parser_name="SentenceSplitterNodeParser",
             token_counter=token_counter,
         )
-

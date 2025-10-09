@@ -78,6 +78,7 @@ def _build_fake_torch():
         @staticmethod
         def memory_reserved(index: int) -> int:  # pragma: no cover - used via hasattr
             return 256 * 1024 * 1024
+
     fake = types.SimpleNamespace(cuda=_Cuda, version=types.SimpleNamespace(cuda="12.8"))
     fake.__spec__ = types.SimpleNamespace(loader=None)  # type: ignore[attr-defined]
     return fake
@@ -157,9 +158,7 @@ def test_mineru_processor_respects_batch_size(microservice_modules):
         enabled=True,
         simulate_if_unavailable=True,
         cli_command="mineru-missing",
-        workers=MineruWorkerSettings(
-            count=1, batch_size=1, device_ids=[0], vram_per_worker_gb=1
-        ),
+        workers=MineruWorkerSettings(count=1, batch_size=1, device_ids=[0], vram_per_worker_gb=1),
     )
     processor = microservice_modules.mineru.MineruProcessor(
         microservice_modules.gpu_manager.GpuManager(

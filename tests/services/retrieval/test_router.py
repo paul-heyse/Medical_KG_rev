@@ -56,4 +56,3 @@ def test_linear_fusion_uses_weights() -> None:
     results = router.execute(request, strategies)
     assert results[0].id == "doc-a"
     assert results[0].metadata["namespace"] == "ns"
-

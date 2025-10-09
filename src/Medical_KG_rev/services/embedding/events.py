@@ -10,6 +10,7 @@ from typing import Any
 try:  # pragma: no cover - optional dependency for structured CloudEvents
     from cloudevents.http import CloudEvent  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - fallback used in tests without dependency
+
     class CloudEvent(dict):  # type: ignore[override]
         """Minimal CloudEvent fallback supporting the mapping interface."""
 
@@ -20,9 +21,11 @@ except ModuleNotFoundError:  # pragma: no cover - fallback used in tests without
         def keys(self):  # noqa: D401 - behave like standard CloudEvent mapping
             return super().keys()
 
+
 try:  # pragma: no cover - orchestration client optional in unit tests
     from Medical_KG_rev.orchestration.kafka import KafkaClient
 except Exception:  # pragma: no cover - fallback for lightweight envs
+
     class KafkaClient:  # type: ignore[override]
         """Minimal in-memory Kafka facade used when orchestration stack unavailable."""
 
@@ -37,12 +40,13 @@ except Exception:  # pragma: no cover - fallback for lightweight envs
             self._topics.setdefault(topic, []).append(value)
 
 
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _base_attributes(event_type: str, *, namespace: str, correlation_id: str | None) -> dict[str, Any]:
+def _base_attributes(
+    event_type: str, *, namespace: str, correlation_id: str | None
+) -> dict[str, Any]:
     event_id = str(uuid.uuid4())
     return {
         "specversion": "1.0",
@@ -172,4 +176,3 @@ class EmbeddingEventEmitter:
 
 
 __all__ = ["EmbeddingEventEmitter"]
-

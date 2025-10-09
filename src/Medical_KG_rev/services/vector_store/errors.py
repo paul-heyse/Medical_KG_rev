@@ -10,7 +10,14 @@ from Medical_KG_rev.utils.errors import FoundationError
 class VectorStoreError(FoundationError):
     """Base class for vector store errors with RFC 7807 payloads."""
 
-    def __init__(self, message: str, *, status: int, detail: str | None = None, extra: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int,
+        detail: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message, status=status, detail=detail)
         if extra:
             self.problem.extra = extra
@@ -47,7 +54,9 @@ class ResourceExhaustedError(VectorStoreError):
 
 
 class BackendUnavailableError(VectorStoreError):
-    def __init__(self, message: str = "Vector backend unavailable", *, retry_after: float | None = None) -> None:
+    def __init__(
+        self, message: str = "Vector backend unavailable", *, retry_after: float | None = None
+    ) -> None:
         super().__init__(
             message,
             status=503,

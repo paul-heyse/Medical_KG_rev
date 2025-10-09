@@ -58,4 +58,3 @@ def __getattr__(name: str) -> Any:
 
 def __dir__() -> list[str]:  # pragma: no cover - convenience helper
     return sorted(globals().keys() | _ATTRIBUTE_MAP.keys())
-

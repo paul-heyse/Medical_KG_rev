@@ -63,7 +63,7 @@ class Table(StructuredArtifact):
         grid = self._grid()
         if not grid:
             return ""
-        header = self.headers or tuple(f"Col {i+1}" for i in range(len(grid[0])))
+        header = self.headers or tuple(f"Col {i + 1}" for i in range(len(grid[0])))
         header_line = " | ".join(header)
         separator = " | ".join(["---"] * len(header))
         rows = [" | ".join(row) for row in grid]
@@ -75,12 +75,18 @@ class Table(StructuredArtifact):
         grid = self._grid()
         if not grid:
             return "<table></table>"
-        header = self.headers or tuple(f"Col {i+1}" for i in range(len(grid[0])))
+        header = self.headers or tuple(f"Col {i + 1}" for i in range(len(grid[0])))
         header_html = "".join(f"<th>{cell}</th>" for cell in header)
         body_rows = []
         for row in grid:
             body_rows.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-        return "<table><thead><tr>" + header_html + "</tr></thead><tbody>" + "".join(body_rows) + "</tbody></table>"
+        return (
+            "<table><thead><tr>"
+            + header_html
+            + "</tr></thead><tbody>"
+            + "".join(body_rows)
+            + "</tbody></table>"
+        )
 
     def by_row(self) -> dict[int, list[TableCell]]:
         grouped: dict[int, list[TableCell]] = defaultdict(list)

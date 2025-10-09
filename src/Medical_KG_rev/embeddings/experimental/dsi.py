@@ -22,7 +22,8 @@ class DSISearcher:
         self.name = self.config.name
         self.kind = self.config.kind
         logger.warning(
-            "embedding.experimental.dsi", message="DSI searcher is experimental and not production ready"
+            "embedding.experimental.dsi",
+            message="DSI searcher is experimental and not production ready",
         )
 
     def embed_documents(self, request: EmbeddingRequest) -> list[EmbeddingRecord]:

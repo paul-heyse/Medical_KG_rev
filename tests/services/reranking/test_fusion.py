@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from Medical_KG_rev.services.reranking import FusionService, FusionSettings, FusionStrategy, ScoredDocument
+from Medical_KG_rev.services.reranking import (
+    FusionService,
+    FusionSettings,
+    FusionStrategy,
+    ScoredDocument,
+)
 
 
 def _doc(doc_id: str, score: float, strategy: str) -> ScoredDocument:

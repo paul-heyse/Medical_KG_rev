@@ -45,6 +45,7 @@ class _StubChunker:
         if self._raise:
             raise self._raise
         return [_StubChunk(command.text)]
+
     def chunk(self, tenant_id: str, document_id: str, text: str, options) -> list[_StubChunk]:  # noqa: D401
         if self._raise:
             raise self._raise
@@ -103,7 +104,9 @@ class _StubEmbedder:
 
 
 class _StubEmbeddingRegistry:
-    def __init__(self, namespace: str, embedder: _StubEmbedder, registry: EmbeddingNamespaceRegistry) -> None:
+    def __init__(
+        self, namespace: str, embedder: _StubEmbedder, registry: EmbeddingNamespaceRegistry
+    ) -> None:
         self._namespace = namespace
         self._embedder = embedder
         self.namespace_registry = registry
@@ -119,7 +122,9 @@ class _AllowAllPolicy:
         self._namespace = namespace
         self._config = config
 
-    def evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         if namespace != self._namespace:
             raise ValueError("unexpected namespace")
         return NamespaceAccessDecision(
@@ -188,7 +193,9 @@ def test_job_lifecycle_failure_records_event(lifecycle: JobLifecycleManager) -> 
     assert events[-1].payload["reason"] == "boom"
 
 
-def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
+def test_chunking_coordinator_success(
+    lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig
+) -> None:
     chunker = _StubChunker()
     translator = ChunkingErrorTranslator(strategies=["section"])
     coordinator = ChunkingCoordinator(
@@ -216,7 +223,9 @@ def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_conf
     assert result.metadata == {"chunks": 1}
 
 
-def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
+def test_chunking_coordinator_error_maps_problem(
+    lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig
+) -> None:
     chunker = _StubChunker(raise_error=ChunkingFailedError("failed"))
     translator = ChunkingErrorTranslator(strategies=["section"])
     coordinator = ChunkingCoordinator(
@@ -245,7 +254,9 @@ def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager,
     assert problem.title == "Chunking failed"
 
 
-def test_embedding_coordinator_success(lifecycle: JobLifecycleManager, embed_config: CoordinatorConfig) -> None:
+def test_embedding_coordinator_success(
+    lifecycle: JobLifecycleManager, embed_config: CoordinatorConfig
+) -> None:
     registry = EmbeddingNamespaceRegistry()
     namespace = "single_vector.demo.3.v1"
     ns_config = NamespaceConfig(

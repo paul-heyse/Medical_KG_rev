@@ -93,9 +93,7 @@ class SectionAwareChunker(ContextualChunker):
         flush_text_segments()
         return result
 
-    def _merge_small_tail(
-        self, segments: list[list[BlockContext]]
-    ) -> list[list[BlockContext]]:
+    def _merge_small_tail(self, segments: list[list[BlockContext]]) -> list[list[BlockContext]]:
         if not segments:
             return []
         if len(segments) == 1:

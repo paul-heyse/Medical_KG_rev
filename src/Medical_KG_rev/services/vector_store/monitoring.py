@@ -30,8 +30,12 @@ VECTOR_COMPRESSION_RATIO = Gauge(
 )
 
 
-def record_vector_operation(operation: str, namespace: str, duration_seconds: float, count: int) -> None:
-    VECTOR_OPERATION_LATENCY.labels(operation=operation, namespace=namespace).observe(max(duration_seconds, 0.0))
+def record_vector_operation(
+    operation: str, namespace: str, duration_seconds: float, count: int
+) -> None:
+    VECTOR_OPERATION_LATENCY.labels(operation=operation, namespace=namespace).observe(
+        max(duration_seconds, 0.0)
+    )
     VECTOR_OPERATION_COUNTER.labels(operation=operation, namespace=namespace).inc(count)
 
 
@@ -48,4 +52,3 @@ __all__ = [
     "record_memory_usage",
     "record_vector_operation",
 ]
-

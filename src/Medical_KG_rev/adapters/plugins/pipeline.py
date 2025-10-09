@@ -83,9 +83,7 @@ class AdapterExecutionContext:
         if self.validation is None or self.validation.valid:
             return
         errors = ", ".join(self.validation.errors) or "unknown validation error"
-        raise AdapterPluginError(
-            f"Validation failed for adapter '{self.metadata.name}': {errors}"
-        )
+        raise AdapterPluginError(f"Validation failed for adapter '{self.metadata.name}': {errors}")
 
     def record_stage_result(
         self,
@@ -163,9 +161,7 @@ class AdapterStage:
                 status="error",
                 details={"error": str(exc), "exception": type(exc).__name__},
             )
-            raise AdapterPluginError(
-                f"Adapter stage '{self.name}' failed: {exc}"
-            ) from exc
+            raise AdapterPluginError(f"Adapter stage '{self.name}' failed: {exc}") from exc
 
         if not isinstance(result, AdapterExecutionContext):
             context.record_stage_result(
@@ -310,4 +306,3 @@ __all__ = [
     "AdapterStage",
     "StageResult",
 ]
-

@@ -26,7 +26,7 @@ class DOINormalizationMixin:
         prefixes = ["doi:", "DOI:", "https://doi.org/", "http://dx.doi.org/"]
         for prefix in prefixes:
             if doi.lower().startswith(prefix.lower()):
-                doi = doi[len(prefix):]
+                doi = doi[len(prefix) :]
                 break
 
         # Validate DOI format

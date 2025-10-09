@@ -158,11 +158,7 @@ class MineruPostProcessor:
             if "render_mode" not in equation.metadata:
                 metadata_updates["render_mode"] = render_mode
             rendering[equation.id] = render_mode
-            enriched = (
-                equation.enrich(metadata=metadata_updates)
-                if metadata_updates
-                else equation
-            )
+            enriched = equation.enrich(metadata=metadata_updates) if metadata_updates else equation
             prepared.append(enriched)
         return prepared, rendering
 
@@ -177,7 +173,9 @@ class MineruPostProcessor:
         json_blob = json.dumps(payload, ensure_ascii=False)
         csv_buffer = StringIO()
         writer = csv.writer(csv_buffer)
-        headers = list(table.headers) or [f"column_{idx}" for idx in range(self._infer_column_count(table))]
+        headers = list(table.headers) or [
+            f"column_{idx}" for idx in range(self._infer_column_count(table))
+        ]
         writer.writerow(headers)
         grid = self._build_table_grid(table)
         for row in grid:
@@ -249,7 +247,10 @@ class MineruPostProcessor:
     def _infer_equation_render_mode(self, equation) -> str:
         if not getattr(equation, "latex", ""):
             return "link"
-        if len(equation.latex) <= self._inline_equation_character_limit and getattr(equation, "mathml", None) is None:
+        if (
+            len(equation.latex) <= self._inline_equation_character_limit
+            and getattr(equation, "mathml", None) is None
+        ):
             return "inline"
         return "link"
 
@@ -281,7 +282,9 @@ class MineruPostProcessor:
 
         ir_block = IrBlock(
             id=block.id,
-            type=self._resolve_block_type(block.type, attached_table, attached_figure, attached_equation),
+            type=self._resolve_block_type(
+                block.type, attached_table, attached_figure, attached_equation
+            ),
             text=block.text,
             metadata=metadata,
             layout_bbox=block.bbox,
@@ -363,4 +366,6 @@ class MineruPostProcessor:
         result.setdefault("document_id", parsed.document_id)
         result.setdefault("processed_at", datetime.now(timezone.utc).isoformat())
         return result
+
+
 __all__ = ["MineruPostProcessor"]

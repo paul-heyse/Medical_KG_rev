@@ -26,9 +26,7 @@ def _build_role_keywords() -> dict[str, set[str]]:
     for family in _TAXONOMY.values():
         for role_name, labels in family.items():
             normalized = role_name.replace(" ", "_")
-            keywords.setdefault(normalized, set()).update(
-                {label.lower() for label in labels}
-            )
+            keywords.setdefault(normalized, set()).update({label.lower() for label in labels})
     return keywords
 
 
@@ -85,9 +83,7 @@ class ClinicalRoleChunker(ContextualChunker):
                 buffer = []
                 token_total = 0
         if buffer:
-            segments.append(
-                Segment(contexts=list(buffer), metadata={"facet_type": current_role})
-            )
+            segments.append(Segment(contexts=list(buffer), metadata={"facet_type": current_role}))
         return segments
 
     def explain(self) -> dict[str, object]:

@@ -185,9 +185,7 @@ class RerankRuntime:
                 raise RerankingError(
                     title="Tenant isolation violation",
                     status=403,
-                    detail=(
-                        f"Document '{document.doc_id}' belongs to tenant '{tenant}'"
-                    ),
+                    detail=(f"Document '{document.doc_id}' belongs to tenant '{tenant}'"),
                 )
             if not document.content:
                 raise InvalidPairFormatError(

@@ -71,7 +71,9 @@ def create_problem_response(detail: ProblemDetail) -> JSONResponse:
     payload: dict[str, Any] = detail.model_dump(mode="json")
     status = payload.get("status", 500)
     headers: dict[str, str] | None = None
-    retry_after = detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
+    retry_after = (
+        detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
+    )
     if isinstance(retry_after, (int, float)) and retry_after > 0:
         headers = {"Retry-After": str(int(retry_after))}
     return JSONResponse(

@@ -11,8 +11,7 @@ from .exceptions import ChunkerConfigurationError
 class SentenceSplitter(Protocol):
     """Protocol for sentence splitter adapters."""
 
-    def split(self, text: str) -> list[str]:
-        ...
+    def split(self, text: str) -> list[str]: ...
 
 
 @dataclass(slots=True)
@@ -100,4 +99,3 @@ def sentence_splitter_factory(name: str) -> SentenceSplitter:
     if normalized in {"pysbd", "py-sbd", "sbd"}:
         return PySBDSentenceSplitter()
     raise ChunkerConfigurationError(f"Unknown sentence splitter '{name}'")
-

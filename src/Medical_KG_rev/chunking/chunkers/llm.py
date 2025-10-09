@@ -1,6 +1,7 @@
 """LLM assisted chunker implementations."""
 
 from __future__ import annotations
+
 """LLM assisted chunker implementations."""
 
 from dataclasses import dataclass, field
@@ -24,8 +25,7 @@ from .semantic import SemanticSplitterChunker
 class SupportsLLMGeneration(Protocol):
     """Protocol implemented by lightweight LLM client wrappers."""
 
-    def generate(self, *, prompt: str, text: str) -> dict[str, object]:
-        ...
+    def generate(self, *, prompt: str, text: str) -> dict[str, object]: ...
 
 
 @dataclass(slots=True)
@@ -172,9 +172,7 @@ class LLMChapteringChunker(BaseChunker):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _fetch_boundaries(
-        self, document: Document, contexts: Sequence[BlockContext]
-    ) -> list[int]:
+    def _fetch_boundaries(self, document: Document, contexts: Sequence[BlockContext]) -> list[int]:
         cache_key = f"{document.id}:{self.prompt_version}"
         if cache_key in self._boundary_cache:
             return list(self._boundary_cache[cache_key])

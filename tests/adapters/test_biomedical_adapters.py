@@ -4,7 +4,12 @@ from typing import Any
 import httpx
 import pytest
 
-from Medical_KG_rev.adapters import AdapterDomain, AdapterRequest, create_adapter_from_config, load_adapter_config
+from Medical_KG_rev.adapters import (
+    AdapterDomain,
+    AdapterRequest,
+    create_adapter_from_config,
+    load_adapter_config,
+)
 from Medical_KG_rev.adapters.biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
@@ -55,7 +60,10 @@ def _mock_transport(callback):
 
 
 def _run_plugin(
-    plugin: BaseAdapterPlugin, *, parameters: dict[str, object], domain: AdapterDomain = AdapterDomain.BIOMEDICAL
+    plugin: BaseAdapterPlugin,
+    *,
+    parameters: dict[str, object],
+    domain: AdapterDomain = AdapterDomain.BIOMEDICAL,
 ) -> AdapterResponse:
     request = AdapterRequest(
         tenant_id="tenant",

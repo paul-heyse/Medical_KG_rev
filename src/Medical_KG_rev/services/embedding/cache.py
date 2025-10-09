@@ -23,7 +23,11 @@ def _serialize(record: EmbeddingRecord) -> str:
 
 def _deserialize(payload: str) -> EmbeddingRecord:
     data = json.loads(payload)
-    created_at = datetime.fromisoformat(data.get("created_at")) if data.get("created_at") else datetime.utcnow()
+    created_at = (
+        datetime.fromisoformat(data.get("created_at"))
+        if data.get("created_at")
+        else datetime.utcnow()
+    )
     return EmbeddingRecord(
         id=data["id"],
         tenant_id=data["tenant_id"],
@@ -45,14 +49,11 @@ def _deserialize(payload: str) -> EmbeddingRecord:
 class EmbeddingCache(Protocol):
     """Simple protocol describing cache operations."""
 
-    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None:
-        ...
+    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None: ...
 
-    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:
-        ...
+    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None: ...
 
-    def invalidate_namespace(self, namespace: str) -> None:
-        ...
+    def invalidate_namespace(self, namespace: str) -> None: ...
 
 
 class NullEmbeddingCache:
@@ -125,4 +126,3 @@ __all__ = [
     "NullEmbeddingCache",
     "RedisEmbeddingCache",
 ]
-

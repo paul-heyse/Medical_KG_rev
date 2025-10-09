@@ -78,10 +78,17 @@ class EmbeddingPersister(ABC):
         self._cache_limit = 256
 
     @abstractmethod
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Persist records to the backing store."""
 
-    def persist_batch(self, records: Sequence[EmbeddingRecord], context: PersistenceContext) -> PersistenceReport:
+    def persist_batch(
+        self, records: Sequence[EmbeddingRecord], context: PersistenceContext
+    ) -> PersistenceReport:
         report = PersistenceReport()
         started = perf_counter()
         try:
@@ -96,7 +103,9 @@ class EmbeddingPersister(ABC):
             )
         report.duration_ms = (perf_counter() - started) * 1000
         if self._telemetry:
-            self._telemetry.record_persistence(report, namespace=context.namespace, tenant_id=context.tenant_id)
+            self._telemetry.record_persistence(
+                report, namespace=context.namespace, tenant_id=context.tenant_id
+            )
         return report
 
     def _remember(self, record: EmbeddingRecord) -> None:
@@ -164,7 +173,12 @@ class VectorStorePersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._storage_router = storage_router
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         for record in records:
             self._storage_router.persist(record)
             self._remember(record)
@@ -178,7 +192,12 @@ class DatabasePersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._store: Dict[str, EmbeddingRecord] = {}
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         for record in records:
             self._store[record.id] = record
             self._remember(record)
@@ -205,7 +224,12 @@ class DryRunPersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._operations: list[PersistenceContext] = []
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         self._operations.append(context)
         report.skipped += len(records)
 
@@ -221,7 +245,12 @@ class MockPersister(EmbeddingPersister):
         super().__init__()
         self.persisted_records: list[EmbeddingRecord] = []
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         self.persisted_records.extend(records)
         for record in records:
             self._remember(record)
@@ -240,7 +269,12 @@ class HybridPersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._persisters = dict(persisters)
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         grouped: Dict[str, list[EmbeddingRecord]] = {}
         for record in records:
             grouped.setdefault(record.kind, []).append(record)

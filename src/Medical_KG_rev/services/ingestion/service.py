@@ -156,9 +156,7 @@ class IngestionService:
             section_label = chunk.section or chunk.meta.get("section", "unknown")
             section_counts[section_label or "unknown"] += 1
             intent_value = (
-                chunk.meta.get("intent_hint")
-                or chunk.meta.get("intent")
-                or "unspecified"
+                chunk.meta.get("intent_hint") or chunk.meta.get("intent") or "unspecified"
             )
             intent_counts[str(intent_value)] += 1
             token_totals += int(chunk.meta.get("token_count", 0) or 0)
@@ -215,6 +213,7 @@ class IngestionService:
         for index, chunk in enumerate(chunks):
             if chunk.chunk_id.startswith(f"{document_id}:"):
                 continue
-            updated = chunk.model_copy(update={"chunk_id": f"{document_id}:{chunk.chunker}:{chunk.granularity}:{index}"})
+            updated = chunk.model_copy(
+                update={"chunk_id": f"{document_id}:{chunk.chunker}:{chunk.granularity}:{index}"}
+            )
             chunks[index] = updated  # type: ignore[index]
-

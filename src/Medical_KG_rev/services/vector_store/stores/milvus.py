@@ -68,10 +68,14 @@ class MilvusLikeClient:
     def has_collection(self, name: str) -> bool:  # pragma: no cover - interface definition
         raise NotImplementedError
 
-    def create_collection(self, name: str, schema: Mapping[str, Any], **kwargs: Any) -> None:  # pragma: no cover
+    def create_collection(
+        self, name: str, schema: Mapping[str, Any], **kwargs: Any
+    ) -> None:  # pragma: no cover
         raise NotImplementedError
 
-    def create_index(self, name: str, field_name: str, params: Mapping[str, Any]) -> None:  # pragma: no cover
+    def create_index(
+        self, name: str, field_name: str, params: Mapping[str, Any]
+    ) -> None:  # pragma: no cover
         raise NotImplementedError
 
     def drop_index(self, name: str, field_name: str) -> None:  # pragma: no cover
@@ -274,7 +278,11 @@ class MilvusVectorStore(VectorStorePort):
 
     def list_collections(self, *, tenant_id: str) -> Sequence[str]:
         prefix = f"{tenant_id}__"
-        return [name.removeprefix(prefix) for name in self._client.list_collections() if name.startswith(prefix)]
+        return [
+            name.removeprefix(prefix)
+            for name in self._client.list_collections()
+            if name.startswith(prefix)
+        ]
 
     def upsert(
         self,
@@ -327,7 +335,9 @@ class MilvusVectorStore(VectorStorePort):
         )
         matches: list[VectorMatch] = []
         for identifier, score, metadata in results:
-            matches.append(VectorMatch(vector_id=identifier, score=float(score), metadata=dict(metadata)))
+            matches.append(
+                VectorMatch(vector_id=identifier, score=float(score), metadata=dict(metadata))
+            )
         return matches
 
     def delete(
@@ -375,8 +385,7 @@ class MilvusVectorStore(VectorStorePort):
             "compression": asdict(state.compression) if state else {"kind": "none"},
             "collection_metadata": dict(state.metadata) if state else {},
             "named_vector_params": {
-                name: asdict(params)
-                for name, params in (state.named_vectors or {}).items()
+                name: asdict(params) for name, params in (state.named_vectors or {}).items()
             }
             if state
             else {},
@@ -418,7 +427,9 @@ class MilvusVectorStore(VectorStorePort):
             params=params,
             compression=compression,
             metadata=payload.get("collection_metadata"),
-            named_vectors={key: IndexParams(**value) for key, value in named_params_payload.items()} if named_params_payload else None,
+            named_vectors={key: IndexParams(**value) for key, value in named_params_payload.items()}
+            if named_params_payload
+            else None,
         )
         records_payload = payload.get("records", [])
         records: list[VectorRecord] = []
@@ -459,7 +470,15 @@ class MilvusVectorStore(VectorStorePort):
         index_params = {
             "index_type": _index_type(state.params),
             "metric_type": _metric(state.params.metric),
-            "params": {key: value for key, value in state.metadata.get("indexes", {}).get("vector", {}).get("params", {}).items()} if state.metadata.get("indexes") else {},
+            "params": {
+                key: value
+                for key, value in state.metadata.get("indexes", {})
+                .get("vector", {})
+                .get("params", {})
+                .items()
+            }
+            if state.metadata.get("indexes")
+            else {},
         }
         if not index_params["params"]:
             index_params["params"] = {
@@ -529,4 +548,3 @@ class MilvusVectorStore(VectorStorePort):
 
 
 __all__ = ["MilvusVectorStore", "InMemoryMilvusClient", "MilvusLikeClient"]
-

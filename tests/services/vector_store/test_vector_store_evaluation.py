@@ -41,9 +41,7 @@ def test_ann_parameter_sweep_aggregates() -> None:
     store.upsert(
         tenant_id="tenant",
         namespace="default",
-        records=[
-            VectorRecord(vector_id="doc-1", values=[0.1, 0.2, 0.3], metadata={})
-        ],
+        records=[VectorRecord(vector_id="doc-1", values=[0.1, 0.2, 0.3], metadata={})],
     )
     runs = ann_parameter_sweep(
         store,
@@ -68,9 +66,7 @@ def test_compression_and_latency_helpers() -> None:
     store.upsert(
         tenant_id="tenant",
         namespace="default",
-        records=[
-            VectorRecord(vector_id="doc-1", values=[0.1, 0.2, 0.3], metadata={})
-        ],
+        records=[VectorRecord(vector_id="doc-1", values=[0.1, 0.2, 0.3], metadata={})],
     )
     recall_scores = compression_ab_test(
         store,
@@ -124,8 +120,12 @@ def test_memory_and_hybrid_helpers() -> None:
 
 def test_leaderboard_orders_runs() -> None:
     runs = [
-        EvaluationRun(params={"a": 1}, recall_at_k={10: 0.5}, ndcg_at_k={}, latency_ms=10, memory_bytes=1),
-        EvaluationRun(params={"b": 1}, recall_at_k={10: 0.9}, ndcg_at_k={}, latency_ms=20, memory_bytes=1),
+        EvaluationRun(
+            params={"a": 1}, recall_at_k={10: 0.5}, ndcg_at_k={}, latency_ms=10, memory_bytes=1
+        ),
+        EvaluationRun(
+            params={"b": 1}, recall_at_k={10: 0.9}, ndcg_at_k={}, latency_ms=20, memory_bytes=1
+        ),
     ]
     ordered = build_leaderboard(runs)
     assert ordered[0].params["b"] == 1

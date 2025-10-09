@@ -48,7 +48,9 @@ class ChunkCommand:
         if not isinstance(self.document_id, str) or not self.document_id.strip():
             raise InvalidDocumentError("Chunking requires a document identifier")
         if not isinstance(self.text, str) or not self.text.strip():
-            raise InvalidDocumentError("Chunking requests must include a non-empty 'text' field in options")
+            raise InvalidDocumentError(
+                "Chunking requests must include a non-empty 'text' field in options"
+            )
         if self.chunk_size is not None and self.chunk_size <= 0:
             raise InvalidDocumentError("chunk_size must be a positive integer when provided")
         if self.overlap is not None and not (0.0 <= self.overlap < 1.0):
@@ -142,4 +144,3 @@ class ChunkRequestProtocol:
 
 
 __all__ = ["ChunkCommand", "ChunkRequestProtocol"]
-

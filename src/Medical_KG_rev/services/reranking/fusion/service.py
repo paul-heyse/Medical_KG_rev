@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from ..models import FusionResponse, FusionSettings, FusionStrategy, NormalizationStrategy, ScoredDocument
+from ..models import (
+    FusionResponse,
+    FusionSettings,
+    FusionStrategy,
+    NormalizationStrategy,
+    ScoredDocument,
+)
 from . import deduplicate
 from .rrf import rrf
 from .weighted import weighted

@@ -98,7 +98,9 @@ class CoreStagePlugin(StagePlugin):
             return IRValidationStage()
         if stage_type == "chunk":
             splitter = self._pipeline_resource.splitter
-            return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
+            return HaystackChunker(
+                splitter, chunker_name="haystack.semantic", granularity="paragraph"
+            )
         if stage_type == "embed":
             embedder = self._pipeline_resource.embedder
             return HaystackEmbedder(embedder=embedder, require_gpu=False, sparse_expander=None)
@@ -159,7 +161,9 @@ class _PdfDownloadStage:
         tenant = ctx.tenant_id
         artifacts: list[DownloadArtifact] = []
         for index, payload in enumerate(payloads):
-            uri = str(payload.get("pdf_url") or payload.get("download_url") or payload.get("uri") or "")
+            uri = str(
+                payload.get("pdf_url") or payload.get("download_url") or payload.get("uri") or ""
+            )
             if not uri:
                 raise ValueError("PDF payload missing 'pdf_url' or 'download_url'")
             artifacts.append(
@@ -217,4 +221,3 @@ __all__ = [
     "CoreStagePlugin",
     "PdfTwoPhasePlugin",
 ]
-

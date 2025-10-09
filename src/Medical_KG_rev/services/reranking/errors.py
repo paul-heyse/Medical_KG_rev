@@ -38,9 +38,7 @@ class RerankingError(RuntimeError):
 
 class InvalidPairFormatError(RerankingError):
     def __init__(self, detail: str) -> None:
-        super().__init__(
-            title="Invalid query/document pair", status=400, detail=detail
-        )
+        super().__init__(title="Invalid query/document pair", status=400, detail=detail)
 
 
 class UnknownRerankerError(RerankingError):

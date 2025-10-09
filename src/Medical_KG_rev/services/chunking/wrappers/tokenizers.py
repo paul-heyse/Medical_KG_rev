@@ -46,7 +46,9 @@ def count_tokens_tiktoken(text: str, model_name: str = DEFAULT_TIKTOKEN_MODEL) -
     return len(encoder.encode(text))
 
 
-def ensure_within_budget(text: str, *, budget: int, counter: Callable[[str], int] = count_tokens_hf) -> bool:
+def ensure_within_budget(
+    text: str, *, budget: int, counter: Callable[[str], int] = count_tokens_hf
+) -> bool:
     return counter(text) <= budget
 
 

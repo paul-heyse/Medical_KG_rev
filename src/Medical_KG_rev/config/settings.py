@@ -371,11 +371,11 @@ class RerankerModelSettings(BaseModel):
                 if not torch.cuda.is_available():  # type: ignore[attr-defined]
                     raise ValueError("GPU is required for the configured reranker but unavailable")
             except Exception as exc:  # pragma: no cover - torch optional
-                raise ValueError("GPU is required for the configured reranker but unavailable") from exc
-            if not getattr(reranker, "requires_gpu", False):
                 raise ValueError(
-                    f"Reranker '{self.reranker_id}' does not support GPU execution"
-                )
+                    "GPU is required for the configured reranker but unavailable"
+                ) from exc
+            if not getattr(reranker, "requires_gpu", False):
+                raise ValueError(f"Reranker '{self.reranker_id}' does not support GPU execution")
         return self
 
 

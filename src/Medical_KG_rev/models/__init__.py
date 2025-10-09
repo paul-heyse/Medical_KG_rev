@@ -1,7 +1,7 @@
 """Data models exposed by the foundation infrastructure layer."""
 
 from .entities import Claim, Entity, Evidence, ExtractionActivity
-from .ir import Block, BlockType, Document, Section, Span, Table, TableCell
+from .ir import Block, BlockType, Document, Section, Span, Table
 from .organization import Organization, TenantContext
 from .overlays.finance import FinancialDocument, FinancialFact, XBRLContext
 from .overlays.legal import LegalClause, LegalDocument, LegalReference
@@ -29,7 +29,6 @@ __all__ = [
     "Section",
     "Span",
     "Table",
-    "TableCell",
     "TenantContext",
     "XBRLContext",
 ]

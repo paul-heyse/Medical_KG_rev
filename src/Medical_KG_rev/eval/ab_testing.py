@@ -50,7 +50,6 @@ class ABTestRunner:
         mean = sum(improvements) / max(len(improvements), 1)
         variance = sum((value - mean) ** 2 for value in improvements) / max(len(improvements) - 1, 1)
         stderr = math.sqrt(variance / max(len(improvements), 1))
-        z = 1.96 if self.confidence_level == 0.95 else 1.64
         confidence = max(0.0, min(1.0, 0.5 * (1 + math.erf(mean / (stderr * math.sqrt(2))))) if stderr else 1.0)
         metrics = {"mean_ndcg@10_delta": mean, "stderr": stderr}
         return ABTestOutcome(variant_a=variant_a, variant_b=variant_b, metrics=metrics, confidence=confidence)

@@ -51,7 +51,7 @@ class SciSpaCySentenceSegmenter:
     def segment(self, text: str) -> list[Segment]:
         nlp = self._loader()
         doc = nlp(text)
-        segments: List[Segment] = []
+        segments: list[Segment] = []
         for sent in doc.sents:  # type: ignore[attr-defined]
             start = getattr(sent, "start_char", 0)
             end = getattr(sent, "end_char", start)
@@ -76,11 +76,11 @@ def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _merge_abbreviation_segments(text: str, segments: List[Segment]) -> List[Segment]:
+def _merge_abbreviation_segments(text: str, segments: list[Segment]) -> list[Segment]:
     if not segments:
         return segments
 
-    merged: List[Segment] = []
+    merged: list[Segment] = []
     index = 0
     while index < len(segments):
         start, end, _ = segments[index]

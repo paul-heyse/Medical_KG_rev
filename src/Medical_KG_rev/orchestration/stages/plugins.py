@@ -577,4 +577,4 @@ class _StageRegistrationState:
                 self.status = "initialized"
         self.stage_type = registration.metadata.stage_type
         self.stage_types.add(registration.metadata.stage_type)
-        return StagePluginRegistration(metadata=metadata, builder=builder)
+        return StagePluginRegistration(metadata=registration.metadata, builder=registration.builder)

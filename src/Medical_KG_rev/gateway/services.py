@@ -705,7 +705,6 @@ class GatewayService:
             translator = self.chunking_error_translator or ChunkingErrorTranslator(
                 strategies=self.chunker.available_strategies()
             )
-            context = exc.context if isinstance(exc.context, Mapping) else {}
             detail = translator.translate(exc, command=None)
             if detail is not None:
                 raise GatewayError(detail.detail) from exc
@@ -759,7 +758,6 @@ class GatewayService:
         if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
             raise RuntimeError("Embedding components not initialised")
 
-        started = perf_counter()
         options = request.options or EmbeddingOptions()
         namespace = request.namespace
 
@@ -790,7 +788,6 @@ class GatewayService:
         config = decision.config or self.namespace_registry.get(namespace)
 
         job_id = self._new_job(request.tenant_id, "embed")
-        correlation_id = uuid.uuid4().hex
         model_name = options.model or config.model_id
 
         if self.embedding_telemetry:

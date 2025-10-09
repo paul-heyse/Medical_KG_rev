@@ -103,8 +103,8 @@ class CTGovRegistryChunker(BaseProfileChunker):
         groups: Sequence[Sequence],
         texts: Sequence[str],
         metadata: Sequence[dict[str, Any]],
-    ) -> List[Chunk]:
-        chunks: List[Chunk] = []
+    ) -> list[Chunk]:
+        chunks: list[Chunk] = []
         for contexts, text, extra in zip(groups, texts, metadata, strict=False):
             if not text:
                 continue
@@ -267,7 +267,7 @@ class GuidelineChunker(BaseProfileChunker):
                     metadata.append(self._evidence_metadata(contexts))
                 continue
 
-        chunks: List[Chunk] = []
+        chunks: list[Chunk] = []
         for contexts, text, extra in zip(groups, texts, metadata, strict=False):
             chunk = _build_chunk_from_contexts(
                 document=filtered,

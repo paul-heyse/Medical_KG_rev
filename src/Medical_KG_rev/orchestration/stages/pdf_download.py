@@ -242,7 +242,7 @@ class StorageAwarePdfDownloadStage(DownloadStage):
 
         return DownloadArtifact(
             document_id=document_id,
-            tenant_id=state.tenant_id,
+            tenant_id=tenant_id,
             uri=f"in-memory://{checksum}",
             metadata={
                 "checksum": checksum,

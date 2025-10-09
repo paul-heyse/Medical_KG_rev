@@ -44,7 +44,7 @@ class LlamaIndexChunker(BaseProfileChunker):
             return self._fallback_chunk(document)
         return self._llamaindex_chunk(document)
 
-    def _llamaindex_chunk(self, document: Document) -> List[Chunk]:
+    def _llamaindex_chunk(self, document: Document) -> list[Chunk]:
         filtered_document, groups = self._prepare_groups(document)
         documents: list[tuple[int, Any]] = []
         for index, group in enumerate(groups):
@@ -56,8 +56,8 @@ class LlamaIndexChunker(BaseProfileChunker):
         if not documents:
             return []
         nodes = self._parser.get_nodes_from_documents([doc for _, doc in documents])  # type: ignore[operator]
-        chunk_texts: List[str] = []
-        chunk_to_group: List[int] = []
+        chunk_texts: list[str] = []
+        chunk_to_group: list[int] = []
         for node in nodes:
             text = getattr(node, "text", None)
             if not text:
@@ -74,10 +74,10 @@ class LlamaIndexChunker(BaseProfileChunker):
             chunk_to_group_index=chunk_to_group,
         )
 
-    def _fallback_chunk(self, document: Document) -> List[Chunk]:
+    def _fallback_chunk(self, document: Document) -> list[Chunk]:
         filtered_document, groups = self._prepare_groups(document)
-        chunk_texts: List[str] = []
-        chunk_to_group: List[int] = []
+        chunk_texts: list[str] = []
+        chunk_to_group: list[int] = []
         for index, group in enumerate(groups):
             sentences: list[str] = []
             for ctx in group:

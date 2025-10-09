@@ -31,6 +31,11 @@ def _sigmoid(value: float) -> float:
     return 1.0 / (1.0 + exp(-value))
 
 
+def _bounded(value: float) -> float:
+    """Ensure score is within valid range [0,1]."""
+    return max(0.0, min(1.0, value))
+
+
 @dataclass(slots=True)
 class LambdaMARTModel:
     """Wrapper around LambdaMART/XGBoost style models."""
@@ -143,7 +148,6 @@ class OpenSearchLTRReranker(BaseReranker):
     def _score_batch(
         self, batch: Sequence[QueryDocumentPair], *, explain: bool = False
     ) -> BatchScore:
-        feature_order = self.feature_pipeline.feature_names()
         vectors = [
             FeatureVector(doc_id=pair.doc_id, values=self.feature_pipeline.extract(pair))
             for pair in batch

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from Medical_KG_rev.models.ir import Block, Document
+
+if TYPE_CHECKING:
+    import numpy as np
 
 from .assembly import ChunkAssembler
 from .exceptions import ChunkerConfigurationError
@@ -210,7 +214,7 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
 
     def encode_contexts(
         self, contexts: Sequence[BlockContext]
-    ) -> np.ndarray:  # type: ignore[name-defined]
+    ) -> "np.ndarray":  # type: ignore[name-defined]
         import numpy as np
 
         sentences = [ctx.text for ctx in contexts]

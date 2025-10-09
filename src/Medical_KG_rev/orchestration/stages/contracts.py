@@ -274,8 +274,6 @@ else:  # pragma: no cover - fallback path for minimal environments
 
     _orjson = _OrjsonShim()
 
-orjson = _orjson
-
 
 if importlib_util.find_spec("pydantic") is not None:
     from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
@@ -1847,16 +1845,6 @@ class PipelineState:
         _STATE_SERIALISE_LATENCY.labels(format="compressed").observe(duration)
         self._cache.compressed = compressed
         return compressed
-
-        payload = self.serialise(use_cache=use_cache)
-        if use_cache and not self._dirty:
-            cached = self._SERIALISATION_CACHE.get(self._cache_key())
-            if cached is not None:
-                return zlib.compress(cached)
-        blob = dumps_orjson(payload)
-        if use_cache and not self._dirty:
-            self._SERIALISATION_CACHE.set(self._cache_key(), blob)
-        return zlib.compress(blob)
 
     def serialise_base64(self, *, use_cache: bool = True) -> str:
         """Return a base64 encoded compressed snapshot."""

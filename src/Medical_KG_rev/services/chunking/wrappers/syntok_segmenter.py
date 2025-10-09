@@ -16,7 +16,7 @@ class SyntokSentenceSegmenter:
 
     def segment(self, text: str) -> list[Segment]:
         analyze = self._analyzer_factory()
-        segments: List[Segment] = []
+        segments: list[Segment] = []
         cursor = 0
         for paragraph in analyze(text):
             for sentence in paragraph:

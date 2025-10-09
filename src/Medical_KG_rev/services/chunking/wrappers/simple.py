@@ -23,8 +23,8 @@ class SimpleChunker(BaseProfileChunker):
 
     def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered_document, groups = self._prepare_groups(document)
-        chunk_texts: List[str] = []
-        chunk_to_group: List[int] = []
+        chunk_texts: list[str] = []
+        chunk_to_group: list[int] = []
         for index, group in enumerate(groups):
             sentences: list[str] = []
             for ctx in group:

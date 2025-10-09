@@ -17,6 +17,7 @@ __all__ = [
     "Entity",
     "Evidence",
     "EvidenceAssessment",
+    "ExtractionActivity",
     "FinancialDocument",
     "FinancialFact",
     "LegalClause",

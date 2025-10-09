@@ -16,19 +16,7 @@ from .biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
-from .clinicaltrials import ClinicalTrialsAdapter as ClinicalTrialsAdapterV2
-from .core import COREAdapter as COREAdapterV2
-from .crossref import CrossrefAdapter as CrossrefAdapterV2
 from .openalex import OpenAlexAdapter
-from .openfda import (
-    OpenFDADeviceAdapter as OpenFDADeviceAdapterV2,
-)
-from .openfda import (
-    OpenFDADrugEventAdapter as OpenFDADrugEventAdapterV2,
-)
-from .openfda import (
-    OpenFDADrugLabelAdapter as OpenFDADrugLabelAdapterV2,
-)
 from .plugins.base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
 from .plugins.bootstrap import (
     get_plugin_manager,

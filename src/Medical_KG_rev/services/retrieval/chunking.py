@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,7 +26,6 @@ from Medical_KG_rev.orchestration.dagster.stages import (
 )
 from Medical_KG_rev.orchestration.ledger import JobLedger
 from Medical_KG_rev.orchestration.stages.contracts import ChunkStage, StageContext
-from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 
 logger = structlog.get_logger(__name__)
 
@@ -148,12 +148,6 @@ class ChunkingService:
                 f"Unsupported chunking strategy '{command.strategy}'"
             )
 
-        chunk_options = ChunkingOptions(
-            strategy=command.strategy,
-            max_tokens=command.chunk_size,
-            overlap=command.overlap,
-            metadata=dict(command.metadata),
-        )
         stage = self._resolve_stage()
         options = ChunkingOptions(
             strategy=command.strategy,

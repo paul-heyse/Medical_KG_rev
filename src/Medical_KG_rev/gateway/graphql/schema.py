@@ -460,7 +460,6 @@ class Query:
 
     @strawberry.field
     async def document(self, info: Info[GraphQLContext, None], id: ID) -> DocumentType:
-        service = await _get_service(info)
         doc = await info.context.loaders.document_loader.load(str(id))
         return _document_to_type(doc)
 

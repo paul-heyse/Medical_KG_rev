@@ -7,6 +7,10 @@ import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import transformers
 
 Segment = tuple[int, int, str]
 
@@ -27,7 +31,7 @@ _ABBREVIATION_SUFFIXES: tuple[str, ...] = (
 )
 
 
-def _default_loader() -> Callable[[str], List[Segment]]:  # pragma: no cover - heavy dependency path
+def _default_loader() -> Callable[[str], list[Segment]]:  # pragma: no cover - heavy dependency path
     """Load a Hugging Face tokenizer and return a callable segmenter."""
     model_name = os.getenv("MEDICAL_KG_SENTENCE_MODEL")
     if not model_name:
@@ -63,7 +67,7 @@ class _TokenizerSentenceSplitter:
 
     tokenizer: transformers.PreTrainedTokenizerBase
 
-    def __call__(self, text: str) -> List[Segment]:
+    def __call__(self, text: str) -> list[Segment]:
         backend = getattr(self.tokenizer, "backend_tokenizer", None)
         if backend is None:  # pragma: no cover - only happens with slow tokenizers
             raise RuntimeError(
@@ -74,7 +78,7 @@ class _TokenizerSentenceSplitter:
         if not tokens:
             return []
 
-        spans: List[tuple[int, int]] = []
+        spans: list[tuple[int, int]] = []
         current_start: int | None = None
         for token, (start, end) in tokens:
             if current_start is None:
@@ -87,7 +91,7 @@ class _TokenizerSentenceSplitter:
         if current_start is not None:
             spans.append((current_start, len(text)))
 
-        segments: List[Segment] = []
+        segments: list[Segment] = []
         for start, end in spans:
             trimmed_start, trimmed_end = _trim_offsets(text, start, end)
             if trimmed_start >= trimmed_end:
@@ -100,8 +104,8 @@ class _TokenizerSentenceSplitter:
 class _HeuristicSentenceSplitter:
     """Lightweight fallback that mirrors the legacy heuristic splitter."""
 
-    def __call__(self, text: str) -> List[Segment]:
-        sentences: List[Segment] = []
+    def __call__(self, text: str) -> list[Segment]:
+        sentences: list[Segment] = []
         cursor = 0
         for part in [segment.strip() for segment in text.split(". ") if segment.strip()]:
             idx = text.find(part, cursor)
@@ -149,11 +153,11 @@ def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _merge_abbreviation_segments(text: str, segments: Sequence[Segment]) -> List[Segment]:
+def _merge_abbreviation_segments(text: str, segments: Sequence[Segment]) -> list[Segment]:
     if not segments:
         return list(segments)
 
-    merged: List[Segment] = []
+    merged: list[Segment] = []
     index = 0
     while index < len(segments):
         start, end, sentence = segments[index]
@@ -174,14 +178,14 @@ def _is_abbreviation(sentence: str) -> bool:
 
 
 @lru_cache(maxsize=1)
-def default_segmenter() -> Callable[[str], List[Segment]]:
+def default_segmenter() -> Callable[[str], list[Segment]]:
     return _default_loader()
 
 
 class HuggingFaceSentenceSegmenter:
     """Expose a simple ``segment`` API backed by Hugging Face tokenizers."""
 
-    def __init__(self, loader: Callable[[], Callable[[str], List[Segment]]] | None = None) -> None:
+    def __init__(self, loader: Callable[[], Callable[[str], list[Segment]]] | None = None) -> None:
         self._loader = loader or default_segmenter
 
     def segment(self, text: str) -> list[Segment]:

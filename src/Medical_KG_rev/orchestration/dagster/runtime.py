@@ -80,22 +80,13 @@ class StageResolutionError(RuntimeError):
 class StageFactory:
     """Resolve orchestration stages through the plugin manager."""
 
-    plugin_manager: StagePluginManager
-
-    def resolve(self, pipeline: str, stage: StageDefinition) -> object:
-        try:
-            instance = self.plugin_manager.build_stage(stage)
-        except StagePluginLookupError as exc:
-            raise StageResolutionError(
-                f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"
-            ) from exc
     """Resolve orchestration stages using the plugin manager."""
 
     plugins: StagePluginManager
 
     def resolve(self, pipeline: str, stage: StageDefinition) -> object:
         try:
-            instance = self.plugins.create_stage(stage)
+            return self.plugins.create_stage(stage)
         except StagePluginNotAvailable as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
                 f"Pipeline '{pipeline}' declared unknown stage type '{stage.stage_type}'"

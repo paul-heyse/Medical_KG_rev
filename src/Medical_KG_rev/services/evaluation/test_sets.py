@@ -42,7 +42,9 @@ Examples:
     test_set.ensure_quality()
 """
 
+# ==============================================================================
 # IMPORTS
+# ==============================================================================
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -56,12 +58,16 @@ from random import Random
 
 import yaml
 
+# ==============================================================================
 # TYPE DEFINITIONS & CONSTANTS
+# ==============================================================================
 _DATA_PACKAGE = "Medical_KG_rev.services.evaluation.data"
 _DEFAULT_DATASET_SUBDIR = "test_sets"
 
 
+# ==============================================================================
 # DATA MODELS
+# ==============================================================================
 class QueryType(str, Enum):
     """Enumeration of supported query intents used for stratification.
 
@@ -280,7 +286,9 @@ class TestSet:
         return {key.value: float(len(bucket)) for key, bucket in stratified.items()}
 
 
+# ==============================================================================
 # TEST SET MANAGEMENT
+# ==============================================================================
 class TestSetManager:
     """Loads and caches evaluation datasets stored on disk.
 
@@ -446,7 +454,9 @@ class TestSetManager:
         return test_set
 
 
+# ==============================================================================
 # UTILITY FUNCTIONS
+# ==============================================================================
 def _parse_queries(values: Iterable[Mapping[str, object]]) -> list[QueryJudgment]:
     """Parse query data from raw payloads.
 
@@ -531,7 +541,9 @@ def cohens_kappa(labels_a: Sequence[object], labels_b: Sequence[object]) -> floa
     return (observed - expected) / (1.0 - expected)
 
 
+# ==============================================================================
 # EXPORTS
+# ==============================================================================
 __all__ = [
     "QueryJudgment",
     "QueryType",

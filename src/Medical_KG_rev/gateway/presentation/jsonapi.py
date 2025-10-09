@@ -1,4 +1,43 @@
-"""JSON:API presenter implementation for REST responses."""
+"""JSON:API presenter implementation for REST responses.
+
+This module provides a JSON:API compliant response presenter that formats
+API responses according to the JSON:API specification. It handles data
+serialization, error formatting, metadata inclusion, and response
+optimization features like compression and caching.
+
+Key Responsibilities:
+    - JSON:API compliant response formatting
+    - Data serialization and normalization
+    - Error response formatting
+    - Metadata and correlation ID inclusion
+    - Response compression and caching headers
+
+Collaborators:
+    - Upstream: REST router endpoints
+    - Downstream: FastAPI Response objects, lifecycle management
+
+Side Effects:
+    - Creates HTTP response objects
+    - Sets response headers (Content-Type, Cache-Control, etc.)
+    - Compresses response bodies when beneficial
+
+Thread Safety:
+    - Thread-safe: Stateless presenter with no shared mutable state
+
+Performance Characteristics:
+    - O(n) serialization where n is response size
+    - O(1) header operations
+    - Compression reduces bandwidth usage
+
+Example:
+    >>> from Medical_KG_rev.gateway.presentation.jsonapi import JSONAPIPresenter
+    >>> presenter = JSONAPIPresenter()
+    >>> response = presenter.success({"data": "value"})
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -10,15 +49,32 @@ from typing import Any, Mapping, MutableMapping
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
+from Medical_KG_rev.utils.logging import get_correlation_id
+
 from .errors import ErrorDetail
 from .interface import ResponsePresenter
 from .lifecycle import current_lifecycle
-from Medical_KG_rev.utils.logging import get_correlation_id
+
+# ==============================================================================
+# CONSTANTS
+# ==============================================================================
 
 JSONAPI_CONTENT_TYPE = "application/vnd.api+json"
 
 
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
 def _normalise_payload(data: Any) -> Any:
+    """Normalize payload data for JSON:API serialization.
+
+    Args:
+        data: Raw data to normalize.
+
+    Returns:
+        Normalized data suitable for JSON:API serialization.
+    """
     if isinstance(data, BaseModel):
         return data.model_dump(mode="json")
     if isinstance(data, Iterable) and not isinstance(data, (str, bytes, dict)):
@@ -27,6 +83,10 @@ def _normalise_payload(data: Any) -> Any:
         ]
     return data
 
+
+# ==============================================================================
+# PRESENTER IMPLEMENTATION
+# ==============================================================================
 
 class JSONAPIPresenter(ResponsePresenter):
     """Presenter producing JSON:API compliant envelopes."""
@@ -144,3 +204,14 @@ class JSONAPIPresenter(ResponsePresenter):
             cache_control=cache_control,
             compression=None,
         )
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "JSONAPI_CONTENT_TYPE",
+    "JSONAPIPresenter",
+    "_normalise_payload",
+]

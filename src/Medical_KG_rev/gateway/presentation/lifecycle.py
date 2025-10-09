@@ -1,4 +1,44 @@
-"""Request lifecycle tracking helpers and middleware."""
+"""Request lifecycle tracking helpers and middleware.
+
+This module provides request lifecycle tracking functionality for the gateway,
+including correlation ID management, timing measurements, and observability
+integration. It tracks requests from start to finish and provides metadata
+for response formatting and monitoring.
+
+Key Responsibilities:
+    - Request lifecycle tracking and timing
+    - Correlation ID generation and management
+    - Response metadata collection
+    - Observability metrics emission
+    - Middleware integration for automatic tracking
+
+Collaborators:
+    - Upstream: FastAPI middleware, request handlers
+    - Downstream: Observability systems, response presenters
+
+Side Effects:
+    - Generates correlation IDs
+    - Emits metrics to observability systems
+    - Manages context variables for request state
+
+Thread Safety:
+    - Thread-safe: Uses context variables for request isolation
+    - Each request has its own lifecycle instance
+
+Performance Characteristics:
+    - O(1) lifecycle operations
+    - Minimal overhead for timing measurements
+    - Context variable access is optimized
+
+Example:
+    >>> from Medical_KG_rev.gateway.presentation.lifecycle import RequestLifecycle
+    >>> lifecycle = RequestLifecycle(method="GET", path="/api/test")
+    >>> lifecycle.complete(200)
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -20,6 +60,10 @@ from Medical_KG_rev.utils.logging import (
     reset_correlation_id,
 )
 
+# ==============================================================================
+# GLOBAL STATE
+# ==============================================================================
+
 logger = get_logger(__name__)
 
 _CURRENT_LIFECYCLE: ContextVar["RequestLifecycle" | None] = ContextVar(
@@ -27,6 +71,10 @@ _CURRENT_LIFECYCLE: ContextVar["RequestLifecycle" | None] = ContextVar(
     default=None,
 )
 
+
+# ==============================================================================
+# LIFECYCLE MODELS
+# ==============================================================================
 
 @dataclass(slots=True)
 class RequestLifecycle:
@@ -100,23 +148,43 @@ class RequestLifecycle:
         return payload
 
 
-def current_lifecycle() -> RequestLifecycle | None:
-    """Return the lifecycle bound to the current context, if any."""
+# ==============================================================================
+# LIFECYCLE MANAGEMENT FUNCTIONS
+# ==============================================================================
 
+def current_lifecycle() -> RequestLifecycle | None:
+    """Return the lifecycle bound to the current context, if any.
+
+    Returns:
+        Current request lifecycle instance or None if not set.
+    """
     return _CURRENT_LIFECYCLE.get()
 
 
 def push_lifecycle(lifecycle: RequestLifecycle) -> Token:
-    """Bind a lifecycle object to the current context."""
+    """Bind a lifecycle object to the current context.
 
+    Args:
+        lifecycle: Request lifecycle instance to bind.
+
+    Returns:
+        Token for restoring the previous context.
+    """
     return _CURRENT_LIFECYCLE.set(lifecycle)
 
 
 def pop_lifecycle(token: Token) -> None:
-    """Reset the context variable token captured via :func:`push_lifecycle`."""
+    """Reset the context variable token captured via :func:`push_lifecycle`.
 
+    Args:
+        token: Token returned by push_lifecycle.
+    """
     _CURRENT_LIFECYCLE.reset(token)
 
+
+# ==============================================================================
+# MIDDLEWARE IMPLEMENTATION
+# ==============================================================================
 
 class RequestLifecycleMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware that binds lifecycle information to each request."""
@@ -187,6 +255,10 @@ class RequestLifecycleMiddleware(BaseHTTPMiddleware):
         reset_correlation_id(token)
         return response
 
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
 
 __all__ = [
     "RequestLifecycle",

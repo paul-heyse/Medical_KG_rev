@@ -1,4 +1,40 @@
-"""Command line helpers for the multi-protocol gateway."""
+"""Command line helpers for the multi-protocol gateway.
+
+This module provides command-line utilities for the gateway application,
+including schema export functionality for OpenAPI, GraphQL, and AsyncAPI
+specifications. It serves as the entry point for CLI operations.
+
+Key Responsibilities:
+    - Export OpenAPI specification for REST endpoints
+    - Export GraphQL schema for GraphQL endpoints
+    - Export AsyncAPI specification for SSE endpoints
+    - Provide CLI interface for schema generation
+
+Collaborators:
+    - Upstream: Command line interface (CLI)
+    - Downstream: Gateway application, GraphQL schema
+
+Side Effects:
+    - Reads application configuration
+    - Generates schema files
+    - Writes output to stdout or files
+
+Thread Safety:
+    - Thread-safe: CLI operations are single-threaded
+
+Performance Characteristics:
+    - O(1) schema generation for static schemas
+    - O(n) where n is schema complexity for dynamic schemas
+
+Example:
+    >>> python -m Medical_KG_rev.gateway.main --export-openapi
+    >>> python -m Medical_KG_rev.gateway.main --export-graphql
+    >>> python -m Medical_KG_rev.gateway.main --export-asyncapi
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -10,6 +46,10 @@ from yaml import safe_dump
 
 from .app import create_app
 from .graphql.schema import schema
+
+# ==============================================================================
+# TEMPLATES
+# ==============================================================================
 
 ASYNCAPI_TEMPLATE = """
 asyncapi: '2.6.0'
@@ -43,21 +83,49 @@ channels:
 """.strip()
 
 
+# ==============================================================================
+# EXPORT FUNCTIONS
+# ==============================================================================
+
 def export_openapi() -> str:
+    """Export OpenAPI specification for REST endpoints.
+
+    Returns:
+        YAML-formatted OpenAPI specification.
+    """
     app = create_app()
     openapi_schema: dict[str, Any] = app.openapi()
     return safe_dump(openapi_schema, sort_keys=False)
 
 
 def export_graphql() -> str:
+    """Export GraphQL schema for GraphQL endpoints.
+
+    Returns:
+        GraphQL schema definition language (SDL) string.
+    """
     return schema.as_str()
 
 
 def export_asyncapi() -> str:
+    """Export AsyncAPI specification for SSE endpoints.
+
+    Returns:
+        YAML-formatted AsyncAPI specification.
+    """
     return ASYNCAPI_TEMPLATE
 
 
+# ==============================================================================
+# CLI INTERFACE
+# ==============================================================================
+
 def main() -> None:
+    """Main CLI entry point for gateway utilities.
+
+    Provides command-line interface for exporting API specifications
+    including OpenAPI, GraphQL, and AsyncAPI schemas.
+    """
     parser = argparse.ArgumentParser(description="Gateway helper utilities")
     parser.add_argument("--export-openapi", action="store_true", help="Print OpenAPI document")
     parser.add_argument("--export-graphql", action="store_true", help="Print GraphQL SDL")
@@ -81,6 +149,18 @@ def main() -> None:
         args.output.write_text(content)
     else:
         print(content)
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "export_openapi",
+    "export_graphql",
+    "export_asyncapi",
+    "main",
+]
 
 
 if __name__ == "__main__":  # pragma: no cover

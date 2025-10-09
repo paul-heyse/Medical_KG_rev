@@ -1,4 +1,47 @@
-"""CORE adapter for open research papers."""
+"""CORE adapter for open research papers.
+
+This module provides an adapter for the CORE (COnnecting REpositories) API,
+which aggregates open access research papers from repositories worldwide.
+The adapter fetches paper metadata and full-text content when available.
+
+Key Responsibilities:
+    - Fetch research paper metadata from CORE API
+    - Extract full-text content when available
+    - Validate DOI identifiers
+    - Transform API responses into Document objects
+    - Handle rate limiting and retry logic
+
+Collaborators:
+    - Upstream: CORE API (external service)
+    - Downstream: Document models, HTTP client
+
+Side Effects:
+    - Makes HTTP requests to CORE API
+    - Validates DOI identifiers
+    - Creates Document objects with structured content
+
+Thread Safety:
+    - Thread-safe: Stateless adapter with no shared mutable state
+
+Performance Characteristics:
+    - Rate limiting: 3 requests per second
+    - Retry strategy: Linear backoff with 3 attempts
+    - Response parsing: O(n) where n is response size
+
+Example:
+    >>> adapter = CoreAdapter()
+    >>> context = AdapterContext(
+    ...     tenant_id="tenant1",
+    ...     domain="research",
+    ...     correlation_id="corr1",
+    ...     parameters={"doi": "10.1371/journal.pone.0123456"}
+    ... )
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -16,6 +59,10 @@ from Medical_KG_rev.utils.http_client import (
 )
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_doi
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -51,6 +98,10 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
         jitter=False,
     )
 
+
+# ==============================================================================
+# ADAPTER IMPLEMENTATION
+# ==============================================================================
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
@@ -174,3 +225,13 @@ class COREAdapter(ResilientHTTPAdapter):
                     )
                 )
         return documents
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "COREAdapter",
+    "ResilientHTTPAdapter",
+]

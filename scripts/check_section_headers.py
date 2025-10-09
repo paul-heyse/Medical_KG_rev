@@ -247,16 +247,17 @@ class SectionHeaderChecker:
 
         for i, line in enumerate(lines):
             line = line.strip()
-            # Match section headers like: # ==============================================================================
+            # Match multi-line headers like: # ==============================================================================
             # SECTION NAME
             # ==============================================================================
             if line.startswith('# =') and line.endswith('='):
-                # Extract section name between the equals signs
-                parts = line.split(' ')
-                if len(parts) >= 3:
-                    section_name = ' '.join(parts[1:-1])
-                    sections.append((i + 1, section_name))
-            # Also match single-line headers like: # ============================================================================== SECTION NAME ==============================================================================
+                # Check if next line contains the section name
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    if next_line.startswith('# ') and not next_line.startswith('# ='):
+                        section_name = next_line[2:].strip()  # Remove '# ' prefix
+                        sections.append((i + 1, section_name))
+            # Match single-line headers like: # ============================================================================== SECTION NAME ==============================================================================
             elif line.startswith('# =') and '=' in line[3:]:
                 # Find the section name between equals signs
                 start_idx = line.find(' ', 3)

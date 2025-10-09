@@ -1,4 +1,45 @@
-"""Gateway specific middleware utilities."""
+"""Gateway specific middleware utilities.
+
+This module provides middleware components for the gateway application,
+including caching, tenant validation, and request lifecycle management.
+These middleware components handle cross-cutting concerns across all
+protocol handlers.
+
+Key Responsibilities:
+    - HTTP response caching with ETag and Last-Modified headers
+    - Tenant validation and isolation
+    - Request lifecycle management and correlation ID tracking
+    - Security header injection
+    - Rate limiting and circuit breaking
+
+Collaborators:
+    - Upstream: FastAPI application, ASGI server
+    - Downstream: Protocol handlers, services, external systems
+
+Side Effects:
+    - Modifies HTTP request/response headers
+    - Manages in-memory cache state
+    - Logs request/response information
+    - Validates tenant context
+
+Thread Safety:
+    - Thread-safe: Middleware components handle concurrent requests
+    - Cache operations are atomic
+    - Tenant validation is stateless
+
+Performance Characteristics:
+    - O(1) cache lookup operations
+    - O(n) where n is request size for validation
+    - Minimal overhead for pass-through operations
+
+Example:
+    >>> from Medical_KG_rev.gateway.middleware import CachingMiddleware
+    >>> app.add_middleware(CachingMiddleware, policies={...})
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -12,6 +53,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+
+# ==============================================================================
+# CACHE MODELS
+# ==============================================================================
 
 
 @dataclass(frozen=True)
@@ -46,6 +91,10 @@ class ResponseCache:
     def set(self, key: str, entry: CacheEntry) -> None:
         self._entries[key] = entry
 
+
+# ==============================================================================
+# MIDDLEWARE IMPLEMENTATION
+# ==============================================================================
 
 class CachingMiddleware(BaseHTTPMiddleware):
     """Implements ETag generation and cache headers for GET endpoints."""
@@ -151,9 +200,6 @@ class CachingMiddleware(BaseHTTPMiddleware):
         return moment.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
-__all__ = ["CacheEntry", "CachePolicy", "CachingMiddleware", "ResponseCache"]
-
-
 class TenantValidationMiddleware(BaseHTTPMiddleware):
     """Ensure tenant claims from JWT align with request context."""
 
@@ -172,4 +218,14 @@ class TenantValidationMiddleware(BaseHTTPMiddleware):
         return response
 
 
-__all__.append("TenantValidationMiddleware")
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "CacheEntry",
+    "CachePolicy",
+    "CachingMiddleware",
+    "ResponseCache",
+    "TenantValidationMiddleware",
+]

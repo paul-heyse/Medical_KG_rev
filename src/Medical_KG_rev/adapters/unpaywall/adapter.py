@@ -1,4 +1,48 @@
-"""Unpaywall adapter for open access status."""
+"""Unpaywall adapter for open access status.
+
+This module provides an adapter for the Unpaywall API, which provides
+information about the open access status of academic papers. The adapter
+checks whether papers are freely available and provides access URLs
+when available.
+
+Key Responsibilities:
+    - Check open access status for academic papers
+    - Fetch access URLs for freely available papers
+    - Validate DOI identifiers
+    - Transform API responses into Document objects
+    - Handle rate limiting and API key authentication
+
+Collaborators:
+    - Upstream: Unpaywall API (external service)
+    - Downstream: Document models, HTTP client
+
+Side Effects:
+    - Makes HTTP requests to Unpaywall API
+    - Validates DOI identifiers
+    - Creates Document objects with access information
+
+Thread Safety:
+    - Thread-safe: Stateless adapter with no shared mutable state
+
+Performance Characteristics:
+    - Rate limiting: 10 requests per second (with API key)
+    - Retry strategy: Linear backoff with 3 attempts
+    - Response parsing: O(n) where n is response size
+
+Example:
+    >>> adapter = UnpaywallAdapter()
+    >>> context = AdapterContext(
+    ...     tenant_id="tenant1",
+    ...     domain="research",
+    ...     correlation_id="corr1",
+    ...     parameters={"doi": "10.1371/journal.pone.0123456"}
+    ... )
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -17,6 +61,10 @@ from Medical_KG_rev.utils.http_client import (
 )
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_doi
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -52,6 +100,10 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
         jitter=False,
     )
 
+
+# ==============================================================================
+# ADAPTER IMPLEMENTATION
+# ==============================================================================
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
@@ -169,3 +221,13 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "UnpaywallAdapter",
+    "ResilientHTTPAdapter",
+]

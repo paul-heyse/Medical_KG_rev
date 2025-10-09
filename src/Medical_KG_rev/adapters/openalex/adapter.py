@@ -1,4 +1,48 @@
-"""OpenAlex adapter backed by the official ``pyalex`` client."""
+"""OpenAlex adapter backed by the official ``pyalex`` client.
+
+This module provides an adapter for the OpenAlex scholarly works API,
+which aggregates metadata about academic papers, authors, institutions,
+and citations. The adapter uses the official pyalex client for optimal
+performance and API compatibility.
+
+Key Responsibilities:
+    - Fetch scholarly works metadata from OpenAlex API
+    - Extract citation information and PDF availability
+    - Transform API responses into Document objects
+    - Handle pagination and rate limiting via pyalex
+    - Support DOI-based and keyword-based searches
+
+Collaborators:
+    - Upstream: OpenAlex API via pyalex client
+    - Downstream: Document models, storage helpers
+
+Side Effects:
+    - Makes HTTP requests to OpenAlex API
+    - Validates DOI identifiers
+    - Creates Document objects with structured content
+
+Thread Safety:
+    - Thread-safe: Stateless adapter with no shared mutable state
+
+Performance Characteristics:
+    - Rate limiting: Handled by pyalex client
+    - Pagination: Automatic via pyalex iterator
+    - Response parsing: O(n) where n is response size
+
+Example:
+    >>> adapter = OpenAlexAdapter(max_results=10)
+    >>> context = AdapterContext(
+    ...     tenant_id="tenant1",
+    ...     domain="research",
+    ...     correlation_id="corr1",
+    ...     parameters={"doi": "10.1371/journal.pone.0123456"}
+    ... )
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -20,7 +64,17 @@ except Exception:  # pragma: no cover - handled lazily
     Works = None
     pyalex_config = None
 
+
+# ==============================================================================
+# GLOBAL STATE
+# ==============================================================================
+
 logger = structlog.get_logger(__name__)
+
+
+# ==============================================================================
+# ADAPTER IMPLEMENTATION
+# ==============================================================================
 
 
 class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
@@ -404,4 +458,13 @@ def _safe_get(mapping: Any, key: str) -> Any:
     if isinstance(mapping, Mapping):
         return mapping.get(key)
     return None
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "OpenAlexAdapter",
+]
 

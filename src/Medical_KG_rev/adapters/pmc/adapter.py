@@ -1,4 +1,49 @@
-"""PubMed Central adapter for full-text XML retrieval."""
+"""PubMed Central adapter for full-text XML retrieval.
+
+This module provides an adapter for the PubMed Central (PMC) API,
+which provides access to full-text XML documents from biomedical
+and life science journals. The adapter fetches PMC articles and
+extracts structured content from XML.
+
+Key Responsibilities:
+    - Fetch PMC articles by PMCID identifier
+    - Parse XML content into structured sections
+    - Extract metadata and full-text content
+    - Transform XML into Document objects
+    - Handle XML parsing and validation
+
+Collaborators:
+    - Upstream: PMC API (external service)
+    - Downstream: Document models, XML parser
+
+Side Effects:
+    - Makes HTTP requests to PMC API
+    - Parses XML content
+    - Validates PMCID identifiers
+    - Creates Document objects with structured content
+
+Thread Safety:
+    - Thread-safe: Stateless adapter with no shared mutable state
+
+Performance Characteristics:
+    - Rate limiting: 3 requests per second
+    - XML parsing: O(n) where n is XML size
+    - Content extraction: O(m) where m is number of sections
+
+Example:
+    >>> adapter = PMCAdapter()
+    >>> context = AdapterContext(
+    ...     tenant_id="tenant1",
+    ...     domain="medical",
+    ...     correlation_id="corr1",
+    ...     parameters={"pmcid": "PMC123456"}
+    ... )
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -18,6 +63,10 @@ from Medical_KG_rev.utils.http_client import (
 )
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_pmcid
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -61,6 +110,10 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
         jitter=False,
     )
 
+
+# ==============================================================================
+# ADAPTER IMPLEMENTATION
+# ==============================================================================
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
@@ -173,3 +226,13 @@ class PMCAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "PMCAdapter",
+    "ResilientHTTPAdapter",
+]

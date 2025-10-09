@@ -1,12 +1,54 @@
-"""Core retrieval metrics used across evaluation workflows."""
+"""Core retrieval metrics used across evaluation workflows.
+
+This module provides comprehensive retrieval evaluation metrics including
+precision, recall, NDCG, and various ranking quality measures. It supports
+both individual query evaluation and batch evaluation across test sets.
+
+Key Responsibilities:
+    - Implement standard retrieval metrics (Precision@K, Recall@K, NDCG)
+    - Provide ranking quality measures (MRR, MAP, Average Precision)
+    - Support batch evaluation across multiple queries
+    - Calculate statistical summaries and confidence intervals
+    - Handle graded relevance judgments and binary relevance
+
+Collaborators:
+    - Upstream: Evaluation workflows, test set managers
+    - Downstream: Evaluation results, statistical analysis
+
+Side Effects:
+    - None: Pure mathematical functions with no side effects
+
+Thread Safety:
+    - Thread-safe: All functions are stateless and immutable
+
+Performance Characteristics:
+    - O(n) for most metrics where n is result list length
+    - O(k) for top-k metrics where k is cutoff
+    - Efficient numpy operations for batch processing
+
+Example:
+    >>> from Medical_KG_rev.services.evaluation.metrics import precision_at_k
+    >>> relevances = [1.0, 0.0, 1.0, 0.0, 0.0]
+    >>> precision = precision_at_k(relevances, k=3)
+    >>> print(f"Precision@3: {precision:.3f}")
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from statistics import mean
+
 import numpy as np
 from sklearn.metrics import ndcg_score
+
+# ==============================================================================
+# METRIC FUNCTIONS
+# ==============================================================================
 
 
 def recall_at_k(relevances: Sequence[float], total_relevant: int, k: int) -> float:
@@ -127,6 +169,10 @@ def mean_metric(values: Iterable[Mapping[str, float]], metric: str) -> float:
     collected = [payload.get(metric, 0.0) for payload in values]
     return mean(collected) if collected else 0.0
 
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
 
 __all__ = [
     "RankingMetrics",

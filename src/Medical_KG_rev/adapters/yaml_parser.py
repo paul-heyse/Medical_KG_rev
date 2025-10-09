@@ -43,7 +43,9 @@ Example:
     documents = adapter.fetch_and_parse(context)
 """
 
+# ==============================================================================
 # IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -63,11 +65,15 @@ from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryC
 from .base import AdapterContext, BaseAdapter
 from .biomedical import ResilientHTTPAdapter
 
+# ==============================================================================
 # TYPE DEFINITIONS & CONSTANTS
+# ==============================================================================
 
 TOKEN_PATTERN = re.compile(r"[^\[\].]+|\[\d+\]")
 
+# ==============================================================================
 # DATA MODELS
+# ==============================================================================
 
 @dataclass(frozen=True)
 class RateLimitConfig:
@@ -204,7 +210,9 @@ class AdapterConfig:
     rate_limit: RateLimitConfig | None = None
 
 
+# ==============================================================================
 # PYDANTIC VALIDATION MODELS
+# ==============================================================================
 
 class RateLimitModel(BaseModel):
     """Pydantic model for validating rate limit configuration.
@@ -298,7 +306,9 @@ class AdapterConfigModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# ==============================================================================
 # CONFIGURATION LOADING
+# ==============================================================================
 
 def load_adapter_config(path: Path) -> AdapterConfig:
     """Load and validate adapter configuration from YAML file.
@@ -354,7 +364,9 @@ def load_adapter_config(path: Path) -> AdapterConfig:
     )
 
 
+# ==============================================================================
 # ADAPTER IMPLEMENTATION
+# ==============================================================================
 
 class YAMLConfiguredAdapter(ResilientHTTPAdapter):
     """Adapter generated from a declarative YAML configuration.
@@ -519,7 +531,9 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         return documents
 
 
+# ==============================================================================
 # FACTORY FUNCTIONS
+# ==============================================================================
 
 def create_adapter_from_config(
     config: AdapterConfig, client: HttpClient | None = None
@@ -539,7 +553,9 @@ def create_adapter_from_config(
     """
     return YAMLConfiguredAdapter(config, client=client)
 
+# ==============================================================================
 # PRIVATE HELPERS
+# ==============================================================================
 
 class _FormatDict(dict):
     """Helper mapping that raises clear errors for missing keys.
@@ -693,4 +709,6 @@ def _to_text(value: Any) -> str:
         return value
     return str(value)
 
+# ==============================================================================
 # EXPORTS
+# ==============================================================================

@@ -1,4 +1,50 @@
-"""Terminology adapters for medical vocabularies."""
+"""Terminology adapters for medical vocabularies.
+
+This module provides adapters for medical terminology systems including
+RxNorm (drug names), ICD-11 (disease codes), MeSH (medical subject headings),
+and ChEMBL (chemical compounds). These adapters fetch terminology data
+and transform it into structured Document objects.
+
+Key Responsibilities:
+    - Fetch terminology data from medical vocabulary APIs
+    - Validate medical identifiers (RxCUI, ICD-11, MeSH, ChEMBL)
+    - Transform terminology responses into Document objects
+    - Handle rate limiting and API authentication
+    - Support multiple terminology systems
+
+Collaborators:
+    - Upstream: Medical terminology APIs (RxNorm, WHO ICD-11, PubMed MeSH, ChEMBL)
+    - Downstream: Document models, HTTP client
+
+Side Effects:
+    - Makes HTTP requests to medical terminology APIs
+    - Validates medical identifiers
+    - Creates Document objects with terminology data
+
+Thread Safety:
+    - Thread-safe: Stateless adapters with no shared mutable state
+
+Performance Characteristics:
+    - Rate limiting: 3-5 requests per second depending on API
+    - Retry strategy: Linear backoff with 3 attempts
+    - Response parsing: O(n) where n is response size
+
+Example:
+    >>> adapter = RxNormAdapter()
+    >>> context = AdapterContext(
+    ...     tenant_id="tenant1",
+    ...     domain="medical",
+    ...     correlation_id="corr1",
+    ...     parameters={"rxcui": "12345"}
+    ... )
+    >>> documents = adapter.fetch_and_parse(context)
+"""
+
+
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -14,13 +60,74 @@ from Medical_KG_rev.utils.http_client import (
     RateLimitConfig,
     RetryConfig,
 )
-from Medical_KG_rev.utils.identifiers import build_document_id, normalize_identifier
+from Medical_KG_rev.utils.identifiers import normalize_identifier
 from Medical_KG_rev.utils.validation import (
     validate_chembl_id,
     validate_icd11,
     validate_mesh_id,
     validate_rxcui,
 )
+
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
+
+# ==============================================================================
+# DATA MODELS
+# ==============================================================================
+
+# ==============================================================================
+# ADAPTER IMPLEMENTATION
+# ==============================================================================
+
+
+class ResilientHTTPAdapter(BaseAdapter):
+    """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        base_url: str,
+        rate_limit_per_second: float,
+        retry: RetryConfig | None = None,
+        client: HttpClient | None = None,
+    ) -> None:
+        super().__init__(name=name)
+        self._owns_client = client is None
+        if client is None:
+            self._client = HttpClient(
+                base_url=base_url,
+                retry=retry or RetryConfig(),
+                rate_limit=RateLimitConfig(rate_per_second=rate_limit_per_second),
+                circuit_breaker=CircuitBreakerConfig(),
+            )
+        else:
+            self._client = client
+
+    def _get_json(self, path: str, *, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """Make a GET request and return JSON response."""
+        response = self._client.get(path, params=params)
+        response.raise_for_status()
+        return response.json()
+
+    def close(self) -> None:
+        """Close the HTTP client if we own it."""
+        if self._owns_client:
+            self._client.close()
+
+
+# ==============================================================================
+# ERROR HANDLING
+# ==============================================================================
+
+# ==============================================================================
+# FACTORY FUNCTIONS
+# ==============================================================================
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
 
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
@@ -55,54 +162,6 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
         backoff_max=max(initial * attempts, initial),
         jitter=False,
     )
-
-
-class ResilientHTTPAdapter(BaseAdapter):
-    """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
-
-    def __init__(
-        self,
-        *,
-        name: str,
-        base_url: str,
-        rate_limit_per_second: float,
-        retry: RetryConfig | None = None,
-        client: HttpClient | None = None,
-    ) -> None:
-        super().__init__(name=name)
-        self._owns_client = client is None
-        if client is None:
-            self._client = HttpClient(
-                base_url=base_url,
-                retry=retry or RetryConfig(),
-                rate_limit=RateLimitConfig(rate_per_second=rate_limit_per_second),
-                circuit_breaker=CircuitBreakerConfig(),
-            )
-        else:
-            self._client = client
-
-    def _get_json(self, path: str, *, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        """Make a GET request and return JSON response."""
-        response = self._client.request("GET", path, params=params)
-        response.raise_for_status()
-        return response.json()
-
-    def _get_text(self, path: str, *, params: Mapping[str, Any] | None = None) -> str:
-        """Make a GET request and return text response."""
-        response = self._client.request("GET", path, params=params)
-        response.raise_for_status()
-        return response.text
-
-    def write(
-        self, documents: Sequence[Document], context: AdapterContext
-    ) -> None:  # pragma: no cover - passthrough
-        """Persistence is handled by downstream ingestion pipeline; adapters simply return documents."""
-        return None
-
-    def close(self) -> None:
-        """Close the HTTP client if we own it."""
-        if self._owns_client:
-            self._client.close()
 
 
 class RxNormAdapter(ResilientHTTPAdapter):
@@ -262,10 +321,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
             identifier = descriptor.get("descriptorUI") or descriptor.get("resource")
             if not identifier:
                 continue
-            if identifier.startswith("http"):
-                mesh_id = identifier.rsplit("/", 1)[-1]
-            else:
-                mesh_id = identifier
+            mesh_id = identifier.rsplit("/", 1)[-1] if identifier.startswith("http") else identifier
             mesh_id = validate_mesh_id(mesh_id)
             name = descriptor.get("descriptorName") or descriptor.get("label")
             if isinstance(name, Mapping):
@@ -372,3 +428,16 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "ChEMBLAdapter",
+    "ICD11Adapter",
+    "MeSHAdapter",
+    "ResilientHTTPAdapter",
+    "RxNormAdapter",
+]

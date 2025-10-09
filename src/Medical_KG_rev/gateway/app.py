@@ -1,4 +1,45 @@
-"""FastAPI application wiring all protocol handlers."""
+"""FastAPI application wiring all protocol handlers.
+
+This module provides the main FastAPI application that integrates all protocol
+handlers (REST, GraphQL, gRPC, SOAP, SSE) into a unified gateway. It handles
+middleware configuration, error handling, and application lifecycle management.
+
+Key Responsibilities:
+    - Application initialization and configuration
+    - Middleware setup (CORS, security headers, caching, tenant validation)
+    - Protocol handler integration (REST, GraphQL, gRPC, SOAP, SSE)
+    - Error handling and exception translation
+    - Health check endpoints and monitoring integration
+    - Static file serving and documentation endpoints
+
+Collaborators:
+    - Upstream: ASGI server (Uvicorn, Gunicorn)
+    - Downstream: All protocol handlers, middleware components, services
+
+Side Effects:
+    - Starts observability instrumentation
+    - Configures middleware pipeline
+    - Mounts static files and documentation
+    - Registers all protocol routes
+
+Thread Safety:
+    - Thread-safe: FastAPI application is designed for concurrent requests
+    - Middleware components handle concurrent access appropriately
+
+Performance Characteristics:
+    - O(1) request routing overhead
+    - Middleware pipeline adds minimal latency
+    - Static file serving optimized for production
+
+Example:
+    >>> from Medical_KG_rev.gateway.app import create_app
+    >>> app = create_app()
+    >>> # Run with: uvicorn Medical_KG_rev.gateway.app:app
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -34,6 +75,10 @@ from .services import GatewayError, get_gateway_service
 from .soap.routes import router as soap_router
 from .sse.routes import router as sse_router
 
+# ==============================================================================
+# MIDDLEWARE IMPLEMENTATION
+# ==============================================================================
+
 
 class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
@@ -43,8 +88,39 @@ class JSONAPIResponseMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# ==============================================================================
+# ERROR HANDLING
+# ==============================================================================
+
 logger = get_logger(__name__)
 
+
+def create_problem_response(detail: ProblemDetail) -> JSONResponse:
+    """Create a JSON response for problem details.
+
+    Args:
+        detail: Problem detail object containing error information.
+
+    Returns:
+        JSON response with appropriate status code and headers.
+    """
+    payload: dict[str, Any] = detail.model_dump(mode="json")
+    status = payload.get("status", 500)
+    headers: dict[str, str] | None = None
+    retry_after = detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
+    if isinstance(retry_after, (int, float)) and retry_after > 0:
+        headers = {"Retry-After": str(int(retry_after))}
+    return JSONResponse(
+        payload,
+        status_code=status,
+        media_type="application/problem+json",
+        headers=headers,
+    )
+
+
+# ==============================================================================
+# MIDDLEWARE IMPLEMENTATION
+# ==============================================================================
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: FastAPI, *, headers_config) -> None:  # type: ignore[override]
@@ -67,20 +143,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def create_problem_response(detail: ProblemDetail) -> JSONResponse:
-    payload: dict[str, Any] = detail.model_dump(mode="json")
-    status = payload.get("status", 500)
-    headers: dict[str, str] | None = None
-    retry_after = detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
-    if isinstance(retry_after, (int, float)) and retry_after > 0:
-        headers = {"Retry-After": str(int(retry_after))}
-    return JSONResponse(
-        payload,
-        status_code=status,
-        media_type="application/problem+json",
-        headers=headers,
-    )
-
+# ==============================================================================
+# APPLICATION FACTORY
+# ==============================================================================
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -274,3 +339,15 @@ def create_app() -> FastAPI:
         return create_problem_response(detail)
 
     return app
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    "create_app",
+    "create_problem_response",
+    "JSONAPIResponseMiddleware",
+    "SecurityHeadersMiddleware",
+]

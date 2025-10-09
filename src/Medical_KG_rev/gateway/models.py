@@ -1,4 +1,44 @@
-"""Shared models for the multi-protocol gateway."""
+"""Shared models for the multi-protocol gateway.
+
+This module provides Pydantic models used across all protocol handlers in the
+gateway. These models define the structure of requests, responses, and data
+transfer objects used by REST, GraphQL, gRPC, SOAP, and SSE endpoints.
+
+Key Responsibilities:
+    - Define request/response models for all protocol handlers
+    - Provide validation and serialization for API data
+    - Standardize error response formats across protocols
+    - Define batch operation models for bulk requests
+    - Provide models for evaluation and retrieval operations
+
+Collaborators:
+    - Upstream: All protocol handlers (REST, GraphQL, gRPC, SOAP, SSE)
+    - Downstream: Gateway services, coordinators, domain services
+
+Side Effects:
+    - None: Pure data models with no side effects
+
+Thread Safety:
+    - Thread-safe: Pydantic models are immutable and thread-safe
+
+Performance Characteristics:
+    - O(1) model instantiation and validation
+    - O(n) serialization where n is model size
+    - Efficient JSON serialization with Pydantic
+
+Example:
+    >>> from Medical_KG_rev.gateway.models import ProblemDetail
+    >>> error = ProblemDetail(
+    ...     title="Validation Error",
+    ...     status=400,
+    ...     detail="Invalid input provided"
+    ... )
+    >>> print(error.model_dump_json())
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -12,6 +52,10 @@ from pydantic import BaseModel, Field, model_validator
 from Medical_KG_rev.adapters import AdapterDomain
 from Medical_KG_rev.services.evaluation import EvaluationResult, MetricSummary
 from Medical_KG_rev.services.retrieval.routing import QueryIntent
+
+# ==============================================================================
+# ERROR MODELS
+# ==============================================================================
 
 
 class ProblemDetail(BaseModel):
@@ -30,6 +74,10 @@ class BatchError(BaseModel):
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
 
+
+# ==============================================================================
+# OPERATION MODELS
+# ==============================================================================
 
 class OperationStatus(BaseModel):
     """Represents the state of a submitted operation across protocols."""
@@ -50,6 +98,11 @@ class BatchOperationResult(BaseModel):
     total: int
     succeeded: int
     failed: int
+
+
+# ==============================================================================
+# ADAPTER MODELS
+# ==============================================================================
 
 
 class AdapterMetadataView(BaseModel):
@@ -94,6 +147,10 @@ class EmbeddingVector(BaseModel):
     terms: dict[str, float] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+
+# ==============================================================================
+# RETRIEVAL MODELS
+# ==============================================================================
 
 class DocumentSummary(BaseModel):
     id: str
@@ -149,6 +206,10 @@ class GraphEdge(BaseModel):
     end: str
     properties: dict[str, Any] = Field(default_factory=dict)
 
+
+# ==============================================================================
+# REQUEST MODELS
+# ==============================================================================
 
 class IngestionRequest(BaseModel):
     tenant_id: str
@@ -235,6 +296,10 @@ class NamespaceValidationResponse(BaseModel):
     valid: bool
     results: Sequence[NamespaceValidationResult]
 
+
+# ==============================================================================
+# NAMESPACE MODELS
+# ==============================================================================
 
 class NamespaceValidationRequest(BaseModel):
     tenant_id: str
@@ -324,6 +389,10 @@ class EvaluationQuery(BaseModel):
     relevant_docs: Sequence[EvaluationRelevantDoc]
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+
+# ==============================================================================
+# EVALUATION MODELS
+# ==============================================================================
 
 class EvaluationRequest(BaseModel):
     tenant_id: str
@@ -448,7 +517,19 @@ class SearchArguments(BaseModel):
     table_only: bool = False
 
 
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
+
 def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationResult:
+    """Build a batch operation result from a collection of operation statuses.
+
+    Args:
+        statuses: Collection of operation status objects.
+
+    Returns:
+        Batch operation result with summary statistics.
+    """
     items = list(statuses)
     succeeded = sum(
         1 for status in items if status.error is None and 200 <= status.http_status < 300
@@ -457,3 +538,64 @@ def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationRes
     return BatchOperationResult(
         operations=items, total=len(items), succeeded=succeeded, failed=failed
     )
+
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+
+__all__ = [
+    # Error models
+    "ProblemDetail",
+    "BatchError",
+
+    # Operation models
+    "OperationStatus",
+    "BatchOperationResult",
+
+    # Adapter models
+    "AdapterMetadataView",
+
+    # Retrieval models
+    "DocumentSummary",
+    "RetrievalResult",
+    "EntityLinkResult",
+    "GraphNode",
+    "GraphEdge",
+
+    # Request models
+    "IngestionRequest",
+    "PipelineIngestionRequest",
+    "ChunkRequest",
+    "EmbedRequest",
+    "RetrieveRequest",
+
+    # Namespace models
+    "NamespaceValidationRequest",
+    "NamespaceValidationResult",
+    "NamespaceValidationResponse",
+    "NamespacePolicySettingsView",
+    "NamespacePolicyStatus",
+    "NamespacePolicyUpdateRequest",
+    "NamespacePolicyDiagnosticsView",
+    "NamespacePolicyHealthView",
+
+    # Evaluation models
+    "EvaluationRequest",
+    "EvaluationQuery",
+    "EvaluationRelevantDoc",
+    "EvaluationResult",
+    "MetricSummaryView",
+    "EvaluationResponse",
+
+    # Job models
+    "JobHistoryEntry",
+    "JobStatus",
+
+    # Utility models
+    "Pagination",
+    "SearchArguments",
+
+    # Helper functions
+    "build_batch_result",
+]

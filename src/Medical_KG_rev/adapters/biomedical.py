@@ -54,7 +54,9 @@ Example:
     >>> documents = adapter.fetch_and_parse(context)
 """
 
+# ==============================================================================
 # IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -89,7 +91,9 @@ from Medical_KG_rev.utils.validation import (
 
 from .base import AdapterContext, BaseAdapter
 
+# ==============================================================================
 # UTILITY FUNCTIONS
+# ==============================================================================
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
     """Extract and validate a required string parameter from adapter context.
@@ -204,7 +208,9 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
     )
 
 
+# ==============================================================================
 # BASE ADAPTER CLASSES
+# ==============================================================================
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps HttpClient with sensible defaults.
@@ -334,7 +340,9 @@ class ResilientHTTPAdapter(BaseAdapter):
             self._client.close()
 
 
+# ==============================================================================
 # BIOMEDICAL ADAPTER IMPLEMENTATIONS
+# ==============================================================================
 
 class ClinicalTrialsAdapter(ResilientHTTPAdapter):
     """Adapter for ClinicalTrials.gov API v2.
@@ -1665,4 +1673,6 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
             )
         return documents
 
+# ==============================================================================
 # EXPORTS
+# ==============================================================================

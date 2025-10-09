@@ -2,7 +2,6 @@ name: auto
 version: "2025-01-01"
 applicable_sources:
   - clinical-trials
-  - openalex
   - semantic-scholar
 metadata:
   owner: ingestion-team

@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-import structlog
 from pydantic import BaseModel, Field, field_validator
 
+import structlog
 from Medical_KG_rev.adapters import get_plugin_manager
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.chunking.exceptions import (
@@ -18,10 +18,11 @@ from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
 from Medical_KG_rev.orchestration.dagster.runtime import StageFactory, build_stage_factory
-from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
+from Medical_KG_rev.orchestration.dagster.stages import (
+    create_default_pipeline_resource,
+    create_stage_plugin_manager,
+)
 from Medical_KG_rev.orchestration.ledger import JobLedger
-from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
-from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import ChunkStage, StageContext
 from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 
@@ -175,10 +176,6 @@ class ChunkingService:
             doc_id=command.document_id,
             strategy=command.strategy,
         )
-            metadata=self._context_metadata(chunk_options, command),
-            pipeline_name=self._DEFAULT_PIPELINE,
-            pipeline_version=self._DEFAULT_VERSION,
-        )
         document = self._build_document(command.document_id, command.text, command.metadata)
         logger.bind(**command.log_context()).debug("gateway.chunking.execute")
         try:
@@ -208,6 +205,9 @@ class ChunkingService:
         return stage
 
     def _context_metadata(self, options: ChunkingOptions) -> dict[str, Any]:
+        """Extract metadata for stage context from chunking options."""
+        return options.options_without_text()
+
     def _build_document(self, document_id: str, text: str, metadata: Mapping[str, Any]) -> Document:
         paragraphs = [segment.strip() for segment in text.split("\n\n") if segment.strip()]
         if not paragraphs:

@@ -1,0 +1,2527 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Medical_KG_rev Operational Runbook - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#medical_kg_rev-operational-runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Medical_KG_rev Operational Runbook
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Services
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-and-alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring and Alerting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring and Alerting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#storage-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Storage Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alerting-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alerting Rules
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Alerting Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critical-alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Critical Alerts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#warning-alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Warning Alerts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dashboard-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dashboard URLs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Storage Operations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Health Checks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Health Checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s3minio-health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      S3/MinIO Health Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Health Check
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Storage Maintenance
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Maintenance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cleanup-old-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cleanup Old Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-memory-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Memory Cleanup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backup-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backup Procedures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backup Procedures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s3-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      S3 Backup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Backup
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Operations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Management
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Start Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitor-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitor Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stop Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-pipeline-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Pipeline State
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Issues
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-pdf-upload-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. PDF Upload Failures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-redis-connection-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Redis Connection Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-pipeline-stuck-at-pdf-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Pipeline Stuck at PDF Gate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-high-memory-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. High Memory Usage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Commands
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Debug Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#storage-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      Storage Debug
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Debug
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#emergency-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Emergency Procedures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Emergency Procedures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#service-outage-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Service Outage Response
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Service Outage Response">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-api-gateway-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. API Gateway Down
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-storage-service-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Storage Service Down
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-pipeline-service-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Pipeline Service Down
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Recovery
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-s3-data-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. S3 Data Recovery
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-redis-data-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Redis Data Recovery
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollback-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rollback Procedures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rollback Procedures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-application-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Application Rollback
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configuration-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Configuration Rollback
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintenance-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Maintenance Procedures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Maintenance Procedures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regular-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regular Maintenance
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Regular Maintenance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#daily-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weekly-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Weekly Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monthly-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monthly Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scheduled-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scheduled Maintenance
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scheduled Maintenance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backup-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backup Schedule
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cleanup-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cleanup Schedule
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Tuning
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Tuning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s3-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      S3 Optimization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contact-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contact Information
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Contact Information">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#team-contacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Team Contacts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#escalation-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Escalation Procedures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      External Dependencies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Appendix
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#useful-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Useful Commands
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Useful Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitoring-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Storage Commands
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker Compose Overrides
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="medical_kg_rev-operational-runbook">Medical_KG_rev Operational Runbook</h1>
+<h2 id="overview">Overview</h2>
+<p>This runbook provides operational procedures for the Medical_KG_rev platform, focusing on storage, monitoring, and troubleshooting procedures.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#system-overview">System Overview</a></li>
+<li><a href="#monitoring-and-alerting">Monitoring and Alerting</a></li>
+<li><a href="#storage-operations">Storage Operations</a></li>
+<li><a href="#pipeline-operations">Pipeline Operations</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#emergency-procedures">Emergency Procedures</a></li>
+<li><a href="#maintenance-procedures">Maintenance Procedures</a></li>
+</ol>
+<h2 id="system-overview">System Overview</h2>
+<h3 id="architecture-components">Architecture Components</h3>
+<ul>
+<li><strong>API Gateway</strong>: Multi-protocol API (REST, GraphQL, gRPC, SOAP, AsyncAPI)</li>
+<li><strong>Orchestration</strong>: Dagster-based pipeline orchestration</li>
+<li><strong>Storage</strong>: S3-compatible object storage + Redis caching</li>
+<li><strong>AI Services</strong>: MinerU (PDF processing), vLLM (embeddings)</li>
+<li><strong>Knowledge Graph</strong>: Neo4j graph database</li>
+<li><strong>Monitoring</strong>: Prometheus + Grafana + Jaeger</li>
+</ul>
+<h3 id="key-services">Key Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Purpose</th>
+<th>Health Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API Gateway</td>
+<td>8000</td>
+<td>Main API endpoint</td>
+<td><code>/health</code></td>
+</tr>
+<tr>
+<td>Dagster UI</td>
+<td>3000</td>
+<td>Pipeline management</td>
+<td><code>/health</code></td>
+</tr>
+<tr>
+<td>MinIO</td>
+<td>9000</td>
+<td>Object storage</td>
+<td><code>/minio/health/live</code></td>
+</tr>
+<tr>
+<td>Redis</td>
+<td>6379</td>
+<td>Caching</td>
+<td><code>PING</code></td>
+</tr>
+<tr>
+<td>Neo4j</td>
+<td>7474</td>
+<td>Graph database</td>
+<td><code>/health</code></td>
+</tr>
+<tr>
+<td>Prometheus</td>
+<td>9090</td>
+<td>Metrics collection</td>
+<td><code>/health</code></td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td>3001</td>
+<td>Dashboards</td>
+<td><code>/health</code></td>
+</tr>
+<tr>
+<td>Jaeger</td>
+<td>16686</td>
+<td>Distributed tracing</td>
+<td><code>/health</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="monitoring-and-alerting">Monitoring and Alerting</h2>
+<h3 id="key-metrics">Key Metrics</h3>
+<h4 id="storage-metrics">Storage Metrics</h4>
+<ul>
+<li><code>storage_pdf_upload_total</code>: Total PDF uploads</li>
+<li><code>storage_pdf_upload_duration_seconds</code>: Upload duration</li>
+<li><code>storage_pdf_upload_size_bytes</code>: Upload size distribution</li>
+<li><code>storage_cache_hit_total</code>: Cache hit rate</li>
+<li><code>storage_cache_miss_total</code>: Cache miss rate</li>
+</ul>
+<h4 id="pipeline-metrics">Pipeline Metrics</h4>
+<ul>
+<li><code>pipeline_pdf_download_total</code>: PDF download attempts</li>
+<li><code>pipeline_pdf_download_success_total</code>: Successful downloads</li>
+<li><code>pipeline_pdf_download_failure_total</code>: Failed downloads</li>
+<li><code>pipeline_pdf_gate_open_total</code>: Gate open events</li>
+<li><code>pipeline_pdf_gate_closed_total</code>: Gate closed events</li>
+</ul>
+<h4 id="system-metrics">System Metrics</h4>
+<ul>
+<li><code>http_requests_total</code>: API request count</li>
+<li><code>http_request_duration_seconds</code>: API response time</li>
+<li><code>dagster_job_runs_total</code>: Pipeline job runs</li>
+<li><code>dagster_job_failures_total</code>: Pipeline failures</li>
+</ul>
+<h3 id="alerting-rules">Alerting Rules</h3>
+<h4 id="critical-alerts">Critical Alerts</h4>
+<pre><code class="language-yaml"># High error rate
+- alert: HighErrorRate
+  expr: rate(http_requests_total{status=~&quot;5..&quot;}[5m]) &gt; 0.1
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: &quot;High error rate detected&quot;
+
+# Storage failures
+- alert: StorageFailures
+  expr: rate(storage_pdf_upload_failure_total[5m]) &gt; 0.05
+  for: 1m
+  labels:
+    severity: critical
+  annotations:
+    summary: &quot;Storage upload failures detected&quot;
+
+# Pipeline failures
+- alert: PipelineFailures
+  expr: rate(dagster_job_failures_total[10m]) &gt; 0.1
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: &quot;Pipeline failures detected&quot;
+</code></pre>
+<h4 id="warning-alerts">Warning Alerts</h4>
+<pre><code class="language-yaml"># High latency
+- alert: HighLatency
+  expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) &gt; 2
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: &quot;High API latency detected&quot;
+
+# Low cache hit rate
+- alert: LowCacheHitRate
+  expr: rate(storage_cache_hit_total[5m]) / (rate(storage_cache_hit_total[5m]) + rate(storage_cache_miss_total[5m])) &lt; 0.8
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: &quot;Low cache hit rate detected&quot;
+</code></pre>
+<h3 id="dashboard-urls">Dashboard URLs</h3>
+<ul>
+<li><strong>Main Dashboard</strong>: <a href="http://grafana:3001/d/main">http://grafana:3001/d/main</a></li>
+<li><strong>Storage Dashboard</strong>: <a href="http://grafana:3001/d/storage">http://grafana:3001/d/storage</a></li>
+<li><strong>Pipeline Dashboard</strong>: <a href="http://grafana:3001/d/pipeline">http://grafana:3001/d/pipeline</a></li>
+<li><strong>API Dashboard</strong>: <a href="http://grafana:3001/d/api">http://grafana:3001/d/api</a></li>
+</ul>
+<h2 id="storage-operations">Storage Operations</h2>
+<h3 id="health-checks">Health Checks</h3>
+<h4 id="s3minio-health-check">S3/MinIO Health Check</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Check MinIO health
+curl -f http://minio:9000/minio/health/live || exit 1
+
+# Check bucket accessibility
+aws s3 ls s3://medical-kg-pdf --endpoint-url http://minio:9000 || exit 1
+
+# Test upload/download
+echo &quot;test&quot; | aws s3 cp - s3://medical-kg-pdf/health-check --endpoint-url http://minio:9000
+aws s3 cp s3://medical-kg-pdf/health-check - --endpoint-url http://minio:9000
+aws s3 rm s3://medical-kg-pdf/health-check --endpoint-url http://minio:9000
+</code></pre>
+<h4 id="redis-health-check">Redis Health Check</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Check Redis connectivity
+redis-cli -u &quot;$REDIS_URL&quot; ping || exit 1
+
+# Check memory usage
+redis-cli -u &quot;$REDIS_URL&quot; info memory | grep used_memory_human
+
+# Check key count
+redis-cli -u &quot;$REDIS_URL&quot; dbsize
+</code></pre>
+<h3 id="storage-maintenance">Storage Maintenance</h3>
+<h4 id="cleanup-old-files">Cleanup Old Files</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Clean up files older than 30 days
+aws s3 ls s3://medical-kg-pdf --recursive --endpoint-url http://minio:9000 | \
+awk '$1 &lt; &quot;'$(date -d '30 days ago' --iso-8601)'&quot; {print $4}' | \
+xargs -I {} aws s3 rm s3://medical-kg-pdf/{} --endpoint-url http://minio:9000
+</code></pre>
+<h4 id="redis-memory-cleanup">Redis Memory Cleanup</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Clear expired keys
+redis-cli -u &quot;$REDIS_URL&quot; --scan --pattern &quot;medical-kg:*&quot; | \
+xargs -I {} redis-cli -u &quot;$REDIS_URL&quot; expire {} 0
+
+# Check memory usage after cleanup
+redis-cli -u &quot;$REDIS_URL&quot; info memory | grep used_memory_human
+</code></pre>
+<h3 id="backup-procedures">Backup Procedures</h3>
+<h4 id="s3-backup">S3 Backup</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Create S3 backup
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_BUCKET=&quot;medical-kg-pdf-backup&quot;
+
+# Sync current bucket to backup bucket
+aws s3 sync s3://medical-kg-pdf s3://$BACKUP_BUCKET/$BACKUP_DATE \
+  --endpoint-url http://minio:9000
+
+# Verify backup
+aws s3 ls s3://$BACKUP_BUCKET/$BACKUP_DATE --endpoint-url http://minio:9000
+</code></pre>
+<h4 id="redis-backup">Redis Backup</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Create Redis backup
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE=&quot;/backups/redis_$BACKUP_DATE.rdb&quot;
+
+# Trigger Redis save
+redis-cli -u &quot;$REDIS_URL&quot; BGSAVE
+
+# Wait for save to complete
+while [ &quot;$(redis-cli -u &quot;$REDIS_URL&quot; LASTSAVE)&quot; = &quot;$(redis-cli -u &quot;$REDIS_URL&quot; LASTSAVE)&quot; ]; do
+  sleep 1
+done
+
+# Copy backup file
+cp /var/lib/redis/dump.rdb &quot;$BACKUP_FILE&quot;
+</code></pre>
+<h2 id="pipeline-operations">Pipeline Operations</h2>
+<h3 id="pipeline-management">Pipeline Management</h3>
+<h4 id="start-pipeline">Start Pipeline</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Start PDF processing pipeline
+dagster job execute --job pdf-two-phase --config config/orchestration/pipelines/pdf-two-phase.yaml
+</code></pre>
+<h4 id="monitor-pipeline">Monitor Pipeline</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Check pipeline status
+dagster job status --job pdf-two-phase
+
+# View pipeline logs
+dagster job logs --job pdf-two-phase --tail
+</code></pre>
+<h4 id="stop-pipeline">Stop Pipeline</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Stop running pipeline
+dagster job cancel --job pdf-two-phase
+</code></pre>
+<h3 id="pipeline-troubleshooting">Pipeline Troubleshooting</h3>
+<h4 id="check-pipeline-state">Check Pipeline State</h4>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Check pipeline state and diagnose issues.&quot;&quot;&quot;
+
+import asyncio
+from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.storage.clients import create_storage_clients
+from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
+
+async def check_pipeline_state(job_id: str):
+    # Check ledger state
+    ledger = JobLedger()
+    state = await ledger.get_job_state(job_id)
+    print(f&quot;Job {job_id} state: {state}&quot;)
+
+    # Check storage
+    object_settings = ObjectStorageSettings()
+    redis_settings = RedisCacheSettings()
+    clients = create_storage_clients(object_settings, redis_settings)
+
+    # Check if PDF assets exist
+    if &quot;pdf_assets&quot; in state.metadata:
+        for asset in state.metadata[&quot;pdf_assets&quot;]:
+            if &quot;storage_uri&quot; in asset:
+                print(f&quot;PDF asset: {asset['storage_uri']}&quot;)
+
+                # Check if file exists in storage
+                try:
+                    # Extract checksum from URI
+                    checksum = asset[&quot;storage_uri&quot;].split(&quot;/&quot;)[-1].replace(&quot;.pdf&quot;, &quot;&quot;)
+                    data = await clients.pdf_storage_client.get_pdf_data(
+                        state.tenant_id, state.document_id, checksum
+                    )
+                    print(f&quot;PDF exists in storage: {len(data)} bytes&quot;)
+                except Exception as e:
+                    print(f&quot;PDF not found in storage: {e}&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    import sys
+    job_id = sys.argv[1] if len(sys.argv) &gt; 1 else &quot;test-job&quot;
+    asyncio.run(check_pipeline_state(job_id))
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<h4 id="1-pdf-upload-failures">1. PDF Upload Failures</h4>
+<p><strong>Symptoms</strong>:</p>
+<ul>
+<li><code>storage_pdf_upload_failure_total</code> metric increasing</li>
+<li>Error logs showing "Storage error" or "S3 error"</li>
+</ul>
+<p><strong>Diagnosis</strong>:</p>
+<pre><code class="language-bash"># Check S3 connectivity
+aws s3 ls s3://medical-kg-pdf --endpoint-url http://minio:9000
+
+# Check bucket permissions
+aws s3api get-bucket-acl --bucket medical-kg-pdf --endpoint-url http://minio:9000
+
+# Check disk space on MinIO
+df -h /var/lib/minio
+</code></pre>
+<p><strong>Resolution</strong>:</p>
+<ol>
+<li>Check MinIO service status: <code>docker-compose ps minio</code></li>
+<li>Restart MinIO if needed: <code>docker-compose restart minio</code></li>
+<li>Check bucket permissions and policies</li>
+<li>Verify network connectivity between services</li>
+</ol>
+<h4 id="2-redis-connection-issues">2. Redis Connection Issues</h4>
+<p><strong>Symptoms</strong>:</p>
+<ul>
+<li><code>storage_cache_miss_total</code> metric increasing</li>
+<li>Error logs showing "Redis connection failed"</li>
+</ul>
+<p><strong>Diagnosis</strong>:</p>
+<pre><code class="language-bash"># Check Redis connectivity
+redis-cli -u &quot;$REDIS_URL&quot; ping
+
+# Check Redis memory usage
+redis-cli -u &quot;$REDIS_URL&quot; info memory
+
+# Check Redis logs
+docker-compose logs redis
+</code></pre>
+<p><strong>Resolution</strong>:</p>
+<ol>
+<li>Check Redis service status: <code>docker-compose ps redis</code></li>
+<li>Restart Redis if needed: <code>docker-compose restart redis</code></li>
+<li>Check memory usage and clear expired keys</li>
+<li>Verify Redis configuration</li>
+</ol>
+<h4 id="3-pipeline-stuck-at-pdf-gate">3. Pipeline Stuck at PDF Gate</h4>
+<p><strong>Symptoms</strong>:</p>
+<ul>
+<li>Pipeline jobs stuck in "running" state</li>
+<li><code>pipeline_pdf_gate_closed_total</code> metric increasing</li>
+<li>No progress on PDF processing</li>
+</ul>
+<p><strong>Diagnosis</strong>:</p>
+<pre><code class="language-python"># Check PDF gate status
+from Medical_KG_rev.orchestration.ledger import JobLedger
+
+ledger = JobLedger()
+state = await ledger.get_job_state(&quot;stuck-job-id&quot;)
+print(f&quot;PDF gate status: {state.pdf_gate}&quot;)
+</code></pre>
+<p><strong>Resolution</strong>:</p>
+<ol>
+<li>Check if PDF download completed successfully</li>
+<li>Verify PDF exists in storage</li>
+<li>Check MinerU service health</li>
+<li>Manually trigger PDF gate if needed</li>
+</ol>
+<h4 id="4-high-memory-usage">4. High Memory Usage</h4>
+<p><strong>Symptoms</strong>:</p>
+<ul>
+<li>System memory usage &gt; 80%</li>
+<li>Redis memory usage high</li>
+<li>Slow response times</li>
+</ul>
+<p><strong>Diagnosis</strong>:</p>
+<pre><code class="language-bash"># Check system memory
+free -h
+
+# Check Redis memory
+redis-cli -u &quot;$REDIS_URL&quot; info memory
+
+# Check Docker container memory
+docker stats
+</code></pre>
+<p><strong>Resolution</strong>:</p>
+<ol>
+<li>Clear Redis cache: <code>redis-cli -u "$REDIS_URL" FLUSHDB</code></li>
+<li>Restart high-memory services</li>
+<li>Check for memory leaks in application code</li>
+<li>Scale up resources if needed</li>
+</ol>
+<h3 id="debug-commands">Debug Commands</h3>
+<h4 id="storage-debug">Storage Debug</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Debug storage connectivity
+echo &quot;Testing S3 connectivity...&quot;
+aws s3 ls s3://medical-kg-pdf --endpoint-url http://minio:9000
+
+echo &quot;Testing Redis connectivity...&quot;
+redis-cli -u &quot;$REDIS_URL&quot; ping
+
+echo &quot;Testing PDF upload...&quot;
+echo &quot;test&quot; | aws s3 cp - s3://medical-kg-pdf/debug-test --endpoint-url http://minio:9000
+aws s3 rm s3://medical-kg-pdf/debug-test --endpoint-url http://minio:9000
+</code></pre>
+<h4 id="pipeline-debug">Pipeline Debug</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Debug pipeline state
+dagster job status --job pdf-two-phase
+
+# Check pipeline logs
+dagster job logs --job pdf-two-phase --tail 100
+
+# Check specific job
+dagster job status --job pdf-two-phase --run-id &lt;run-id&gt;
+</code></pre>
+<h2 id="emergency-procedures">Emergency Procedures</h2>
+<h3 id="service-outage-response">Service Outage Response</h3>
+<h4 id="1-api-gateway-down">1. API Gateway Down</h4>
+<ol>
+<li>Check service status: <code>docker-compose ps gateway</code></li>
+<li>Check logs: <code>docker-compose logs gateway</code></li>
+<li>Restart service: <code>docker-compose restart gateway</code></li>
+<li>Check dependencies (Redis, Neo4j, etc.)</li>
+<li>Notify team if issue persists</li>
+</ol>
+<h4 id="2-storage-service-down">2. Storage Service Down</h4>
+<ol>
+<li>Check MinIO status: <code>docker-compose ps minio</code></li>
+<li>Check disk space: <code>df -h</code></li>
+<li>Restart MinIO: <code>docker-compose restart minio</code></li>
+<li>Check Redis status: <code>docker-compose ps redis</code></li>
+<li>Restart Redis if needed: <code>docker-compose restart redis</code></li>
+<li>Verify data integrity after restart</li>
+</ol>
+<h4 id="3-pipeline-service-down">3. Pipeline Service Down</h4>
+<ol>
+<li>Check Dagster status: <code>docker-compose ps dagster</code></li>
+<li>Check logs: <code>docker-compose logs dagster</code></li>
+<li>Restart Dagster: <code>docker-compose restart dagster</code></li>
+<li>Check running jobs: <code>dagster job status</code></li>
+<li>Cancel stuck jobs if needed</li>
+</ol>
+<h3 id="data-recovery">Data Recovery</h3>
+<h4 id="1-s3-data-recovery">1. S3 Data Recovery</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Restore from backup
+BACKUP_DATE=&quot;20240101_120000&quot;  # Replace with actual backup date
+BACKUP_BUCKET=&quot;medical-kg-pdf-backup&quot;
+
+# Restore from backup
+aws s3 sync s3://$BACKUP_BUCKET/$BACKUP_DATE s3://medical-kg-pdf \
+  --endpoint-url http://minio:9000
+
+# Verify restoration
+aws s3 ls s3://medical-kg-pdf --endpoint-url http://minio:9000
+</code></pre>
+<h4 id="2-redis-data-recovery">2. Redis Data Recovery</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Restore Redis from backup
+BACKUP_FILE=&quot;/backups/redis_20240101_120000.rdb&quot;
+
+# Stop Redis
+docker-compose stop redis
+
+# Copy backup file
+cp &quot;$BACKUP_FILE&quot; /var/lib/redis/dump.rdb
+
+# Start Redis
+docker-compose start redis
+
+# Verify restoration
+redis-cli -u &quot;$REDIS_URL&quot; dbsize
+</code></pre>
+<h3 id="rollback-procedures">Rollback Procedures</h3>
+<h4 id="1-application-rollback">1. Application Rollback</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Rollback to previous version
+git checkout previous-version-tag
+docker-compose build
+docker-compose up -d
+
+# Verify rollback
+curl -f http://localhost:8000/health
+</code></pre>
+<h4 id="2-configuration-rollback">2. Configuration Rollback</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Rollback configuration changes
+git checkout HEAD~1 -- config/
+docker-compose restart
+
+# Verify configuration
+docker-compose config
+</code></pre>
+<h2 id="maintenance-procedures">Maintenance Procedures</h2>
+<h3 id="regular-maintenance">Regular Maintenance</h3>
+<h4 id="daily-tasks">Daily Tasks</h4>
+<ul>
+<li>[ ] Check system health dashboards</li>
+<li>[ ] Review error logs</li>
+<li>[ ] Monitor storage usage</li>
+<li>[ ] Check pipeline job status</li>
+</ul>
+<h4 id="weekly-tasks">Weekly Tasks</h4>
+<ul>
+<li>[ ] Review performance metrics</li>
+<li>[ ] Clean up old log files</li>
+<li>[ ] Check backup status</li>
+<li>[ ] Review security logs</li>
+</ul>
+<h4 id="monthly-tasks">Monthly Tasks</h4>
+<ul>
+<li>[ ] Update system dependencies</li>
+<li>[ ] Review and update documentation</li>
+<li>[ ] Performance optimization review</li>
+<li>[ ] Security audit</li>
+</ul>
+<h3 id="scheduled-maintenance">Scheduled Maintenance</h3>
+<h4 id="backup-schedule">Backup Schedule</h4>
+<ul>
+<li><strong>S3 Backups</strong>: Daily at 2 AM UTC</li>
+<li><strong>Redis Backups</strong>: Daily at 3 AM UTC</li>
+<li><strong>Configuration Backups</strong>: Weekly on Sundays</li>
+</ul>
+<h4 id="cleanup-schedule">Cleanup Schedule</h4>
+<ul>
+<li><strong>Old Files</strong>: Daily cleanup of files older than 30 days</li>
+<li><strong>Expired Cache</strong>: Daily cleanup of expired Redis keys</li>
+<li><strong>Log Files</strong>: Weekly cleanup of old log files</li>
+</ul>
+<h3 id="performance-tuning">Performance Tuning</h3>
+<h4 id="s3-optimization">S3 Optimization</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Optimize S3 performance
+aws configure set default.s3.max_concurrent_requests 20
+aws configure set default.s3.max_bandwidth 100MB/s
+aws configure set default.s3.multipart_threshold 64MB
+aws configure set default.s3.multipart_chunksize 16MB
+</code></pre>
+<h4 id="redis-optimization">Redis Optimization</h4>
+<pre><code class="language-bash">#!/bin/bash
+# Optimize Redis performance
+redis-cli -u &quot;$REDIS_URL&quot; CONFIG SET maxmemory-policy allkeys-lru
+redis-cli -u &quot;$REDIS_URL&quot; CONFIG SET tcp-keepalive 60
+redis-cli -u &quot;$REDIS_URL&quot; CONFIG SET timeout 300
+</code></pre>
+<h2 id="contact-information">Contact Information</h2>
+<h3 id="team-contacts">Team Contacts</h3>
+<ul>
+<li><strong>Platform Team</strong>: <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#112;&#108;&#97;&#116;&#102;&#111;&#114;&#109;&#64;&#99;&#111;&#109;&#112;&#97;&#110;&#121;&#46;&#99;&#111;&#109;">&#112;&#108;&#97;&#116;&#102;&#111;&#114;&#109;&#64;&#99;&#111;&#109;&#112;&#97;&#110;&#121;&#46;&#99;&#111;&#109;</a></li>
+<li><strong>On-Call Engineer</strong>: +1-555-0123</li>
+<li><strong>Emergency Contact</strong>: +1-555-9999</li>
+</ul>
+<h3 id="escalation-procedures">Escalation Procedures</h3>
+<ol>
+<li><strong>Level 1</strong>: Platform Team (0-15 minutes)</li>
+<li><strong>Level 2</strong>: Senior Engineer (15-30 minutes)</li>
+<li><strong>Level 3</strong>: Engineering Manager (30-60 minutes)</li>
+<li><strong>Level 4</strong>: CTO (60+ minutes)</li>
+</ol>
+<h3 id="external-dependencies">External Dependencies</h3>
+<ul>
+<li><strong>AWS Support</strong>: Enterprise Support Plan</li>
+<li><strong>MinIO Support</strong>: Community Support</li>
+<li><strong>Redis Support</strong>: Enterprise Support Plan</li>
+<li><strong>Neo4j Support</strong>: Enterprise Support Plan</li>
+</ul>
+<h2 id="appendix">Appendix</h2>
+<h3 id="useful-commands">Useful Commands</h3>
+<h4 id="docker-commands">Docker Commands</h4>
+<pre><code class="language-bash"># View all containers
+docker-compose ps
+
+# View logs
+docker-compose logs -f service-name
+
+# Restart service
+docker-compose restart service-name
+
+# Scale service
+docker-compose up -d --scale service-name=3
+
+# Execute command in container
+docker-compose exec service-name command
+</code></pre>
+<h4 id="monitoring-commands">Monitoring Commands</h4>
+<pre><code class="language-bash"># Check system resources
+htop
+df -h
+free -h
+
+# Check network connectivity
+netstat -tulpn
+ss -tulpn
+
+# Check process status
+ps aux | grep service-name
+</code></pre>
+<h4 id="storage-commands">Storage Commands</h4>
+<pre><code class="language-bash"># S3 operations
+aws s3 ls s3://bucket-name --endpoint-url http://minio:9000
+aws s3 cp local-file s3://bucket-name/remote-file --endpoint-url http://minio:9000
+aws s3 rm s3://bucket-name/file --endpoint-url http://minio:9000
+
+# Redis operations
+redis-cli -u &quot;$REDIS_URL&quot; keys &quot;pattern*&quot;
+redis-cli -u &quot;$REDIS_URL&quot; get &quot;key&quot;
+redis-cli -u &quot;$REDIS_URL&quot; set &quot;key&quot; &quot;value&quot;
+redis-cli -u &quot;$REDIS_URL&quot; del &quot;key&quot;
+</code></pre>
+<h3 id="configuration-files">Configuration Files</h3>
+<h4 id="environment-variables">Environment Variables</h4>
+<pre><code class="language-bash"># S3/MinIO
+export AWS_ACCESS_KEY_ID=minioadmin
+export AWS_SECRET_ACCESS_KEY=minioadmin
+export S3_ENDPOINT_URL=http://minio:9000
+export S3_BUCKET=medical-kg-pdf
+
+# Redis
+export REDIS_URL=redis://redis:6379/0
+export REDIS_PASSWORD=redis-password
+
+# Application
+export ENVIRONMENT=dev
+export LOG_LEVEL=INFO
+export CORRELATION_ID_HEADER=X-Correlation-ID
+</code></pre>
+<h4 id="docker-compose-overrides">Docker Compose Overrides</h4>
+<pre><code class="language-yaml"># docker-compose.override.yml
+version: '3.8'
+services:
+  minio:
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    ports:
+      - &quot;9000:9000&quot;
+      - &quot;9001:9001&quot;
+
+  redis:
+    environment:
+      REDIS_PASSWORD: redis-password
+    volumes:
+      - redis-data:/data
+    ports:
+      - &quot;6379:6379&quot;
+
+volumes:
+  minio-data:
+  redis-data:
+</code></pre>
+<p>This runbook should be reviewed and updated regularly to reflect changes in the system architecture and operational procedures.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

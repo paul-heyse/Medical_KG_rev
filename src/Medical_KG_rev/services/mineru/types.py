@@ -48,7 +48,8 @@ class Document:
 class MineruRequest:
     tenant_id: str
     document_id: str
-    content: bytes
+    content: bytes | None = None
+    storage_uri: str | None = None
 
 
 @dataclass(slots=True)

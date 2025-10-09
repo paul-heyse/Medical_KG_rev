@@ -67,6 +67,81 @@ class ObservabilitySettings(BaseModel):
     sentry: SentrySettings = Field(default_factory=SentrySettings)
 
 
+class ObjectStorageSettings(BaseModel):
+    """S3/MinIO object storage configuration."""
+
+    bucket: str = Field(default="medical-kg-pdf", description="Target bucket for stored PDFs")
+    key_prefix: str = Field(default="pdf", description="Base key prefix for stored artefacts")
+    endpoint_url: AnyHttpUrl | None = Field(
+        default="http://minio:9000",
+        description="Custom endpoint URL (set to MinIO or S3-compatible service)",
+    )
+    region: str | None = Field(default=None, description="AWS region (leave blank for MinIO/dev)")
+    access_key_id: SecretStr | None = Field(default=None, description="S3 access key ID")
+    secret_access_key: SecretStr | None = Field(default=None, description="S3 secret access key")
+    session_token: SecretStr | None = Field(default=None, description="Temporary session token")
+    use_tls: bool = Field(default=False, description="Whether to require TLS for the endpoint")
+    checksum_algorithm: Literal["sha256", "md5"] = Field(
+        default="sha256", description="Checksum algorithm used for stored PDFs"
+    )
+    signed_url_ttl_seconds: int = Field(
+        default=3600,
+        ge=60,
+        description="TTL for presigned URLs handed to downstream systems",
+    )
+
+
+class RedisCacheSettings(BaseModel):
+    """Redis cache configuration for PDF metadata."""
+
+    url: str = Field(
+        default="redis://redis:6379/0",
+        description="Redis connection URL (supports redis+tls scheme)",
+    )
+    password: SecretStr | None = Field(default=None, description="Redis password (if required)")
+    use_tls: bool = Field(default=False, description="Enable TLS for Redis connections")
+    key_prefix: str = Field(default="medical_kg:pdf", description="Key prefix for cached entries")
+    max_connections: int = Field(default=128, ge=1, description="Redis connection pool limit")
+    tls_cert_path: str | None = Field(
+        default=None,
+        description="Path to CA bundle when TLS is enabled (optional for dev)",
+    )
+    default_ttl_seconds: int = Field(
+        default=24 * 60 * 60,
+        ge=60,
+        description="Default TTL for cached PDF metadata (in seconds)",
+    )
+
+
+class OpenAlexSettings(BaseModel):
+    """Configuration for the OpenAlex adapter."""
+
+    contact_email: str = Field(
+        default="oss@medical-kg.local",
+        description="Contact email used for OpenAlex polite pool compliance",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        description="Custom User-Agent identifying this deployment",
+    )
+    max_results: int = Field(
+        default=5,
+        ge=1,
+        le=200,
+        description="Maximum number of OpenAlex results to fetch per request",
+    )
+    requests_per_second: float = Field(
+        default=5.0,
+        gt=0,
+        description="Polite pool target RPS used by rate limiter",
+    )
+    timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="HTTP timeout applied to OpenAlex requests",
+    )
+
+
 class MineruCircuitBreakerSettings(BaseModel):
     """Circuit breaker thresholds for the MinerU vLLM client."""
 
@@ -352,8 +427,8 @@ class RerankerModelSettings(BaseModel):
 
     @model_validator(mode="after")
     def validate_model_availability(self) -> "RerankerModelSettings":
-        from Medical_KG_rev.services.reranking.factory import RerankerFactory
         from Medical_KG_rev.services.reranking.errors import UnknownRerankerError
+        from Medical_KG_rev.services.reranking.factory import RerankerFactory
 
         factory = RerankerFactory()
         if self.reranker_id not in factory.available:
@@ -447,6 +522,34 @@ class EmbeddingRuntimeSettings(BaseModel):
     )
 
 
+class ObjectStorageSettings(BaseModel):
+    """S3/MinIO object storage configuration."""
+
+    bucket: str = Field(default="medical-kg-pdf", description="S3 bucket name for PDF storage")
+    region: str = Field(default="us-east-1", description="AWS region for S3 operations")
+    endpoint_url: str | None = Field(default=None, description="Custom S3 endpoint (e.g., MinIO)")
+    access_key_id: str | None = Field(default=None, description="AWS access key ID")
+    secret_access_key: SecretStr | None = Field(default=None, description="AWS secret access key")
+    session_token: SecretStr | None = Field(default=None, description="AWS session token")
+    use_tls: bool = Field(default=True, description="Use TLS for S3 connections")
+    tls_cert_path: str | None = Field(default=None, description="Path to TLS certificate")
+    max_file_size: int = Field(default=100 * 1024 * 1024, description="Maximum file size in bytes (100MB)")
+    key_prefix: str = Field(default="pdf", description="Key prefix for stored objects")
+
+
+class RedisCacheSettings(BaseModel):
+    """Redis cache configuration."""
+
+    url: str = Field(default="redis://redis:6379/0", description="Redis connection URL")
+    password: SecretStr | None = Field(default=None, description="Redis password")
+    use_tls: bool = Field(default=False, description="Use TLS for Redis connections")
+    tls_cert_path: str | None = Field(default=None, description="Path to TLS certificate")
+    db_index: int = Field(default=0, ge=0, le=15, description="Redis database index")
+    key_prefix: str = Field(default="medical-kg", description="Key prefix for cache entries")
+    default_ttl: int = Field(default=3600, ge=0, description="Default TTL in seconds")
+    max_connections: int = Field(default=10, ge=1, description="Maximum connection pool size")
+
+
 def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:
     """Convert legacy reranking configuration dictionaries into the new schema."""
 
@@ -474,6 +577,9 @@ class AppSettings(BaseSettings):
     mineru: MineruSettings = Field(default_factory=MineruSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
+    object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
+    redis_cache: RedisCacheSettings = Field(default_factory=RedisCacheSettings)
+    openalex: OpenAlexSettings = Field(default_factory=OpenAlexSettings)
     domains_config_path: Path | None = Field(default=None)
     security: SecuritySettings = Field(
         default_factory=lambda: SecuritySettings(
@@ -504,6 +610,8 @@ class AppSettings(BaseSettings):
         )
     )
     embedding: EmbeddingRuntimeSettings = Field(default_factory=EmbeddingRuntimeSettings)
+    object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
+    redis_cache: RedisCacheSettings = Field(default_factory=RedisCacheSettings)
 
     model_config = SettingsConfigDict(env_prefix="MK_", env_nested_delimiter="__")
 
@@ -513,9 +621,26 @@ ENVIRONMENT_DEFAULTS: Mapping[Environment, dict[str, Any]] = {
         "debug": True,
         "telemetry": {"exporter": "console"},
         "security": {"enforce_https": False},
+        "object_storage": {
+            "endpoint_url": "http://minio:9000",
+            "bucket": "medical-kg-pdf",
+            "use_tls": False,
+        },
+        "redis_cache": {
+            "url": "redis://redis:6379/0",
+            "use_tls": False,
+        },
     },
-    Environment.STAGING: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.25}},
-    Environment.PROD: {"telemetry": {"exporter": "otlp", "sample_ratio": 0.05}},
+    Environment.STAGING: {
+        "telemetry": {"exporter": "otlp", "sample_ratio": 0.25},
+        "object_storage": {"use_tls": True},
+        "redis_cache": {"use_tls": True},
+    },
+    Environment.PROD: {
+        "telemetry": {"exporter": "otlp", "sample_ratio": 0.05},
+        "object_storage": {"use_tls": True},
+        "redis_cache": {"use_tls": True},
+    },
 }
 
 

@@ -1,0 +1,1688 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Documentation Standards - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#documentation-standards" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Documentation Standards
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-documentation-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Documentation Matters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standards-we-follow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Standards We Follow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#google-style-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Google-Style Docstrings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Google-Style Docstrings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#module-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Module Docstrings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#class-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Docstrings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#functionmethod-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function/Method Docstrings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataclass-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dataclass Docstrings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#section-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Section Headers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Section Headers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gateway-coordinator-module-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gateway Coordinator Module Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-layer-module-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Service Layer Module Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ordering-rules-within-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ordering Rules Within Sections
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-checks-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running Checks Locally
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running Checks Locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ruff-docstring-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ruff Docstring Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-header-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Section Header Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docstring-coverage-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docstring Coverage Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre-commit-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-commit Hooks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interpreting Errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpreting Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-ruff-docstring-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Ruff Docstring Errors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-header-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Section Header Errors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docstring-coverage-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docstring Coverage Errors
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Templates
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#before-poor-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Before (Poor Documentation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-good-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      After (Good Documentation)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting Help
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="documentation-standards">Documentation Standards</h1>
+<p>This guide outlines the documentation standards for the Medical KG project, including docstring conventions, section headers, and automated quality checks.</p>
+<h2 id="overview">Overview</h2>
+<p>Documentation is critical for maintaining code quality and enabling effective collaboration. This project follows Google-style docstrings and enforces consistent code organization through section headers.</p>
+<h3 id="why-documentation-matters">Why Documentation Matters</h3>
+<ul>
+<li><strong>Code Understanding</strong>: Clear docstrings help developers understand purpose, parameters, and behavior</li>
+<li><strong>API Discovery</strong>: Well-documented APIs are easier to discover and use correctly</li>
+<li><strong>Maintenance</strong>: Documentation reduces the time needed to understand and modify code</li>
+<li><strong>Quality Assurance</strong>: Automated checks ensure documentation standards are maintained</li>
+</ul>
+<h3 id="standards-we-follow">Standards We Follow</h3>
+<ul>
+<li><strong>Google-style docstrings</strong> for all modules, classes, and functions</li>
+<li><strong>Section headers</strong> for consistent code organization</li>
+<li><strong>Type hints</strong> for all function parameters and return values</li>
+<li><strong>Inline comments</strong> for complex logic and design decisions</li>
+</ul>
+<h2 id="google-style-docstrings">Google-Style Docstrings</h2>
+<h3 id="module-docstrings">Module Docstrings</h3>
+<p>Every module should start with a comprehensive docstring:</p>
+<pre><code class="language-python">&quot;&quot;&quot;One-line summary of module purpose.
+
+This module provides detailed explanation of what the module does, its role
+in the larger system, and key design decisions.
+
+Key Responsibilities:
+    - Responsibility 1: Be specific about what the module handles
+    - Responsibility 2: Include data transformations, external calls, etc.
+    - Responsibility 3: Mention any caching, rate limiting, etc.
+
+Collaborators:
+    - Upstream: List modules/services that call into this one
+    - Downstream: List modules/services this one depends on
+
+Side Effects:
+    - Database writes, external API calls, file I/O, metric emission
+    - Global state modifications, cache updates
+    - None if pure/functional
+
+Thread Safety:
+    - Thread-safe: All public functions can be called from multiple threads
+    - Not thread-safe: Must be called from single thread
+    - Conditionally safe: Describe conditions
+
+Performance Characteristics:
+    - Time complexity for main operations
+    - Memory usage patterns
+    - Rate limits or throttling behavior
+
+Example:
+    &gt;&gt;&gt; from Medical_KG_rev.gateway.coordinators import ChunkingCoordinator
+    &gt;&gt;&gt; coordinator = ChunkingCoordinator(...)
+    &gt;&gt;&gt; result = coordinator.execute(request)
+&quot;&quot;&quot;
+</code></pre>
+<h3 id="class-docstrings">Class Docstrings</h3>
+<p>Classes should document their purpose, attributes, invariants, and usage:</p>
+<pre><code class="language-python">class ChunkingCoordinator:
+    &quot;&quot;&quot;Coordinates synchronous chunking operations.
+
+    This class implements the coordinator pattern for chunking operations.
+    It coordinates between gateway services and chunking domain logic to
+    provide protocol-agnostic chunking capabilities.
+
+    Attributes:
+        _lifecycle: JobLifecycleManager for tracking job states
+        _chunker: ChunkingService for actual chunking operations
+        _errors: ChunkingErrorTranslator for error translation
+
+    Invariants:
+        - self._lifecycle is never None after __init__
+        - self._chunker is never None after __init__
+        - self._errors is never None after __init__
+
+    Thread Safety:
+        - Not thread-safe: Must be called from single thread
+
+    Lifecycle:
+        - Created with dependencies injected
+        - Used for coordinating chunking operations
+        - No explicit cleanup required
+
+    Example:
+        &gt;&gt;&gt; coordinator = ChunkingCoordinator(
+        ...     lifecycle=JobLifecycleManager(),
+        ...     chunker=ChunkingService(),
+        ...     config=CoordinatorConfig(name=&quot;chunking&quot;)
+        ... )
+        &gt;&gt;&gt; result = coordinator.execute(ChunkingRequest(...))
+        &gt;&gt;&gt; print(f&quot;Processed {len(result.chunks)} chunks&quot;)
+    &quot;&quot;&quot;
+</code></pre>
+<h3 id="functionmethod-docstrings">Function/Method Docstrings</h3>
+<p>Functions should document parameters, return values, exceptions, and behavior:</p>
+<pre><code class="language-python">def execute(self, request: ChunkingRequest) -&gt; ChunkingResult:
+    &quot;&quot;&quot;Execute chunking operation with job lifecycle management.
+
+    Coordinates the full chunking workflow: creates job entry, extracts
+    document text, creates chunking command, delegates to chunking service,
+    handles exceptions, assembles results, and marks job completed.
+
+    Args:
+        request: ChunkingRequest with document and chunking parameters
+            - document_id: Unique identifier for document being chunked
+            - text: Optional document text (can also be in options[&quot;text&quot;])
+            - strategy: Chunking strategy name, defaults to &quot;section&quot;
+            - chunk_size: Maximum tokens per chunk, defaults to profile setting
+            - overlap: Token overlap between chunks, defaults to profile setting
+            - options: Additional metadata and configuration
+
+    Returns:
+        ChunkingResult with chunks and metadata:
+            - chunks: Sequence of DocumentChunk objects with content and metadata
+            - job_id: Unique identifier for this chunking job
+            - duration_s: Time taken to complete chunking operation
+            - metadata: Additional operation metadata
+
+    Raises:
+        CoordinatorError: For all handled errors after translation
+            - ProfileNotFoundError: When chunking profile doesn't exist
+            - InvalidDocumentError: When document text is empty or invalid
+            - ChunkingUnavailableError: When chunking service is unavailable
+
+    Note:
+        Emits metrics for failures, updates job lifecycle
+
+    Example:
+        &gt;&gt;&gt; request = ChunkingRequest(
+        ...     document_id=&quot;doc1&quot;,
+        ...     text=&quot;Sample document text&quot;,
+        ...     strategy=&quot;section&quot;
+        ... )
+        &gt;&gt;&gt; result = coordinator.execute(request)
+        &gt;&gt;&gt; assert len(result.chunks) &gt; 0
+    &quot;&quot;&quot;
+</code></pre>
+<h3 id="dataclass-docstrings">Dataclass Docstrings</h3>
+<p>Dataclasses should document each field:</p>
+<pre><code class="language-python">@dataclass
+class ChunkingRequest:
+    &quot;&quot;&quot;Request for chunking operation.
+
+    Attributes:
+        document_id: Unique identifier for document being chunked
+        text: Optional document text (can also be in options[&quot;text&quot;])
+        strategy: Chunking strategy name (e.g., &quot;section&quot;, &quot;semantic&quot;), defaults to &quot;section&quot;
+        chunk_size: Maximum tokens per chunk, defaults to profile setting
+        overlap: Token overlap between chunks, defaults to profile setting
+        options: Additional metadata and configuration
+    &quot;&quot;&quot;
+    document_id: str
+    text: str | None = None
+    strategy: str = &quot;section&quot;
+    chunk_size: int | None = None
+    overlap: int | None = None
+    options: dict[str, Any] = field(default_factory=dict)
+</code></pre>
+<h2 id="section-headers">Section Headers</h2>
+<p>Code should be organized into labeled sections with consistent ordering:</p>
+<h3 id="gateway-coordinator-module-structure">Gateway Coordinator Module Structure</h3>
+<pre><code class="language-python"># ============================================================================
+# IMPORTS
+# ============================================================================
+# (stdlib imports)
+# (blank line)
+# (third-party imports)
+# (blank line)
+# (first-party imports from Medical_KG_rev)
+# (blank line)
+# (relative imports)
+
+# ============================================================================
+# REQUEST/RESPONSE MODELS
+# ============================================================================
+# (Dataclasses for request and result types used by coordinator)
+
+# ============================================================================
+# COORDINATOR IMPLEMENTATION
+# ============================================================================
+# (Main coordinator class with __init__ and public execute method)
+
+# ============================================================================
+# PRIVATE HELPERS
+# ============================================================================
+# (Private methods for text extraction, metadata handling, etc.)
+
+# ============================================================================
+# ERROR TRANSLATION
+# ============================================================================
+# (Methods for translating exceptions to coordinator errors)
+
+# ============================================================================
+# EXPORTS
+# ============================================================================
+# (__all__ list)
+</code></pre>
+<h3 id="service-layer-module-structure">Service Layer Module Structure</h3>
+<pre><code class="language-python"># ============================================================================
+# IMPORTS
+# ============================================================================
+
+# ============================================================================
+# TYPE DEFINITIONS &amp; CONSTANTS
+# ============================================================================
+
+# ============================================================================
+# SERVICE CLASS DEFINITION
+# ============================================================================
+
+# ============================================================================
+# CHUNKING ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# EMBEDDING ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# RETRIEVAL ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# ADAPTER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# VALIDATION ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# EXTRACTION ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# ADMIN &amp; UTILITY ENDPOINTS
+# ============================================================================
+
+# ============================================================================
+# PRIVATE HELPERS
+# ============================================================================
+</code></pre>
+<h3 id="ordering-rules-within-sections">Ordering Rules Within Sections</h3>
+<ul>
+<li><strong>Imports</strong>: stdlib, third-party, first-party, relative (each group alphabetically sorted)</li>
+<li><strong>Classes</strong>: Base classes before subclasses, interfaces before implementations</li>
+<li><strong>Class methods</strong>: <code>__init__</code> first, public methods (alphabetically), private methods (alphabetically), static/class methods last</li>
+<li><strong>Functions</strong>: Public functions before private functions, alphabetical within each group</li>
+</ul>
+<h2 id="running-checks-locally">Running Checks Locally</h2>
+<h3 id="ruff-docstring-check">Ruff Docstring Check</h3>
+<pre><code class="language-bash">ruff check --select D src/Medical_KG_rev/gateway src/Medical_KG_rev/services src/Medical_KG_rev/orchestration
+</code></pre>
+<h3 id="section-header-check">Section Header Check</h3>
+<pre><code class="language-bash">python scripts/check_section_headers.py
+</code></pre>
+<h3 id="docstring-coverage-check">Docstring Coverage Check</h3>
+<pre><code class="language-bash">python scripts/check_docstring_coverage.py --min-coverage 90
+</code></pre>
+<h3 id="pre-commit-hooks">Pre-commit Hooks</h3>
+<p>Install pre-commit hooks to run checks automatically:</p>
+<pre><code class="language-bash">pre-commit install
+pre-commit run --all-files
+</code></pre>
+<h2 id="interpreting-errors">Interpreting Errors</h2>
+<h3 id="common-ruff-docstring-errors">Common Ruff Docstring Errors</h3>
+<ul>
+<li><strong>D100</strong>: Missing docstring in public module</li>
+<li><strong>Fix</strong>: Add module docstring at top of file</li>
+<li><strong>D101</strong>: Missing docstring in public class</li>
+<li><strong>Fix</strong>: Add docstring immediately after class definition</li>
+<li><strong>D102</strong>: Missing docstring in public method</li>
+<li><strong>Fix</strong>: Add docstring immediately after method definition</li>
+<li><strong>D103</strong>: Missing docstring in public function</li>
+<li><strong>Fix</strong>: Add docstring immediately after function definition</li>
+<li><strong>D107</strong>: Missing docstring in <strong>init</strong></li>
+<li><strong>Fix</strong>: Add docstring to <strong>init</strong> method</li>
+</ul>
+<h3 id="section-header-errors">Section Header Errors</h3>
+<ul>
+<li><strong>Missing section header</strong>: Add required section headers per <code>section_headers.md</code></li>
+<li><strong>Incorrect order</strong>: Reorder sections to match canonical order</li>
+<li><strong>Missing content</strong>: Ensure each section contains appropriate code</li>
+</ul>
+<h3 id="docstring-coverage-errors">Docstring Coverage Errors</h3>
+<ul>
+<li><strong>Coverage &lt; 90%</strong>: Add docstrings to modules, classes, and functions</li>
+<li><strong>Missing Args section</strong>: Add Args section for functions with parameters</li>
+<li><strong>Missing Returns section</strong>: Add Returns section for functions that return values</li>
+<li><strong>Missing Raises section</strong>: Add Raises section for functions that raise exceptions</li>
+</ul>
+<h2 id="templates">Templates</h2>
+<p>Reference templates in <code>openspec/changes/add-pipeline-structure-documentation/templates/</code>:</p>
+<ul>
+<li><code>module_docstring.py</code>: Module-level docstring template</li>
+<li><code>class_docstring.py</code>: Class-level docstring template</li>
+<li><code>function_docstring.py</code>: Function-level docstring template</li>
+<li><code>dataclass_docstring.py</code>: Dataclass docstring template</li>
+<li><code>protocol_docstring.py</code>: Protocol docstring template</li>
+<li><code>exception_handler_docstring.py</code>: Exception handler docstring template</li>
+<li><code>async_docstring.py</code>: Async function docstring template</li>
+<li><code>decorator_docstring.py</code>: Decorator docstring template</li>
+<li><code>property_docstring.py</code>: Property docstring template</li>
+<li><code>constant_docstring.py</code>: Constant docstring template</li>
+<li><code>test_docstring.py</code>: Test function docstring template</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<h3 id="before-poor-documentation">Before (Poor Documentation)</h3>
+<pre><code class="language-python">def chunk_text(text, strategy=&quot;section&quot;):
+    chunks = []
+    # ... implementation
+    return chunks
+</code></pre>
+<h3 id="after-good-documentation">After (Good Documentation)</h3>
+<pre><code class="language-python">def chunk_text(text: str, strategy: str = &quot;section&quot;) -&gt; list[DocumentChunk]:
+    &quot;&quot;&quot;Chunk document text into smaller segments.
+
+    Splits the input text into chunks using the specified strategy.
+    Each chunk contains a portion of the original text with metadata.
+
+    Args:
+        text: The document text to chunk. Must be non-empty string.
+        strategy: Chunking strategy to use. Valid values: &quot;section&quot;, &quot;semantic&quot;.
+            Defaults to &quot;section&quot;.
+
+    Returns:
+        List of DocumentChunk objects containing:
+            - content: The chunk text content
+            - metadata: Chunk metadata including position and strategy
+
+    Raises:
+        ValueError: If text is empty or strategy is invalid
+        ChunkingError: If chunking operation fails
+
+    Example:
+        &gt;&gt;&gt; chunks = chunk_text(&quot;This is a sample document.&quot;, &quot;section&quot;)
+        &gt;&gt;&gt; assert len(chunks) &gt; 0
+        &gt;&gt;&gt; assert chunks[0].content == &quot;This is a sample document.&quot;
+    &quot;&quot;&quot;
+    if not text:
+        raise ValueError(&quot;Text cannot be empty&quot;)
+
+    # ... implementation
+    return chunks
+</code></pre>
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Write docstrings first</strong>: Document the interface before implementing</li>
+<li><strong>Be specific</strong>: Include exact parameter types, valid ranges, and constraints</li>
+<li><strong>Include examples</strong>: Show typical usage patterns</li>
+<li><strong>Document side effects</strong>: Mention metrics, logging, external calls</li>
+<li><strong>Keep docstrings up to date</strong>: Update when changing function signatures</li>
+<li><strong>Use type hints</strong>: Complement docstrings with type annotations</li>
+<li><strong>Add inline comments</strong>: Explain complex logic and design decisions</li>
+</ol>
+<h2 id="getting-help">Getting Help</h2>
+<ul>
+<li>Check existing code for examples of good documentation</li>
+<li>Refer to the templates in the <code>templates/</code> directory</li>
+<li>Run the automated checks to identify specific issues</li>
+<li>Ask team members for review and feedback</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

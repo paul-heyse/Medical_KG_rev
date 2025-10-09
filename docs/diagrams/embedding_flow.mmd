@@ -1,0 +1,46 @@
+sequenceDiagram
+    participant Client
+    participant GatewayService
+    participant EmbeddingCoordinator
+    participant JobLifecycle
+    participant EmbeddingPolicy
+    participant NamespaceRegistry
+    participant EmbeddingService
+    participant VectorStore
+    participant Telemetry
+
+    Client->>GatewayService: POST /v1/embed
+    GatewayService->>EmbeddingCoordinator: execute(request)
+    EmbeddingCoordinator->>JobLifecycle: create_job(tenant, "embed")
+    JobLifecycle-->>EmbeddingCoordinator: job_id
+
+    EmbeddingCoordinator->>EmbeddingPolicy: evaluate(tenant, namespace)
+    EmbeddingPolicy-->>EmbeddingCoordinator: NamespaceAccessDecision
+
+    alt Access Denied
+        EmbeddingCoordinator-->>GatewayService: CoordinatorError
+        GatewayService-->>Client: 403 Forbidden
+    else Access Granted
+        EmbeddingCoordinator->>NamespaceRegistry: get_config(namespace)
+        NamespaceRegistry-->>EmbeddingCoordinator: NamespaceConfig
+
+        EmbeddingCoordinator->>EmbeddingService: embed(texts, config)
+        EmbeddingService-->>EmbeddingCoordinator: EmbeddingResponse
+
+        EmbeddingCoordinator->>VectorStore: persist(embeddings)
+        VectorStore-->>EmbeddingCoordinator: PersistenceResult
+
+        EmbeddingCoordinator->>Telemetry: record_embedding(metrics)
+        Telemetry-->>EmbeddingCoordinator: TelemetryResult
+
+        EmbeddingCoordinator->>JobLifecycle: mark_completed(job_id)
+        EmbeddingCoordinator-->>GatewayService: EmbeddingResult
+        GatewayService-->>Client: 200 OK with embeddings
+    end
+
+    Note over Client, Telemetry: Error Flow
+    EmbeddingService-->>EmbeddingCoordinator: ModelNotFoundError
+    EmbeddingCoordinator->>EmbeddingCoordinator: _translate_error()
+    EmbeddingCoordinator->>JobLifecycle: mark_failed(job_id)
+    EmbeddingCoordinator-->>GatewayService: CoordinatorError
+    GatewayService-->>Client: 400 Bad Request with problem details

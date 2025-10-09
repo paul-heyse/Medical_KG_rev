@@ -1,0 +1,1420 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../user-guide/">
+      
+      
+        <link rel="next" href="../../../openapi.yaml">
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Developer Guide - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#retrieval-developer-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Developer Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api/coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Architecture Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-hybrid-coordinator-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Hybrid Coordinator Implementation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-fusion-algorithms" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Fusion Algorithms
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-reranking-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Reranking Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-table-routing-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Table Routing Logic
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-clinical-boosting-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Clinical Boosting Implementation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-evaluation-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Evaluation Framework
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-api-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. API Changes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-developer-setup-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Developer Setup Guide
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Configuration Files
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Architecture Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-hybrid-coordinator-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Hybrid Coordinator Implementation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-fusion-algorithms" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Fusion Algorithms
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-reranking-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Reranking Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-table-routing-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Table Routing Logic
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-clinical-boosting-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Clinical Boosting Implementation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-evaluation-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Evaluation Framework
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-api-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. API Changes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-developer-setup-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Developer Setup Guide
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Configuration Files
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="retrieval-developer-guide">Retrieval Developer Guide</h1>
+<p>This guide documents the internals of the hybrid retrieval, fusion, reranking, and evaluation subsystems introduced by the <code>add-retrieval-ranking-evaluation</code> OpenSpec change. It is organised by engineering task to provide implementation context for future contributors.</p>
+<h2 id="1-architecture-overview">1. Architecture Overview</h2>
+<pre><code>┌─────────────────────────┐
+│ Gateway (FastAPI/gRPC)  │
+│  • Request validation   │
+│  • Tenant security      │
+└────────────┬────────────┘
+             │ RetrieveRequest / EvaluateRequest
+┌────────────▼────────────┐
+│ RetrievalService        │
+│  • Hybrid fan-out       │
+│  • Fusion + reranking   │
+│  • Routing heuristics   │
+└────────────┬────────────┘
+             │ HybridSearchCoordinator
+┌────────────▼────────────┐
+│ Component adapters      │
+│  • OpenSearch BM25/SPLADE│
+│  • FAISS dense vectors  │
+│  • VectorStoreService   │
+└────────────┬────────────┘
+             │
+┌────────────▼────────────┐
+│ RerankingEngine         │
+│  • Model registry       │
+│  • Cache + batching     │
+│  • Circuit breaker      │
+└────────────┬────────────┘
+             │
+┌────────────▼────────────┐
+│ EvaluationRunner        │
+│  • Metrics (Recall/nDCG)│
+│  • Bootstrapping        │
+│  • Prometheus export    │
+└─────────────────────────┘
+</code></pre>
+<p>Key design choices:</p>
+<ul>
+<li><strong>Asynchronous fan-out</strong>: <code>HybridSearchCoordinator</code> executes BM25, SPLADE, and dense KNN concurrently using <code>asyncio.gather</code>, enforcing per-component timeouts and caching.</li>
+<li><strong>Explainability</strong>: All stages attach metadata (<code>component_scores</code>, <code>timings_ms</code>, <code>rerank</code> outcome) so clients can diagnose ranking decisions.</li>
+<li><strong>Extensibility</strong>: Both retrieval components and rerankers are plugin-based (callable protocols / <code>RerankerFactory</code>), enabling drop-in replacements.</li>
+</ul>
+<h2 id="2-hybrid-coordinator-implementation">2. Hybrid Coordinator Implementation</h2>
+<ul>
+<li><strong>Location</strong>: <code>services/retrieval/hybrid.py</code></li>
+<li><strong>Entry point</strong>: <code>HybridSearchCoordinator.search()</code> accepts index/query/top-k and resolves the component list via <code>HybridComponentSettings.resolve_components()</code>.</li>
+<li><strong>Caching</strong>: <code>InMemoryHybridCache</code> implements a simple asyncio lock + dict cache. Production deployments should swap this for Redis/KeyDB by implementing the <code>CacheProtocol</code> interface.</li>
+<li><strong>Timeouts</strong>: <code>HybridComponentSettings.timeout_for(component)</code> converts timeouts to seconds. The coordinator guards each component call with <code>asyncio.wait_for</code> and records per-component latency in <code>HybridSearchResult.timings_ms</code>.</li>
+<li><strong>Extending components</strong>: Register a new callable in the <code>components</code> mapping passed to the constructor. Each component must accept keyword-only parameters (<code>index</code>, <code>query</code>, <code>k</code>, <code>filters</code>, etc.) and return an iterable of candidate dictionaries.</li>
+</ul>
+<h2 id="3-fusion-algorithms">3. Fusion Algorithms</h2>
+<ul>
+<li><strong>Default RRF</strong>: Implemented in <code>services/reranking/fusion/rrf.py</code>. Scores are accumulated as <code>score += 1 / (rank + k)</code> with <code>k</code> configurable (default 60). Duplicate document IDs are merged before fusion.</li>
+<li><strong>Weighted normalisation</strong>: Implemented in <code>services/reranking/fusion/weighted.py</code>. Component scores are min–max normalised and combined using the provided weights. Normalisation strategies include min–max and z-score (see <code>NormalizationStrategy</code>).</li>
+<li><strong>Switching algorithms</strong>: <code>RerankingSettings.fusion.strategy</code> controls the global default. Per-request overrides are exposed through API parameters (<code>fusion_method=weighted</code>).</li>
+<li><strong>Tie-breaking</strong>: When fused scores tie, the hybrid coordinator falls back to the primary component (BM25) to ensure deterministic ordering.</li>
+</ul>
+<h2 id="4-reranking-integration">4. Reranking Integration</h2>
+<ul>
+<li><strong>Pipeline</strong>: <code>TwoStagePipeline</code> orchestrates fusion + reranking. It calls <code>FusionService</code> to build a candidate pool then <code>RerankingEngine</code> when reranking is enabled.</li>
+<li><strong>Model registry</strong>: <code>RerankerModelRegistry</code> loads <code>config/retrieval/reranking_models.yaml</code>, validates metadata, and caches <code>ModelHandle</code> instances. Models are downloaded via <code>huggingface_hub</code> and stored under <code>model_cache/rerankers/</code>.</li>
+<li><strong>Caching</strong>: <code>RerankCacheManager</code> caches query/document pairs keyed by reranker ID. Cache TTL is controlled by <code>RerankingSettings.cache_ttl</code>.</li>
+<li><strong>Batching</strong>: <code>BatchProcessor</code> splits candidate lists into GPU-friendly batches (default 64). Failed batches trip the circuit breaker (<code>CircuitBreaker</code> with configurable failure thresholds).</li>
+<li><strong>GPU enforcement</strong>: <code>CrossEncoderReranker</code> checks <code>model.requires_gpu</code> and raises <code>GpuNotAvailableError</code> if CUDA is unavailable, triggering the fallback path in <code>RetrievalService.search()</code>.</li>
+</ul>
+<h2 id="5-table-routing-logic">5. Table Routing Logic</h2>
+<ul>
+<li><strong>Classifier</strong>: <code>IntentClassifier</code> (in <code>services/retrieval/routing/intent_classifier.py</code>) performs keyword/regex matching and returns <code>QueryIntent</code> with confidence.</li>
+<li><strong>Boost application</strong>: The classifier output feeds into the OpenSearch query builder (see <code>services/retrieval/query_dsl.py</code>) which applies multiplicative boosts to table chunks (<code>is_table=true</code> or <code>intent_hint=*</code>).</li>
+<li><strong>Manual overrides</strong>: API requests supply <code>query_intent</code> or <code>table_only</code>. Overrides short-circuit the classifier and set confidence to 1.0.</li>
+<li><strong>Extending keywords</strong>: Pass custom keyword weights to <code>IntentClassifier(tabular_keywords={...})</code> when instantiating per-tenant routers.</li>
+</ul>
+<h2 id="6-clinical-boosting-implementation">6. Clinical Boosting Implementation</h2>
+<ul>
+<li><strong>Intent analysis</strong>: Clinical intents (eligibility, adverse events, dosage, results, methods) are derived from chunk metadata produced during ingestion. The router inspects <code>metadata.intent_hint</code> and <code>metadata.section_label</code>.</li>
+<li><strong>Boost factors</strong>: Configured in <code>services/retrieval/query_dsl.py</code> via weight tables per intent. Boosts are applied through OpenSearch <code>function_score</code> queries.</li>
+<li><strong>Extensibility</strong>: Add new intents by updating the enum/constants in <code>services/retrieval/router.py</code> and augmenting the boost table. Ensure ingestion emits matching <code>intent_hint</code> tags.</li>
+</ul>
+<h2 id="7-evaluation-framework">7. Evaluation Framework</h2>
+<ul>
+<li><strong>Data model</strong>: <code>TestSetManager</code> loads YAML files into <code>TestSet</code>/<code>QueryJudgment</code> instances, validating schema constraints.</li>
+<li><strong>Metrics</strong>: <code>services/evaluation/metrics.py</code> implements Recall@K, Precision@K, nDCG@K (via <code>sklearn.metrics.ndcg_score</code>), MRR, and MAP. <code>RankingMetrics</code> aggregates per-query values.</li>
+<li><strong>Runner</strong>: <code>EvaluationRunner</code> executes retrieval functions, captures per-query metrics, summarises means/medians/std dev, and publishes Prometheus gauges (<code>medicalkg_retrieval_recall_at_k</code>, etc.).</li>
+<li><strong>CLI harness</strong>: <code>tests/performance/run_retrieval_benchmarks.py</code> wraps the runner, hits the live gateway, and emits JSON summaries suitable for CI pipelines and dashboards.</li>
+</ul>
+<h2 id="8-api-changes">8. API Changes</h2>
+<ul>
+<li><strong>REST</strong>: <code>/v1/retrieve</code> accepts new fields (<code>rerank</code>, <code>rerank_model</code>, <code>rerank_top_k</code>, <code>query_intent</code>, <code>table_only</code>, <code>explain</code>). Responses include <code>meta.rerank</code> metadata, component timing/error arrays, and <code>stage_timings</code> for end-to-end latency.</li>
+<li><strong>Evaluation endpoint</strong>: <code>/v1/evaluate</code> ingests curated queries (<code>EvaluationRequest</code>) and returns aggregate metrics (<code>EvaluationResponse</code>). Intended for CI/CD and nightly CronJobs.</li>
+<li><strong>GraphQL</strong>: <code>RetrieveInput</code> mirrors REST additions. Schema updates are captured under <code>docs/schema.graphql</code>.</li>
+<li><strong>gRPC</strong>: Proto files expose equivalent fields to ensure parity across protocols.</li>
+</ul>
+<h2 id="9-developer-setup-guide">9. Developer Setup Guide</h2>
+<ol>
+<li>Install dependencies: <code>pip install -r requirements.txt</code> (requires Python 3.12 and CUDA toolkit when using GPU rerankers).</li>
+<li>Start local services: <code>docker-compose up -d</code> brings up OpenSearch, FAISS, Redis, and supporting services.</li>
+<li>Seed indices: run ingestion pipelines or load fixtures via <code>scripts/seed_sample_data.py</code> (if available) so hybrid retrieval has candidate documents.</li>
+<li>Launch gateway: <code>uvicorn Medical_KG_rev.gateway.app:create_app --factory --reload</code>.</li>
+<li>Execute performance harness: <code>k6 run tests/performance/hybrid_suite.js</code> and <code>python tests/performance/run_retrieval_benchmarks.py</code> to validate SLOs.</li>
+<li>Optional: point <code>MK_RERANKING__MODEL__MODEL</code> to alternative reranker IDs for local experimentation. Models cache under <code>model_cache/rerankers</code>.</li>
+</ol>
+<h2 id="10-configuration-files">10. Configuration Files</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+<th>Key Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config/retrieval/components.yaml</code></td>
+<td>Controls hybrid component enablement, timeouts, and query expansion synonyms.</td>
+<td><code>defaults.enable_splade</code>, <code>defaults.enable_dense</code>, <code>components.&lt;name&gt;.timeout_ms</code>, <code>synonyms.&lt;term&gt;</code></td>
+</tr>
+<tr>
+<td><code>config/retrieval/reranking.yaml</code></td>
+<td>Per-tenant reranking defaults and A/B test split.</td>
+<td><code>default_enabled</code>, <code>tenants.&lt;tenant&gt;=bool</code>, <code>experiment.rerank_ratio</code></td>
+</tr>
+<tr>
+<td><code>config/retrieval/reranking_models.yaml</code></td>
+<td>Model registry for rerankers.</td>
+<td><code>models.&lt;key&gt;.model_id</code>, <code>requires_gpu</code>, <code>version</code>, <code>metadata.latency_profile</code></td>
+</tr>
+<tr>
+<td><code>eval/test_sets/*.yaml</code></td>
+<td>Gold-standard evaluation datasets.</td>
+<td><code>version</code>, <code>queries[].query_type</code>, <code>queries[].relevant_docs[].grade</code></td>
+</tr>
+<tr>
+<td><code>ops/k8s/base/configmap-retrieval.yaml</code> <em>(added)</em></td>
+<td>Deployment-specific overrides for the three configs above. Mounted into <code>/app/config/retrieval</code> for staging/production environments.</td>
+<td>Mirrors the files above; overlays patch tenant toggles and rerank ratios.</td>
+</tr>
+</tbody>
+</table>
+<p>Refer to <code>Medical_KG_rev.config.settings.RerankingSettings</code> for the full Pydantic model that consumes these files and exposes environment-variable overrides (<code>MK_RERANKING__...</code>).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

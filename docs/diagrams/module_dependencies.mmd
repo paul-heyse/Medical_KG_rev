@@ -1,0 +1,36 @@
+graph TD
+    GatewayService[Gateway Service Layer]
+    ChunkCoord[Chunking Coordinator]
+    EmbedCoord[Embedding Coordinator]
+    OrchestrCoord[Orchestration Coordinator]
+    ChunkService[Chunking Service]
+    EmbedPolicy[Embedding Policy]
+    EmbedPersister[Embedding Persister]
+    Orchestration[Orchestration Stages]
+    JobLifecycle[Job Lifecycle Manager]
+    ErrorTranslator[Error Translator]
+
+    GatewayService --> ChunkCoord
+    GatewayService --> EmbedCoord
+    GatewayService --> OrchestrCoord
+    ChunkCoord --> ChunkService
+    ChunkCoord --> JobLifecycle
+    ChunkCoord --> ErrorTranslator
+    EmbedCoord --> EmbedPolicy
+    EmbedCoord --> EmbedPersister
+    EmbedCoord --> JobLifecycle
+    EmbedCoord --> ErrorTranslator
+    OrchestrCoord --> Orchestration
+    OrchestrCoord --> JobLifecycle
+    OrchestrCoord --> ErrorTranslator
+
+    style GatewayService fill:#e1f5ff
+    style ChunkCoord fill:#ffe1e1
+    style EmbedCoord fill:#ffe1e1
+    style OrchestrCoord fill:#ffe1e1
+    style ChunkService fill:#e1ffe1
+    style EmbedPolicy fill:#e1ffe1
+    style EmbedPersister fill:#e1ffe1
+    style Orchestration fill:#ffe1ff
+    style JobLifecycle fill:#fff1e1
+    style ErrorTranslator fill:#f1e1ff

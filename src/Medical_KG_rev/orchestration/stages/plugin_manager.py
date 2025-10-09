@@ -6,7 +6,6 @@ from collections import defaultdict
 from typing import Any, Iterable, Mapping
 
 import pluggy
-import structlog
 from attrs import define, field
 from pydantic import BaseModel, ConfigDict, ValidationError
 from tenacity import (  # type: ignore
@@ -16,6 +15,7 @@ from tenacity import (  # type: ignore
     wait_exponential,
 )
 
+import structlog
 from Medical_KG_rev.observability.metrics import (
     STAGE_PLUGIN_FAILURES,
     STAGE_PLUGIN_HEALTH,
@@ -70,6 +70,10 @@ class StagePluginContext:
             return self.resources[key]
         except KeyError as exc:  # pragma: no cover - defensive guard
             raise StagePluginLoadError(f"Missing resource '{key}' for stage plugin") from exc
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get resource with optional default value."""
+        return self.resources.get(key, default)
 
 
 @define(slots=True)

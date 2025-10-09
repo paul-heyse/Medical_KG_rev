@@ -8,7 +8,6 @@ from typing import Any, Callable, Mapping, Sequence
 from uuid import uuid4
 
 import structlog
-
 from Medical_KG_rev.adapters import AdapterPluginError
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.models.entities import Claim, Entity
@@ -25,20 +24,17 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     ExtractStage,
     GateStage,
     GraphWriteReceipt,
-    IngestStage,
     IndexStage,
+    IngestStage,
     KGStage,
-    PdfAsset,
     ParseStage,
+    PdfAsset,
     PipelineState,
+    RawPayload,
     StageContext,
 )
-from Medical_KG_rev.orchestration.stages.contracts import RawPayload
 from Medical_KG_rev.orchestration.stages.plugins import (
     StagePlugin,
-    StagePluginManager,
-    StagePluginRegistration,
-    StagePluginResources,
     StagePluginManager,
     StagePluginMetadata,
     StagePluginRegistration,
@@ -295,7 +291,7 @@ class PdfDownloadStage(DownloadStage):
             if raw_value is not None:
                 checksum_value = str(raw_value)
         assets: list[PdfAsset] = []
-        for index, url in enumerate(configured_urls or ()): 
+        for index, url in enumerate(configured_urls or ()):
             assets.append(
                 PdfAsset(
                     asset_id=f"{ctx.doc_id or ctx.job_id or 'pdf'}:{index}",
@@ -355,7 +351,6 @@ class PdfGateStage(GateStage):
 
 
 class CoreStagePlugin(StagePlugin):
-class CoreStagePlugin:
     """Register the built-in orchestration stage implementations."""
 
     NAME = "core-stage"
@@ -365,6 +360,9 @@ class CoreStagePlugin:
         super().__init__(plugin_name=self.NAME, version=self.VERSION)
 
     def registrations(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
+        """Return empty list - this plugin uses stage_builders instead."""
+        return []
+
     @hookimpl
     def stage_builders(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         adapter_manager = resources.adapter_manager
@@ -583,12 +581,24 @@ def create_stage_plugin_manager(
     pipeline_resource: HaystackPipelineResource | None = None,
     *,
     job_ledger: JobLedger | None = None,
+    object_store=None,
+    cache_backend=None,
+    pdf_storage=None,
+    document_storage=None,
+    object_storage_settings=None,
+    redis_cache_settings=None,
     load_entrypoints: bool = False,
 ) -> StagePluginManager:
     resources = StagePluginResources(
         adapter_manager=adapter_manager,
         pipeline_resource=pipeline_resource or create_default_pipeline_resource(),
         job_ledger=job_ledger,
+        object_store=object_store,
+        cache_backend=cache_backend,
+        pdf_storage=pdf_storage,
+        document_storage=document_storage,
+        object_storage_settings=object_storage_settings,
+        redis_cache_settings=redis_cache_settings,
     )
     manager = StagePluginManager(resources=resources)
     manager.register(CoreStagePlugin())

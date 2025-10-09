@@ -1,0 +1,3671 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../coordinators/">
+      
+      
+        <link rel="next" href="../embedding/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Services - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#services-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Services
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#gateway-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gateway Service
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService" class="md-nav__link">
+    <span class="md-ellipsis">
+      GatewayService
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GatewayService">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.chunk_document" class="md-nav__link">
+    <span class="md-ellipsis">
+      chunk_document
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.embed" class="md-nav__link">
+    <span class="md-ellipsis">
+      embed
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunking-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chunking Errors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingErrorReport
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingErrorTranslator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ChunkingErrorTranslator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.from_context" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_context
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.translate" class="md-nav__link">
+    <span class="md-ellipsis">
+      translate
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#presentation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Presentation Errors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.presentation.errors.ErrorDetail" class="md-nav__link">
+    <span class="md-ellipsis">
+      ErrorDetail
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ErrorDetail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.presentation.errors.ErrorDetail.as_json" class="md-nav__link">
+    <span class="md-ellipsis">
+      as_json
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#gateway-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gateway Service
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService" class="md-nav__link">
+    <span class="md-ellipsis">
+      GatewayService
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GatewayService">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.chunk_document" class="md-nav__link">
+    <span class="md-ellipsis">
+      chunk_document
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.services.GatewayService.embed" class="md-nav__link">
+    <span class="md-ellipsis">
+      embed
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunking-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chunking Errors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingErrorReport
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingErrorTranslator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ChunkingErrorTranslator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.from_context" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_context
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.translate" class="md-nav__link">
+    <span class="md-ellipsis">
+      translate
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#presentation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Presentation Errors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.presentation.errors.ErrorDetail" class="md-nav__link">
+    <span class="md-ellipsis">
+      ErrorDetail
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ErrorDetail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.presentation.errors.ErrorDetail.as_json" class="md-nav__link">
+    <span class="md-ellipsis">
+      as_json
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="services-api">Services API</h1>
+<p>The services layer provides domain-specific implementations for chunking, embedding, and retrieval operations.</p>
+<h2 id="gateway-service">Gateway Service</h2>
+<p>The <code>GatewayService</code> acts as a protocol-agnostic service layer between protocol handlers (REST/GraphQL/gRPC) and domain logic.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.services.GatewayService" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">services</span><span class="o">.</span><span class="n">GatewayService</span><span class="p">(</span><span class="n">events</span><span class="p">:</span> <span class="n">EventStreamManager</span><span class="p">,</span> <span class="n">orchestrator</span><span class="p">:</span> <span class="n">DagsterOrchestrator</span><span class="p">,</span> <span class="n">ledger</span><span class="p">:</span> <span class="n">JobLedger</span><span class="p">,</span> <span class="n">adapter_manager</span><span class="p">:</span> <span class="n">AdapterPluginManager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">(),</span> <span class="n">stage_factory</span><span class="p">:</span> <span class="n">StageFactory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">chunker</span><span class="p">:</span> <span class="n">ChunkingService</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">chunking_error_translator</span><span class="p">:</span> <span class="n">ChunkingErrorTranslator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">retriever</span><span class="p">:</span> <span class="n">HaystackRetriever</span> <span class="o">=</span> <span class="n">HaystackRetriever</span><span class="p">(),</span> <span class="n">shacl</span><span class="p">:</span> <span class="n">ShaclValidator</span> <span class="o">=</span> <span class="n">ShaclValidator</span><span class="o">.</span><span class="n">default</span><span class="p">(),</span> <span class="n">ucum</span><span class="p">:</span> <span class="n">UCUMValidator</span> <span class="o">=</span> <span class="n">UCUMValidator</span><span class="p">(),</span> <span class="n">fhir</span><span class="p">:</span> <span class="n">FHIRValidator</span> <span class="o">=</span> <span class="n">FHIRValidator</span><span class="p">(),</span> <span class="n">embedding_registry</span><span class="p">:</span> <span class="n">EmbeddingModelRegistry</span> <span class="o">=</span> <span class="n">EmbeddingModelRegistry</span><span class="p">(),</span> <span class="n">namespace_registry</span><span class="p">:</span> <span class="n">EmbeddingNamespaceRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">namespace_policy</span><span class="p">:</span> <span class="n">NamespaceAccessPolicy</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">namespace_policy_settings</span><span class="p">:</span> <span class="n">NamespacePolicySettings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">embedding_persister</span><span class="p">:</span> <span class="n">EmbeddingPersister</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">embedding_persister_settings</span><span class="p">:</span> <span class="n">PersisterRuntimeSettings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">embedding_telemetry</span><span class="p">:</span> <span class="n">EmbeddingTelemetry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">job_lifecycle</span><span class="p">:</span> <span class="n">JobLifecycleManager</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">chunking_coordinator</span><span class="p">:</span> <span class="n">ChunkingCoordinator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">embedding_coordinator</span><span class="p">:</span> <span class="n">EmbeddingCoordinator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">chunking_errors</span><span class="p">:</span> <span class="n">ChunkingErrorTranslator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Coordinates business logic shared across protocols.</p>
+<p>This class serves as the main entry point for all gateway operations,
+providing a protocol-agnostic interface to domain services. It manages
+job lifecycle, coordinates between subsystems, and handles error translation.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.events">events</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.sse.manager.EventStreamManager">EventStreamManager</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EventStreamManager for publishing SSE events</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.orchestrator">orchestrator</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.orchestration.dagster.DagsterOrchestrator">DagsterOrchestrator</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DagsterOrchestrator for pipeline execution</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.ledger">ledger</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.orchestration.JobLedger">JobLedger</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLedger for tracking job status and metadata</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.adapter_manager">adapter_manager</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.adapters.AdapterPluginManager">AdapterPluginManager</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>AdapterPluginManager for data source management</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.chunker">chunker</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.retrieval.chunking.ChunkingService">ChunkingService</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkingService for document chunking operations</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.retriever">retriever</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.orchestration.HaystackRetriever">HaystackRetriever</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>HaystackRetriever for document retrieval</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.shacl">shacl</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.kg.ShaclValidator">ShaclValidator</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ShaclValidator for knowledge graph validation</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.ucum">ucum</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.validation.UCUMValidator">UCUMValidator</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>UCUMValidator for medical unit validation</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.fhir">fhir</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.validation.fhir.FHIRValidator">FHIRValidator</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>FHIRValidator for FHIR resource validation</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.embedding_registry">embedding_registry</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.registry.EmbeddingModelRegistry">EmbeddingModelRegistry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingModelRegistry for model management</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.namespace_registry">namespace_registry</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.namespace.registry.EmbeddingNamespaceRegistry">EmbeddingNamespaceRegistry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingNamespaceRegistry for namespace management</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.namespace_policy">namespace_policy</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.policy.NamespaceAccessPolicy">NamespaceAccessPolicy</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>NamespaceAccessPolicy for access control</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.embedding_persister">embedding_persister</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.persister.EmbeddingPersister">EmbeddingPersister</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingPersister for vector storage</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.embedding_telemetry">embedding_telemetry</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.telemetry.EmbeddingTelemetry">EmbeddingTelemetry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingTelemetry for metrics collection</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.job_lifecycle">job_lifecycle</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager(ledger: JobLedger, events: EventStreamManager, pipeline_name: str = 'gateway-direct', pipeline_version: str = 'v1', retry_attempts: int = 3, retry_wait_base: float = 0.1, retry_wait_max: float = 1.0)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.JobLifecycleManager)" href="../coordinators/#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager">JobLifecycleManager</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLifecycleManager for job state tracking</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.chunking_coordinator">chunking_coordinator</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator(lifecycle: JobLifecycleManager, chunker: ChunkingService, config: CoordinatorConfig, *, errors: ChunkingErrorTranslator | None = None) (Medical_KG_rev.gateway.coordinators.ChunkingCoordinator)" href="../coordinators/#Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator">ChunkingCoordinator</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkingCoordinator for chunking operations</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.services.GatewayService.embedding_coordinator">embedding_coordinator</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator(lifecycle: JobLifecycleManager, registry: EmbeddingModelRegistry, namespace_registry: EmbeddingNamespaceRegistry, policy: NamespaceAccessPolicy, persister: EmbeddingPersister, telemetry: EmbeddingTelemetry | None, config: CoordinatorConfig) (Medical_KG_rev.gateway.coordinators.EmbeddingCoordinator)" href="../coordinators/#Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator">EmbeddingCoordinator</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingCoordinator for embedding operations</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>All coordinators are initialized after <strong>post_init</strong></li>
+<li>Job lifecycle manager is always available</li>
+<li>Event stream manager is always available</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Not thread-safe: Designed for single-threaded request handling</li>
+<li>Shared state includes job ledger and event stream manager</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created via get_gateway_service() factory function</li>
+<li>Initialized with dependency injection</li>
+<li>Coordinates operations until process shutdown</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>service = get_gateway_service()
+chunks = service.chunk_document(ChunkRequest(
+...     tenant_id="tenant1",
+...     document_id="doc1",
+...     text="Sample text for chunking"
+... ))
+print(f"Created {len(chunks)} chunks")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.services.GatewayService.__post_init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">__post_init__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Initialize coordinators and dependencies after dataclass creation.</p>
+<p>This method sets up all coordinator instances and ensures dependencies
+are properly initialized. It follows a lazy initialization pattern
+where coordinators are created only when needed.</p>
+
+
+<details class="side-effects" open>
+  <summary>Side Effects</summary>
+  <ul>
+<li>Creates JobLifecycleManager instance</li>
+<li>Initializes ChunkingCoordinator with dependencies</li>
+<li>Initializes EmbeddingCoordinator with dependencies</li>
+<li>Sets up namespace policy and embedding persister</li>
+<li>Configures error translators</li>
+</ul>
+</details>
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If required dependencies cannot be initialized</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/services.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize coordinators and dependencies after dataclass creation.</span>
+
+<span class="sd">    This method sets up all coordinator instances and ensures dependencies</span>
+<span class="sd">    are properly initialized. It follows a lazy initialization pattern</span>
+<span class="sd">    where coordinators are created only when needed.</span>
+
+<span class="sd">    Side Effects:</span>
+<span class="sd">        - Creates JobLifecycleManager instance</span>
+<span class="sd">        - Initializes ChunkingCoordinator with dependencies</span>
+<span class="sd">        - Initializes EmbeddingCoordinator with dependencies</span>
+<span class="sd">        - Sets up namespace policy and embedding persister</span>
+<span class="sd">        - Configures error translators</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If required dependencies cannot be initialized</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">job_lifecycle</span> <span class="o">=</span> <span class="n">JobLifecycleManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stage_factory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_factory</span> <span class="o">=</span> <span class="n">_build_stage_factory</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapter_manager</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunker</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunker</span> <span class="o">=</span> <span class="n">ChunkingService</span><span class="p">(</span><span class="n">stage_factory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stage_factory</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunking_error_translator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunking_error_translator</span> <span class="o">=</span> <span class="n">ChunkingErrorTranslator</span><span class="p">(</span>
+            <span class="n">strategies</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">chunker</span><span class="o">.</span><span class="n">available_strategies</span><span class="p">(),</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_registry</span><span class="o">.</span><span class="n">namespace_registry</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span> <span class="o">=</span> <span class="n">StandardEmbeddingTelemetry</span><span class="p">()</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy_settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy_settings</span> <span class="o">=</span> <span class="n">NamespacePolicySettings</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_namespace_policy</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy_settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span><span class="o">.</span><span class="n">settings</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">router</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_registry</span><span class="p">,</span> <span class="s2">&quot;storage_router&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">router</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Embedding registry missing storage router&quot;</span><span class="p">)</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister_settings</span> <span class="ow">or</span> <span class="n">PersisterRuntimeSettings</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister</span> <span class="o">=</span> <span class="n">build_persister</span><span class="p">(</span>
+            <span class="n">router</span><span class="p">,</span>
+            <span class="n">telemetry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span><span class="p">,</span>
+            <span class="n">settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister_settings</span> <span class="o">=</span> <span class="n">settings</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunking_coordinator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunking_coordinator</span> <span class="o">=</span> <span class="n">ChunkingCoordinator</span><span class="p">(</span>
+            <span class="n">lifecycle</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">job_lifecycle</span><span class="p">,</span>
+            <span class="n">chunker</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">chunker</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_coordinator_config</span><span class="p">(</span><span class="s2">&quot;chunking&quot;</span><span class="p">),</span>
+            <span class="n">errors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">chunking_error_translator</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_coordinator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Namespace registry not initialised&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Embedding persister not initialised&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Namespace policy not initialised&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding_coordinator</span> <span class="o">=</span> <span class="n">EmbeddingCoordinator</span><span class="p">(</span>
+            <span class="n">lifecycle</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">job_lifecycle</span><span class="p">,</span>
+            <span class="n">registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_registry</span><span class="p">,</span>
+            <span class="n">namespace_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span><span class="p">,</span>
+            <span class="n">policy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span><span class="p">,</span>
+            <span class="n">persister</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister</span><span class="p">,</span>
+            <span class="n">telemetry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_coordinator_config</span><span class="p">(</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span> <span class="n">retry_attempts</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+        <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.services.GatewayService.chunk_document" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">chunk_document</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">ChunkRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DocumentChunk</span><span class="p">]</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Chunk a document into smaller segments for processing.</p>
+<p>This method coordinates document chunking by delegating to the
+ChunkingCoordinator. It handles error translation and metrics emission.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>request</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.models.ChunkRequest">ChunkRequest</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkRequest containing document text and chunking parameters
+- tenant_id: Tenant identifier for multi-tenancy
+- document_id: Unique document identifier
+- text: Document text to chunk
+- strategy: Chunking strategy (e.g., "section", "semantic")
+- chunk_size: Maximum tokens per chunk
+- overlap: Token overlap between chunks
+- options: Additional metadata and configuration</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Sequence">Sequence</span>[<span title="Medical_KG_rev.gateway.models.DocumentChunk">DocumentChunk</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sequence of DocumentChunk objects with content and metadata</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If chunking coordinator is not initialized</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.services.GatewayError">GatewayError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If chunking fails with translated error details</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>Emits 'chunk' duration metric and delegates to ChunkingCoordinator</p>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>request = ChunkRequest(
+...     tenant_id="tenant1",
+...     document_id="doc1",
+...     text="Long document text...",
+...     strategy="section"
+... )
+chunks = service.chunk_document(request)
+print(f"Created {len(chunks)} chunks")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/services.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span>
+<span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span>
+<span class="normal">701</span>
+<span class="normal">702</span>
+<span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span>
+<span class="normal">706</span>
+<span class="normal">707</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span>
+<span class="normal">712</span>
+<span class="normal">713</span>
+<span class="normal">714</span>
+<span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">chunk_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">ChunkRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DocumentChunk</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Chunk a document into smaller segments for processing.</span>
+
+<span class="sd">    This method coordinates document chunking by delegating to the</span>
+<span class="sd">    ChunkingCoordinator. It handles error translation and metrics emission.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: ChunkRequest containing document text and chunking parameters</span>
+<span class="sd">            - tenant_id: Tenant identifier for multi-tenancy</span>
+<span class="sd">            - document_id: Unique document identifier</span>
+<span class="sd">            - text: Document text to chunk</span>
+<span class="sd">            - strategy: Chunking strategy (e.g., &quot;section&quot;, &quot;semantic&quot;)</span>
+<span class="sd">            - chunk_size: Maximum tokens per chunk</span>
+<span class="sd">            - overlap: Token overlap between chunks</span>
+<span class="sd">            - options: Additional metadata and configuration</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Sequence of DocumentChunk objects with content and metadata</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If chunking coordinator is not initialized</span>
+<span class="sd">        GatewayError: If chunking fails with translated error details</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Emits &#39;chunk&#39; duration metric and delegates to ChunkingCoordinator</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; request = ChunkRequest(</span>
+<span class="sd">        ...     tenant_id=&quot;tenant1&quot;,</span>
+<span class="sd">        ...     document_id=&quot;doc1&quot;,</span>
+<span class="sd">        ...     text=&quot;Long document text...&quot;,</span>
+<span class="sd">        ...     strategy=&quot;section&quot;</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; chunks = service.chunk_document(request)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Created {len(chunks)} chunks&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunking_coordinator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Chunking coordinator not initialised&quot;</span><span class="p">)</span>
+
+    <span class="n">coordinator_request</span> <span class="o">=</span> <span class="n">CoordinatorChunkingRequest</span><span class="p">(</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">correlation_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;document_id&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">document_id</span><span class="p">},</span>
+        <span class="n">document_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">document_id</span><span class="p">,</span>
+        <span class="n">text</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+        <span class="n">strategy</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span>
+        <span class="n">chunk_size</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">,</span>
+        <span class="n">overlap</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">overlap</span><span class="p">)</span> <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">overlap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">options</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">options</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">ChunkingResult</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunking_coordinator</span><span class="p">(</span><span class="n">coordinator_request</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">CoordinatorError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">translator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunking_error_translator</span> <span class="ow">or</span> <span class="n">ChunkingErrorTranslator</span><span class="p">(</span>
+            <span class="n">strategies</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">chunker</span><span class="o">.</span><span class="n">available_strategies</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">context</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">translator</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">detail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">GatewayError</span><span class="p">(</span><span class="n">detail</span><span class="o">.</span><span class="n">detail</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span>
+    <span class="n">observe_job_duration</span><span class="p">(</span><span class="s2">&quot;chunk&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.services.GatewayService.embed" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">embed</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">EmbedRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingResponse</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate embeddings for text inputs using configured models.</p>
+<p>This method coordinates embedding generation by delegating to the
+EmbeddingCoordinator. It handles namespace policy evaluation, model
+selection, persistence, and telemetry collection.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>request</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.models.EmbedRequest">EmbedRequest</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbedRequest containing texts and embedding parameters
+- tenant_id: Tenant identifier for multi-tenancy
+- namespace: Embedding namespace for model selection
+- texts: List of text strings to embed
+- options: EmbeddingOptions with model and normalization settings</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.models.EmbeddingResponse">EmbeddingResponse</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingResponse with generated vectors and metadata</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If embedding coordinator or components not initialized</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.services.GatewayError">GatewayError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If namespace access denied or embedding fails</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>Emits 'embed' duration metric and delegates to EmbeddingCoordinator
+Validates namespace access via policy evaluation
+Persists embeddings via configured persister</p>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>request = EmbedRequest(
+...     tenant_id="tenant1",
+...     namespace="clinical",
+...     texts=["Sample text to embed"],
+...     options=EmbeddingOptions(model="clinical-bert")
+... )
+response = service.embed(request)
+print(f"Generated {len(response.embeddings)} embeddings")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/services.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">723</span>
+<span class="normal">724</span>
+<span class="normal">725</span>
+<span class="normal">726</span>
+<span class="normal">727</span>
+<span class="normal">728</span>
+<span class="normal">729</span>
+<span class="normal">730</span>
+<span class="normal">731</span>
+<span class="normal">732</span>
+<span class="normal">733</span>
+<span class="normal">734</span>
+<span class="normal">735</span>
+<span class="normal">736</span>
+<span class="normal">737</span>
+<span class="normal">738</span>
+<span class="normal">739</span>
+<span class="normal">740</span>
+<span class="normal">741</span>
+<span class="normal">742</span>
+<span class="normal">743</span>
+<span class="normal">744</span>
+<span class="normal">745</span>
+<span class="normal">746</span>
+<span class="normal">747</span>
+<span class="normal">748</span>
+<span class="normal">749</span>
+<span class="normal">750</span>
+<span class="normal">751</span>
+<span class="normal">752</span>
+<span class="normal">753</span>
+<span class="normal">754</span>
+<span class="normal">755</span>
+<span class="normal">756</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span>
+<span class="normal">778</span>
+<span class="normal">779</span>
+<span class="normal">780</span>
+<span class="normal">781</span>
+<span class="normal">782</span>
+<span class="normal">783</span>
+<span class="normal">784</span>
+<span class="normal">785</span>
+<span class="normal">786</span>
+<span class="normal">787</span>
+<span class="normal">788</span>
+<span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span>
+<span class="normal">795</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span>
+<span class="normal">860</span>
+<span class="normal">861</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">embed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">EmbedRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingResponse</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate embeddings for text inputs using configured models.</span>
+
+<span class="sd">    This method coordinates embedding generation by delegating to the</span>
+<span class="sd">    EmbeddingCoordinator. It handles namespace policy evaluation, model</span>
+<span class="sd">    selection, persistence, and telemetry collection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: EmbedRequest containing texts and embedding parameters</span>
+<span class="sd">            - tenant_id: Tenant identifier for multi-tenancy</span>
+<span class="sd">            - namespace: Embedding namespace for model selection</span>
+<span class="sd">            - texts: List of text strings to embed</span>
+<span class="sd">            - options: EmbeddingOptions with model and normalization settings</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        EmbeddingResponse with generated vectors and metadata</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If embedding coordinator or components not initialized</span>
+<span class="sd">        GatewayError: If namespace access denied or embedding fails</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Emits &#39;embed&#39; duration metric and delegates to EmbeddingCoordinator</span>
+<span class="sd">        Validates namespace access via policy evaluation</span>
+<span class="sd">        Persists embeddings via configured persister</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; request = EmbedRequest(</span>
+<span class="sd">        ...     tenant_id=&quot;tenant1&quot;,</span>
+<span class="sd">        ...     namespace=&quot;clinical&quot;,</span>
+<span class="sd">        ...     texts=[&quot;Sample text to embed&quot;],</span>
+<span class="sd">        ...     options=EmbeddingOptions(model=&quot;clinical-bert&quot;)</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; response = service.embed(request)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Generated {len(response.embeddings)} embeddings&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_coordinator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Embedding coordinator not initialised&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_persister</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Embedding components not initialised&quot;</span><span class="p">)</span>
+
+    <span class="n">started</span> <span class="o">=</span> <span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">options</span> <span class="ow">or</span> <span class="n">EmbeddingOptions</span><span class="p">()</span>
+    <span class="n">namespace</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">namespace</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">decision</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_policy</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
+            <span class="n">namespace</span><span class="o">=</span><span class="n">namespace</span><span class="p">,</span>
+            <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+            <span class="n">required_scope</span><span class="o">=</span><span class="n">Scopes</span><span class="o">.</span><span class="n">EMBED_WRITE</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover - defensive</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">ProblemDetail</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Namespace policy failure&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://httpstatuses.com/500&quot;</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">GatewayError</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">decision</span><span class="o">.</span><span class="n">allowed</span><span class="p">:</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">ProblemDetail</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Namespace access denied&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://httpstatuses.com/403&quot;</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="n">decision</span><span class="o">.</span><span class="n">reason</span> <span class="ow">or</span> <span class="s2">&quot;Access to namespace not permitted&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">GatewayError</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">decision</span><span class="o">.</span><span class="n">config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">namespace_registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">namespace</span><span class="p">)</span>
+
+    <span class="n">job_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_job</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span> <span class="s2">&quot;embed&quot;</span><span class="p">)</span>
+    <span class="n">correlation_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span>
+    <span class="n">model_name</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">model</span> <span class="ow">or</span> <span class="n">config</span><span class="o">.</span><span class="n">model_id</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding_telemetry</span><span class="o">.</span><span class="n">record_embedding_started</span><span class="p">(</span>
+            <span class="n">namespace</span><span class="o">=</span><span class="n">namespace</span><span class="p">,</span>
+            <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">texts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">metadata_payload</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">texts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">detail</span> <span class="o">=</span> <span class="n">ProblemDetail</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Invalid embedding input&quot;</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://httpstatuses.com/400&quot;</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Embedding texts must be non-empty strings&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fail_job</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">detail</span><span class="o">.</span><span class="n">detail</span> <span class="ow">or</span> <span class="n">detail</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">GatewayError</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">chunk_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">:chunk:</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">)</span>
+        <span class="n">metadata_payload</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;input_index&quot;</span><span class="p">:</span> <span class="n">index</span><span class="p">,</span>
+                <span class="s2">&quot;job_id&quot;</span><span class="p">:</span> <span class="n">job_id</span><span class="p">,</span>
+                <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="n">namespace</span><span class="p">,</span>
+                <span class="s2">&quot;tenant_id&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">texts</span><span class="p">:</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;embeddings&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span> <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="n">namespace</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">update_metadata</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_complete_job</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">EmbeddingMetadata</span><span class="p">(</span>
+            <span class="n">provider</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+            <span class="n">dimension</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
+            <span class="n">duration_ms</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">EmbeddingResponse</span><span class="p">(</span><span class="n">namespace</span><span class="o">=</span><span class="n">namespace</span><span class="p">,</span> <span class="n">embeddings</span><span class="o">=</span><span class="p">(),</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+
+    <span class="n">coordinator_request</span> <span class="o">=</span> <span class="n">CoordinatorEmbeddingRequest</span><span class="p">(</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">correlation_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">namespace</span><span class="p">},</span>
+        <span class="n">namespace</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">namespace</span><span class="p">,</span>
+        <span class="n">texts</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">texts</span><span class="p">,</span>
+        <span class="n">options</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">options</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">EmbeddingResult</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_coordinator</span><span class="p">(</span><span class="n">coordinator_request</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">CoordinatorError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="n">ProblemDetail</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">GatewayError</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span>
+    <span class="n">observe_job_duration</span><span class="p">(</span><span class="s2">&quot;embed&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">response</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Embedding coordinator returned no response&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">response</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="chunking-errors">Chunking Errors</h2>
+<p>Error translation utilities for converting chunking exceptions into API-facing payloads.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">chunking_errors</span><span class="o">.</span><span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="n">ProblemDetail</span><span class="p">,</span> <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Structured view of a translated chunking error.</p>
+<p>This dataclass represents the result of error translation, providing
+a structured view of chunking errors suitable for API responses and
+monitoring systems.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport.problem">problem</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.models.ProblemDetail">ProblemDetail</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Standardized problem detail for API response</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport.severity">severity</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Error severity level (client, fatal, retryable)</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport.metric">metric</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional metric name for monitoring</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport.job_id">job_id</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional job identifier for correlation</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <p>Immutable dataclass, thread-safe.</p>
+</details>
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <p>report = ChunkingErrorReport(
+    problem=problem_detail,
+    severity="client",
+    metric="ProfileNotFoundError",
+    job_id="job-123"
+)</p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">chunking_errors</span><span class="o">.</span><span class="n">ChunkingErrorTranslator</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">strategies</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;/v1/chunk&#39;</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Map domain-specific chunking failures to <code>ProblemDetail</code> payloads.</p>
+<p>This class provides comprehensive error translation for chunking operations,
+converting various exception types into standardized ProblemDetail objects
+suitable for API responses. It handles configuration errors, resource
+unavailability, processing failures, and system errors.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator._strategies">_strategies</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Available chunking strategies for validation</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator._base_path">_base_path</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base path for error instance URLs</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <p>Thread-safe and stateless. Safe for concurrent use.</p>
+</details>
+
+<details class="performance" open>
+  <summary>Performance</summary>
+  <p>Lightweight translation with minimal overhead.
+No external dependencies or I/O operations.</p>
+</details>
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <p>translator = ChunkingErrorTranslator(
+    strategies=["semantic", "fixed"],
+    base_path="/v1/chunk"
+)
+report = translator.translate(exception, command=chunk_command)</p>
+
+        <p>Initialize the chunking error translator.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>strategies</code>
+            </td>
+            <td>
+                  <code><span title="typing.Sequence">Sequence</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Available chunking strategies for validation</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>base_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base path for error instance URLs</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;/v1/chunk&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Initialization always succeeds.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+                  <details class="quote">
+                    <summary>Source code in <code>src/Medical_KG_rev/gateway/chunking_errors.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">strategies</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/v1/chunk&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the chunking error translator.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        strategies: Available chunking strategies for validation</span>
+<span class="sd">        base_path: Base path for error instance URLs</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        None: Initialization always succeeds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_strategies</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">strategies</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_base_path</span> <span class="o">=</span> <span class="n">base_path</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.from_context" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_context</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ProblemDetail</span> <span class="o">|</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extract a ProblemDetail from a context mapping.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>context</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Context mapping potentially containing a problem</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.models.ProblemDetail">ProblemDetail</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ProblemDetail if found, None otherwise</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This method never raises exceptions.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/chunking_errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">from_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ProblemDetail</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract a ProblemDetail from a context mapping.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        context: Context mapping potentially containing a problem</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ProblemDetail if found, None otherwise</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        None: This method never raises exceptions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">ProblemDetail</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">problem</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator.translate" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">translate</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="n">ChunkCommand</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChunkingErrorReport</span> <span class="o">|</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Translate a chunking exception into a structured error report.</p>
+<p>Analyzes the exception type and converts it into a ChunkingErrorReport
+with appropriate HTTP status codes, severity levels, and error details.
+Returns None for unrecognized exception types.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>exc</code>
+            </td>
+            <td>
+                  <code><span title="Exception">Exception</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The exception to translate</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>command</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.retrieval.chunking.ChunkCommand">ChunkCommand</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Chunk command providing context</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional job identifier for correlation</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport(problem: ProblemDetail, severity: str, metric: str | None = None, job_id: str | None = None)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport)" href="#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorReport">ChunkingErrorReport</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Structured error report or None if exception is not recognized</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This method never raises exceptions.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/chunking_errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">translate</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">command</span><span class="p">:</span> <span class="n">ChunkCommand</span><span class="p">,</span>
+    <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChunkingErrorReport</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Translate a chunking exception into a structured error report.</span>
+
+<span class="sd">    Analyzes the exception type and converts it into a ChunkingErrorReport</span>
+<span class="sd">    with appropriate HTTP status codes, severity levels, and error details.</span>
+<span class="sd">    Returns None for unrecognized exception types.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        exc: The exception to translate</span>
+<span class="sd">        command: Chunk command providing context</span>
+<span class="sd">        job_id: Optional job identifier for correlation</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Structured error report or None if exception is not recognized</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        None: This method never raises exceptions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profile</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">command</span><span class="o">.</span><span class="n">document_id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">ProfileNotFoundError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunking profile not found&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Requested chunking profile is unavailable&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;profile&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="p">}</span> <span class="k">if</span> <span class="n">profile</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;client&quot;</span><span class="p">,</span> <span class="s2">&quot;ProfileNotFoundError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">TokenizerMismatchError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Tokenizer mismatch&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Tokenizer mismatch between profile and text&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;fatal&quot;</span><span class="p">,</span> <span class="s2">&quot;TokenizerMismatchError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">ChunkingFailedError</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">detail</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking process failed&quot;</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunking failed&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;fatal&quot;</span><span class="p">,</span> <span class="s2">&quot;ChunkingFailedError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">InvalidDocumentError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Invalid document payload&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking requests must include text&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;client&quot;</span><span class="p">,</span> <span class="s2">&quot;InvalidDocumentError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">ChunkerConfigurationError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunker configuration invalid&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">422</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking configuration is invalid&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;valid_strategies&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_strategies</span><span class="p">)},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;client&quot;</span><span class="p">,</span> <span class="s2">&quot;ChunkerConfigurationError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">ChunkingUnavailableError</span><span class="p">):</span>
+        <span class="n">retry_after</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">retry_after</span><span class="p">)))</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunking temporarily unavailable&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking temporarily unavailable&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;retry_after&quot;</span><span class="p">:</span> <span class="n">retry_after</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;ChunkingUnavailableError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">MineruOutOfMemoryError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;MinerU out of memory&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;MinerU exhausted GPU memory&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">type_</span><span class="o">=</span><span class="s2">&quot;https://medical-kg/errors/mineru-oom&quot;</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;gpu_out_of_memory&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;MineruOutOfMemoryError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">MineruGpuUnavailableError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;MinerU GPU unavailable&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;MinerU GPU unavailable&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">type_</span><span class="o">=</span><span class="s2">&quot;https://medical-kg/errors/mineru-gpu-unavailable&quot;</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;gpu_unavailable&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;MineruGpuUnavailableError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">MemoryError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunking resources exhausted&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking operation exhausted available memory&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;retry_after&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;MemoryError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">TimeoutError</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Chunking operation timed out&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Chunking operation timed out&quot;</span><span class="p">,</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;retry_after&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;TimeoutError&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;GPU semantic checks&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;GPU unavailable for semantic chunking&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">503</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
+            <span class="n">instance</span><span class="o">=</span><span class="n">instance</span><span class="p">,</span>
+            <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;gpu_unavailable&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ChunkingErrorReport</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="s2">&quot;retryable&quot;</span><span class="p">,</span> <span class="s2">&quot;GpuUnavailable&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="presentation-errors">Presentation Errors</h2>
+<p>Error payload helpers for presentation formatting.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.presentation.errors.ErrorDetail" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">presentation</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">ErrorDetail</span><span class="p">(</span><span class="n">status</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">meta</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">())</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Structured error metadata for JSON:API responses.</p>
+<p>This dataclass represents error information in a format compatible
+with the JSON:API specification. It provides structured error
+details suitable for API responses.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.status">status</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>HTTP status code</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.code">code</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Error code identifier</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.title">title</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable error title</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.detail">detail</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional detailed error message</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.meta">meta</span></code></td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional additional metadata</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <p>Immutable dataclass, thread-safe.</p>
+</details>
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <p>error = ErrorDetail(
+    status=400,
+    code="INVALID_REQUEST",
+    title="Invalid request format",
+    detail="The request body is malformed"
+)</p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.presentation.errors.ErrorDetail.as_json" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">as_json</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Serialize the error detail to JSON-compatible dictionary.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Dictionary representation suitable for JSON serialization</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This method never raises exceptions.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/presentation/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">as_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize the error detail to JSON-compatible dictionary.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary representation suitable for JSON serialization</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        None: This method never raises exceptions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">),</span>
+        <span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">,</span>
+        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">detail</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detail</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;meta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">payload</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

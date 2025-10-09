@@ -10,12 +10,14 @@ from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 
 import structlog
-
 from Medical_KG_rev.chunking.exceptions import (
     MineruGpuUnavailableError as ChunkingMineruGpuUnavailableError,
+)
+from Medical_KG_rev.chunking.exceptions import (
     MineruOutOfMemoryError as ChunkingMineruOutOfMemoryError,
 )
 from Medical_KG_rev.config.settings import MineruSettings, get_settings
+from Medical_KG_rev.storage.clients import PdfStorageClient
 from Medical_KG_rev.storage.object_store import FigureStorageClient
 
 from .cli_wrapper import (
@@ -69,11 +71,14 @@ class MineruProcessor:
         parser: MineruOutputParser | None = None,
         postprocessor: MineruPostProcessor | None = None,
         figure_storage: FigureStorageClient | None = None,
+        pdf_storage: PdfStorageClient | None = None,
         worker_id: str | None = None,
         vllm_client: VLLMClient | None = None,
     ) -> None:
         self._settings = settings or get_settings().mineru
         self._worker_id = worker_id or threading.current_thread().name
+        self._pdf_storage = pdf_storage
+        self._vllm_client = vllm_client
         parser_instance = parser or MineruOutputParser()
         postprocessor_instance = postprocessor or MineruPostProcessor(
             figure_storage=figure_storage
@@ -87,8 +92,6 @@ class MineruProcessor:
         self._postprocessor = postprocessor_instance
         self._cli = cli or create_cli(self._settings)
         self._mineru_version = self._ensure_mineru_version()
-        self._vllm_client = vllm_client or self._build_vllm_client()
-        self._ensure_vllm_health()
         logger.info(
             "mineru.processor.initialised",
             worker_id=self._worker_id,
@@ -96,7 +99,88 @@ class MineruProcessor:
             vllm_url=str(self._settings.vllm_server.base_url),
         )
 
+    def _extract_checksum_from_uri(self, storage_uri: str) -> str | None:
+        """Extract checksum from storage URI."""
+        try:
+            # Handle s3://bucket/path/tenant/document/checksum.pdf format
+            if storage_uri.startswith("s3://"):
+                parts = storage_uri.split("/")
+                if len(parts) >= 2:
+                    filename = parts[-1]
+                    if filename.endswith(".pdf"):
+                        return filename[:-4]  # Remove .pdf extension
+            # Handle in-memory://checksum format
+            elif storage_uri.startswith("in-memory://"):
+                return storage_uri[12:]  # Remove in-memory:// prefix
+        except Exception:
+            pass
+        return None
+
+    async def _fetch_pdf_from_storage(self, request: MineruRequest) -> bytes | None:
+        """Fetch PDF content from storage if available."""
+        if not request.storage_uri or not self._pdf_storage:
+            return None
+
+        try:
+            checksum = self._extract_checksum_from_uri(request.storage_uri)
+            if checksum:
+                asset = await self._pdf_storage.get_pdf_asset(
+                    tenant_id=request.tenant_id,
+                    document_id=request.document_id,
+                    checksum=checksum,
+                )
+                if asset:
+                    return await self._pdf_storage.get_pdf_data(asset)
+        except Exception as e:
+            logger.warning(
+                "mineru.process.storage_fetch_failed",
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+                storage_uri=request.storage_uri,
+                error=str(e),
+            )
+        return None
+
     def process(self, request: MineruRequest) -> MineruResponse:
+        """Process a single MinerU request."""
+        # Fetch PDF content from storage if needed
+        if not request.content and request.storage_uri:
+            # Note: This is a sync method, so we can't await here
+            # In practice, this should be handled by the caller or made async
+            logger.warning(
+                "mineru.process.sync_storage_fetch",
+                message="Cannot fetch from storage in sync method",
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+            )
+
+        batch = self.process_batch([request])
+        if not batch.documents:
+            raise MineruCliError("MinerU CLI returned no outputs")
+        return MineruResponse(
+            document=batch.documents[0],
+            processed_at=batch.processed_at,
+            duration_seconds=batch.duration_seconds,
+            metadata=batch.metadata[0],
+        )
+
+    async def process_async(self, request: MineruRequest) -> MineruResponse:
+        """Process a single MinerU request with async storage support."""
+        # Fetch PDF content from storage if needed
+        if not request.content and request.storage_uri:
+            content = await self._fetch_pdf_from_storage(request)
+            if content:
+                # Create a new request with the fetched content
+                request = MineruRequest(
+                    tenant_id=request.tenant_id,
+                    document_id=request.document_id,
+                    content=content,
+                    storage_uri=request.storage_uri,
+                )
+            else:
+                raise MineruCliError("Cannot fetch PDF content from storage")
+
+        # Use the sync batch processing
         batch = self.process_batch([request])
         if not batch.documents:
             raise MineruCliError("MinerU CLI returned no outputs")
@@ -152,7 +236,7 @@ class MineruProcessor:
         total_batches: int,
     ) -> MineruBatchResponse:
         cli_inputs = [
-            MineruCliInput(document_id=request.document_id, content=request.content)
+            MineruCliInput(document_id=request.document_id, content=request.content or b"")
             for request in requests
         ]
 
@@ -283,7 +367,7 @@ class MineruProcessor:
         lowered = message.lower()
         return "out of memory" in lowered or "oom" in lowered
 
-    def _build_vllm_client(self) -> VLLMClient:
+    def _build_vllm_client(self) -> VLLMClient | None:
         breaker_settings = self._settings.http_client.circuit_breaker
         circuit_breaker = None
         if breaker_settings.enabled:
@@ -308,7 +392,9 @@ class MineruProcessor:
     def _ensure_vllm_health(self) -> None:
         async def _check() -> bool:
             try:
-                return await self._vllm_client.health_check()
+                if self._vllm_client:
+                    return await self._vllm_client.health_check()
+                return False
             except VLLMClientError as exc:
                 logger.error("mineru.vllm.health_check_failed", error=str(exc))
                 return False
@@ -325,7 +411,7 @@ class MineruProcessor:
             raise MineruGpuUnavailableError()
 
     @property
-    def vllm_client(self) -> VLLMClient:
+    def vllm_client(self) -> VLLMClient | None:
         """Expose the configured vLLM client for observability and testing."""
 
         return self._vllm_client

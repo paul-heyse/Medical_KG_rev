@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
@@ -26,12 +26,13 @@ from dagster import (
 from Medical_KG_rev.adapters.plugins.bootstrap import get_plugin_manager
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
+from Medical_KG_rev.config.settings import get_settings
 from Medical_KG_rev.orchestration.dagster.configuration import (
     PipelineConfigLoader,
     PipelineTopologyConfig,
-    StageExecutionHooks,
     ResiliencePolicyLoader,
     StageDefinition,
+    StageExecutionHooks,
     derive_stage_execution_order,
 )
 from Medical_KG_rev.orchestration.dagster.stages import (
@@ -39,28 +40,32 @@ from Medical_KG_rev.orchestration.dagster.stages import (
     create_default_pipeline_resource,
     create_stage_plugin_manager,
 )
+from Medical_KG_rev.orchestration.dagster.types import PIPELINE_STATE_DAGSTER_TYPE
 from Medical_KG_rev.orchestration.events import StageEventEmitter
 from Medical_KG_rev.orchestration.kafka import KafkaClient
 from Medical_KG_rev.orchestration.ledger import JobLedger, JobLedgerError
 from Medical_KG_rev.orchestration.openlineage import OpenLineageEmitter
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState, StageContext
-from Medical_KG_rev.orchestration.dagster.types import PIPELINE_STATE_DAGSTER_TYPE
 from Medical_KG_rev.orchestration.stages.plugin_manager import (
-    StagePluginContext,
     StagePluginExecutionError,
-    StagePluginManager,
     StagePluginNotAvailable,
+)
+from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePluginBuildError,
+    StagePluginLookupError,
+    StagePluginManager,
 )
 from Medical_KG_rev.orchestration.stages.plugins.builtin import (
     CoreStagePlugin,
     PdfTwoPhasePlugin,
 )
-from Medical_KG_rev.orchestration.state.cache import PipelineStateCache
 from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
-from Medical_KG_rev.orchestration.stages.plugins import (
-    StagePluginBuildError,
-    StagePluginLookupError,
-    StagePluginManager,
+from Medical_KG_rev.orchestration.state.cache import PipelineStateCache
+from Medical_KG_rev.storage.clients import (
+    DocumentStorageClient,
+    PdfStorageClient,
+    create_cache_backend,
+    create_object_store,
 )
 from Medical_KG_rev.utils.logging import get_logger
 
@@ -98,6 +103,10 @@ class StageFactory:
         except StagePluginExecutionError as exc:  # pragma: no cover - defensive guard
             raise StageResolutionError(
                 f"Stage plugin failed for '{stage.name}' ({stage.stage_type})"
+            ) from exc
+
+
+class StageResolver:
     """Resolve orchestration stages through the plugin manager."""
 
     plugin_manager: StagePluginManager
@@ -129,15 +138,23 @@ def build_stage_factory(
 ) -> StageFactory:
     """Initialise the stage plugin manager and return a bound factory."""
 
-    context = StagePluginContext(
-        resources={
-            "adapter_manager": adapter_manager,
-            "haystack_pipeline": pipeline_resource,
-            "job_ledger": job_ledger,
-        }
+    settings = get_settings()
+    object_store = create_object_store(settings.object_storage)
+    cache_backend = create_cache_backend(settings.redis_cache)
+    pdf_storage = PdfStorageClient(object_store, cache_backend, settings.object_storage)
+    document_storage = DocumentStorageClient(object_store, cache_backend, settings.object_storage)
+
+    manager = create_stage_plugin_manager(
+        adapter_manager,
+        pipeline_resource,
+        job_ledger=job_ledger,
+        object_store=object_store,
+        cache_backend=cache_backend,
+        pdf_storage=pdf_storage,
+        document_storage=document_storage,
+        object_storage_settings=settings.object_storage,
+        redis_cache_settings=settings.redis_cache,
     )
-    manager = StagePluginManager(context)
-    manager.register(CoreStagePlugin())
     manager.register(PdfTwoPhasePlugin())
     manager.load_entrypoints()
     return StageFactory(manager)

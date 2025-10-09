@@ -1,15 +1,16 @@
 name: pdf-two-phase
 version: "2025-01-01"
 applicable_sources:
-  - pmc
-  - pmc-fulltext
+  - openalex
 metadata:
   owner: ingestion-team
   description: PDF ingestion with MinerU gate.
 stages:
   - name: ingest
     type: ingest
-    policy: default
+    policy: polite-api
+    config:
+      adapter: openalex
   - name: download
     type: download
     policy: polite-api

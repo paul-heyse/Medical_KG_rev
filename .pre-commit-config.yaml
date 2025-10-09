@@ -1,16 +1,98 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
-    hooks:
-      - id: black
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.5
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies: ["pydantic>=2.6.0", "pydantic-settings>=2.1.0"]
+    # Ruff for linting and formatting
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.1.7
+      hooks:
+          - id: ruff
+            args: [--fix, --exit-non-zero-on-fix]
+          - id: ruff-format
+
+    # MyPy for type checking
+    - repo: https://github.com/pre-commit/mirrors-mypy
+      rev: v1.7.1
+      hooks:
+          - id: mypy
+            additional_dependencies: [types-all]
+            args: [--strict, --show-error-codes]
+
+    # Pydocstyle for docstring checking
+    - repo: https://github.com/pycqa/pydocstyle
+      rev: 6.3.0
+      hooks:
+          - id: pydocstyle
+            args:
+                [
+                    --convention=google,
+                    --add-ignore=D100,
+                    D101,
+                    D102,
+                    D103,
+                    D104,
+                    D105,
+                    D106,
+                    D107,
+                ]
+
+    # Black for code formatting (backup to ruff-format)
+    - repo: https://github.com/psf/black
+      rev: 23.12.1
+      hooks:
+          - id: black
+            language_version: python3
+
+    # isort for import sorting (backup to ruff)
+    - repo: https://github.com/pycqa/isort
+      rev: 5.13.2
+      hooks:
+          - id: isort
+            args: [--profile, black]
+
+    # Check for common security issues
+    - repo: https://github.com/PyCQA/bandit
+      rev: 1.7.5
+      hooks:
+          - id: bandit
+            args: [-r, src/, -f, json, -o, bandit-report.json]
+            exclude: ^tests/
+
+    # Check for dependency vulnerabilities
+    - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+      rev: v1.3.2
+      hooks:
+          - id: python-safety-dependencies-check
+
+    # Check for large files
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.5.0
+      hooks:
+          - id: check-added-large-files
+            args: [--maxkb=1000]
+          - id: check-merge-conflict
+          - id: check-yaml
+          - id: end-of-file-fixer
+          - id: trailing-whitespace
+          - id: check-docstring-first
+
+    # Custom documentation checks
+    - repo: local
+      hooks:
+          - id: ruff-docstring-check
+            name: Check docstrings with ruff
+            entry: ruff check --select D
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/
+
+          - id: section-header-check
+            name: Check section headers
+            entry: python scripts/check_section_headers.py
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/
+
+          - id: docstring-coverage
+            name: Check docstring coverage
+            entry: python scripts/check_docstring_coverage.py --min-coverage 90
+            language: system
+            types: [python]
+            files: ^src/Medical_KG_rev/(gateway|services|orchestration)/

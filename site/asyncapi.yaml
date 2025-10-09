@@ -1,0 +1,85 @@
+asyncapi: '2.6.0'
+info:
+  title: Medical KG Job Streams
+  version: '0.1.0'
+  description: Server-sent event channels for gateway job updates.
+servers:
+  development:
+    url: http://localhost:8000
+    protocol: sse
+channels:
+  jobs/{jobId}:
+    parameters:
+      jobId:
+        description: Identifier of the job to subscribe to.
+        schema:
+          type: string
+    subscribe:
+      summary: Receive job status updates.
+      message:
+        name: JobEvent
+        payload:
+          type: object
+          properties:
+            job_id:
+              type: string
+            type:
+              type: string
+              enum: [jobs.started, jobs.progress, jobs.completed, jobs.failed]
+            payload:
+              type: object
+            emitted_at:
+              type: string
+              format: date-time
+  orchestration.events.v1:
+    description: CloudEvents stream of Dagster stage lifecycle transitions.
+    subscribe:
+      summary: Consume stage lifecycle CloudEvents.
+      message:
+        $ref: '#/components/messages/StageLifecycleEvent'
+  mineru.queue.v1:
+    description: Queue for submitting MinerU PDF processing jobs.
+    publish:
+      summary: Submit a MinerU processing request.
+      message:
+        $ref: '#/components/messages/MineruJobRequest'
+
+components:
+  messages:
+    StageLifecycleEvent:
+      name: StageLifecycleEvent
+      payload:
+        type: object
+        properties:
+          attributes:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              source:
+                type: string
+              subject:
+                type: string
+              time:
+                type: string
+                format: date-time
+            additionalProperties: true
+          data:
+            type: object
+            additionalProperties: true
+    MineruJobRequest:
+      name: MineruJobRequest
+      payload:
+        type: object
+        properties:
+          document_id:
+            type: string
+          url:
+            type: string
+            format: uri
+          metadata:
+            type: object
+            additionalProperties: true
+        required: [document_id, url]

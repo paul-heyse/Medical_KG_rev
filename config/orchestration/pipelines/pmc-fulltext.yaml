@@ -8,7 +8,9 @@ metadata:
 stages:
   - name: ingest
     type: ingest
-    policy: default
+    policy: polite-api
+    config:
+      adapter: pmc
   - name: download
     type: download
     policy: polite-api

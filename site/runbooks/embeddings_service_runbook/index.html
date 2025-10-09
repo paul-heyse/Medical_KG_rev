@@ -1,0 +1,1296 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Embeddings Service Operations Runbook - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#embeddings-service-operations-runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Embeddings Service Operations Runbook
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-vllm-service-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. vLLM Service Lifecycle
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. vLLM Service Lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Sources
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-gpu-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. GPU Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-faiss-index-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. FAISS Index Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-opensearch-rank-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. OpenSearch Rank Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-monitoring-alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Monitoring &amp; Alerting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-namespace-access-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Namespace Access Controls
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-emergency-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Emergency Procedures
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-pre-deployment-checklist-task-1113" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Pre-Deployment Checklist (Task 11.1.3)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-staging-production-rollout-tasks-112-113" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Staging &amp; Production Rollout (Tasks 11.2 &amp; 11.3)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="embeddings-service-operations-runbook">Embeddings Service Operations Runbook</h1>
+<p>This runbook fulfils task 10.3.1 of the
+<code>add-embeddings-representation</code> change.  It is intended for the SRE team that
+operates the GPU-only embedding stack.</p>
+<h2 id="1-vllm-service-lifecycle">1. vLLM Service Lifecycle</h2>
+<ol>
+<li>Build the image:
+   <code>bash
+   docker compose build vllm-qwen3</code></li>
+<li>Deploy via Kubernetes (see manifests under <code>ops/k8s</code>):
+   <code>bash
+   kubectl apply -k ops/k8s/overlays/production</code></li>
+<li>Health check endpoint: <code>GET /health</code> should return <code>{"status":"healthy"}</code>.</li>
+<li>Embedding endpoint: <code>POST /v1/embeddings</code> with namespace-qualified models
+   (e.g. <code>single_vector.qwen3.4096.v1</code>).</li>
+</ol>
+<h3 id="configuration-sources">Configuration Sources</h3>
+<ul>
+<li>Dense embedding service parameters live in <code>config/embedding/vllm.yaml</code> and are
+  parsed via <code>Medical_KG_rev.config.load_vllm_config</code>. Update GPU utilisation,
+  batching thresholds, or model metadata there and commit with the rollout.</li>
+<li>Sparse SPLADE settings (Pyserini) reside in <code>config/embedding/pyserini.yaml</code>.
+  The helper <code>load_pyserini_config</code> validates the schema and exposes
+  OpenSearch-specific knobs (<code>rank_features_field</code>, <code>max_weight</code>).</li>
+</ul>
+<h2 id="2-gpu-troubleshooting">2. GPU Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Checks</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pod fails to start</td>
+<td><code>kubectl describe pod</code> → look for <code>nvidia.com/gpu</code> scheduling errors</td>
+<td>Ensure node has GPU label and drivers installed.</td>
+</tr>
+<tr>
+<td>503 GPU unavailable</td>
+<td><code>scripts.embedding.verify_environment</code> reports <code>available: false</code></td>
+<td>Reboot node, reseat drivers, or cordon and drain affected node.</td>
+</tr>
+<tr>
+<td>OOM</td>
+<td>vLLM logs mention CUDA OOM</td>
+<td>Reduce batch size via <code>GPU_MEMORY_UTILIZATION</code> env var and redeploy.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-faiss-index-management">3. FAISS Index Management</h2>
+<ol>
+<li>Initial bootstrap via <code>scripts/vector_store/bootstrap_faiss.py</code> (ensures HNSW
+   index and metadata in object storage).</li>
+<li>Incremental updates handled by <code>VectorStoreService.upsert</code>; monitor the
+   <code>embedding.vector_store.upserted</code> metric.</li>
+<li>Rebuild procedure:</li>
+<li>Pause ingestion pipeline.</li>
+<li>Delete FAISS PVC (<code>kubectl delete pvc faiss-data</code>).</li>
+<li>Re-run bootstrap script.</li>
+<li>Resume ingestion.</li>
+</ol>
+<h2 id="4-opensearch-rank-features">4. OpenSearch Rank Features</h2>
+<ul>
+<li>Index templates defined in <code>config/embedding/namespaces/*.yaml</code> include the
+  <code>rank_features</code> mapping.  Apply template updates using the
+  <code>scripts/opensearch/apply_rank_features.py</code> helper.</li>
+<li>Validate with:
+  <code>bash
+  curl -u "$USER:$PASS" https://opensearch/_mapping | jq '.properties'</code></li>
+</ul>
+<h2 id="5-monitoring-alerting">5. Monitoring &amp; Alerting</h2>
+<ul>
+<li><strong>Dashboards</strong> – Grafana folder <code>Embeddings &amp; Representation</code>.  Panels:
+  latency (FAISS P95 &lt; 50ms, OpenSearch P95 &lt; 200ms), throughput, and GPU
+  utilisation.</li>
+<li><strong>Alerts</strong> – Prometheus rules located in <code>ops/monitoring/embeddings.rules.yaml</code>:</li>
+<li><code>EmbeddingGpuUnavailable</code> – triggered when health endpoint returns non-200.</li>
+<li><code>EmbeddingThroughputLow</code> – triggered when throughput &lt; 500 emb/sec.</li>
+<li><code>EmbeddingLatencyHigh</code> – triggered when FAISS P95 &gt; 80ms for 5 minutes.</li>
+</ul>
+<h2 id="6-namespace-access-controls">6. Namespace Access Controls</h2>
+<ul>
+<li>Discovery API <code>GET /v1/namespaces</code> requires <code>embed:read</code>. Returns
+  <code>NamespaceInfo</code> entries with <code>allowed_tenants</code> and <code>allowed_scopes</code>.</li>
+<li>Validation API <code>POST /v1/namespaces/{namespace}/validate</code> checks token
+  budgets before embedding. Calls <code>transformers.AutoTokenizer</code> based on the
+  namespace config and records <code>medicalkg_cross_tenant_access_attempts_total</code>
+  when blocked.</li>
+<li>Embedding requests (<code>POST /v1/embed</code>) must include <code>tenant_id</code> and a
+  namespace registered for that tenant. The FastAPI middleware
+  <code>TenantValidationMiddleware</code> fails the request if the JWT tenant differs
+  from the payload.</li>
+<li>For investigations, audit the <code>namespace_access</code> entries in the gateway
+  logs and the Prometheus counter above.</li>
+</ul>
+<h2 id="7-emergency-procedures">7. Emergency Procedures</h2>
+<ol>
+<li><strong>Rollback</strong> – Scale down vLLM deployment and scale up the legacy
+   <code>sentence-transformers</code> worker (available in <code>ops/k8s/overlays/rollback</code>).
+   Automated rollback conditions are codified in
+   <code>config/monitoring/rollback_triggers.yaml</code> and are mirrored as Grafana
+   alerts. Keep that file in sync with dashboard IDs referenced below.</li>
+<li><strong>Restart</strong> – <code>kubectl rollout restart deployment vllm-qwen3</code>.</li>
+<li><strong>Purge cache</strong> – Delete <code>.vllm_cache</code> PVC to flush stale KV cache.</li>
+</ol>
+<p><strong>Rollback Triggers</strong></p>
+<ul>
+<li><strong>Automated alerts</strong> – See <code>config/monitoring/rollback_triggers.yaml</code> for
+  the canonical set of alerting rules (latency degradation, GPU failure rate,
+  token overflow, vLLM availability). Any critical trigger automatically opens
+  a PagerDuty incident and recommends running the rollback script.</li>
+<li><strong>Manual triggers</strong> – Initiate rollback when any of the following conditions
+  are observed even if alerts have not fired:</li>
+<li>Embedding quality degradation (Recall@10 drop ≥5% from previous baseline).</li>
+<li>GPU memory leaks or repeated OOMs despite healthy alert status.</li>
+<li>vLLM startup failures (health checks stuck in <code>503</code> for &gt;5 minutes after
+    deployment).</li>
+<li>Incorrect vector dimensions or sparse term weights detected during smoke
+    tests (e.g., FAISS <code>DimensionMismatchError</code>).</li>
+</ul>
+<p>After invoking a manual trigger, attach the
+<code>docs/templates/rollback_incident_template.md</code> to the incident ticket and
+schedule the post-incident review within two hours of rollback completion.</p>
+<p><strong>RTO Targets</strong></p>
+<ul>
+<li>Canary rollback: 5 minutes (scale down new workloads, scale up legacy).</li>
+<li>Full rollback (with OpenSearch mapping restoration): 15 minutes.</li>
+<li>Maximum tolerated RTO: 20 minutes (documented in incident postmortem).</li>
+</ul>
+<p>Perform quarterly rollback drills in staging following
+<code>scripts/rollback_embeddings.sh</code> and record metrics in the change log. Drill
+outcomes and RTO validation history are tracked in
+<code>docs/operations/rollback_drills.md</code>.</p>
+<h2 id="8-pre-deployment-checklist-task-1113">8. Pre-Deployment Checklist (Task 11.1.3)</h2>
+<ul>
+<li>[x] Unit and integration tests green (<code>pytest tests/embeddings -q</code>).</li>
+<li>[x] <code>scripts/detect_dangling_imports.py</code> returns success.</li>
+<li>[x] GPU fail-fast path validated via <code>scripts.embedding.verify_environment</code>.</li>
+<li>[x] Dashboards and alerts reviewed with operations team.</li>
+<li>[x] Runbook reviewed and linked from on-call handbook.</li>
+</ul>
+<h2 id="9-staging-production-rollout-tasks-112-113">9. Staging &amp; Production Rollout (Tasks 11.2 &amp; 11.3)</h2>
+<ol>
+<li>Deploy to staging overlay and run smoke tests (<code>tests/smoke/embed_smoke.py</code>).</li>
+<li>Run storage migration job to rebuild FAISS and OpenSearch indices.</li>
+<li>Promote manifests to production overlay, monitor for 24–48 hours.</li>
+<li>Capture performance deltas and lessons learned in post-deployment report.</li>
+</ol>
+<p>This document should be attached to the change record during CAB review and
+kept up-to-date with future enhancements.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

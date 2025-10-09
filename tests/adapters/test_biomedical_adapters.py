@@ -39,6 +39,7 @@ from Medical_KG_rev.adapters.plugins.domains.biomedical import (
 )
 from Medical_KG_rev.adapters.plugins.models import AdapterResponse
 from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
+from Medical_KG_rev.config.settings import get_settings
 from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 
@@ -317,6 +318,19 @@ def test_openalex_adapter_surfaces_pdf_metadata():
     ]
     assert document.metadata["document_type"] == "pdf"
     assert document.sections[0].blocks[0].text == "Immune therapy"
+
+
+def test_openalex_plugin_uses_settings(monkeypatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("MK_OPENALEX__CONTACT_EMAIL", "ci@example.com")
+    monkeypatch.setenv("MK_OPENALEX__USER_AGENT", "CI-Test/1.0")
+    monkeypatch.setenv("MK_OPENALEX__MAX_RESULTS", "9")
+    try:
+        plugin = OpenAlexAdapterPlugin()
+        adapter = plugin.adapter
+        assert getattr(adapter, "_max_results") == 9
+    finally:
+        get_settings.cache_clear()
 
 
 def test_unpaywall_adapter_returns_metadata():

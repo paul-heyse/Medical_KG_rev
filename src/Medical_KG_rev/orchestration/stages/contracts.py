@@ -192,15 +192,27 @@ else:  # pragma: no cover - fallback shim
                 "sections": list(self.sections),
                 "metadata": copy.deepcopy(self.metadata),
             }
-import orjson
-import structlog
 import time
 import zlib
 from dataclasses import dataclass, field
 from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
-import structlog
+import orjson
+from attrs import asdict as attr_asdict
+from attrs import define
+from attrs import define as attr_define
+from attrs import field as attr_field
+from attrs import field as attrs_field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.dataclasses import dataclass as pydantic_dataclass
+from tenacity import retry, stop_after_attempt, wait_exponential
 
+import structlog
+from Medical_KG_rev.adapters.plugins.models import AdapterRequest
+from Medical_KG_rev.chunking.models import Chunk
+from Medical_KG_rev.models.entities import Claim, Entity
+from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.observability.metrics import PIPELINE_STATE_SERIALISATIONS
 from Medical_KG_rev.orchestration.state import (
     PipelineStateCache,
     PipelineStateModel,
@@ -210,23 +222,7 @@ from Medical_KG_rev.orchestration.state import (
     record_stage_metrics,
     serialise_payload,
 )
-import orjson
-import structlog
-from attrs import asdict as attr_asdict
-from attrs import define as attr_define, field as attr_field
 from prometheus_client import Counter, Histogram
-from pydantic import BaseModel, Field
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-from Medical_KG_rev.adapters.plugins.models import AdapterRequest
-from Medical_KG_rev.chunking.models import Chunk
-from Medical_KG_rev.models.entities import Claim, Entity
-from Medical_KG_rev.models.ir import Document
-from Medical_KG_rev.observability.metrics import PIPELINE_STATE_SERIALISATIONS
-from attrs import define, field as attrs_field
-from pydantic import ConfigDict, Field
-from pydantic.dataclasses import dataclass as pydantic_dataclass
-
 
 RawPayload = dict[str, Any]
 
@@ -346,7 +342,12 @@ else:  # pragma: no cover - fallback for environments without attrs
 
 
 if importlib_util.find_spec("tenacity") is not None:
-    from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential  # type: ignore[import]
+    from tenacity import (  # type: ignore[import]
+        retry,
+        retry_if_exception_type,
+        stop_after_attempt,
+        wait_exponential,
+    )
 else:  # pragma: no cover - fallback for environments without tenacity
 
     def stop_after_attempt(count: int) -> int:
@@ -902,17 +903,6 @@ class PipelineState:
     _STAGE_DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
         "parse": ("ingest",),
         "ir-validation": ("parse",),
-    _DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
-        "parse": ("ingest",),
-        "ir-validation": ("ingest", "parse"),
-        "chunk": ("parse",),
-        "embed": ("chunk",),
-        "index": ("embed",),
-        "extract": ("parse",),
-        "knowledge-graph": ("extract",),
-        "download": ("ingest",),
-        "gate": ("download",),
-    }
         "pdf-download": ("ingest",),
         "pdf-gate": ("pdf-download",),
     }
@@ -1021,6 +1011,7 @@ class PipelineState:
         clone._dirty = self._dirty
         clone._serialised_cache = (
             copy.deepcopy(self._serialised_cache) if self._serialised_cache is not None else None
+        )
         clone.pdf_gate = PdfGateState(
             downloaded=self.pdf_gate.downloaded,
             ir_ready=self.pdf_gate.ir_ready,
@@ -1420,8 +1411,6 @@ class PipelineState:
 
         self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
         self._mark_dirty()
-        _state_logger.debug(
-            "pipeline_state.stage_applied",
         logger.debug(
             "pipeline_state.stage_output_applied",
             stage=stage_name,
@@ -1742,11 +1731,6 @@ class PipelineState:
             stage_count=len(self.stage_results),
         )
         return serialised
-        else:
-            self._serialised_cache = None
-            self._cache.payload = copy.deepcopy(snapshot)
-            self._dirty = False
-        return copy.deepcopy(payload)
 
     def to_legacy_dict(self) -> dict[str, Any]:
         """Return a dictionary compatible with legacy dict-based state consumers."""

@@ -12,7 +12,7 @@
 
 Medical_KG_rev is a sophisticated multi-protocol API gateway and orchestration system that unifies fragmented biomedical data from 10+ diverse sources into a coherent knowledge graph with advanced retrieval capabilities. The system addresses the critical challenge faced by healthcare researchers, pharmaceutical companies, and medical informaticists: **data fragmentation across incompatible APIs, formats, and standards**.
 
-**Recent Updates**: The system has successfully implemented coordinator pattern architecture with ChunkingCoordinator and EmbeddingCoordinator, decomposed biomedical adapters into modular structure with shared mixins, and enhanced error handling with domain-specific translation. Active development continues on PDF processing pipeline integration.
+**Recent Updates**: The system has successfully implemented coordinator pattern architecture with ChunkingCoordinator and EmbeddingCoordinator, decomposed biomedical adapters into modular structure with shared mixins, enhanced error handling with domain-specific translation, and integrated S3-compatible object storage with Redis caching for durable pipeline artifacts. Active development continues on PDF processing pipeline integration.
 
 ### Key Features
 
@@ -21,6 +21,7 @@ Medical_KG_rev is a sophisticated multi-protocol API gateway and orchestration s
 - 📊 **Federated Data Model**: Unified Intermediate Representation with domain-specific overlays (medical/FHIR, financial/XBRL, legal/LegalDocML)
 - 🔌 **Modular Biomedical Adapters**: Decomposed 13+ adapters into individual modules with shared mixins (HTTP, DOI, pagination, OA metadata)
 - 🚀 **GPU-Accelerated AI**: PDF parsing (MinerU), embeddings (SPLADE + Qwen-3), and LLM extraction
+- 💾 **Durable Storage**: S3-compatible object storage with Redis caching for PDFs, artifacts, and metadata
 - 🔍 **Multi-Strategy Retrieval**: Hybrid search combining BM25, SPLADE, and dense vectors with fusion ranking
 - 🔐 **Enterprise Security**: OAuth 2.0 with JWT, multi-tenant isolation, scope-based authorization, rate limiting
 - 📈 **Production Observability**: Prometheus metrics, OpenTelemetry tracing, Grafana dashboards, Sentry error tracking
@@ -46,8 +47,9 @@ Medical_KG_rev is a sophisticated multi-protocol API gateway and orchestration s
 ┌──────▼────────┐  ┌──▼─────────┐  ┌──▼─────────┐  ┌───▼─────────┐
 │  BIOMEDICAL   │  │   GPU      │  │  STORAGE   │  │ RETRIEVAL   │
 │   ADAPTERS    │  │ SERVICES   │  │  LAYER     │  │  ENGINES    │
-│ 11+ Sources   │  │ MinerU     │  │ Neo4j      │  │ OpenSearch  │
-│               │  │ Embeddings │  │ MinIO/S3   │  │ FAISS       │
+│ 13+ Sources   │  │ MinerU     │  │ Neo4j      │  │ OpenSearch  │
+│               │  │ Embeddings │  │ S3/MinIO   │  │ FAISS       │
+│               │  │ vLLM       │  │ Redis      │  │             │
 └───────────────┘  └────────────┘  └────────────┘  └─────────────┘
 ```
 

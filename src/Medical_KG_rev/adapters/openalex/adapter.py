@@ -6,19 +6,24 @@ import os
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Iterator, cast
 
+import structlog
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
+from Medical_KG_rev.adapters.mixins import StorageHelperMixin
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_doi
 
 try:  # pragma: no cover - import is validated in __init__
-    from pyalex import Works, config as pyalex_config
+    from pyalex import Works
+    from pyalex import config as pyalex_config
 except Exception:  # pragma: no cover - handled lazily
-    Works = None  # type: ignore[assignment]
-    pyalex_config = None  # type: ignore[assignment]
+    Works = None
+    pyalex_config = None
+
+logger = structlog.get_logger(__name__)
 
 
-class OpenAlexAdapter(BaseAdapter):
+class OpenAlexAdapter(BaseAdapter, StorageHelperMixin):
     """Adapter that retrieves scholarly works via the OpenAlex API.
 
     The adapter relies on the official :mod:`pyalex` client so that we benefit
@@ -44,7 +49,7 @@ class OpenAlexAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     # Adapter lifecycle
     # ------------------------------------------------------------------
-    def fetch(self, context: AdapterContext) -> Iterable[Mapping[str, Any]]:
+    def fetch(self, context: AdapterContext) -> Iterable[dict[str, Any]]:
         parameters = context.parameters
         doi_param = parameters.get("doi")
         work_id_param = parameters.get("openalex_id")
@@ -58,6 +63,44 @@ class OpenAlexAdapter(BaseAdapter):
             return self._search(query_param)
 
         raise ValueError("Either 'doi', 'openalex_id', or 'query' parameter must be provided")
+
+    async def fetch_and_upload_pdf(
+        self,
+        context: AdapterContext,
+        pdf_url: str,
+        document_id: str,
+    ) -> str | None:
+        """Fetch PDF from URL and upload to storage if configured."""
+        if not self._pdf_storage:
+            return None
+
+        try:
+            # Fetch PDF data using HTTP client
+            from Medical_KG_rev.utils.http_client import HttpClient
+
+            client = HttpClient()
+            response = client.request("GET", pdf_url)
+            if response.status_code != 200:
+                return None
+
+            pdf_data = response.content
+
+            # Upload to storage
+            storage_uri = await self.upload_pdf_if_available(
+                tenant_id=context.tenant_id,
+                document_id=document_id,
+                pdf_data=pdf_data,
+            )
+
+            return storage_uri
+        except Exception as e:
+            logger.warning(
+                "openalex_adapter.pdf_fetch_failed",
+                pdf_url=pdf_url,
+                document_id=document_id,
+                error=str(e),
+            )
+            return None
 
     def parse(
         self, payloads: Iterable[Mapping[str, Any]], context: AdapterContext
@@ -85,24 +128,24 @@ class OpenAlexAdapter(BaseAdapter):
         agent = user_agent or os.getenv("OPENALEX_USER_AGENT")
 
         if email:
-            pyalex_config["email"] = email  # type: ignore[index]
+            pyalex_config["email"] = email
         if agent:
-            pyalex_config["user_agent"] = agent  # type: ignore[index]
+            pyalex_config["user_agent"] = agent
 
         return Works()
 
-    def _fetch_by_doi(self, raw_doi: str) -> list[Mapping[str, Any]]:
+    def _fetch_by_doi(self, raw_doi: str) -> list[dict[str, Any]]:
         doi = validate_doi(raw_doi)
         identifier = f"https://doi.org/{doi}"
         work = self._client[identifier]
         return [self._normalise_work_payload(work)]
 
-    def _fetch_by_identifier(self, raw_identifier: str) -> list[Mapping[str, Any]]:
+    def _fetch_by_identifier(self, raw_identifier: str) -> list[dict[str, Any]]:
         identifier = _normalise_openalex_id(raw_identifier)
         work = self._client[identifier]
         return [self._normalise_work_payload(work)]
 
-    def _search(self, query: str) -> list[Mapping[str, Any]]:
+    def _search(self, query: str) -> list[dict[str, Any]]:
         records: list[Mapping[str, Any]] = []
         paginator = self._client.search(query).paginate(per_page=self._max_results)
         for page in paginator:
@@ -115,7 +158,7 @@ class OpenAlexAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     # Document construction helpers
     # ------------------------------------------------------------------
-    def _normalise_work_payload(self, work: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _normalise_work_payload(self, work: Mapping[str, Any]) -> dict[str, Any]:
         data = dict(work)
         pdf_assets = _extract_pdf_assets(data)
         if pdf_assets:
@@ -239,11 +282,13 @@ def _collect_authors(authorships: Any) -> list[str]:
 def _collect_concepts(raw_concepts: Any) -> list[str]:
     if not isinstance(raw_concepts, Sequence):
         return []
-    return [
-        concept.get("display_name")
-        for concept in raw_concepts
-        if isinstance(concept, Mapping) and concept.get("display_name")
-    ]
+    concepts: list[str] = []
+    for concept in raw_concepts:
+        if isinstance(concept, Mapping):
+            display_name = concept.get("display_name")
+            if isinstance(display_name, str):
+                concepts.append(display_name)
+    return concepts
 
 
 def _collect_topics(payload: Mapping[str, Any]) -> list[str]:
@@ -290,8 +335,8 @@ def _extract_pdf_assets(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "version": location.get("version"),
             "location_type": location_type,
             "is_open_access": bool(location.get("is_oa")),
-            "source": source_info.get("display_name"),
-            "source_id": source_info.get("id"),
+            "source": source_info.get("display_name") if isinstance(source_info, Mapping) else None,
+            "source_id": source_info.get("id") if isinstance(source_info, Mapping) else None,
         }
         assets.append(asset)
     return assets
@@ -327,7 +372,8 @@ def _flatten_abstract(inverted_index: Mapping[str, Sequence[int]]) -> str:
         for position in positions:
             if isinstance(position, int):
                 pairs.append((position, term))
-    terms = [term for _, term in sorted(pairs, key=lambda entry: entry[0])]
+    pairs.sort(key=lambda entry: entry[0])
+    terms = [term for _, term in pairs]
     return " ".join(terms)
 
 

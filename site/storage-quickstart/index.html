@@ -1,0 +1,1823 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Storage Quick Start Guide - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#storage-quick-start-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Storage Quick Start Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/coordinators/" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/coordinators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Development Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Local Development Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-start-storage-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Start Storage Services
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Configure Environment Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-create-s3-bucket" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Create S3 Bucket
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-storage-client-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Storage Client Setup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pdf-storage-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. PDF Storage Operations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-document-artifact-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Document Artifact Storage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-cache-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Cache Operations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-pdf-download-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. PDF Download Stage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pdf-gate-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. PDF Gate Stage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adapter Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adapter Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-storage-helper-mixin" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Storage Helper Mixin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-openalex-adapter-with-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. OpenAlex Adapter with Storage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mineru-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      MinerU Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MinerU Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-mineru-service-with-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. MinerU Service with Storage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-development-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Development Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-production-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Production Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-unit-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Unit Tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Integration Tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Health Checks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Common Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-debug-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Debug Scripts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Support
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="storage-quick-start-guide">Storage Quick Start Guide</h1>
+<h2 id="overview">Overview</h2>
+<p>This guide provides a quick start for using the S3-compatible object storage and Redis caching features in Medical_KG_rev.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>Docker and Docker Compose installed</li>
+<li>Python 3.12+ environment</li>
+<li>Basic understanding of S3 and Redis concepts</li>
+</ul>
+<h2 id="local-development-setup">Local Development Setup</h2>
+<h3 id="1-start-storage-services">1. Start Storage Services</h3>
+<pre><code class="language-bash"># Start MinIO (S3-compatible) and Redis
+docker-compose up -d minio redis
+
+# Verify services are running
+docker-compose ps minio redis
+</code></pre>
+<h3 id="2-configure-environment-variables">2. Configure Environment Variables</h3>
+<pre><code class="language-bash"># S3/MinIO configuration
+export AWS_ACCESS_KEY_ID=minioadmin
+export AWS_SECRET_ACCESS_KEY=minioadmin
+export S3_ENDPOINT_URL=http://localhost:9000
+export S3_BUCKET=medical-kg-pdf
+
+# Redis configuration
+export REDIS_URL=redis://localhost:6379/0
+</code></pre>
+<h3 id="3-create-s3-bucket">3. Create S3 Bucket</h3>
+<pre><code class="language-bash"># Create bucket using AWS CLI
+aws s3 mb s3://medical-kg-pdf --endpoint-url http://localhost:9000
+
+# Verify bucket creation
+aws s3 ls --endpoint-url http://localhost:9000
+</code></pre>
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="1-storage-client-setup">1. Storage Client Setup</h3>
+<pre><code class="language-python">from Medical_KG_rev.storage.clients import create_storage_clients
+from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
+
+# Create storage clients
+object_settings = ObjectStorageSettings(
+    bucket=&quot;medical-kg-pdf&quot;,
+    endpoint_url=&quot;http://localhost:9000&quot;,
+    access_key_id=&quot;minioadmin&quot;,
+    secret_access_key=&quot;minioadmin&quot;,
+    use_tls=False
+)
+
+redis_settings = RedisCacheSettings(
+    url=&quot;redis://localhost:6379/0&quot;,
+    use_tls=False
+)
+
+clients = create_storage_clients(object_settings, redis_settings)
+</code></pre>
+<h3 id="2-pdf-storage-operations">2. PDF Storage Operations</h3>
+<pre><code class="language-python"># Store a PDF
+pdf_data = b&quot;fake pdf content&quot;
+asset = await clients.pdf_storage_client.store_pdf(
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    pdf_data=pdf_data,
+    content_type=&quot;application/pdf&quot;
+)
+
+print(f&quot;Stored PDF: {asset.uri}&quot;)
+print(f&quot;Checksum: {asset.checksum}&quot;)
+print(f&quot;Size: {asset.size} bytes&quot;)
+
+# Retrieve PDF data
+pdf_data = await clients.pdf_storage_client.get_pdf_data(
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    checksum=asset.checksum
+)
+
+print(f&quot;Retrieved PDF: {len(pdf_data)} bytes&quot;)
+
+# Generate presigned URL
+presigned_url = clients.pdf_storage_client.get_presigned_url(
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    checksum=asset.checksum,
+    expires_in=3600
+)
+
+print(f&quot;Presigned URL: {presigned_url}&quot;)
+</code></pre>
+<h3 id="3-document-artifact-storage">3. Document Artifact Storage</h3>
+<pre><code class="language-python"># Store MinerU output
+mineru_output = b'{&quot;pages&quot;: 10, &quot;figures&quot;: 3, &quot;tables&quot;: 2}'
+uri = await clients.document_storage_client.upload_document_artifact(
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    artifact_type=&quot;mineru_output&quot;,
+    data=mineru_output,
+    file_extension=&quot;json&quot;
+)
+
+print(f&quot;Stored artifact: {uri}&quot;)
+
+# Retrieve artifact
+artifact_data = await clients.document_storage_client.get_document_artifact(
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    artifact_type=&quot;mineru_output&quot;,
+    checksum=&quot;abc123&quot;,
+    file_extension=&quot;json&quot;
+)
+
+print(f&quot;Retrieved artifact: {len(artifact_data)} bytes&quot;)
+</code></pre>
+<h3 id="4-cache-operations">4. Cache Operations</h3>
+<pre><code class="language-python"># Store data in cache
+await clients.cache_backend.set(
+    &quot;test:key&quot;,
+    {&quot;message&quot;: &quot;Hello, World!&quot;, &quot;timestamp&quot;: &quot;2024-01-01T00:00:00Z&quot;},
+    ttl=3600
+)
+
+# Retrieve data from cache
+cached_data = await clients.cache_backend.get(&quot;test:key&quot;)
+print(f&quot;Cached data: {cached_data}&quot;)
+
+# Check if key exists
+exists = await clients.cache_backend.exists(&quot;test:key&quot;)
+print(f&quot;Key exists: {exists}&quot;)
+
+# Delete key
+await clients.cache_backend.delete(&quot;test:key&quot;)
+</code></pre>
+<h2 id="pipeline-integration">Pipeline Integration</h2>
+<h3 id="1-pdf-download-stage">1. PDF Download Stage</h3>
+<pre><code class="language-python">from Medical_KG_rev.orchestration.stages.pdf_download import StorageAwarePdfDownloadStage
+from Medical_KG_rev.orchestration.stages.types import PipelineState
+
+# Create PDF download stage
+stage = StorageAwarePdfDownloadStage(pdf_storage=clients.pdf_storage_client)
+
+# Execute stage
+pipeline_state = PipelineState(
+    job_id=&quot;test-job&quot;,
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    metadata={
+        &quot;pdf_urls&quot;: [
+            &quot;https://example.com/paper1.pdf&quot;,
+            &quot;https://example.com/paper2.pdf&quot;
+        ]
+    }
+)
+
+result = await stage.execute(pipeline_state)
+print(f&quot;Downloaded {len(result.metadata['pdf_assets'])} PDFs&quot;)
+</code></pre>
+<h3 id="2-pdf-gate-stage">2. PDF Gate Stage</h3>
+<pre><code class="language-python">from Medical_KG_rev.orchestration.stages.pdf_gate import SimplePdfGateStage
+from Medical_KG_rev.orchestration.stages.types import PdfGateStatus
+
+# Create PDF gate stage
+gate = SimplePdfGateStage()
+
+# Execute gate
+pipeline_state = PipelineState(
+    job_id=&quot;test-job&quot;,
+    tenant_id=&quot;tenant-123&quot;,
+    document_id=&quot;doc-456&quot;,
+    pdf_gate=PdfGateStatus(ir_ready=True)
+)
+
+result = await gate.execute(pipeline_state)
+print(f&quot;Gate status: {result.pdf_gate.ir_ready}&quot;)
+</code></pre>
+<h2 id="adapter-integration">Adapter Integration</h2>
+<h3 id="1-storage-helper-mixin">1. Storage Helper Mixin</h3>
+<pre><code class="language-python">from Medical_KG_rev.adapters.mixins.storage_helpers import StorageHelperMixin
+from Medical_KG_rev.adapters.base import BaseAdapter
+
+class MyAdapter(BaseAdapter, StorageHelperMixin):
+    def __init__(self):
+        super().__init__(name=&quot;my-adapter&quot;)
+        # Storage client will be injected via context
+
+    async def fetch_and_upload_pdf(self, context, pdf_url, document_id):
+        # Fetch PDF data
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(pdf_url)
+            pdf_data = response.content
+
+        # Upload to storage if available
+        storage_uri = await self.upload_pdf_if_available(
+            tenant_id=context.tenant_id,
+            document_id=document_id,
+            pdf_data=pdf_data
+        )
+
+        return storage_uri
+</code></pre>
+<h3 id="2-openalex-adapter-with-storage">2. OpenAlex Adapter with Storage</h3>
+<pre><code class="language-python">from Medical_KG_rev.adapters.openalex.adapter import OpenAlexAdapter
+from Medical_KG_rev.adapters.base import AdapterContext
+
+# Create adapter with storage
+adapter = OpenAlexAdapter()
+adapter._pdf_storage = clients.pdf_storage_client
+
+# Fetch and upload PDF
+context = AdapterContext(
+    tenant_id=&quot;tenant-123&quot;,
+    domain=&quot;biomedical&quot;,
+    correlation_id=&quot;corr-456&quot;
+)
+
+storage_uri = await adapter.fetch_and_upload_pdf(
+    context=context,
+    pdf_url=&quot;https://example.com/paper.pdf&quot;,
+    document_id=&quot;doc-789&quot;
+)
+
+print(f&quot;PDF stored at: {storage_uri}&quot;)
+</code></pre>
+<h2 id="mineru-integration">MinerU Integration</h2>
+<h3 id="1-mineru-service-with-storage">1. MinerU Service with Storage</h3>
+<pre><code class="language-python">from Medical_KG_rev.services.mineru.service import MineruProcessor
+from Medical_KG_rev.services.mineru.types import MineruRequest
+
+# Create MinerU processor with storage
+processor = MineruProcessor(
+    pdf_storage=clients.pdf_storage_client
+)
+
+# Process PDF from storage
+request = MineruRequest(
+    storage_uri=&quot;s3://medical-kg-pdf/pdf/tenant-123/doc-456/abc123.pdf&quot;,
+    content=None  # Will be fetched from storage
+)
+
+result = await processor.process_async(request)
+print(f&quot;Processed PDF: {result.pages} pages, {result.figures} figures&quot;)
+</code></pre>
+<h2 id="configuration-examples">Configuration Examples</h2>
+<h3 id="1-development-configuration">1. Development Configuration</h3>
+<pre><code class="language-python"># config/settings.py
+ENVIRONMENT_DEFAULTS = {
+    Environment.DEV: {
+        &quot;object_storage&quot;: {
+            &quot;endpoint_url&quot;: &quot;http://minio:9000&quot;,
+            &quot;bucket&quot;: &quot;medical-kg-pdf&quot;,
+            &quot;use_tls&quot;: False,
+        },
+        &quot;redis_cache&quot;: {
+            &quot;url&quot;: &quot;redis://redis:6379/0&quot;,
+            &quot;use_tls&quot;: False,
+        }
+    }
+}
+</code></pre>
+<h3 id="2-production-configuration">2. Production Configuration</h3>
+<pre><code class="language-python"># config/settings.py
+ENVIRONMENT_DEFAULTS = {
+    Environment.PROD: {
+        &quot;object_storage&quot;: {
+            &quot;bucket&quot;: &quot;medical-kg-pdf-prod&quot;,
+            &quot;region&quot;: &quot;us-east-1&quot;,
+            &quot;use_tls&quot;: True,
+        },
+        &quot;redis_cache&quot;: {
+            &quot;url&quot;: &quot;redis://redis-cluster:6379/0&quot;,
+            &quot;use_tls&quot;: True,
+            &quot;max_connections&quot;: 20,
+        }
+    }
+}
+</code></pre>
+<h2 id="testing">Testing</h2>
+<h3 id="1-unit-tests">1. Unit Tests</h3>
+<pre><code class="language-python">import pytest
+from unittest.mock import AsyncMock, MagicMock
+from Medical_KG_rev.storage.clients import PdfStorageClient
+
+@pytest.mark.asyncio
+async def test_pdf_storage():
+    # Mock storage client
+    mock_store = MagicMock()
+    mock_store.put = AsyncMock()
+
+    client = PdfStorageClient(mock_store, settings)
+
+    # Test PDF upload
+    pdf_data = b&quot;test pdf content&quot;
+    asset = await client.store_pdf(
+        tenant_id=&quot;test-tenant&quot;,
+        document_id=&quot;test-doc&quot;,
+        pdf_data=pdf_data
+    )
+
+    assert asset.checksum is not None
+    assert asset.size == len(pdf_data)
+</code></pre>
+<h3 id="2-integration-tests">2. Integration Tests</h3>
+<pre><code class="language-python">import pytest
+from moto import mock_s3
+
+@pytest.mark.integration
+@mock_s3
+async def test_s3_integration():
+    # Test with real S3 operations
+    clients = create_storage_clients(object_settings, redis_settings)
+
+    # Test PDF storage
+    pdf_data = b&quot;integration test pdf&quot;
+    asset = await clients.pdf_storage_client.store_pdf(
+        tenant_id=&quot;integration-tenant&quot;,
+        document_id=&quot;integration-doc&quot;,
+        pdf_data=pdf_data
+    )
+
+    # Test retrieval
+    retrieved_data = await clients.pdf_storage_client.get_pdf_data(
+        &quot;integration-tenant&quot;, &quot;integration-doc&quot;, asset.checksum
+    )
+
+    assert retrieved_data == pdf_data
+</code></pre>
+<h2 id="monitoring">Monitoring</h2>
+<h3 id="1-health-checks">1. Health Checks</h3>
+<pre><code class="language-python">async def check_storage_health(clients):
+    try:
+        # Test S3 connectivity
+        await clients.object_store.put(&quot;health-check&quot;, b&quot;test&quot;)
+        await clients.object_store.get(&quot;health-check&quot;)
+        await clients.object_store.delete(&quot;health-check&quot;)
+
+        # Test Redis connectivity
+        await clients.cache_backend.set(&quot;health-check&quot;, &quot;test&quot;, ttl=60)
+        value = await clients.cache_backend.get(&quot;health-check&quot;)
+        assert value == &quot;test&quot;
+
+        return True
+    except Exception as e:
+        print(f&quot;Health check failed: {e}&quot;)
+        return False
+</code></pre>
+<h3 id="2-metrics">2. Metrics</h3>
+<pre><code class="language-python">from prometheus_client import Counter, Histogram
+
+# Storage metrics
+pdf_uploads_total = Counter('storage_pdf_upload_total', 'Total PDF uploads')
+pdf_upload_duration = Histogram('storage_pdf_upload_duration_seconds', 'PDF upload duration')
+cache_hits_total = Counter('storage_cache_hit_total', 'Cache hits')
+cache_misses_total = Counter('storage_cache_miss_total', 'Cache misses')
+
+# Usage in code
+with pdf_upload_duration.time():
+    asset = await client.store_pdf(...)
+    pdf_uploads_total.inc()
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="1-common-issues">1. Common Issues</h3>
+<p><strong>S3 Connection Errors</strong>:</p>
+<pre><code class="language-bash"># Check MinIO status
+docker-compose ps minio
+
+# Check bucket permissions
+aws s3 ls s3://medical-kg-pdf --endpoint-url http://localhost:9000
+</code></pre>
+<p><strong>Redis Connection Errors</strong>:</p>
+<pre><code class="language-bash"># Check Redis status
+docker-compose ps redis
+
+# Test Redis connectivity
+redis-cli -u &quot;redis://localhost:6379/0&quot; ping
+</code></pre>
+<h3 id="2-debug-scripts">2. Debug Scripts</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Debug storage connectivity.&quot;&quot;&quot;
+
+import asyncio
+from Medical_KG_rev.storage.clients import create_storage_clients
+from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
+
+async def debug_storage():
+    # Create clients
+    object_settings = ObjectStorageSettings(
+        endpoint_url=&quot;http://localhost:9000&quot;,
+        bucket=&quot;medical-kg-pdf&quot;
+    )
+    redis_settings = RedisCacheSettings(url=&quot;redis://localhost:6379/0&quot;)
+    clients = create_storage_clients(object_settings, redis_settings)
+
+    # Test PDF storage
+    test_data = b&quot;debug test pdf&quot;
+    asset = await clients.pdf_storage_client.store_pdf(
+        tenant_id=&quot;debug&quot;,
+        document_id=&quot;test&quot;,
+        pdf_data=test_data
+    )
+    print(f&quot;Uploaded PDF: {asset.uri}&quot;)
+
+    # Test cache
+    await clients.cache_backend.set(&quot;debug:test&quot;, {&quot;status&quot;: &quot;ok&quot;})
+    cached = await clients.cache_backend.get(&quot;debug:test&quot;)
+    print(f&quot;Cached value: {cached}&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    asyncio.run(debug_storage())
+</code></pre>
+<h2 id="next-steps">Next Steps</h2>
+<ol>
+<li><strong>Explore Documentation</strong>: Read the full <a href="../storage-architecture/">Storage Architecture Documentation</a></li>
+<li><strong>Operational Procedures</strong>: Review the <a href="../operational-runbook/">Operational Runbook</a></li>
+<li><strong>Integration Examples</strong>: Check the test files for more usage examples</li>
+<li><strong>Monitoring Setup</strong>: Configure Prometheus and Grafana for production monitoring</li>
+<li><strong>Security Configuration</strong>: Set up proper access controls and encryption</li>
+</ol>
+<h2 id="support">Support</h2>
+<p>For questions or issues:</p>
+<ul>
+<li>Check the troubleshooting section above</li>
+<li>Review the operational runbook</li>
+<li>Contact the platform team</li>
+<li>Open an issue in the repository</li>
+</ul>
+<p>Happy coding! 🚀</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

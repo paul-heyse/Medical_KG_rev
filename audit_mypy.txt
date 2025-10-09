@@ -1,0 +1,2 @@
+src/Medical_KG_rev/gateway/rest/router.py:64: error: Parameter without a default follows parameter with a default  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

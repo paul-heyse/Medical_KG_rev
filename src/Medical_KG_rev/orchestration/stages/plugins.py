@@ -14,15 +14,12 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import suppress
-from typing import Any, Callable, Iterable, Literal, Sequence
-from collections import defaultdict
-from typing import Any, Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Sequence
 
 import orjson
 import pluggy
 import structlog
 from attrs import define, evolve, field
-from attrs import define, field
 from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, ConfigDict, Field
 from structlog.stdlib import BoundLogger
@@ -30,6 +27,11 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
+    from Medical_KG_rev.storage.base import CacheBackend, ObjectStore
+    from Medical_KG_rev.storage.clients import DocumentStorageClient, PdfStorageClient
 
 __all__ = [
     "STAGE_PLUGIN_NAMESPACE",
@@ -93,6 +95,12 @@ class StagePluginResources:
     adapter_manager: AdapterPluginManager
     pipeline_resource: Any
     job_ledger: Any | None = None
+    object_store: "ObjectStore" | None = None
+    cache_backend: "CacheBackend" | None = None
+    pdf_storage: "PdfStorageClient" | None = None
+    document_storage: "DocumentStorageClient" | None = None
+    object_storage_settings: "ObjectStorageSettings" | None = None
+    redis_cache_settings: "RedisCacheSettings" | None = None
     extras: dict[str, Any] = field(factory=dict)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -105,6 +113,12 @@ class StagePluginResources:
             adapter_manager=self.adapter_manager,
             pipeline_resource=self.pipeline_resource,
             job_ledger=self.job_ledger,
+            object_store=self.object_store,
+            cache_backend=self.cache_backend,
+            pdf_storage=self.pdf_storage,
+            document_storage=self.document_storage,
+            object_storage_settings=self.object_storage_settings,
+            redis_cache_settings=self.redis_cache_settings,
             extras=payload,
         )
 
@@ -575,4 +589,3 @@ class _StageRegistrationState:
         self.stage_type = registration.metadata.stage_type
         self.stage_types.add(registration.metadata.stage_type)
         return StagePluginRegistration(metadata=metadata, builder=builder)
-

@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Client
+    participant GatewayService
+    participant ChunkingCoordinator
+    participant JobLifecycle
+    participant ChunkingService
+    participant ChunkingLibrary
+
+    Client->>GatewayService: POST /v1/chunk
+    GatewayService->>ChunkingCoordinator: execute(request)
+    ChunkingCoordinator->>JobLifecycle: create_job(tenant, "chunk")
+    JobLifecycle-->>ChunkingCoordinator: job_id
+    ChunkingCoordinator->>ChunkingService: chunk(command)
+    ChunkingService->>ChunkingLibrary: chunk(text, strategy)
+    ChunkingLibrary-->>ChunkingService: chunks
+    ChunkingService-->>ChunkingCoordinator: chunks
+    ChunkingCoordinator->>JobLifecycle: mark_completed(job_id)
+    ChunkingCoordinator-->>GatewayService: ChunkingResult
+    GatewayService-->>Client: 200 OK with chunks
+
+    Note over Client, ChunkingLibrary: Error Flow
+    ChunkingLibrary-->>ChunkingService: ProfileNotFoundError
+    ChunkingService-->>ChunkingCoordinator: ProfileNotFoundError
+    ChunkingCoordinator->>ChunkingCoordinator: _translate_error()
+    ChunkingCoordinator->>JobLifecycle: mark_failed(job_id)
+    ChunkingCoordinator-->>GatewayService: CoordinatorError
+    GatewayService-->>Client: 400 Bad Request with problem details

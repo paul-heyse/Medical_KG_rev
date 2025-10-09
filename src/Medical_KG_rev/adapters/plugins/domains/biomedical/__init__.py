@@ -30,6 +30,7 @@ from Medical_KG_rev.adapters.terminology import (
     RxNormAdapter,
 )
 from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter
+from Medical_KG_rev.config.settings import get_settings
 
 from ..metadata import BiomedicalAdapterMetadata
 
@@ -172,6 +173,16 @@ class OpenAlexAdapterPlugin(_BiomedicalAdapterPlugin):
         dataset="openalex",
         data_products=["ResearchStudy"],
     )
+
+    def __init__(self, config=None, *, adapter: BaseAdapter | None = None) -> None:
+        if adapter is None:
+            settings = get_settings().openalex
+            adapter = OpenAlexAdapter(
+                contact_email=settings.contact_email,
+                user_agent=settings.user_agent,
+                max_results=settings.max_results,
+            )
+        super().__init__(config=config, adapter=adapter)
 
 
 class UnpaywallAdapterPlugin(_BiomedicalAdapterPlugin):

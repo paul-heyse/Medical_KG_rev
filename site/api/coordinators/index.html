@@ -1,0 +1,5174 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../asyncapi.yaml">
+      
+      
+        <link rel="next" href="../services/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Coordinators - Medical KG Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#coordinators-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Medical KG Documentation" class="md-header__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Medical KG Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Coordinators
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../devops/ci-cd/" class="md-tabs__link">
+          
+  
+  
+  DevOps & Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/retrieval/user-guide/" class="md-tabs__link">
+          
+  
+  
+  Retrieval
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../openapi.yaml" class="md-tabs__link">
+          
+  
+  
+  API Contracts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Pipeline API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Medical KG Documentation" class="md-nav__button md-logo" aria-label="Medical KG Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Medical KG Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/example/medical_kg_rev" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DevOps & Observability
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            DevOps & Observability
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CI/CD Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/local-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Observability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devops/kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kubernetes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/retrieval-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Retrieval Rollout Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Retrieval
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Retrieval
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/retrieval/developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Contracts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API Contracts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    REST OpenAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../schema.graphql" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphQL SDL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../asyncapi.yaml" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AsyncAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Pipeline API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coordinators
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chunking-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chunking Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingCoordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#embedding-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Embedding Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      EmbeddingCoordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#base-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Base Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorConfig
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CoordinatorConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_retrying
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="build_retrying">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying--use-retryingcall-to-execute-operations-with-retry-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use retrying.call() to execute operations with retry logic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorRequest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorResult
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseCoordinator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseCoordinator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__call__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __call__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__post_init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__--post_init-is-called-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      post_init is called automatically
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-lifecycle-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job Lifecycle Manager
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager" class="md-nav__link">
+    <span class="md-ellipsis">
+      JobLifecycleManager
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="JobLifecycleManager">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__post_init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__--post_init-is-called-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      post_init is called automatically
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel" class="md-nav__link">
+    <span class="md-ellipsis">
+      cancel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cancel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel--job-is-marked-cancelled-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked cancelled and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.create_job" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_job
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.idempotent_create" class="md-nav__link">
+    <span class="md-ellipsis">
+      idempotent_create
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed" class="md-nav__link">
+    <span class="md-ellipsis">
+      mark_completed
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mark_completed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed--job-is-marked-completed-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked completed and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      mark_failed
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mark_failed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed--job-is-marked-failed-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked failed and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_metadata
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="update_metadata">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata--job-metadata-is-updated-in-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job metadata is updated in the ledger
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Services
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orchestration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chunking-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chunking Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ChunkingCoordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#embedding-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Embedding Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      EmbeddingCoordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#base-coordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Base Coordinator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorConfig
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CoordinatorConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_retrying
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="build_retrying">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying--use-retryingcall-to-execute-operations-with-retry-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use retrying.call() to execute operations with retry logic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorRequest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoordinatorResult
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseCoordinator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseCoordinator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__call__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __call__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__post_init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__--post_init-is-called-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      post_init is called automatically
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-lifecycle-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job Lifecycle Manager
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager" class="md-nav__link">
+    <span class="md-ellipsis">
+      JobLifecycleManager
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="JobLifecycleManager">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __post_init__
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__post_init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__--post_init-is-called-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      post_init is called automatically
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel" class="md-nav__link">
+    <span class="md-ellipsis">
+      cancel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cancel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel--job-is-marked-cancelled-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked cancelled and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.create_job" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_job
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.idempotent_create" class="md-nav__link">
+    <span class="md-ellipsis">
+      idempotent_create
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed" class="md-nav__link">
+    <span class="md-ellipsis">
+      mark_completed
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mark_completed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed--job-is-marked-completed-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked completed and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      mark_failed
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mark_failed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed--job-is-marked-failed-and-sse-event-is-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job is marked failed and SSE event is published
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_metadata
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="update_metadata">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata--job-metadata-is-updated-in-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job metadata is updated in the ledger
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="coordinators-api">Coordinators API</h1>
+<p>The coordinators layer provides a protocol-agnostic interface between the gateway services and domain logic. Each coordinator manages a specific type of operation (chunking, embedding) and handles job lifecycle, error translation, and metrics emission.</p>
+<h2 id="chunking-coordinator">Chunking Coordinator</h2>
+<p>The <code>ChunkingCoordinator</code> coordinates synchronous chunking operations by managing job lifecycle, delegating to ChunkingService, and translating errors.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">chunking</span><span class="o">.</span><span class="n">ChunkingCoordinator</span><span class="p">(</span><span class="n">lifecycle</span><span class="p">:</span> <span class="n">JobLifecycleManager</span><span class="p">,</span> <span class="n">chunker</span><span class="p">:</span> <span class="n">ChunkingService</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">CoordinatorConfig</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">errors</span><span class="p">:</span> <span class="n">ChunkingErrorTranslator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator(config: CoordinatorConfig, metrics: CoordinatorMetrics)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.base.BaseCoordinator)" href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator">BaseCoordinator</a>[<span title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingRequest">ChunkingRequest</span>, <span title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingResult">ChunkingResult</span>]</code></p>
+
+
+        <p>Coordinates synchronous document chunking operations.</p>
+<p>This class implements the coordinator pattern for document chunking, managing
+the complete lifecycle of chunking jobs from request validation through
+error handling and result assembly.</p>
+<p>The coordinator coordinates between the gateway service layer and the domain
+chunking service, providing a clean abstraction for synchronous chunking
+operations with comprehensive error handling and metrics.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator._lifecycle">_lifecycle</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLifecycleManager for tracking job state and metadata.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator._chunker">_chunker</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkingService for performing actual document chunking.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.chunking.ChunkingCoordinator._errors">_errors</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkingErrorTranslator for translating chunking exceptions
+     to coordinator-friendly errors.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>self._lifecycle is never None after <strong>init</strong></li>
+<li>self._chunker is never None after <strong>init</strong></li>
+<li>self._errors is never None after <strong>init</strong></li>
+<li>All public methods maintain job lifecycle consistency</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Not thread-safe: Designed for single-threaded use per coordinator instance</li>
+<li>Multiple coordinator instances can run concurrently</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created with injected dependencies (lifecycle, chunker, config, errors)</li>
+<li>Used for processing chunking requests via execute method</li>
+<li>No explicit cleanup required (stateless operations)</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>coordinator = ChunkingCoordinator(
+...     lifecycle=JobLifecycleManager(),
+...     chunker=ChunkingService(),
+...     config=CoordinatorConfig(name="chunking"),
+...     errors=ChunkingErrorTranslator()
+... )
+result = coordinator.execute(ChunkingRequest(
+...     document_id="doc1",
+...     text="Sample document text for chunking.",
+...     strategy="section"
+... ))
+print(f"Processed {len(result.chunks)} chunks")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+        <p>Initialize the chunking coordinator.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lifecycle</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager(ledger: JobLedger, events: EventStreamManager, pipeline_name: str = 'gateway-direct', pipeline_version: str = 'v1', retry_attempts: int = 3, retry_wait_base: float = 0.1, retry_wait_max: float = 1.0)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager)" href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager">JobLifecycleManager</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLifecycleManager for tracking job state and metadata.
+       Must be initialized and ready to manage jobs.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>chunker</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.retrieval.chunking.ChunkingService">ChunkingService</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ChunkingService for performing actual document chunking.
+     Must be configured with available chunking strategies.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig(name: str, retry_attempts: int = 3, retry_wait_base: float = 0.2, retry_wait_max: float = 2.0, breaker: CircuitBreaker | None = None, limiter: AsyncLimiter | None = None)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig)" href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig">CoordinatorConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>CoordinatorConfig with coordinator name and settings.
+    Used for metrics and configuration.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>errors</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator(*, strategies: Sequence[str], base_path: str = '/v1/chunk') (Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator)" href="../services/#Medical_KG_rev.gateway.chunking_errors.ChunkingErrorTranslator">ChunkingErrorTranslator</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional ChunkingErrorTranslator for error translation.
+   If None, a new translator will be created with available
+   strategies from the chunker.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If any required dependency is None or invalid.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ConfigurationError">ConfigurationError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If coordinator configuration is invalid.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+                  <details class="quote">
+                    <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/chunking.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">lifecycle</span><span class="p">:</span> <span class="n">JobLifecycleManager</span><span class="p">,</span>
+    <span class="n">chunker</span><span class="p">:</span> <span class="n">ChunkingService</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">CoordinatorConfig</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">errors</span><span class="p">:</span> <span class="n">ChunkingErrorTranslator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the chunking coordinator.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        lifecycle: JobLifecycleManager for tracking job state and metadata.</span>
+<span class="sd">                   Must be initialized and ready to manage jobs.</span>
+<span class="sd">        chunker: ChunkingService for performing actual document chunking.</span>
+<span class="sd">                 Must be configured with available chunking strategies.</span>
+<span class="sd">        config: CoordinatorConfig with coordinator name and settings.</span>
+<span class="sd">                Used for metrics and configuration.</span>
+<span class="sd">        errors: Optional ChunkingErrorTranslator for error translation.</span>
+<span class="sd">               If None, a new translator will be created with available</span>
+<span class="sd">               strategies from the chunker.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any required dependency is None or invalid.</span>
+<span class="sd">        ConfigurationError: If coordinator configuration is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_metrics</span><span class="p">(</span><span class="n">config</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_lifecycle</span> <span class="o">=</span> <span class="n">lifecycle</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_chunker</span> <span class="o">=</span> <span class="n">chunker</span>
+    <span class="n">strategies</span> <span class="o">=</span> <span class="n">chunker</span><span class="o">.</span><span class="n">available_strategies</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_errors</span> <span class="o">=</span> <span class="n">errors</span> <span class="ow">or</span> <span class="n">ChunkingErrorTranslator</span><span class="p">(</span><span class="n">strategies</span><span class="o">=</span><span class="n">strategies</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="embedding-coordinator">Embedding Coordinator</h2>
+<p>The <code>EmbeddingCoordinator</code> coordinates embedding operations with policy enforcement, namespace resolution, and persistence.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">embedding</span><span class="o">.</span><span class="n">EmbeddingCoordinator</span><span class="p">(</span><span class="n">lifecycle</span><span class="p">:</span> <span class="n">JobLifecycleManager</span><span class="p">,</span> <span class="n">registry</span><span class="p">:</span> <span class="n">EmbeddingModelRegistry</span><span class="p">,</span> <span class="n">namespace_registry</span><span class="p">:</span> <span class="n">EmbeddingNamespaceRegistry</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="n">NamespaceAccessPolicy</span><span class="p">,</span> <span class="n">persister</span><span class="p">:</span> <span class="n">EmbeddingPersister</span><span class="p">,</span> <span class="n">telemetry</span><span class="p">:</span> <span class="n">EmbeddingTelemetry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">CoordinatorConfig</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator(config: CoordinatorConfig, metrics: CoordinatorMetrics)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.base.BaseCoordinator)" href="#Medical_KG_rev.gateway.coordinators.base.BaseCoordinator">BaseCoordinator</a>[<span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingRequest">EmbeddingRequest</span>, <span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingResult">EmbeddingResult</span>]</code></p>
+
+
+        <p>Coordinates synchronous text embedding operations.</p>
+<p>This class implements the coordinator pattern for text embedding, managing
+the complete lifecycle of embedding jobs from namespace access control through
+model selection, embedding generation, persistence, and telemetry.</p>
+<p>The coordinator coordinates between the gateway service layer and the domain
+embedding services, providing a clean abstraction for synchronous embedding
+operations with comprehensive access control, persistence, and metrics.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._lifecycle">_lifecycle</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLifecycleManager for tracking job state and metadata.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._registry">_registry</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingModelRegistry for model selection and configuration.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._namespace_registry">_namespace_registry</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingNamespaceRegistry for namespace configuration.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._policy">_policy</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>NamespaceAccessPolicy for access control evaluation.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._persister">_persister</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingPersister for embedding storage.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.embedding.EmbeddingCoordinator._telemetry">_telemetry</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EmbeddingTelemetry for metrics emission (optional).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>self._lifecycle is never None after <strong>init</strong></li>
+<li>self._registry is never None after <strong>init</strong></li>
+<li>self._namespace_registry is never None after <strong>init</strong></li>
+<li>self._policy is never None after <strong>init</strong></li>
+<li>self._persister is never None after <strong>init</strong></li>
+<li>All public methods maintain job lifecycle consistency</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Not thread-safe: Designed for single-threaded use per coordinator instance</li>
+<li>Multiple coordinator instances can run concurrently</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created with injected dependencies (lifecycle, registry, policy, etc.)</li>
+<li>Used for processing embedding requests via execute method</li>
+<li>No explicit cleanup required (stateless operations)</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>coordinator = EmbeddingCoordinator(
+...     lifecycle=JobLifecycleManager(),
+...     registry=EmbeddingModelRegistry(),
+...     namespace_registry=EmbeddingNamespaceRegistry(),
+...     policy=NamespaceAccessPolicy(),
+...     persister=EmbeddingPersister(),
+...     telemetry=EmbeddingTelemetry(),
+...     config=CoordinatorConfig(name="embedding")
+... )
+result = coordinator.execute(EmbeddingRequest(
+...     tenant_id="tenant1",
+...     namespace="medical",
+...     texts=["Sample text to embed"],
+...     options=EmbeddingOptions(model="sentence-transformers/all-MiniLM-L6-v2")
+... ))
+print(f"Generated {len(result.response.vectors)} embeddings")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+        <p>Initialize the embedding coordinator with required dependencies.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lifecycle</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager(ledger: JobLedger, events: EventStreamManager, pipeline_name: str = 'gateway-direct', pipeline_version: str = 'v1', retry_attempts: int = 3, retry_wait_base: float = 0.1, retry_wait_max: float = 1.0)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager)" href="#Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager">JobLifecycleManager</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Manager for tracking job lifecycle and metadata.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>registry</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.registry.EmbeddingModelRegistry">EmbeddingModelRegistry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Registry for embedding model selection and configuration.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>namespace_registry</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.namespace.registry.EmbeddingNamespaceRegistry">EmbeddingNamespaceRegistry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Registry for namespace-specific configuration.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>policy</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.policy.NamespaceAccessPolicy">NamespaceAccessPolicy</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Policy engine for namespace access control evaluation.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>persister</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.persister.EmbeddingPersister">EmbeddingPersister</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Service for persisting generated embeddings.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>telemetry</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.services.embedding.telemetry.EmbeddingTelemetry">EmbeddingTelemetry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional telemetry service for metrics emission.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig(name: str, retry_attempts: int = 3, retry_wait_base: float = 0.2, retry_wait_max: float = 2.0, breaker: CircuitBreaker | None = None, limiter: AsyncLimiter | None = None)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig)" href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig">CoordinatorConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Coordinator configuration settings.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If any required dependency is None.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>coordinator = EmbeddingCoordinator(
+...     lifecycle=JobLifecycleManager(),
+...     registry=EmbeddingModelRegistry(),
+...     namespace_registry=EmbeddingNamespaceRegistry(),
+...     policy=NamespaceAccessPolicy(),
+...     persister=EmbeddingPersister(),
+...     telemetry=EmbeddingTelemetry(),
+...     config=CoordinatorConfig(name="embedding")
+... )</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+                  <details class="quote">
+                    <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/embedding.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">lifecycle</span><span class="p">:</span> <span class="n">JobLifecycleManager</span><span class="p">,</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="n">EmbeddingModelRegistry</span><span class="p">,</span>
+    <span class="n">namespace_registry</span><span class="p">:</span> <span class="n">EmbeddingNamespaceRegistry</span><span class="p">,</span>
+    <span class="n">policy</span><span class="p">:</span> <span class="n">NamespaceAccessPolicy</span><span class="p">,</span>
+    <span class="n">persister</span><span class="p">:</span> <span class="n">EmbeddingPersister</span><span class="p">,</span>
+    <span class="n">telemetry</span><span class="p">:</span> <span class="n">EmbeddingTelemetry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">CoordinatorConfig</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the embedding coordinator with required dependencies.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        lifecycle: Manager for tracking job lifecycle and metadata.</span>
+<span class="sd">        registry: Registry for embedding model selection and configuration.</span>
+<span class="sd">        namespace_registry: Registry for namespace-specific configuration.</span>
+<span class="sd">        policy: Policy engine for namespace access control evaluation.</span>
+<span class="sd">        persister: Service for persisting generated embeddings.</span>
+<span class="sd">        telemetry: Optional telemetry service for metrics emission.</span>
+<span class="sd">        config: Coordinator configuration settings.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any required dependency is None.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; coordinator = EmbeddingCoordinator(</span>
+<span class="sd">        ...     lifecycle=JobLifecycleManager(),</span>
+<span class="sd">        ...     registry=EmbeddingModelRegistry(),</span>
+<span class="sd">        ...     namespace_registry=EmbeddingNamespaceRegistry(),</span>
+<span class="sd">        ...     policy=NamespaceAccessPolicy(),</span>
+<span class="sd">        ...     persister=EmbeddingPersister(),</span>
+<span class="sd">        ...     telemetry=EmbeddingTelemetry(),</span>
+<span class="sd">        ...     config=CoordinatorConfig(name=&quot;embedding&quot;)</span>
+<span class="sd">        ... )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">CoordinatorMetrics</span>
+
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="n">CoordinatorMetrics</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_lifecycle</span> <span class="o">=</span> <span class="n">lifecycle</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_registry</span> <span class="o">=</span> <span class="n">registry</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_namespace_registry</span> <span class="o">=</span> <span class="n">namespace_registry</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_policy</span> <span class="o">=</span> <span class="n">policy</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_persister</span> <span class="o">=</span> <span class="n">persister</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_telemetry</span> <span class="o">=</span> <span class="n">telemetry</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="base-coordinator">Base Coordinator</h2>
+<p>The base coordinator abstractions define the common interface and configuration for all coordinators.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">CoordinatorConfig</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">retry_attempts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_wait_base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">retry_wait_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">breaker</span><span class="p">:</span> <span class="n">CircuitBreaker</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">limiter</span><span class="p">:</span> <span class="n">AsyncLimiter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Runtime configuration for coordinator behavior and resilience.</p>
+<p>This class encapsulates all configuration parameters that control
+coordinator behavior, including retry logic, circuit breaker settings,
+and rate limiting configuration.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.name">name</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique name identifier for the coordinator.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.retry_attempts">retry_attempts</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum number of retry attempts for failed operations.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.retry_wait_base">retry_wait_base</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base wait time in seconds for exponential backoff.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.retry_wait_max">retry_wait_max</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum wait time in seconds for exponential backoff.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.breaker">breaker</span></code></td>
+            <td>
+                  <code><span title="pybreaker.CircuitBreaker">CircuitBreaker</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional circuit breaker for failure protection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.limiter">limiter</span></code></td>
+            <td>
+                  <code><span title="aiolimiter.AsyncLimiter">AsyncLimiter</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional rate limiter for request throttling.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>name is never None or empty</li>
+<li>retry_attempts is positive</li>
+<li>retry_wait_base is non-negative</li>
+<li>retry_wait_max is greater than retry_wait_base</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Immutable after construction</li>
+<li>Safe for concurrent access</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created during coordinator initialization</li>
+<li>Used throughout coordinator lifetime</li>
+<li>Not modified after creation</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>config = CoordinatorConfig(
+...     name="my_coordinator",
+...     retry_attempts=5,
+...     retry_wait_base=0.1,
+...     retry_wait_max=5.0
+... )
+retrying = config.build_retrying()</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_retrying</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Retrying</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build Retrying instance configured with exponential backoff.</p>
+<p>This method creates a tenacity Retrying instance configured with
+the coordinator's retry parameters, implementing exponential
+backoff with jitter for resilient operation handling.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="tenacity.Retrying">Retrying</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Retrying instance configured with stop and wait strategies.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>config = CoordinatorConfig(name="test", retry_attempts=3)
+retrying = config.build_retrying()</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig.build_retrying--use-retryingcall-to-execute-operations-with-retry-logic">Use retrying.call() to execute operations with retry logic</h4>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/base.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_retrying</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Retrying</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build Retrying instance configured with exponential backoff.</span>
+
+<span class="sd">    This method creates a tenacity Retrying instance configured with</span>
+<span class="sd">    the coordinator&#39;s retry parameters, implementing exponential</span>
+<span class="sd">    backoff with jitter for resilient operation handling.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Retrying instance configured with stop and wait strategies.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; config = CoordinatorConfig(name=&quot;test&quot;, retry_attempts=3)</span>
+<span class="sd">        &gt;&gt;&gt; retrying = config.build_retrying()</span>
+<span class="sd">        &gt;&gt;&gt; # Use retrying.call() to execute operations with retry logic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Retrying</span><span class="p">(</span>
+        <span class="n">stop</span><span class="o">=</span><span class="n">stop_after_attempt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_attempts</span><span class="p">),</span>
+        <span class="n">wait</span><span class="o">=</span><span class="n">wait_exponential</span><span class="p">(</span>
+            <span class="n">multiplier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_wait_base</span><span class="p">,</span>
+            <span class="nb">max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_wait_max</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">reraise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">CoordinatorRequest</span><span class="p">(</span><span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">correlation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Base class for strongly typed coordinator requests.</p>
+<p>This class serves as a marker base class for all coordinator request types,
+providing common fields for tenant identification, correlation tracking,
+and metadata storage.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest.tenant_id">tenant_id</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the tenant making the request.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest.correlation_id">correlation_id</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional correlation ID for request tracing.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorRequest.metadata">metadata</span></code></td>
+            <td>
+                  <code><span title="collections.abc.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional mapping of additional request metadata.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>tenant_id is never None or empty</li>
+<li>correlation_id is None or non-empty string</li>
+<li>metadata is None or non-empty mapping</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Immutable after construction (dataclass with frozen=True would be ideal)</li>
+<li>Safe for concurrent access if not modified</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created by gateway service layer</li>
+<li>Passed to coordinator for processing</li>
+<li>Not modified during processing</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>request = CoordinatorRequest(
+...     tenant_id="tenant1",
+...     correlation_id="req-123",
+...     metadata={"source": "api", "priority": "high"}
+... )
+print(f"Processing request for tenant: {request.tenant_id}")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.base.CoordinatorResult" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">CoordinatorResult</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">())</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Base class for typed coordinator results.</p>
+<p>This class serves as a base class for all coordinator result types,
+providing common fields for job tracking, performance metrics,
+and result metadata.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorResult.job_id">job_id</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the coordinator job.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorResult.duration_s">duration_s</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Duration of the coordinator operation in seconds.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorResult.metadata">metadata</span></code></td>
+            <td>
+                  <code><span title="collections.abc.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional result metadata and context.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>job_id is never None or empty</li>
+<li>duration_s is non-negative</li>
+<li>metadata is never None (defaults to empty dict)</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Immutable after construction</li>
+<li>Safe for concurrent access</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created by coordinator after successful operation</li>
+<li>Returned to gateway service layer</li>
+<li>Used for logging and metrics collection</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>result = CoordinatorResult(
+...     job_id="job-123",
+...     duration_s=1.5,
+...     metadata={"status": "success", "items_processed": 42}
+... )
+print(f"Job {result.job_id} completed in {result.duration_s}s")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">BaseCoordinator</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">CoordinatorConfig</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">CoordinatorMetrics</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="abc.ABC">ABC</span></code>, <code><span title="typing.Generic">Generic</span>[<span title="Medical_KG_rev.gateway.coordinators.base._RequestT">_RequestT</span>, <span title="Medical_KG_rev.gateway.coordinators.base._ResultT">_ResultT</span>]</code></p>
+
+
+        <p>Abstract base class for all gateway coordinators.</p>
+<p>This class provides the common infrastructure for all coordinators,
+including retry logic, circuit breaker protection, rate limiting,
+metrics collection, and error handling. Concrete coordinators must
+implement the _execute method to perform their specific business logic.</p>
+<p>The base coordinator handles all resilience concerns transparently,
+allowing concrete coordinators to focus on their core functionality
+while benefiting from automatic retry, circuit breaking, and metrics.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.config">config</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig(name: str, retry_attempts: int = 3, retry_wait_base: float = 0.2, retry_wait_max: float = 2.0, breaker: CircuitBreaker | None = None, limiter: AsyncLimiter | None = None)
+
+  
+      dataclass
+   (Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig)" href="#Medical_KG_rev.gateway.coordinators.base.CoordinatorConfig">CoordinatorConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Coordinator configuration including retry and resilience settings.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.metrics">metrics</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorMetrics">CoordinatorMetrics</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Prometheus metrics for tracking coordinator operations.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>config is never None</li>
+<li>metrics is never None</li>
+<li>_retrying is initialized in <strong>post_init</strong></li>
+<li>All public methods maintain consistent error handling</li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Thread-safe for concurrent operations</li>
+<li>Metrics collection is thread-safe</li>
+<li>Circuit breaker and rate limiter are thread-safe</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created with config and metrics</li>
+<li><strong>post_init</strong> initializes retry and resilience components</li>
+<li>Used via <strong>call</strong> method for request processing</li>
+<li>No explicit cleanup required</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>class MyCoordinator(BaseCoordinator[MyRequest, MyResult]):
+...     def _execute(self, request: MyRequest, **kwargs) -&gt; MyResult:
+...         # Implement coordinator logic
+...         return MyResult(job_id="123", duration_s=1.0)
+coordinator = MyCoordinator(
+...     config=CoordinatorConfig(name="my_coordinator"),
+...     metrics=CoordinatorMetrics.create("my_coordinator")
+... )
+result = coordinator(MyRequest(tenant_id="tenant1"))</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__call__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">_RequestT</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_ResultT</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Execute coordinator operation with full resilience and metrics.</p>
+<p>This method serves as the main entry point for coordinator operations,
+providing automatic retry logic, circuit breaker protection, rate limiting,
+metrics collection, and comprehensive error handling.</p>
+<p>The method coordinates between the various resilience components:
+1. Logs operation start with request details
+2. Times the operation using metrics histogram
+3. Delegates to _execute_with_guards for resilience logic
+4. Collects success/failure metrics
+5. Logs operation completion or failure</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>request</code>
+            </td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.coordinators.base._RequestT">_RequestT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The coordinator request to process.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Any">Any</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional keyword arguments passed to _execute method.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.coordinators.base._ResultT">_ResultT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Coordinator result containing operation outcome and metadata.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.coordinators.base.CoordinatorError">CoordinatorError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If operation fails after all retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>result = coordinator(request)
+print(f"Operation completed in {result.duration_s}s")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/base.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span>
+<span class="normal">505</span>
+<span class="normal">506</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">_RequestT</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_ResultT</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute coordinator operation with full resilience and metrics.</span>
+
+<span class="sd">    This method serves as the main entry point for coordinator operations,</span>
+<span class="sd">    providing automatic retry logic, circuit breaker protection, rate limiting,</span>
+<span class="sd">    metrics collection, and comprehensive error handling.</span>
+
+<span class="sd">    The method coordinates between the various resilience components:</span>
+<span class="sd">    1. Logs operation start with request details</span>
+<span class="sd">    2. Times the operation using metrics histogram</span>
+<span class="sd">    3. Delegates to _execute_with_guards for resilience logic</span>
+<span class="sd">    4. Collects success/failure metrics</span>
+<span class="sd">    5. Logs operation completion or failure</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: The coordinator request to process.</span>
+<span class="sd">        **kwargs: Additional keyword arguments passed to _execute method.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Coordinator result containing operation outcome and metadata.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        CoordinatorError: If operation fails after all retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; result = coordinator(request)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Operation completed in {result.duration_s}s&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="s2">&quot;gateway.coordinator.invoke&quot;</span><span class="p">,</span>
+        <span class="n">coordinator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">correlation_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">error</span><span class="p">:</span> <span class="ne">Exception</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">duration</span><span class="o">.</span><span class="n">time</span><span class="p">():</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_with_guards</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover - defensive logging</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">exc</span>
+        <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">attempts</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;gateway.coordinator.failed&quot;</span><span class="p">,</span>
+                <span class="n">coordinator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+                <span class="n">correlation_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">,</span>
+                <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">),</span>
+                <span class="n">duration</span><span class="o">=</span><span class="n">duration</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;gateway.coordinator.completed&quot;</span><span class="p">,</span>
+                <span class="n">coordinator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">tenant_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">tenant_id</span><span class="p">,</span>
+                <span class="n">correlation_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">,</span>
+                <span class="n">duration</span><span class="o">=</span><span class="n">duration</span><span class="p">,</span>
+            <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">__post_init__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Initialize coordinator resilience components after dataclass construction.</p>
+<p>This method is called automatically after dataclass construction to
+set up the retry logic, rate limiter, and circuit breaker components
+based on the coordinator configuration.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>coordinator = MyCoordinator(config=config, metrics=metrics)</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.base.BaseCoordinator.__post_init__--post_init-is-called-automatically"><strong>post_init</strong> is called automatically</h4>
+<p>assert coordinator._retrying is not None</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/base.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize coordinator resilience components after dataclass construction.</span>
+
+<span class="sd">    This method is called automatically after dataclass construction to</span>
+<span class="sd">    set up the retry logic, rate limiter, and circuit breaker components</span>
+<span class="sd">    based on the coordinator configuration.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; coordinator = MyCoordinator(config=config, metrics=metrics)</span>
+<span class="sd">        &gt;&gt;&gt; # __post_init__ is called automatically</span>
+<span class="sd">        &gt;&gt;&gt; assert coordinator._retrying is not None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_retrying</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">build_retrying</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_limiter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">limiter</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_breaker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">breaker</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="job-lifecycle-manager">Job Lifecycle Manager</h2>
+<p>The <code>JobLifecycleManager</code> tracks job states and publishes SSE events for real-time status updates.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Medical_KG_rev</span><span class="o">.</span><span class="n">gateway</span><span class="o">.</span><span class="n">coordinators</span><span class="o">.</span><span class="n">job_lifecycle</span><span class="o">.</span><span class="n">JobLifecycleManager</span><span class="p">(</span><span class="n">ledger</span><span class="p">:</span> <span class="n">JobLedger</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">EventStreamManager</span><span class="p">,</span> <span class="n">pipeline_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;gateway-direct&#39;</span><span class="p">,</span> <span class="n">pipeline_version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;v1&#39;</span><span class="p">,</span> <span class="n">retry_attempts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_wait_base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">retry_wait_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Manages job lifecycle operations with ledger persistence and SSE events.</p>
+<p>This class provides a high-level interface for managing job state transitions
+in the gateway coordinator system. It coordinates between the job ledger
+for persistence and the event stream manager for real-time updates.</p>
+<p>The manager handles job creation, state transitions (processing, completed,
+failed, cancelled), metadata updates, and automatic retry logic for
+ledger operations. All state changes trigger corresponding SSE events
+for real-time monitoring and client updates.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.ledger">ledger</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.orchestration.JobLedger">JobLedger</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLedger instance for job persistence and state management.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.events">events</span></code></td>
+            <td>
+                  <code><span title="Medical_KG_rev.gateway.sse.manager.EventStreamManager">EventStreamManager</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EventStreamManager instance for SSE event publishing.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.pipeline_name">pipeline_name</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name of the pipeline processing jobs (default: "gateway-direct").</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.pipeline_version">pipeline_version</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Version of the pipeline (default: "v1").</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.retry_attempts">retry_attempts</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum number of retry attempts for ledger operations.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.retry_wait_base">retry_wait_base</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base wait time in seconds for exponential backoff.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.retry_wait_max">retry_wait_max</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum wait time in seconds for exponential backoff.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager._retrying">_retrying</span></code></td>
+            <td>
+                  <code><span title="tenacity.Retrying">Retrying</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Retrying instance for ledger operation retry logic.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="invariants" open>
+  <summary>Invariants</summary>
+  <ul>
+<li>ledger is never None</li>
+<li>events is never None</li>
+<li>pipeline_name is never None or empty</li>
+<li>pipeline_version is never None or empty</li>
+<li>retry_attempts is positive</li>
+<li>retry_wait_base is non-negative</li>
+<li>retry_wait_max is greater than retry_wait_base</li>
+<li>_retrying is initialized in <strong>post_init</strong></li>
+</ul>
+</details>
+
+<details class="thread-safety" open>
+  <summary>Thread Safety</summary>
+  <ul>
+<li>Thread-safe for concurrent operations</li>
+<li>Ledger operations are atomic</li>
+<li>SSE event publishing is thread-safe</li>
+</ul>
+</details>
+
+<details class="lifecycle" open>
+  <summary>Lifecycle</summary>
+  <ul>
+<li>Created with ledger and events dependencies</li>
+<li><strong>post_init</strong> initializes retry logic</li>
+<li>Used by coordinators for job management</li>
+<li>No explicit cleanup required</li>
+</ul>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager = JobLifecycleManager(
+...     ledger=JobLedger(),
+...     events=EventStreamManager(),
+...     pipeline_name="embedding-pipeline",
+...     pipeline_version="v2"
+... )
+job_id = manager.create_job("tenant1", "embed", metadata={"model": "bert"})
+manager.mark_completed(job_id, {"embeddings": 100})</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">__post_init__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Initialize retry logic after dataclass construction.</p>
+<p>This method is called automatically after dataclass construction to
+set up the retry logic for ledger operations using exponential
+backoff with configurable parameters.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager = JobLifecycleManager(ledger=ledger, events=events)</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.__post_init__--post_init-is-called-automatically"><strong>post_init</strong> is called automatically</h4>
+<p>assert manager._retrying is not None</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize retry logic after dataclass construction.</span>
+
+<span class="sd">    This method is called automatically after dataclass construction to</span>
+<span class="sd">    set up the retry logic for ledger operations using exponential</span>
+<span class="sd">    backoff with configurable parameters.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; manager = JobLifecycleManager(ledger=ledger, events=events)</span>
+<span class="sd">        &gt;&gt;&gt; # __post_init__ is called automatically</span>
+<span class="sd">        &gt;&gt;&gt; assert manager._retrying is not None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_retrying</span> <span class="o">=</span> <span class="n">Retrying</span><span class="p">(</span>
+        <span class="n">stop</span><span class="o">=</span><span class="n">stop_after_attempt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_attempts</span><span class="p">),</span>
+        <span class="n">wait</span><span class="o">=</span><span class="n">wait_exponential</span><span class="p">(</span>
+            <span class="n">multiplier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_wait_base</span><span class="p">,</span>
+            <span class="nb">max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_wait_max</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">reraise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cancel</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Cancel a job and emit cancellation SSE event.</p>
+<p>This method marks a job as cancelled in the ledger
+and publishes an SSE event to notify clients of the cancellation.
+The cancellation reason and optional metadata are included
+in both the ledger entry and the SSE event.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the job to cancel.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reason</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable reason for the cancellation.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>metadata</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional metadata to include with the cancellation.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager.cancel(
+...     "job-123",
+...     reason="User requested cancellation",
+...     metadata={"cancelled_by": "user"}
+... )</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.cancel--job-is-marked-cancelled-and-sse-event-is-published">Job is marked cancelled and SSE event is published</h4>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cancel</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cancel a job and emit cancellation SSE event.</span>
+
+<span class="sd">    This method marks a job as cancelled in the ledger</span>
+<span class="sd">    and publishes an SSE event to notify clients of the cancellation.</span>
+<span class="sd">    The cancellation reason and optional metadata are included</span>
+<span class="sd">    in both the ledger entry and the SSE event.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id: Unique identifier for the job to cancel.</span>
+<span class="sd">        reason: Human-readable reason for the cancellation.</span>
+<span class="sd">        metadata: Optional metadata to include with the cancellation.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; manager.cancel(</span>
+<span class="sd">        ...     &quot;job-123&quot;,</span>
+<span class="sd">        ...     reason=&quot;User requested cancellation&quot;,</span>
+<span class="sd">        ...     metadata={&quot;cancelled_by&quot;: &quot;user&quot;}</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # Job is marked cancelled and SSE event is published</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;gateway.job.cancel&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">mark_cancelled</span><span class="p">,</span> <span class="n">job_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">JobEvent</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;jobs.cancelled&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.create_job" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_job</span><span class="p">(</span><span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">operation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Create a new job entry and emit the initial SSE event.</p>
+<p>This method creates a new job in the ledger with a unique ID,
+marks it as processing, and publishes an SSE event to notify
+clients of the job start. The job ID can be provided or
+auto-generated if not specified.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>tenant_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the tenant creating the job.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>operation</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The operation type being performed (e.g., "embed", "chunk").</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>metadata</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional metadata to attach to the job.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional custom job ID (auto-generated if not provided).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The job ID (provided or generated) for the created job.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>job_id = manager.create_job(
+...     tenant_id="tenant1",
+...     operation="embed",
+...     metadata={"model": "bert", "texts": 5}
+... )
+print(f"Created job: {job_id}")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_job</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">operation</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new job entry and emit the initial SSE event.</span>
+
+<span class="sd">    This method creates a new job in the ledger with a unique ID,</span>
+<span class="sd">    marks it as processing, and publishes an SSE event to notify</span>
+<span class="sd">    clients of the job start. The job ID can be provided or</span>
+<span class="sd">    auto-generated if not specified.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        tenant_id: Unique identifier for the tenant creating the job.</span>
+<span class="sd">        operation: The operation type being performed (e.g., &quot;embed&quot;, &quot;chunk&quot;).</span>
+<span class="sd">        metadata: Optional metadata to attach to the job.</span>
+<span class="sd">        job_id: Optional custom job ID (auto-generated if not provided).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The job ID (provided or generated) for the created job.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; job_id = manager.create_job(</span>
+<span class="sd">        ...     tenant_id=&quot;tenant1&quot;,</span>
+<span class="sd">        ...     operation=&quot;embed&quot;,</span>
+<span class="sd">        ...     metadata={&quot;model&quot;: &quot;bert&quot;, &quot;texts&quot;: 5}</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Created job: {job_id}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">job_id</span> <span class="o">=</span> <span class="n">job_id</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;job-</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">doc_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;operation&quot;</span><span class="p">:</span> <span class="n">operation</span><span class="p">,</span>
+        <span class="s2">&quot;pipeline&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipeline_name</span><span class="p">,</span>
+        <span class="s2">&quot;pipeline_version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipeline_version</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">))</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;gateway.job.create&quot;</span><span class="p">,</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span>
+        <span class="n">operation</span><span class="o">=</span><span class="n">operation</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">create</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span>
+        <span class="n">doc_key</span><span class="o">=</span><span class="n">doc_key</span><span class="p">,</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">pipeline</span><span class="o">=</span><span class="n">operation</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">mark_processing</span><span class="p">,</span> <span class="n">job_id</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="n">operation</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span>
+        <span class="n">JobEvent</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;jobs.started&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;operation&quot;</span><span class="p">:</span> <span class="n">operation</span><span class="p">})</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">job_id</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.idempotent_create" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">idempotent_create</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pipeline</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">JobLedgerEntry</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Create a job entry idempotently, returning existing entry if present.</p>
+<p>This method creates a job entry in the ledger if it doesn't exist,
+or returns the existing entry if it does. This provides resilience
+against duplicate job creation attempts and supports job recovery
+scenarios.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the job.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>doc_key</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Document key for the job entry.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tenant_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the tenant.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pipeline</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pipeline name processing the job.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>metadata</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Metadata to attach to the job.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Medical_KG_rev.orchestration.JobLedgerEntry">JobLedgerEntry</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>JobLedgerEntry representing the created or existing job.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>entry = manager.idempotent_create(
+...     job_id="job-123",
+...     doc_key="embed:job-123",
+...     tenant_id="tenant1",
+...     pipeline="embedding",
+...     metadata={"model": "bert"}
+... )
+print(f"Job status: {entry.status}")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">idempotent_create</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">doc_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">pipeline</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JobLedgerEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a job entry idempotently, returning existing entry if present.</span>
+
+<span class="sd">    This method creates a job entry in the ledger if it doesn&#39;t exist,</span>
+<span class="sd">    or returns the existing entry if it does. This provides resilience</span>
+<span class="sd">    against duplicate job creation attempts and supports job recovery</span>
+<span class="sd">    scenarios.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id: Unique identifier for the job.</span>
+<span class="sd">        doc_key: Document key for the job entry.</span>
+<span class="sd">        tenant_id: Unique identifier for the tenant.</span>
+<span class="sd">        pipeline: Pipeline name processing the job.</span>
+<span class="sd">        metadata: Metadata to attach to the job.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        JobLedgerEntry representing the created or existing job.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; entry = manager.idempotent_create(</span>
+<span class="sd">        ...     job_id=&quot;job-123&quot;,</span>
+<span class="sd">        ...     doc_key=&quot;embed:job-123&quot;,</span>
+<span class="sd">        ...     tenant_id=&quot;tenant1&quot;,</span>
+<span class="sd">        ...     pipeline=&quot;embedding&quot;,</span>
+<span class="sd">        ...     metadata={&quot;model&quot;: &quot;bert&quot;}</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Job status: {entry.status}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;gateway.job.idempotent_create&quot;</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span>
+        <span class="n">doc_key</span><span class="o">=</span><span class="n">doc_key</span><span class="p">,</span>
+        <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">idempotent_create</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span>
+        <span class="n">doc_key</span><span class="o">=</span><span class="n">doc_key</span><span class="p">,</span>
+        <span class="n">tenant_id</span><span class="o">=</span><span class="n">tenant_id</span><span class="p">,</span>
+        <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">),</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">mark_completed</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Mark a job as completed and emit completion SSE event.</p>
+<p>This method updates the job status to completed in the ledger
+and publishes an SSE event to notify clients of the completion.
+Optional payload data can be included in the completion event.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the job to mark as completed.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>payload</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional payload data to include in the completion event.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager.mark_completed("job-123", {"embeddings": 100, "duration": 5.2})</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_completed--job-is-marked-completed-and-sse-event-is-published">Job is marked completed and SSE event is published</h4>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mark_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark a job as completed and emit completion SSE event.</span>
+
+<span class="sd">    This method updates the job status to completed in the ledger</span>
+<span class="sd">    and publishes an SSE event to notify clients of the completion.</span>
+<span class="sd">    Optional payload data can be included in the completion event.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id: Unique identifier for the job to mark as completed.</span>
+<span class="sd">        payload: Optional payload data to include in the completion event.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; manager.mark_completed(&quot;job-123&quot;, {&quot;embeddings&quot;: 100, &quot;duration&quot;: 5.2})</span>
+<span class="sd">        &gt;&gt;&gt; # Job is marked completed and SSE event is published</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">payload</span> <span class="ow">or</span> <span class="p">{})</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;gateway.job.complete&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">mark_completed</span><span class="p">,</span> <span class="n">job_id</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span>
+        <span class="n">JobEvent</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;jobs.completed&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">mark_failed</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Mark a job as failed and emit failure SSE event.</p>
+<p>This method updates the job status to failed in the ledger
+and publishes an SSE event to notify clients of the failure.
+The failure reason and optional metadata are included in
+both the ledger entry and the SSE event.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the job to mark as failed.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reason</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable reason for the failure.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>stage</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Stage where the failure occurred (default: "error").</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;error&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>metadata</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional metadata to include with the failure.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager.mark_failed(
+...     "job-123",
+...     reason="Model loading failed",
+...     stage="initialization",
+...     metadata={"error_code": "MODEL_NOT_FOUND"}
+... )</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.mark_failed--job-is-marked-failed-and-sse-event-is-published">Job is marked failed and SSE event is published</h4>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mark_failed</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark a job as failed and emit failure SSE event.</span>
+
+<span class="sd">    This method updates the job status to failed in the ledger</span>
+<span class="sd">    and publishes an SSE event to notify clients of the failure.</span>
+<span class="sd">    The failure reason and optional metadata are included in</span>
+<span class="sd">    both the ledger entry and the SSE event.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id: Unique identifier for the job to mark as failed.</span>
+<span class="sd">        reason: Human-readable reason for the failure.</span>
+<span class="sd">        stage: Stage where the failure occurred (default: &quot;error&quot;).</span>
+<span class="sd">        metadata: Optional metadata to include with the failure.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; manager.mark_failed(</span>
+<span class="sd">        ...     &quot;job-123&quot;,</span>
+<span class="sd">        ...     reason=&quot;Model loading failed&quot;,</span>
+<span class="sd">        ...     stage=&quot;initialization&quot;,</span>
+<span class="sd">        ...     metadata={&quot;error_code&quot;: &quot;MODEL_NOT_FOUND&quot;}</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # Job is marked failed and SSE event is published</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+        <span class="s2">&quot;gateway.job.fail&quot;</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span>
+        <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+        <span class="n">stage</span><span class="o">=</span><span class="n">stage</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">mark_failed</span><span class="p">,</span>
+        <span class="n">job_id</span><span class="p">,</span>
+        <span class="n">stage</span><span class="o">=</span><span class="n">stage</span><span class="p">,</span>
+        <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}),</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">JobEvent</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;jobs.failed&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">update_metadata</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update job metadata in the ledger.</p>
+<p>This method updates the metadata associated with a job in the ledger.
+This is useful for tracking progress, intermediate results, or other
+job-specific information during processing.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>job_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique identifier for the job to update.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>metadata</code>
+            </td>
+            <td>
+                  <code><span title="typing.Mapping">Mapping</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>New metadata to associate with the job.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If ledger operations fail after retry attempts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>manager.update_metadata("job-123", {"progress": 50, "processed": 25})</p>
+<h4 id="Medical_KG_rev.gateway.coordinators.job_lifecycle.JobLifecycleManager.update_metadata--job-metadata-is-updated-in-the-ledger">Job metadata is updated in the ledger</h4>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>src/Medical_KG_rev/gateway/coordinators/job_lifecycle.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update job metadata in the ledger.</span>
+
+<span class="sd">    This method updates the metadata associated with a job in the ledger.</span>
+<span class="sd">    This is useful for tracking progress, intermediate results, or other</span>
+<span class="sd">    job-specific information during processing.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_id: Unique identifier for the job to update.</span>
+<span class="sd">        metadata: New metadata to associate with the job.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If ledger operations fail after retry attempts.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; manager.update_metadata(&quot;job-123&quot;, {&quot;progress&quot;: 50, &quot;processed&quot;: 25})</span>
+<span class="sd">        &gt;&gt;&gt; # Job metadata is updated in the ledger</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;gateway.job.metadata&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="o">=</span><span class="n">job_id</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_call_ledger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ledger</span><span class="o">.</span><span class="n">update_metadata</span><span class="p">,</span> <span class="n">job_id</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

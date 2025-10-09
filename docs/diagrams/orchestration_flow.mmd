@@ -1,0 +1,48 @@
+sequenceDiagram
+    participant Client
+    participant GatewayService
+    participant OrchestrationCoordinator
+    participant JobLifecycle
+    participant DagsterRuntime
+    participant StageFactory
+    participant Stage1
+    participant Stage2
+    participant Stage3
+    participant StageContext
+
+    Client->>GatewayService: POST /v1/orchestrate
+    GatewayService->>OrchestrationCoordinator: execute(request)
+    OrchestrationCoordinator->>JobLifecycle: create_job(tenant, "orchestrate")
+    JobLifecycle-->>OrchestrationCoordinator: job_id
+
+    OrchestrationCoordinator->>DagsterRuntime: submit_job(pipeline_config)
+    DagsterRuntime->>StageFactory: create_stages()
+    StageFactory-->>DagsterRuntime: [Stage1, Stage2, Stage3]
+
+    DagsterRuntime->>Stage1: execute(context)
+    Stage1->>StageContext: process(data)
+    StageContext-->>Stage1: processed_data
+    Stage1-->>DagsterRuntime: StageResult1
+
+    DagsterRuntime->>Stage2: execute(context)
+    Stage2->>StageContext: process(StageResult1.data)
+    StageContext-->>Stage2: processed_data
+    Stage2-->>DagsterRuntime: StageResult2
+
+    DagsterRuntime->>Stage3: execute(context)
+    Stage3->>StageContext: process(StageResult2.data)
+    StageContext-->>Stage3: processed_data
+    Stage3-->>DagsterRuntime: StageResult3
+
+    DagsterRuntime-->>OrchestrationCoordinator: PipelineResult
+    OrchestrationCoordinator->>JobLifecycle: mark_completed(job_id)
+    OrchestrationCoordinator-->>GatewayService: OrchestrationResult
+    GatewayService-->>Client: 200 OK with pipeline results
+
+    Note over Client, StageContext: Error Flow
+    Stage2-->>DagsterRuntime: StageExecutionError
+    DagsterRuntime->>DagsterRuntime: handle_stage_error()
+    DagsterRuntime-->>OrchestrationCoordinator: PipelineError
+    OrchestrationCoordinator->>JobLifecycle: mark_failed(job_id)
+    OrchestrationCoordinator-->>GatewayService: CoordinatorError
+    GatewayService-->>Client: 500 Internal Server Error

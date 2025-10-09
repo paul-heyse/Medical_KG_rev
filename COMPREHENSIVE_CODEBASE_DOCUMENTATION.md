@@ -60,13 +60,16 @@ The Medical_KG_rev codebase follows a highly modular, layered architecture desig
 src/Medical_KG_rev/
 ├── adapters/           # External data source integrations
 │   ├── base.py         # Adapter SDK base classes and interfaces
-│   ├── biomedical.py   # Biomedical domain adapters
+│   ├── biomedical.py   # Biomedical domain adapters (legacy)
 │   ├── clinicaltrials/ # ClinicalTrials.gov integration
 │   ├── core/          # CORE repository adapter
 │   ├── crossref/      # Crossref DOI resolution
+│   ├── config/        # YAML-based adapter configurations
+│   ├── interfaces/    # Adapter interface definitions (PDF, etc.)
 │   ├── mixins/        # Reusable adapter functionality
 │   ├── openalex/      # OpenAlex research repository
 │   ├── openfda/       # FDA drug and device data
+│   ├── plugins/       # Plugin-based adapter system
 │   ├── pmc/           # PubMed Central full-text
 │   ├── semanticscholar/ # Semantic Scholar integration
 │   ├── terminology/   # Medical terminology services
@@ -75,6 +78,7 @@ src/Medical_KG_rev/
 │   ├── api_keys.py    # API key management
 │   ├── audit.py       # Security audit logging
 │   ├── context.py     # Security context management
+│   ├── dependencies.py # FastAPI dependency injection
 │   ├── jwt.py         # JWT token handling
 │   ├── rate_limit.py  # Rate limiting enforcement
 │   └── scopes.py      # Permission scope definitions
@@ -191,9 +195,20 @@ src/Medical_KG_rev/
 │   ├── time.py        # Time-related utilities
 │   ├── validation.py  # Input validation helpers
 │   └── versioning.py  # Version management utilities
-└── validation/        # Data validation
-    ├── fhir.py        # FHIR compliance validation
-    └── ucum.py        # UCUM unit validation
+├── validation/        # Data validation
+│   ├── fhir.py        # FHIR compliance validation
+│   └── ucum.py        # UCUM unit validation
+├── eval/              # Model evaluation and A/B testing
+│   ├── ab_testing.py  # A/B testing framework
+│   ├── embedding_eval.py # Embedding quality evaluation
+│   ├── ground_truth.py # Ground truth management
+│   ├── harness.py     # Evaluation harness
+│   └── metrics.py     # Evaluation metrics
+└── proto/             # Protocol buffer definitions
+    ├── embedding.proto # Embedding service gRPC definitions
+    ├── extraction.proto # Extraction service gRPC definitions
+    ├── ingestion.proto # Ingestion service gRPC definitions
+    └── mineru.proto   # MinerU service gRPC definitions
 ```
 
 ### **Layered Architecture Pattern**
@@ -230,6 +245,12 @@ The system implements a clean layered architecture with strict dependency rules:
 - Depends on all lower layers
 - Provides external interface to the system
 
+**6. Evaluation Layer (`eval/`)**
+
+- Model evaluation and A/B testing framework
+- Depends on all lower layers
+- Provides metrics and comparison tools for continuous improvement
+
 ### **Technology Stack & Dependencies**
 
 **Core Framework:**
@@ -262,6 +283,12 @@ torch>=2.0.0              # PyTorch for GPU acceleration
 transformers>=4.35.0      # Hugging Face transformers
 vllm>=0.2.0               # High-performance LLM serving
 qdrant-client>=1.6.0      # Vector database client
+pyserini>=1.2.0           # Information retrieval toolkit
+mineru>=2.5.4             # PDF processing and extraction
+scikit-learn>=1.7.2       # Machine learning utilities
+numpy>=1.26.4             # Numerical computing
+scipy>=1.16.2             # Scientific computing
+rank-bm25>=0.2.2          # BM25 ranking algorithm
 ```
 
 **Storage & Infrastructure:**
@@ -270,8 +297,12 @@ qdrant-client>=1.6.0      # Vector database client
 neo4j-python-driver==5.13.0 # Graph database client
 opensearch-py==2.4.0       # Search engine client
 redis-py-cluster==2.1.3    # Redis cluster client
-boto3==1.34.0             # AWS SDK for object storage
+boto3==1.40.45            # AWS SDK for object storage
 kafka-python-ng==2.2.2    # Kafka client for messaging
+grpcio>=1.75.1            # gRPC framework
+grpcio-tools>=1.62.3      # Protocol buffer compiler
+grpcio-health-checking>=1.62.3 # gRPC health checking
+grpcio-status>=1.62.3    # gRPC status handling
 ```
 
 **Observability & Monitoring:**
@@ -282,6 +313,16 @@ opentelemetry-api==1.21.0  # Distributed tracing
 opentelemetry-sdk==1.21.0  # OpenTelemetry SDK
 sentry-sdk==1.38.0         # Error tracking
 jaeger-client==4.8.0       # Jaeger tracing client
+structlog==23.2.0          # Structured logging framework
+```
+
+**Plugin & Configuration:**
+
+```python
+pluggy>=1.6.0             # Plugin system framework
+pyyaml>=6.0.1             # YAML parsing and generation
+pydantic>=2.5.0           # Data validation and settings
+pydantic-settings>=2.1.0  # Settings management
 ```
 
 ### **Coordinator Pattern Implementation**
@@ -397,14 +438,46 @@ class BaseAdapter(ABC):
 **Plugin-Based Architecture:**
 
 ```python
-# Runtime adapter registration and discovery
+# Advanced plugin system with hookimpl pattern
+class BaseAdapterPlugin(ABC):
+    """Abstract base class for adapter plugins with hookimpl pattern."""
+
+    metadata: AdapterMetadata
+    config_model: type[AdapterConfig] = AdapterConfig
+
+    @hookimpl
+    def get_metadata(self) -> AdapterMetadata:
+        """Get adapter metadata and configuration schema."""
+
+    @hookimpl
+    @abstractmethod
+    def fetch(self, request: AdapterRequest) -> AdapterResponse:
+        """Fetch raw payloads from upstream systems."""
+
+    @hookimpl
+    @abstractmethod
+    def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:
+        """Parse raw payloads into canonical documents."""
+
+    @hookimpl
+    def validate(self, response: AdapterResponse, request: AdapterRequest) -> ValidationOutcome:
+        """Validate parsed documents before storage."""
+
+    @hookimpl
+    def health_check(self) -> bool:
+        """Health check for adapter availability."""
+
+    @hookimpl
+    def estimate_cost(self, request: AdapterRequest) -> AdapterCostEstimate:
+        """Estimate computational cost for adapter execution."""
+
 class AdapterPluginManager:
     """Plugin system for adapter registration and execution."""
 
     def register(self, plugin: BaseAdapterPlugin) -> None:
         """Register adapter plugin with metadata."""
-        self._adapters[plugin.name] = plugin
-        self._capabilities.update(plugin.capabilities)
+        self._adapters[plugin.metadata.name] = plugin
+        self._capabilities.update(plugin.metadata.capabilities)
 
     async def invoke(self, name: str, request: AdapterRequest) -> AdapterInvocationResult:
         """Execute adapter with full lifecycle tracking."""
@@ -412,6 +485,109 @@ class AdapterPluginManager:
         context = AdapterExecutionContext(request)
         result = await plugin.execute(context)
         return AdapterInvocationResult(context, result, context.metrics)
+```
+
+**PDF Interface System:**
+
+```python
+@runtime_checkable
+class PdfCapableAdapter(Protocol):
+    """Protocol for adapters that can provide downloadable PDFs."""
+
+    pdf_capabilities: Sequence[str]
+
+    def iter_pdf_candidates(
+        self,
+        documents: Sequence[Document],
+        *,
+        context: AdapterContext | None = None,
+    ) -> Iterable[PdfAssetManifest]:
+        """Yield manifest entries for downloadable PDF assets."""
+
+    def polite_headers(self) -> Mapping[str, str]:
+        """Return polite pool headers for rate limiting compliance."""
+
+@dataclass(frozen=True)
+class PdfAssetManifest:
+    """Normalised description of a single downloadable PDF asset."""
+
+    url: str
+    landing_page_url: str | None = None
+    license: str | None = None
+    version: str | None = None
+    source: str | None = None
+    checksum_hint: str | None = None
+    is_open_access: bool | None = None
+    content_type: str | None = None
+
+@dataclass(frozen=True)
+class PdfManifest:
+    """Collection of manifest entries emitted by an adapter."""
+
+    connector: str
+    assets: tuple[PdfAssetManifest, ...]
+    retrieved_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    polite_headers: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
+```
+
+**YAML-Based Adapter Configuration:**
+
+```yaml
+# config/adapters/clinicaltrials.yaml
+name: clinicaltrials-yaml
+source: clinicaltrials
+base_url: https://clinicaltrials.gov/api/v2
+rate_limit:
+  requests: 10
+  per_seconds: 1
+request:
+  method: GET
+  path: /studies/{nct_id}
+  params:
+    format: json
+response:
+  items_path: study
+mapping:
+  id: protocolSection.identificationModule.nctId
+  title: protocolSection.identificationModule.briefTitle
+  summary: protocolSection.descriptionModule.briefSummary
+  metadata:
+    overall_status: protocolSection.statusModule.overallStatus
+    phase: protocolSection.designModule.phase
+    start_date: protocolSection.statusModule.startDateStruct.date
+```
+
+**Plugin-Based Configuration:**
+
+```yaml
+# config/adapters/plugin-registry.yaml
+plugins:
+  biomedical:
+    - name: clinicaltrials
+      class: "Medical_KG_rev.adapters.plugins.clinicaltrials:ClinicalTrialsPlugin"
+      config:
+        rate_limit_per_second: 5
+        batch_size: 10
+        timeout_seconds: 30
+
+    - name: openalex
+      class: "Medical_KG_rev.adapters.plugins.openalex:OpenAlexPlugin"
+      config:
+        rate_limit_per_second: 10
+        max_results: 100
+
+  terminology:
+    - name: mesh
+      class: "Medical_KG_rev.adapters.plugins.terminology:MeSHPlugin"
+      config:
+        cache_ttl_seconds: 3600
+
+  evaluation:
+    - name: embedding_eval
+      class: "Medical_KG_rev.eval.harness:EmbeddingEvalPlugin"
+      config:
+        metrics: ["precision", "recall", "ndcg"]
+        test_datasets: ["msmarco", "trec-covid"]
 ```
 
 **Shared Mixins for Common Functionality:**
@@ -435,6 +611,89 @@ class PaginationMixin:
     def paginate_results(self, fetch_func: Callable) -> Generator[dict, None, None]:
         # Pagination logic with configurable page sizes
         pass
+
+class PdfManifestMixin:
+    """PDF manifest generation for PDF-capable adapters."""
+    def create_pdf_manifest(self, documents: Sequence[Document]) -> PdfManifest:
+        """Create PDF manifest from document collection."""
+        assets = []
+        for doc in documents:
+            if pdf_url := self._extract_pdf_url(doc):
+                assets.append(PdfAssetManifest(
+                    url=pdf_url,
+                    landing_page_url=self._extract_landing_page(doc),
+                    license=self._extract_license(doc),
+                    source=self.metadata.name
+                ))
+        return PdfManifest(connector=self.metadata.name, assets=tuple(assets))
+```
+
+**Evaluation & Metrics System:**
+
+```python
+class EmbeddingEvaluator:
+    """Comprehensive evaluation framework for embedding quality."""
+
+    async def evaluate_embedding_quality(
+        self,
+        namespace: str,
+        dataset: EvaluationDataset
+    ) -> EvaluationReport:
+        """Evaluate embedding quality using multiple metrics."""
+        results = []
+
+        # Information retrieval metrics
+        for query, relevant_docs in dataset.queries.items():
+            retrieved_docs = await self._retrieve_similar(query, namespace)
+            precision = average_precision(retrieved_docs, relevant_docs)
+            recall = recall_at_k(retrieved_docs, relevant_docs, k=10)
+            ndcg = ndcg_at_k(retrieved_docs, relevant_docs, k=10)
+
+            results.append(MetricResult(
+                query=query,
+                precision=precision,
+                recall=recall,
+                ndcg=ndcg
+            ))
+
+        return EvaluationReport(
+            namespace=namespace,
+            dataset_name=dataset.name,
+            metrics=results,
+            overall_score=sum(r.ndcg for r in results) / len(results)
+        )
+
+class ABTestRunner:
+    """A/B testing framework for model comparison."""
+
+    async def run_ab_test(
+        self,
+        baseline_model: str,
+        candidate_model: str,
+        test_queries: list[str]
+    ) -> ABTestOutcome:
+        """Compare two embedding models using statistical tests."""
+        baseline_scores = []
+        candidate_scores = []
+
+        for query in test_queries:
+            baseline_score = await self._evaluate_query(query, baseline_model)
+            candidate_score = await self._evaluate_query(query, candidate_model)
+
+            baseline_scores.append(baseline_score)
+            candidate_scores.append(candidate_score)
+
+        # Statistical significance testing
+        t_stat, p_value = stats.ttest_rel(baseline_scores, candidate_scores)
+
+        return ABTestOutcome(
+            baseline_model=baseline_model,
+            candidate_model=candidate_model,
+            baseline_mean=np.mean(baseline_scores),
+            candidate_mean=np.mean(candidate_scores),
+            p_value=p_value,
+            statistically_significant=p_value < 0.05
+        )
 ```
 
 ### **Multi-Protocol API Gateway**
@@ -445,9 +704,105 @@ The gateway provides a unified interface supporting 5 different protocols simult
 
 - **REST API** (OpenAPI 3.1 + JSON:API 1.1)
 - **GraphQL** (GraphQL Schema + DataLoader pattern)
-- **gRPC** (Protocol Buffers + gRPC services)
+- **gRPC** (Protocol Buffers + gRPC services with health checking)
 - **SOAP** (WSDL + XML Schema)
 - **AsyncAPI/SSE** (Server-sent events for real-time updates)
+
+**gRPC Service Definitions:**
+
+```protobuf
+// ingestion.proto
+service IngestionService {
+  rpc Submit (IngestionJobRequest) returns (IngestionJobResponse);
+  rpc GetStatus (JobStatusRequest) returns (JobStatusResponse);
+  rpc Cancel (JobCancelRequest) returns (JobCancelResponse);
+}
+
+// embedding.proto
+service EmbeddingService {
+  rpc EmbedTexts (EmbedTextsRequest) returns (EmbedTextsResponse);
+  rpc GetEmbeddings (GetEmbeddingsRequest) returns (GetEmbeddingsResponse);
+  rpc DeleteEmbeddings (DeleteEmbeddingsRequest) returns (DeleteEmbeddingsResponse);
+}
+
+// extraction.proto
+service ExtractionService {
+  rpc ExtractEntities (ExtractEntitiesRequest) returns (ExtractEntitiesResponse);
+  rpc ExtractClaims (ExtractClaimsRequest) returns (ExtractClaimsResponse);
+}
+
+// mineru.proto
+service MineruService {
+  rpc ProcessPDF (ProcessPDFRequest) returns (ProcessPDFResponse);
+  rpc GetProcessingStatus (ProcessingStatusRequest) returns (ProcessingStatusResponse);
+}
+```
+
+**gRPC Service Implementation:**
+
+```python
+class IngestionServicer(ingestion_pb2_grpc.IngestionServiceServicer):
+    """gRPC service implementation for ingestion operations."""
+
+    def __init__(self, ingestion_service: IngestionService):
+        self.ingestion_service = ingestion_service
+
+    async def Submit(
+        self,
+        request: ingestion_pb2.IngestionJobRequest,
+        context: grpc.aio.ServicerContext
+    ) -> ingestion_pb2.IngestionJobResponse:
+        """Submit ingestion job via gRPC."""
+        try:
+            # Convert protobuf request to service request
+            service_request = self._proto_to_service_request(request)
+
+            # Execute ingestion
+            result = await self.ingestion_service.submit_job(service_request)
+
+            # Convert service response to protobuf response
+            return self._service_to_proto_response(result)
+
+        except Exception as e:
+            # Handle errors with proper gRPC status codes
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Ingestion failed: {str(e)}")
+            return ingestion_pb2.IngestionJobResponse()
+```
+
+**gRPC Health Checking:**
+
+```python
+class GrpcServiceState:
+    """Tracks readiness and exposes health reporting."""
+
+    def __init__(self, service_name: str):
+        self.service_name = service_name
+        self.health_servicer = health.HealthServicer()
+        self.ready = asyncio.Event()
+
+        # Initially not serving
+        self.health_servicer.set(
+            self.service_name,
+            health_pb2.HealthCheckResponse.NOT_SERVING
+        )
+
+    def set_ready(self) -> None:
+        """Mark service as ready and update health status."""
+        self.ready.set()
+        self.health_servicer.set(
+            self.service_name,
+            health_pb2.HealthCheckResponse.SERVING
+        )
+
+    def set_not_ready(self) -> None:
+        """Mark service as not ready."""
+        self.ready.clear()
+        self.health_servicer.set(
+            self.service_name,
+            health_pb2.HealthCheckResponse.NOT_SERVING
+        )
+```
 
 **Gateway Architecture:**
 
@@ -2960,39 +3315,42 @@ Medical_KG_rev is a sophisticated, production-ready multi-protocol API gateway a
 
 ## 📝 Change Log
 
-### Version 2.2.0 (2025-10-08)
+### Version 2.3.0 (2025-10-09)
 
-**Coordinator Pattern & Biomedical Adapter Decomposition Release**
+**PDF Ingestion Connectors & Plugin Architecture Enhancement Release**
 
 #### 🚀 New Features
 
-- **Coordinator Pattern Implementation**: Decomposed monolithic `GatewayService` into focused coordinators (ChunkingCoordinator, EmbeddingCoordinator)
-- **Biomedical Adapter Decomposition**: Extracted 13+ biomedical adapters into individual modules with shared mixins
-- **Enhanced Mixins Architecture**: Created reusable HTTP, DOI normalization, pagination, and open access metadata mixins
-- **JobLifecycleManager Integration**: Centralized job creation, state transitions, and event streaming across coordinators
-- **Comprehensive Error Translation**: Domain-specific error handling with structured error reporting
+- **PDF Interface System**: Comprehensive PDF manifest system for downloadable assets across adapters
+- **Advanced Plugin Architecture**: Hookimpl-based plugin system with runtime registration and discovery
+- **YAML-Based Adapter Configuration**: Declarative adapter configuration with field mapping and rate limiting
+- **gRPC Service Infrastructure**: Complete Protocol Buffer definitions and health checking for microservices
+- **Evaluation Framework**: A/B testing and embedding quality evaluation with statistical significance testing
+- **Enhanced Mixins**: PDF manifest generation, storage helpers, and advanced HTTP wrapper functionality
 
 #### 🔧 Improvements
 
-- **Coordinator-Based Architecture**: Improved modularity with focused coordinators replacing monolithic service patterns
-- **Enhanced Type Safety**: Strongly-typed coordinator requests and results with comprehensive validation
-- **Shared Mixins Architecture**: Reusable utilities for HTTP operations, DOI normalization, and pagination
-- **Comprehensive Testing**: 30+ passing tests for coordinator implementations and extracted adapters
-- **Error Handling Enhancement**: Domain-specific error translation and structured error reporting
+- **Plugin-Based Architecture**: Replaced legacy adapter patterns with comprehensive plugin system
+- **PDF-Capable Adapters**: Standardized interface for adapters that can provide downloadable PDFs
+- **Configuration Management**: YAML-based adapter configuration with validation and schema generation
+- **gRPC Health Checking**: Standard health service implementation across all gRPC services
+- **Evaluation Metrics**: Information retrieval metrics (precision, recall, NDCG) and A/B testing framework
+- **Dependency Updates**: Updated to latest versions of core libraries (pluggy, grpcio, pyserini, etc.)
 
 #### 🐛 Bug Fixes
 
-- Fixed HTTP client TypeError in adapter mixins and coordinator implementations
-- Resolved type annotation inconsistencies across coordinator pattern
-- Enhanced backward compatibility for biomedical adapter decomposition
-- Corrected plugin registry imports for decomposed adapter modules
+- Repository-wide refactoring and cleanup for consistency
+- Fixed import issues across decomposed adapter modules
+- Enhanced type safety across plugin interfaces
+- Corrected configuration loading for YAML-based adapters
 
 #### 🏗️ Architecture Changes
 
-- **Coordinator Pattern**: GatewayService decomposed into focused coordinators (Ingestion, Embedding, Retrieval, etc.)
-- **Plugin System**: Stage factory replaced with pluggable architecture for extensibility
-- **Library Modernization**: Upgraded to modern Python libraries (pydantic v2, httpx, orjson, etc.)
-- **Legacy Removal**: Systematic decommissioning of monolithic components and outdated patterns
+- **Plugin System Overhaul**: Complete rewrite of adapter system using hookimpl pattern
+- **PDF Integration**: New PDF interface system for standardized PDF asset handling
+- **gRPC Standardization**: Consistent gRPC service definitions across all microservices
+- **Evaluation Layer**: New evaluation layer for model comparison and quality assessment
+- **Configuration Modernization**: YAML-based configuration system for all adapters
 
 ### Version 1.5.0 (2024-12-01)
 

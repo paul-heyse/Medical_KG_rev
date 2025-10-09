@@ -209,9 +209,532 @@ This document provides highly detailed, actionable tasks for AI agents to implem
   rg -t py "legacy_function_name" src/ tests/
   ```
 
-## 2. Standards Extension & Tooling Enhancement
+## 2. Critical Documentation Gaps from Audit
 
-### 2.1 Extend Documentation Templates
+**IMPORTANT**: The comprehensive audit (see `audit.md`) identified 10 critical documentation areas that are currently missing or incomplete. These MUST be addressed as they provide essential guidance for development, deployment, and operations.
+
+### 2.1 Configuration Management Documentation
+
+- [ ] 2.1.1 **Create comprehensive configuration reference** at `docs/guides/configuration_reference.md`:
+  - Document ALL 50+ YAML configuration files with file path, purpose, and parameters
+  - For EACH file document: parameter name, type, default value, valid range, description, dependencies
+  - Include `config/chunking.yaml` and all profiles in `config/chunking/profiles/*.yaml`
+  - Include `config/embeddings.yaml` and all namespaces in `config/embedding/namespaces/*.yaml`
+  - Include `config/dagster.yaml` with executor settings
+  - Include `config/orchestration/pipelines/*.yaml` with stage dependencies
+  - Include `config/retrieval/*.yaml` with component configurations
+  - Include `config/vector_store.yaml` with backend settings
+  - Include `config/mineru.yaml` with worker and VRAM settings
+
+- [ ] 2.1.2 **Create environment variable reference** at `docs/guides/environment_variables.md`:
+  - Document ALL 100+ environment variables used by the system
+  - For EACH variable: name, purpose, default value, valid formats, override rules, security notes
+  - Group by subsystem: Gateway, Services, Adapters, Orchestration, Storage, Auth, Observability
+  - Include validation rules and error messages for invalid values
+  - Provide examples for each deployment environment (dev, staging, prod)
+
+- [ ] 2.1.3 **Document configuration precedence** in configuration reference:
+  - Environment variables override config files
+  - Config files override defaults
+  - Command-line arguments override environment variables
+  - Include decision tree diagram for configuration resolution
+
+- [ ] 2.1.4 **Create configuration validation guide** at `docs/guides/configuration_validation.md`:
+  - Document how to validate configuration before deployment
+  - Provide validation scripts with examples
+  - List common configuration errors and resolutions
+  - Include troubleshooting decision trees
+
+- [ ] 2.1.5 **Document secret management** in configuration reference:
+  - Which variables contain secrets (API keys, passwords, tokens)
+  - How to use Vault for secret management
+  - Secret rotation procedures
+  - Security best practices for configuration
+
+### 2.2 Development Workflow Documentation
+
+- [ ] 2.2.1 **Create comprehensive development setup guide** at `docs/guides/development_setup.md`:
+  - **Linux setup**: Step-by-step with Ubuntu 22.04+, including all dependencies
+  - **macOS setup**: Step-by-step with Homebrew, including M1/M2 considerations
+  - **Windows setup**: Step-by-step with WSL2, including GPU passthrough
+  - Python environment setup (venv vs conda with pros/cons)
+  - Docker infrastructure startup and validation
+  - Database initialization and migrations
+  - API key configuration with .env template
+  - Validation steps to confirm successful setup
+  - Common setup issues and resolutions
+
+- [ ] 2.2.2 **Create IDE configuration guides** at `docs/guides/ide_configuration/`:
+  - **VSCode guide** (`vscode.md`):
+    - Recommended extensions list with descriptions
+    - Complete `.vscode/settings.json` with comments
+    - Launch configurations for each service in `.vscode/launch.json`
+    - Task definitions in `.vscode/tasks.json`
+    - Debugging configuration for Python, Docker, GPU services
+  - **PyCharm guide** (`pycharm.md`):
+    - Project structure configuration
+    - Run configurations for each service
+    - Debugging setup with breakpoints
+    - Integration with Docker
+    - Code inspection profile
+
+- [ ] 2.2.3 **Document debugging procedures** at `docs/guides/debugging_guide.md`:
+  - **Gateway debugging**: Breakpoint setup, request tracing, coordinator debugging
+  - **Service debugging**: Service isolation, mock dependencies, GPU service debugging
+  - **Adapter debugging**: External API mocking, response inspection, rate limit testing
+  - **Orchestration debugging**: Pipeline state inspection, stage debugging, Kafka message tracing
+  - **Database debugging**: Neo4j query debugging, query performance analysis
+  - **GPU debugging**: CUDA error interpretation, memory leak detection, vLLM debugging
+
+- [ ] 2.2.4 **Create hot reload configuration guide** at `docs/guides/hot_reload.md`:
+  - FastAPI auto-reload configuration
+  - Docker volume mounting for hot reload
+  - Service-specific reload requirements
+  - Limitations and caveats
+
+- [ ] 2.2.5 **Document database migration procedures** at `docs/guides/database_migrations.md`:
+  - Creating new migrations with Alembic
+  - Testing migrations locally
+  - Applying migrations in development
+  - Rolling back migrations
+  - Migration best practices
+
+- [ ] 2.2.6 **Document test data generation** at `docs/guides/test_data_generation.md`:
+  - Factory patterns for test data
+  - Fixture creation for each domain
+  - Realistic data generation strategies
+  - Test database seeding
+
+- [ ] 2.2.7 **Create code review checklist** at `docs/contributing/code_review_checklist.md`:
+  - Documentation completeness check
+  - Type hint completeness check
+  - Test coverage check
+  - Security review items
+  - Performance considerations
+
+- [ ] 2.2.8 **Document Git workflow** at `docs/contributing/git_workflow.md`:
+  - Branching strategy (main, develop, feature, hotfix)
+  - Commit message conventions
+  - Pull request process
+  - Code review procedures
+  - Merge strategies
+
+### 2.3 Deployment Documentation
+
+- [ ] 2.3.1 **Create production deployment checklist** at `docs/operations/deployment_checklist.md`:
+  - Pre-deployment validation (tests passing, security scans, linting)
+  - Deployment script execution steps
+  - Health check verification procedures
+  - Smoke test execution and validation
+  - Monitoring and alerting validation
+  - Rollback decision criteria
+  - Communication templates for stakeholders
+
+- [ ] 2.3.2 **Document blue-green deployment** at `docs/operations/blue_green_deployment.md`:
+  - Blue-green deployment architecture
+  - Traffic switching procedures
+  - Validation steps between environments
+  - Rollback procedures
+  - Database synchronization strategies
+
+- [ ] 2.3.3 **Document canary deployment** at `docs/operations/canary_deployment.md`:
+  - Canary deployment architecture
+  - Progressive traffic routing (5%, 25%, 50%, 100%)
+  - Success metrics and monitoring
+  - Automated rollback triggers
+  - Manual intervention procedures
+
+- [ ] 2.3.4 **Create rollback procedures** at `docs/operations/rollback_procedures.md`:
+  - Rollback decision criteria with severity levels
+  - Approval process for rollbacks
+  - Database migration rollback steps
+  - Service version rollback execution
+  - Configuration rollback procedures
+  - Post-rollback validation steps
+  - Incident communication templates
+  - Root cause analysis guidelines
+
+- [ ] 2.3.5 **Document database migration in production** at `docs/operations/production_migrations.md`:
+  - Migration planning and review process
+  - Backup verification before migration
+  - Migration execution in production
+  - Validation after migration
+  - Rollback procedures for failed migrations
+
+- [ ] 2.3.6 **Document configuration management in production** at `docs/operations/production_configuration.md`:
+  - Configuration deployment process
+  - Configuration validation procedures
+  - Configuration rollback procedures
+  - Secret rotation in production
+
+- [ ] 2.3.7 **Document disaster recovery procedures** at `docs/operations/disaster_recovery.md`:
+  - Recovery Time Objective (RTO) and Recovery Point Objective (RPO)
+  - Backup procedures and schedules
+  - Backup verification procedures
+  - Restore procedures with step-by-step instructions
+  - Data center failover procedures
+  - Communication and escalation procedures
+
+- [ ] 2.3.8 **Document multi-region deployment** at `docs/operations/multi_region_deployment.md`:
+  - Multi-region architecture overview
+  - Data replication strategies
+  - Consistency vs. availability trade-offs
+  - Region failover procedures
+  - Cross-region monitoring
+
+### 2.4 API Client Documentation
+
+- [ ] 2.4.1 **Create REST API examples guide** at `docs/api/rest_examples.md`:
+  - **Authentication examples**: OAuth 2.0 flow, JWT token generation, API key usage
+  - **CRUD operations**: Create, read, update, delete with JSON:API format
+  - **OData filtering**: Complex filter expressions with examples
+  - **Pagination**: Cursor-based and offset-based pagination
+  - **Batch operations**: Bulk create, update, delete
+  - **Error handling**: Error response interpretation, retry logic
+  - Include examples in: Python (httpx), JavaScript (fetch), cURL
+  - Provide complete Postman collection
+
+- [ ] 2.4.2 **Create GraphQL API examples guide** at `docs/api/graphql_examples.md`:
+  - **Query composition**: Simple and complex queries with fragments
+  - **Mutations**: Create, update, delete operations with variables
+  - **Subscriptions**: Real-time updates with WebSocket
+  - **Error handling**: Partial results, error interpretation
+  - **Batching**: Query batching with DataLoader
+  - Include examples in: Python (gql), JavaScript (Apollo Client)
+  - Provide GraphQL Playground examples
+
+- [ ] 2.4.3 **Create gRPC API examples guide** at `docs/api/grpc_examples.md`:
+  - **Client setup**: Channel creation, stub initialization
+  - **Unary RPC**: Request-response examples
+  - **Server streaming**: Streaming responses
+  - **Client streaming**: Streaming requests
+  - **Bidirectional streaming**: Full duplex communication
+  - **Error handling**: Status codes, metadata inspection
+  - Include examples in: Python (grpcio), Java, Go
+
+- [ ] 2.4.4 **Create SSE examples guide** at `docs/api/sse_examples.md`:
+  - **EventSource setup**: Client-side event handling
+  - **Event types**: Progress events, completion events, error events
+  - **Reconnection handling**: Automatic reconnection, backoff strategies
+  - **Error handling**: Connection failures, timeout handling
+  - Include examples in: JavaScript (native EventSource), Python (sseclient)
+
+- [ ] 2.4.5 **Document rate limit handling** at `docs/api/rate_limiting.md`:
+  - Rate limit headers interpretation
+  - Quota management strategies
+  - Exponential backoff implementation
+  - Circuit breaker pattern
+  - Example implementations in multiple languages
+
+- [ ] 2.4.6 **Document authentication flows** at `docs/api/authentication_flows.md`:
+  - OAuth 2.0 authorization code flow with PKCE
+  - Client credentials flow for service-to-service
+  - JWT token structure and validation
+  - Token refresh procedures
+  - API key management and rotation
+  - Example implementations for each flow
+
+### 2.5 Performance Tuning Documentation
+
+- [ ] 2.5.1 **Create performance profiling guide** at `docs/operations/performance_profiling.md`:
+  - **Python profiling**: cProfile usage, py-spy flame graphs, line_profiler
+  - **Memory profiling**: memray usage, memory leak detection
+  - **GPU profiling**: nvidia-smi, nsys, Nsight Systems
+  - **Database profiling**: Neo4j query profiling, OpenSearch slow query log
+  - **Network profiling**: Latency measurement, bandwidth analysis
+  - Include profiling scripts and examples for each
+
+- [ ] 2.5.2 **Document database optimization** at `docs/operations/database_optimization.md`:
+  - **Neo4j optimization**: Index creation, query optimization, memory tuning
+  - **OpenSearch optimization**: Index settings, shard configuration, mapping optimization
+  - **PostgreSQL optimization**: Query optimization, connection pooling, vacuum strategies
+  - Include benchmarking procedures and expected performance characteristics
+
+- [ ] 2.5.3 **Document vector index optimization** at `docs/operations/vector_index_optimization.md`:
+  - **FAISS index tuning**: Index type selection (Flat, IVF, HNSW), parameter tuning
+  - **Index building**: Training procedures, quantization strategies
+  - **Query optimization**: nprobe tuning, batch query optimization
+  - **Memory management**: Index loading strategies, GPU memory optimization
+  - Include performance benchmarks for different configurations
+
+- [ ] 2.5.4 **Document cache tuning** at `docs/operations/cache_tuning.md`:
+  - **Redis configuration**: Memory limits, eviction policies, persistence settings
+  - **Cache invalidation**: TTL strategies, manual invalidation, cache warming
+  - **Cache hit rate optimization**: Key design, cache partitioning
+  - **Monitoring**: Cache hit rate metrics, memory usage tracking
+
+- [ ] 2.5.5 **Document GPU optimization** at `docs/operations/gpu_optimization.md`:
+  - **Batch size tuning**: Finding optimal batch sizes for different models
+  - **VRAM management**: Memory allocation strategies, model quantization
+  - **Multi-GPU strategies**: Data parallelism, model parallelism
+  - **vLLM optimization**: KV cache configuration, prefix caching
+  - Include GPU memory usage monitoring and OOM prevention
+
+- [ ] 2.5.6 **Document connection pool tuning** at `docs/operations/connection_pooling.md`:
+  - **HTTP connection pools**: httpx pool configuration, timeout tuning
+  - **Database connection pools**: Neo4j, PostgreSQL pool sizing
+  - **Redis connection pools**: Connection limits, retry configuration
+  - Include formulas for calculating optimal pool sizes
+
+- [ ] 2.5.7 **Create performance regression detection guide** at `docs/operations/performance_regression.md`:
+  - Baseline performance metrics
+  - Automated performance testing in CI
+  - Regression detection thresholds
+  - Investigation procedures for regressions
+  - Performance budgets by endpoint/operation
+
+### 2.6 Security Documentation
+
+- [ ] 2.6.1 **Create security architecture document** at `docs/architecture/security.md`:
+  - **Threat model**: Identified threats, attack vectors, mitigations
+  - **Attack surface analysis**: External endpoints, internal APIs, data flows
+  - **Defense in depth**: Multiple security layers
+  - **Authentication architecture**: OAuth 2.0, JWT, API keys
+  - **Authorization architecture**: Scope-based access control, RBAC
+  - **Multi-tenant isolation**: Data segregation, query filtering
+  - **Data encryption**: At rest (database, S3), in transit (TLS)
+  - **Secret management**: Vault integration, rotation procedures
+  - Include security architecture diagrams
+
+- [ ] 2.6.2 **Document authentication implementation** at `docs/architecture/authentication.md`:
+  - OAuth 2.0 implementation details
+  - JWT structure and claims
+  - Token generation and validation
+  - Token expiration and refresh
+  - API key generation and validation
+  - Multi-factor authentication considerations
+
+- [ ] 2.6.3 **Document authorization implementation** at `docs/architecture/authorization.md`:
+  - Scope definitions and hierarchy
+  - Permission checking at endpoints
+  - Tenant isolation enforcement
+  - Role-based access control
+  - Attribute-based access control considerations
+
+- [ ] 2.6.4 **Create security testing guide** at `docs/operations/security_testing.md`:
+  - **Automated security testing**: Dependency scanning, SAST, DAST
+  - **Penetration testing checklist**: Common vulnerabilities, testing procedures
+  - **Security regression testing**: Automated security tests in CI
+  - **Vulnerability management**: Tracking, prioritization, remediation
+
+- [ ] 2.6.5 **Document compliance requirements** at `docs/operations/compliance.md`:
+  - **HIPAA compliance**: PHI handling, audit logging, encryption, access controls
+  - **GDPR compliance**: Data protection, consent management, right to erasure
+  - **Audit logging**: What to log, log retention, log analysis
+  - **Data retention policies**: Retention periods, data disposal
+  - **Patient data handling**: Special procedures for healthcare data
+
+- [ ] 2.6.6 **Create security incident response plan** at `docs/operations/security_incident_response.md`:
+  - Incident classification and severity levels
+  - Escalation procedures and contact list
+  - Containment procedures
+  - Investigation procedures
+  - Communication templates
+  - Post-incident review process
+
+- [ ] 2.6.7 **Document input validation** at `docs/architecture/input_validation.md`:
+  - Pydantic validation patterns
+  - SQL/Cypher injection prevention
+  - XSS prevention strategies
+  - CSRF protection mechanisms
+  - File upload validation
+
+### 2.7 Monitoring & Observability Documentation
+
+- [ ] 2.7.1 **Create comprehensive metrics catalog** at `docs/operations/metrics_catalog.md`:
+  - **For EACH metric**: Name, type (counter/gauge/histogram), description, labels, expected ranges, alert thresholds
+  - Group by subsystem: Gateway, Services, Adapters, Orchestration, Storage, GPU
+  - Include Prometheus query examples for common dashboards
+  - Document metric naming conventions (prefix, labels, units)
+  - Include cardinality considerations for labels
+
+- [ ] 2.7.2 **Document alert rules** at `docs/operations/alert_rules.md`:
+  - **For EACH alert**: Name, condition, threshold, severity, description, investigation steps
+  - Group by severity: Critical (P0), High (P1), Medium (P2), Low (P3)
+  - Include escalation procedures
+  - Document alert fatigue prevention strategies
+  - Provide runbook links for each alert
+
+- [ ] 2.7.3 **Create dashboard usage guide** at `docs/operations/dashboard_guide.md`:
+  - **For EACH dashboard**: Purpose, key metrics, interpretation guide
+  - System overview dashboard
+  - Service-specific dashboards
+  - Performance dashboards
+  - Error tracking dashboards
+  - Business metrics dashboards
+
+- [ ] 2.7.4 **Document log aggregation setup** at `docs/operations/log_aggregation.md`:
+  - Log collection configuration
+  - Log parsing and indexing
+  - Log retention policies
+  - Log query examples (structured log queries)
+  - Common log patterns and investigations
+
+- [ ] 2.7.5 **Create trace analysis guide** at `docs/operations/trace_analysis.md`:
+  - OpenTelemetry span interpretation
+  - Jaeger UI navigation
+  - Performance bottleneck identification
+  - Error tracing and debugging
+  - Distributed trace correlation
+
+- [ ] 2.7.6 **Define SLO/SLI metrics** at `docs/operations/slo_sli_definitions.md`:
+  - **For EACH SLO**: Service, SLI definition, target, error budget
+  - Retrieval latency SLO (P95 < 500ms)
+  - API availability SLO (99.9% uptime)
+  - Ingestion throughput SLO (100+ docs/sec)
+  - Include SLO tracking dashboards and alerts
+
+- [ ] 2.7.7 **Create on-call procedures** at `docs/operations/on_call_procedures.md`:
+  - On-call rotation schedule
+  - Incident response procedures
+  - Escalation matrix
+  - Runbook index
+  - Post-mortem template
+
+### 2.8 Data Model Documentation
+
+- [ ] 2.8.1 **Create comprehensive data model reference** at `docs/guides/data_models.md`:
+  - **For EACH model class**: Complete field documentation, validation rules, examples
+  - Intermediate Representation (IR) models
+  - Entity models (Document, Block, Section, Entity, Claim)
+  - Domain overlay models (Medical/FHIR, Financial/XBRL, Legal/LegalDocML)
+  - Request/Response models for all APIs
+  - Include complete JSON examples for each model
+
+- [ ] 2.8.2 **Create entity relationship diagrams** at `docs/diagrams/data_model_er.mmd`:
+  - Core entity relationships
+  - Domain overlay relationships
+  - Cardinality and constraints
+  - Key relationships for navigation
+
+- [ ] 2.8.3 **Create graph schema documentation** at `docs/guides/graph_schema.md`:
+  - **For EACH node type**: Properties, relationships, constraints, indexes
+  - **For EACH relationship type**: Direction, properties, cardinality
+  - Include Cypher query examples
+  - Include graph visualization
+
+- [ ] 2.8.4 **Document validation rules** at `docs/guides/validation_rules.md`:
+  - Pydantic validators for each model
+  - SHACL shapes for graph validation
+  - FHIR validation rules
+  - UCUM unit validation
+  - Custom validation logic
+
+- [ ] 2.8.5 **Document schema evolution** at `docs/guides/schema_evolution.md`:
+  - Schema versioning strategy
+  - Backwards compatibility rules
+  - Breaking change procedures
+  - Migration procedures for schema changes
+  - Deprecation strategy
+
+- [ ] 2.8.6 **Create example payloads** at `docs/api/example_payloads/`:
+  - Create directory with JSON files for each major model
+  - Include minimal examples and complete examples
+  - Include edge cases and error examples
+  - Reference from API documentation
+
+### 2.9 Testing Strategy Documentation
+
+- [ ] 2.9.1 **Create comprehensive testing guide** at `docs/guides/testing_strategy.md`:
+  - **Testing pyramid**: Unit 70%, Integration 20%, E2E 10% with rationale
+  - **Test coverage requirements**: Minimum 80% overall, 90% for critical paths
+  - **Testing frameworks**: pytest, k6, Schemathesis, GraphQL Inspector, Buf
+  - **Test organization**: Directory structure, naming conventions
+  - **Continuous integration**: How tests run in CI, blocking criteria
+
+- [ ] 2.9.2 **Document mock and fixture patterns** at `docs/guides/testing_mocks_fixtures.md`:
+  - **Mock patterns**: External API mocking with responses, httpx_mock usage
+  - **Fixture patterns**: Factory fixtures, parametrized fixtures, scope management
+  - **Test data generation**: Realistic data with Faker, domain-specific generators
+  - **Database fixtures**: Docker test containers, fixture data loading
+  - Include complete examples for each pattern
+
+- [ ] 2.9.3 **Document integration test setup** at `docs/guides/integration_testing.md`:
+  - Docker Compose test environment
+  - Service startup and health checking
+  - Test data seeding
+  - Test isolation and cleanup
+  - Parallel test execution
+
+- [ ] 2.9.4 **Document contract testing** at `docs/guides/contract_testing.md`:
+  - **REST contract testing**: Schemathesis configuration and usage
+  - **GraphQL contract testing**: GraphQL Inspector breaking change detection
+  - **gRPC contract testing**: Buf lint and breaking change detection
+  - **Contract test automation**: Integration with CI/CD
+  - Include examples of caught breaking changes
+
+- [ ] 2.9.5 **Document performance testing** at `docs/guides/performance_testing.md`:
+  - **k6 test scripts**: Load testing, stress testing, spike testing
+  - **Performance thresholds**: P95 latency, error rate, throughput
+  - **Baseline establishment**: Recording baseline performance
+  - **Regression detection**: Comparing against baselines
+  - **Result interpretation**: Analyzing k6 output
+
+- [ ] 2.9.6 **Document test writing guidelines** at `docs/guides/test_writing_guidelines.md`:
+  - Test naming conventions (test_component_behavior_condition)
+  - Assertion best practices (specific, isolated, repeatable)
+  - Test documentation (docstrings for tests)
+  - Test independence (no shared state)
+  - Test data management (factories, builders)
+
+### 2.10 Operational Runbooks
+
+- [ ] 2.10.1 **Create service restart runbook** at `docs/runbooks/service_restart.md`:
+  - **Pre-restart checks**: Health status, current load, recent deployments
+  - **Graceful shutdown**: Stop accepting new requests, drain connections
+  - **Restart execution**: Service-specific restart commands
+  - **Post-restart validation**: Health checks, smoke tests, metric validation
+  - **Rollback procedures**: If validation fails
+  - **Communication**: When to notify, what to communicate
+  - Include decision tree for restart scenarios
+
+- [ ] 2.10.2 **Create database maintenance runbook** at `docs/runbooks/database_maintenance.md`:
+  - **Neo4j maintenance**: Backup, index rebuild, compaction, consistency check
+  - **OpenSearch maintenance**: Index optimization, shard rebalancing, snapshot/restore
+  - **PostgreSQL maintenance**: Vacuum, analyze, reindex, backup verification
+  - **Redis maintenance**: Memory optimization, persistence verification
+  - Include maintenance schedules and timing recommendations
+
+- [ ] 2.10.3 **Create index rebuild runbook** at `docs/runbooks/index_rebuild.md`:
+  - **Pre-rebuild preparation**: Backup verification, downtime scheduling
+  - **Rebuild procedures**: For Neo4j, OpenSearch, FAISS indexes
+  - **Validation**: Query performance verification, data integrity checks
+  - **Rollback procedures**: Restoring from backup if needed
+  - Include timing estimates for different data volumes
+
+- [ ] 2.10.4 **Create cache invalidation runbook** at `docs/runbooks/cache_invalidation.md`:
+  - **Selective invalidation**: Invalidate specific keys or patterns
+  - **Full cache flush**: When and how to flush entire cache
+  - **Cache warming**: Pre-populating cache after invalidation
+  - **Validation**: Verify cache repopulation
+  - Include impact assessment and timing
+
+- [ ] 2.10.5 **Create backup verification runbook** at `docs/runbooks/backup_verification.md`:
+  - **Verification schedule**: How often to test backups
+  - **Restore test procedures**: Test restore in isolated environment
+  - **Data integrity validation**: Verify restored data completeness
+  - **Performance validation**: Verify restored system performance
+  - **Documentation**: Record test results and issues
+
+- [ ] 2.10.6 **Create capacity planning runbook** at `docs/runbooks/capacity_planning.md`:
+  - **Growth projections**: Data volume, user count, query volume
+  - **Resource utilization trends**: CPU, memory, disk, GPU
+  - **Scaling thresholds**: When to add capacity
+  - **Cost projections**: Infrastructure cost forecasting
+  - **Scaling procedures**: Horizontal vs. vertical scaling
+
+- [ ] 2.10.7 **Create incident response runbook** at `docs/runbooks/incident_response.md`:
+  - **Incident classification**: Severity levels (P0-P4) with examples
+  - **Initial response**: Triage, assessment, containment
+  - **Investigation**: Log analysis, metric analysis, trace analysis
+  - **Resolution**: Fix implementation, validation, verification
+  - **Communication**: Status updates, stakeholder notifications
+  - **Post-incident**: Post-mortem, action items, prevention
+  - Include decision trees for common incident types
+
+## 3. Standards Extension & Tooling Enhancement
+
+### 3.1 Extend Documentation Templates
 
 - [ ] 2.1.1 **Create adapter module template** at `templates/adapter_module_docstring.py`:
 

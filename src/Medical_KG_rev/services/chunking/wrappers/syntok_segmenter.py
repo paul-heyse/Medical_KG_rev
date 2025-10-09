@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, Tuple
 
 Segment = Tuple[int, int, str]
 
@@ -14,7 +14,7 @@ class SyntokSentenceSegmenter:
     def __init__(self, analyzer_factory: Callable[[], Callable[[str], Iterable[Iterable[object]]]] | None = None) -> None:
         self._analyzer_factory = analyzer_factory or _cached_analyzer
 
-    def segment(self, text: str) -> List[Segment]:
+    def segment(self, text: str) -> list[Segment]:
         analyze = self._analyzer_factory()
         segments: List[Segment] = []
         cursor = 0

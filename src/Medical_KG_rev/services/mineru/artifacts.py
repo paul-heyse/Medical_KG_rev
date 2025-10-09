@@ -51,7 +51,7 @@ from __future__ import annotations
 # IMPORTS
 # ==============================================================================
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Iterable, Iterator
+from typing import Any, Generic, Iterable, Iterator
 
 from Medical_KG_rev.models.artifact import ArtifactType
 from Medical_KG_rev.models.equation import Equation
@@ -92,7 +92,7 @@ class ArtifactCollection(Generic[ArtifactType]):
     """
 
     items: tuple[ArtifactType, ...]
-    index: Dict[str, ArtifactType]
+    index: dict[str, ArtifactType]
 
     @classmethod
     def from_iterable(cls, values: Iterable[ArtifactType]) -> ArtifactCollection[ArtifactType]:
@@ -113,7 +113,7 @@ class ArtifactCollection(Generic[ArtifactType]):
             >>> assert len(collection) == 2
         """
         items: list[ArtifactType] = []
-        index: Dict[str, ArtifactType] = {}
+        index: dict[str, ArtifactType] = {}
         for value in values:
             if value.id in index:
                 raise ValueError(f"Duplicate artefact identifier detected: '{value.id}'")

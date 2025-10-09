@@ -6,7 +6,7 @@ import os
 import warnings
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Callable, List, Sequence, Tuple
+from typing import Callable, Sequence, Tuple
 
 Segment = Tuple[int, int, str]
 
@@ -185,7 +185,7 @@ class HuggingFaceSentenceSegmenter:
     def __init__(self, loader: Callable[[], Callable[[str], List[Segment]]] | None = None) -> None:
         self._loader = loader or default_segmenter
 
-    def segment(self, text: str) -> List[Segment]:
+    def segment(self, text: str) -> list[Segment]:
         segmenter = self._loader()
         segments = segmenter(text)
         return _merge_abbreviation_segments(text, segments)

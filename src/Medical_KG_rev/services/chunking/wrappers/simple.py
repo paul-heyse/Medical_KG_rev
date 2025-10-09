@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from Medical_KG_rev.models.ir import Document
 
@@ -21,7 +21,7 @@ class SimpleChunker(BaseProfileChunker):
         self._target_tokens = profile.get("target_tokens", 256)
         self._overlap_tokens = profile.get("overlap_tokens", 0)
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered_document, groups = self._prepare_groups(document)
         chunk_texts: List[str] = []
         chunk_to_group: List[int] = []

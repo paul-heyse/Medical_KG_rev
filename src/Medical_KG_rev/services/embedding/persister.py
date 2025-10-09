@@ -48,7 +48,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Dict, Mapping, MutableMapping, Sequence
+from typing import Any, Mapping, MutableMapping, Sequence
 
 import structlog
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
@@ -487,7 +487,7 @@ class DatabasePersister(EmbeddingPersister):
             telemetry: Optional telemetry instance for metrics
         """
         super().__init__(telemetry=telemetry)
-        self._store: Dict[str, EmbeddingRecord] = {}
+        self._store: dict[str, EmbeddingRecord] = {}
 
     def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
         """Persist records to in-memory store.
@@ -652,7 +652,7 @@ class HybridPersister(EmbeddingPersister):
         Note:
             Records without registered persisters are counted as errors.
         """
-        grouped: Dict[str, list[EmbeddingRecord]] = {}
+        grouped: dict[str, list[EmbeddingRecord]] = {}
         for record in records:
             grouped.setdefault(record.kind, []).append(record)
         for kind, items in grouped.items():
@@ -740,7 +740,7 @@ def build_persister(
     if resolved.backend.lower() == "hybrid":
         if not resolved.hybrid_backends:
             raise ValueError("Hybrid persister requires 'hybrid_backends' mapping")
-        mapping: Dict[str, EmbeddingPersister] = {}
+        mapping: dict[str, EmbeddingPersister] = {}
         for kind, backend in resolved.hybrid_backends.items():
             mapping[kind] = _build_backend(backend, router, telemetry=telemetry)
         persister: EmbeddingPersister = HybridPersister(mapping, telemetry=telemetry)

@@ -11,10 +11,12 @@ import without requiring a global service locator.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Protocol
+from typing import Any, Callable, Protocol
 
 from Medical_KG_rev.models.ir import Document
+
 from .validation import ensure_valid_chunks
+
 
 @dataclass(slots=True)
 class Chunk:
@@ -40,7 +42,7 @@ class ChunkerPort(Protocol):
 ChunkerFactory = Callable[..., ChunkerPort]
 
 
-CHUNKER_REGISTRY: Dict[str, ChunkerFactory] = {}
+CHUNKER_REGISTRY: dict[str, ChunkerFactory] = {}
 
 
 class UnknownChunkerError(RuntimeError):

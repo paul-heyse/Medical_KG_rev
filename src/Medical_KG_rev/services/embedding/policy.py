@@ -47,7 +47,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field, replace
 from time import perf_counter
-from typing import Callable, Dict, Iterable, Mapping, MutableMapping, Tuple
+from typing import Callable, Iterable, Mapping, MutableMapping, Tuple
 
 import structlog
 from Medical_KG_rev.services.embedding.namespace.access import (
@@ -509,7 +509,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
         try:
             config = self.registry.get(namespace)
         except ValueError as exc:
-            metadata: Dict[str, object] = {"error": str(exc)}
+            metadata: dict[str, object] = {"error": str(exc)}
             return NamespaceAccessDecision(
                 namespace=namespace,
                 tenant_id=tenant_id,

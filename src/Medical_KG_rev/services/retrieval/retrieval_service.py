@@ -221,7 +221,6 @@ class RetrievalService:
         self,
         opensearch: OpenSearchClient,
         faiss: FAISSIndex | None = None,
-        reranker: Callable[..., object] | None = None,
         *,
         vector_store: VectorStoreService | None = None,
         vector_namespace: str = "default",
@@ -242,7 +241,6 @@ class RetrievalService:
         Args:
             opensearch: OpenSearch client for lexical search
             faiss: Optional FAISS index for dense vector search
-            reranker: Optional reranker callable (legacy parameter)
             vector_store: Optional vector store service for hybrid search
             vector_namespace: Namespace for vector operations
             context_factory: Optional factory for security contexts
@@ -320,7 +318,7 @@ class RetrievalService:
             settings=pipeline_settings,
         )
         self._candidate_pool = max(100, pipeline_settings.retrieve_candidates)
-        self.reranker = reranker or CrossEncoderReranker()
+        self.reranker = CrossEncoderReranker()
         configured_model_key: str | None = None
         if reranking_settings and reranking_settings.model.model:
             configured_model_key = reranking_settings.model.model

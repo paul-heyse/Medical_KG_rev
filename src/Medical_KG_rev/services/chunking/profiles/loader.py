@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
 
 import yaml
 
@@ -19,7 +18,7 @@ class ProfileRepository:
 
     def __init__(self, directory: Path | None = None) -> None:
         self._directory = directory or DEFAULT_PROFILE_DIR
-        self._cache: Dict[str, Profile] = {}
+        self._cache: dict[str, Profile] = {}
 
     def get(self, profile_name: str) -> Profile:
         if profile_name in self._cache:

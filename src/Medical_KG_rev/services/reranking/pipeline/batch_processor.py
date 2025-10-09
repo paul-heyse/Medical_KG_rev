@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
 from time import perf_counter
-from typing import Callable, Optional
+from typing import Callable
 
 import structlog
 
@@ -71,7 +71,7 @@ class BatchProcessor:
             return max(1, min(requested, self.max_batch_size // 2))
         return min(requested, self.max_batch_size)
 
-    def gpu_memory_snapshot(self) -> Optional[float]:
+    def gpu_memory_snapshot(self) -> float | None:
         if torch is None or not hasattr(torch, "cuda") or not torch.cuda.is_available():  # type: ignore[attr-defined]
             return None
         try:  # pragma: no cover - depends on GPU runtime

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import Sequence, Tuple
 
 from ..provenance import BlockContext
 from ..tokenization import TokenCounter, default_token_counter
@@ -11,7 +11,7 @@ from ..tokenization import TokenCounter, default_token_counter
 
 @dataclass(slots=True)
 class SegmentProjection:
-    contexts: List[BlockContext]
+    contexts: list[BlockContext]
     end_offset: int
 
 

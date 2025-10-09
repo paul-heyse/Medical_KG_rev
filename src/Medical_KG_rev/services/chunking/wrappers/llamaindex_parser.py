@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from Medical_KG_rev.models.ir import Document
 
@@ -39,7 +39,7 @@ class LlamaIndexChunker(BaseProfileChunker):
             )
         self._sentence_split = self._sentence_separator()
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         if self._parser is None or self._document_cls is None:
             return self._fallback_chunk(document)
         return self._llamaindex_chunk(document)

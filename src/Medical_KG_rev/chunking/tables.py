@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence
+from typing import Iterable, Sequence
 
 from .provenance import BlockContext
 from .tokenization import TokenCounter, default_token_counter
@@ -88,7 +88,7 @@ class TableHandler:
                 )
             ]
 
-        slices: List[TableSlice] = []
+        slices: list[TableSlice] = []
         buffer: list[BlockContext] = []
         row_indices: list[int] = []
         for row in rows:

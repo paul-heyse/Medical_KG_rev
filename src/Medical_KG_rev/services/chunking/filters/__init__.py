@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Iterable
-import re
-from typing import Callable, Dict
+from typing import Callable
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
@@ -118,7 +118,7 @@ def preserve_tables_html(document: Document) -> Document:
     return document.model_copy(update={"sections": sections})
 
 
-FILTERS: Dict[str, FilterFunc] = {
+FILTERS: dict[str, FilterFunc] = {
     "drop_boilerplate": drop_boilerplate,
     "exclude_references": exclude_references,
     "deduplicate_page_furniture": deduplicate_page_furniture,

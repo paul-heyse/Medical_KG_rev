@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, Tuple
 
 Segment = Tuple[int, int, str]
 
@@ -48,7 +48,7 @@ class SciSpaCySentenceSegmenter:
     def __init__(self, loader: Callable[[], Callable[[str], Iterable[object]]] | None = None) -> None:
         self._loader = loader or _cached_loader
 
-    def segment(self, text: str) -> List[Segment]:
+    def segment(self, text: str) -> list[Segment]:
         nlp = self._loader()
         doc = nlp(text)
         segments: List[Segment] = []

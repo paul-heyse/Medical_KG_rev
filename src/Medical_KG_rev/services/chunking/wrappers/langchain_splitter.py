@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from Medical_KG_rev.models.ir import Document
 
@@ -45,10 +45,10 @@ class LangChainChunker(BaseProfileChunker):
     def _count_tokens(self, text: str) -> int:
         return len(self._tokenizer.encode(text))
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered_document, groups = self._prepare_groups(document)
-        chunk_texts: List[str] = []
-        chunk_to_group: List[int] = []
+        chunk_texts: list[str] = []
+        chunk_to_group: list[int] = []
         for index, group in enumerate(groups):
             combined = "\n\n".join(ctx.text for ctx in group if ctx.text)
             if not combined:

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Sequence
+from typing import Any, Callable, Sequence
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .errors import RerankingError, UnknownRerankerError
-from .late_interaction import ColBERTReranker, ColbertIndexReranker, QdrantColBERTReranker
+from .late_interaction import ColbertIndexReranker, ColBERTReranker, QdrantColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import RerankerConfig
@@ -18,8 +18,8 @@ from .ports import RerankerPort
 class RerankerFactory:
     """Registry + factory to create reranker instances on demand."""
 
-    _constructors: Dict[str, Callable[[], RerankerPort]] = field(default_factory=dict)
-    _instances: Dict[tuple[str, tuple[Any, ...] | None], RerankerPort] = field(
+    _constructors: dict[str, Callable[[], RerankerPort]] = field(default_factory=dict)
+    _instances: dict[tuple[str, tuple[Any, ...] | None], RerankerPort] = field(
         default_factory=dict
     )
 

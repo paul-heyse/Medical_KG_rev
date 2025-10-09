@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable, List, Sequence
+from typing import Any, Iterable, Sequence
 
 from Medical_KG_rev.models.ir import BlockType, Document, Section
 
@@ -42,7 +42,7 @@ class CTGovRegistryChunker(BaseProfileChunker):
         "Results": "results",
     }
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered = self._apply_filters(document)
         cache = _ContextCache(filtered)
         groups: list[list] = []
@@ -160,7 +160,7 @@ class SPLLabelChunker(BaseProfileChunker):
 
     name = "spl_label"
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered = self._apply_filters(document)
         cache = _ContextCache(filtered)
         groups: list[list] = []
@@ -236,7 +236,7 @@ class GuidelineChunker(BaseProfileChunker):
 
     name = "guideline_recommendation"
 
-    def chunk(self, document: Document, *, profile: str) -> List[Chunk]:
+    def chunk(self, document: Document, *, profile: str) -> list[Chunk]:
         filtered = self._apply_filters(document)
         cache = _ContextCache(filtered)
         groups: list[list] = []

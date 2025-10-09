@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import warnings
 from functools import lru_cache
-from typing import Callable, List, Tuple
+from typing import Callable, Tuple
 
 Segment = Tuple[int, int, str]
 
 
-def get_sentence_splitter(name: str) -> Callable[[str], List[Segment]]:
+def get_sentence_splitter(name: str) -> Callable[[str], list[Segment]]:
     name = name.lower()
     if name in {"huggingface", "hf"}:
         return _huggingface_split
@@ -33,7 +33,7 @@ def _huggingface_segmenter():  # pragma: no cover - heavy dependency path
     return HuggingFaceSentenceSegmenter()
 
 
-def _huggingface_split(text: str) -> List[Segment]:
+def _huggingface_split(text: str) -> list[Segment]:
     segmenter = _huggingface_segmenter()
     return segmenter.segment(text)
 
@@ -45,13 +45,13 @@ def _syntok_segmenter():  # pragma: no cover - heavy dependency path
     return SyntokSentenceSegmenter()
 
 
-def _syntok_split(text: str) -> List[Segment]:
+def _syntok_split(text: str) -> list[Segment]:
     segmenter = _syntok_segmenter()
     return segmenter.segment(text)
 
 
-def _simple_split(text: str) -> List[Segment]:
-    sentences: List[Segment] = []
+def _simple_split(text: str) -> list[Segment]:
+    sentences: list[Segment] = []
     cursor = 0
     for part in [segment.strip() for segment in text.split(". ") if segment.strip()]:
         idx = text.find(part, cursor)

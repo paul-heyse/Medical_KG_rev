@@ -40,6 +40,7 @@ Example:
     >>> adapter = MyAdapter("my-adapter")
     >>> context = AdapterContext(tenant_id="t1", domain="medical", correlation_id="c1")
     >>> result = adapter.run(context)
+
 """
 
 # ==============================================================================
@@ -91,6 +92,7 @@ class BaseAdapter(ABC):
 
         Args:
             name: Unique identifier for this adapter instance.
+
         """
         self.name = name
 
@@ -103,6 +105,7 @@ class BaseAdapter(ABC):
 
         Returns:
             Iterable of raw payload dictionaries from external systems.
+
         """
 
     @abstractmethod
@@ -117,6 +120,7 @@ class BaseAdapter(ABC):
 
         Returns:
             Sequence of parsed domain documents.
+
         """
 
     def validate(self, documents: Sequence[Document], context: AdapterContext) -> Sequence[str]:
@@ -128,6 +132,7 @@ class BaseAdapter(ABC):
 
         Returns:
             Sequence of validation warning messages.
+
         """
         warnings: list[str] = []
         for document in documents:
@@ -144,6 +149,7 @@ class BaseAdapter(ABC):
         Args:
             documents: Documents to persist.
             context: Adapter context with tenant and domain information.
+
         """
 
     def run(self, context: AdapterContext) -> AdapterResult:
@@ -154,6 +160,7 @@ class BaseAdapter(ABC):
 
         Returns:
             Adapter result containing documents and warnings.
+
         """
         payloads = self.fetch(context)
         documents = self.parse(payloads, context)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Gauge, Histogram
 
-
 VECTOR_OPERATION_LATENCY = Histogram(
     "vector_operation_duration_seconds",
     "Latency distribution for vector store operations",

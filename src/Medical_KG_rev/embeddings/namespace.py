@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 from .ports import EmbedderConfig, EmbeddingKind
 
@@ -33,7 +33,6 @@ class NamespaceManager:
 
     def reset(self) -> None:
         """Clear registered namespaces and observed dimensions."""
-
         self._namespaces.clear()
         self._observed_dims.clear()
 

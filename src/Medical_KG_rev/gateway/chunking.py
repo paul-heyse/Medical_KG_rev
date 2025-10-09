@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Literal, Sequence
+from typing import Literal
 
 from Medical_KG_rev.chunking.exceptions import (
     ChunkerConfigurationError,
@@ -201,5 +202,5 @@ class ChunkingErrorTranslator:
         raise exc
 
 
-__all__ = ["ChunkingErrorTranslator", "TranslatedChunkingError", "ChunkingSeverity"]
+__all__ = ["ChunkingErrorTranslator", "ChunkingSeverity", "TranslatedChunkingError"]
 

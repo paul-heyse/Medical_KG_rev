@@ -197,7 +197,6 @@ class MineruSettings(BaseModel):
 
     def cli_timeout_seconds(self) -> int:
         """Expose worker timeout for CLI invocations."""
-
         return self.workers.timeout_seconds
 
 
@@ -426,7 +425,7 @@ class RerankerModelSettings(BaseModel):
     requires_gpu: bool = False
 
     @model_validator(mode="after")
-    def validate_model_availability(self) -> "RerankerModelSettings":
+    def validate_model_availability(self) -> RerankerModelSettings:
         from Medical_KG_rev.services.reranking.errors import UnknownRerankerError
         from Medical_KG_rev.services.reranking.factory import RerankerFactory
 
@@ -552,7 +551,6 @@ class RedisCacheSettings(BaseModel):
 
 def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:
     """Convert legacy reranking configuration dictionaries into the new schema."""
-
     migrated: dict[str, Any] = dict(payload)
     legacy_model = migrated.pop("model_name", None)
     if legacy_model and "model" not in migrated:
@@ -664,7 +662,6 @@ class SecretResolver:
 
     def get_secret(self, path: str) -> dict[str, Any]:
         """Resolve secret either from Vault or environment."""
-
         if self._client is not None:
             response = self._client.secrets.kv.v2.read_secret_version(path=path)
             return response["data"]["data"]
@@ -690,7 +687,6 @@ def _deep_update(target: dict[str, Any], updates: Mapping[str, Any]) -> dict[str
 
 def load_settings(environment: str | None = None) -> AppSettings:
     """Load application settings with environment specific defaults applied."""
-
     env_value = (environment or os.getenv("MK_ENV", "dev")).lower()
     env = Environment(env_value)
     defaults = ENVIRONMENT_DEFAULTS.get(env, {})
@@ -707,5 +703,4 @@ def load_settings(environment: str | None = None) -> AppSettings:
 @lru_cache(maxsize=1)
 def get_settings() -> AppSettings:
     """Cached accessor used by production code."""
-
     return load_settings()

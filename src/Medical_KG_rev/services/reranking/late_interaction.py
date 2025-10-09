@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from math import sqrt
 from time import monotonic, perf_counter
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any
 
 import structlog
 
 from .base import BaseReranker
 from .errors import RerankingError
-from .models import QueryDocumentPair, RerankResult, RerankingResponse
+from .models import QueryDocumentPair, RerankingResponse, RerankResult
 from .utils import FeatureView, clamp
 
 logger = structlog.get_logger(__name__)
@@ -69,7 +70,6 @@ class ColBERTReranker(BaseReranker):
         batch_size: int | None = None,
     ) -> RerankingResponse:
         """Perform a cached batch MaxSim computation."""
-
         started = perf_counter()
         limit = len(pairs) if top_k is None else min(len(pairs), top_k)
         prepared = self._prepare_vectors(pairs[:limit])

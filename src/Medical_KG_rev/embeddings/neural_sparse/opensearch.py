@@ -11,7 +11,6 @@ from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.records import RecordBuilder
 
-
 logger = structlog.get_logger(__name__)
 
 

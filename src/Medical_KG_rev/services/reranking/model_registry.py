@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
-import json
 import yaml
 
 from Medical_KG_rev.observability import logger as global_logger

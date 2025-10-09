@@ -50,6 +50,7 @@ Example:
     ... )
     >>> response = worker.run(request)
     >>> print(f"Generated {len(response.vectors)} vectors")
+
 """
 
 from __future__ import annotations
@@ -59,8 +60,9 @@ from __future__ import annotations
 # ================================================================================
 import math
 import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import structlog
 from Medical_KG_rev.adapters import get_plugin_manager
@@ -82,7 +84,6 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     StageContext,
 )
 
-from .namespace.registry import EmbeddingNamespaceRegistry
 from .registry import EmbeddingModelRegistry
 
 # ==============================================================================
@@ -111,6 +112,7 @@ def _default_stage_factory() -> StageFactory:
     Example:
         >>> factory = _default_stage_factory()
         >>> stage = factory.resolve("pipeline", StageDefinition(name="embed", type="embed"))
+
     """
     adapter_manager = get_plugin_manager()
     pipeline_resource = create_default_pipeline_resource()
@@ -156,7 +158,9 @@ class EmbeddingRequest:
         ...     normalize=True,
         ...     model="text-embedding-ada-002"
         ... )
+
     """
+
     tenant_id: str
     texts: Sequence[str]
     chunk_ids: Sequence[str] | None = None
@@ -197,7 +201,9 @@ class EmbeddingVector:
         ...     metadata={"source": "document.pdf"}
         ... )
         >>> print(f"Dimension: {vector.dimension}")
+
     """
+
     id: str
     model: str
     kind: str = "dense"
@@ -214,6 +220,7 @@ class EmbeddingVector:
         Example:
             >>> vector = EmbeddingVector(id="test", model="test", values=(1.0, 2.0, 3.0))
             >>> print(vector.dimension)  # 3
+
         """
         return len(self.values)
 
@@ -238,7 +245,9 @@ class EmbeddingResponse:
         ...     id="chunk_1", model="test", values=(1.0, 2.0)
         ... ))
         >>> print(f"Generated {len(response.vectors)} vectors")
+
     """
+
     vectors: list[EmbeddingVector] = field(default_factory=list)
 
 
@@ -281,11 +290,12 @@ class EmbeddingWorker:
         ... )
         >>> response = worker.run(request)
         >>> print(f"Generated {len(response.vectors)} vectors")
+
     """
 
     def __init__(
         self,
-        registry: EmbeddingModelRegistry | None = None,  # noqa: ARG002 - retained for compatibility
+        registry: EmbeddingModelRegistry | None = None,
         *,
         stage_factory: StageFactory | None = None,
         embed_stage: EmbedStage | None = None,
@@ -307,6 +317,7 @@ class EmbeddingWorker:
             If no stage_factory is provided, a default one is created.
             The embed_stage is cached after first resolution to avoid
             repeated lookups.
+
         """
         self._stage_factory = stage_factory or _default_stage_factory()
         self._embed_stage = embed_stage
@@ -338,8 +349,8 @@ class EmbeddingWorker:
             ... )
             >>> response = worker.run(request)
             >>> print(f"Generated {len(response.vectors)} vectors")
-        """
 
+        """
         cleaned_texts = [
             text.strip()
             for text in request.texts
@@ -402,6 +413,7 @@ class EmbeddingWorker:
             ... )
             >>> response = worker.encode_queries(request)
             >>> print(f"Encoded {len(response.vectors)} queries")
+
         """
         return self.run(request)
 
@@ -424,6 +436,7 @@ class EmbeddingWorker:
             >>> worker = EmbeddingWorker()
             >>> stage = worker._resolve_stage()
             >>> print(f"Stage type: {type(stage).__name__}")
+
         """
         if self._embed_stage is not None:
             return self._embed_stage
@@ -476,6 +489,7 @@ class EmbeddingWorker:
             ...     metadata=[{"source": "doc1"}, {"source": "doc2"}]
             ... )
             >>> print(f"Built {len(chunks)} chunks")
+
         """
         ids = list(chunk_ids or [])
         if len(ids) < len(texts):
@@ -533,6 +547,7 @@ class EmbeddingWorker:
             >>> # Assuming batch is an EmbeddingBatch instance
             >>> response = worker._response_from_batch(batch, normalize=True)
             >>> print(f"Response contains {len(response.vectors)} vectors")
+
         """
         vectors: list[EmbeddingVector] = []
         for vector in batch.vectors:
@@ -582,7 +597,9 @@ class EmbeddingGrpcService:
         >>> worker = EmbeddingWorker()
         >>> grpc_service = EmbeddingGrpcService(worker)
         >>> # Used by gRPC server for handling requests
+
     """
+
     worker: EmbeddingWorker
 
     async def EmbedChunks(self, request, context):  # type: ignore[override]
@@ -604,6 +621,7 @@ class EmbeddingGrpcService:
             >>> # Called by gRPC server when handling EmbedChunks requests
             >>> response = await grpc_service.EmbedChunks(request, context)
             >>> print(f"Generated {len(response.vectors)} vectors")
+
         """
         embed_request = EmbeddingRequest(
             tenant_id=request.tenant_id,

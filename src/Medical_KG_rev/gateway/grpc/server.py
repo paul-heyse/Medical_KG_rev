@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 import grpc
 
@@ -43,15 +44,15 @@ else:  # pragma: no cover - fallback when grpc-health not installed
     health_pb2 = _StubHealthPb2()
     health_pb2_grpc = _StubHealthGrpc()
 
+from ..auth.scopes import Scopes
 from ..models import (
     ChunkRequest,
-    EmbedRequest,
     EmbeddingOptions,
+    EmbedRequest,
     ExtractionRequest,
     IngestionRequest,
 )
 from ..services import GatewayService, get_gateway_service
-from ..auth.scopes import Scopes
 
 try:  # pragma: no cover - generated modules may be missing in CI
     from Medical_KG_rev.proto.gen import (
@@ -80,7 +81,7 @@ class MineruService(mineru_pb2_grpc.MineruServiceServicer if mineru_pb2_grpc els
         chunks = self.service.chunk_document(chunk_request)
         if mineru_pb2 is None:
             return None
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         response = mineru_pb2.ProcessPdfResponse()
         document = response.document
         document.document_id = request.document_id
@@ -97,7 +98,7 @@ class MineruService(mineru_pb2_grpc.MineruServiceServicer if mineru_pb2_grpc els
         metadata.document_id = request.document_id
         metadata.worker_id = "gateway"
         metadata.started_at = started_at.isoformat()
-        metadata.completed_at = datetime.now(timezone.utc).isoformat()
+        metadata.completed_at = datetime.now(UTC).isoformat()
         metadata.duration_seconds = 0.0
         return response
 

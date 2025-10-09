@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -41,7 +42,7 @@ class ChunkCommand(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
     correlation_id: str = Field(default_factory=lambda: uuid4().hex)
     requested_at: datetime = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
 
     @field_validator("text")
@@ -142,7 +143,6 @@ class ChunkingService:
 
     def chunk(self, command: ChunkCommand) -> list[Chunk]:
         """Chunk raw text into retrieval-ready spans."""
-
         if command.strategy not in self._SUPPORTED_STRATEGIES:
             raise ChunkerConfigurationError(
                 f"Unsupported chunking strategy '{command.strategy}'"

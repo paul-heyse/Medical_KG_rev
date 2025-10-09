@@ -43,6 +43,7 @@ Example:
     ...     strategy="section"
     ... ))
     >>> print(f"Processed {len(result.chunks)} chunks")
+
 """
 from __future__ import annotations
 
@@ -92,6 +93,7 @@ class ChunkingRequest(CoordinatorRequest):
                  Defaults to profile setting if not specified.
         options: Additional metadata and configuration options for chunking.
                  May contain text content, profile overrides, or custom settings.
+
     """
 
     def __init__(
@@ -119,6 +121,7 @@ class ChunkingRequest(CoordinatorRequest):
             options: Additional metadata and configuration options.
             correlation_id: Optional correlation ID for request tracking.
             metadata: Optional metadata for request context.
+
         """
         super().__init__(
             tenant_id=tenant_id,
@@ -141,7 +144,9 @@ class ChunkingResult(CoordinatorResult):
         chunks: Sequence of DocumentChunk objects containing the chunked content
                 and associated metadata. Each chunk includes text content,
                 position information, and chunk-specific metadata.
+
     """
+
     chunks: Sequence[DocumentChunk] = ()
 
 
@@ -195,6 +200,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
         ...     strategy="section"
         ... ))
         >>> print(f"Processed {len(result.chunks)} chunks")
+
     """
 
     def __init__(
@@ -221,6 +227,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
         Raises:
             ValueError: If any required dependency is None or invalid.
             ConfigurationError: If coordinator configuration is invalid.
+
         """
         super().__init__(config=config, metrics=self._metrics(config))
         self._lifecycle = lifecycle
@@ -274,6 +281,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             ...     strategy="section"
             ... ))
             >>> assert len(result.chunks) > 0
+
         """
         job_id = self._lifecycle.create_job(request.tenant_id, "chunk")
         text = self._extract_text(job_id, request)
@@ -348,6 +356,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             ...     text="Sample document text for chunking."
             ... ))
             >>> assert len(text) > 0
+
         """
         candidate = request.text
         if isinstance(candidate, str) and candidate.strip():
@@ -399,6 +408,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             ... except Exception as exc:
             ...     error = coordinator._translate_error("job123", command, exc)
             ...     raise error
+
         """
         report = self._errors.translate(exc, command=command, job_id=job_id)
         if report is None:
@@ -449,6 +459,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             ... })
             >>> assert "text" not in metadata
             >>> assert metadata["profile"] == "section"
+
         """
         if not isinstance(options, Mapping):
             return {}
@@ -488,6 +499,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             ...     ChunkCommand(tenant_id="tenant", document_id="doc1", text="text", strategy="section"),
             ...     ChunkingErrorReport(problem=ProblemDetail(...), metric="ProfileNotFoundError")
             ... )
+
         """
         profile = command.metadata.get("profile")
         if isinstance(profile, str) and profile:

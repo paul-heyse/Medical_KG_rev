@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Self, TypeVar
+from collections.abc import Mapping
+from typing import Any, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,7 +26,6 @@ class StructuredArtifact(Artifact):
         self, updates: Mapping[str, Any] | None = None, **kwargs: Any
     ) -> Self:
         """Merge metadata with the provided values, returning a new instance."""
-
         merged = dict(self.metadata)
         for container in (updates, kwargs):
             if not container:
@@ -38,7 +38,6 @@ class StructuredArtifact(Artifact):
 
     def replace(self, **updates: Any) -> Self:
         """Return a copy with the specified fields replaced."""
-
         if not updates:
             return self
         return self.model_copy(update=updates)
@@ -50,7 +49,6 @@ class StructuredArtifact(Artifact):
         **updates: Any,
     ) -> Self:
         """Return a copy with metadata merged and any additional fields updated."""
-
         payload = dict(updates)
         extra_metadata = payload.pop("metadata", None)
         if extra_metadata is not None:
@@ -71,7 +69,6 @@ class StructuredArtifact(Artifact):
 
     def with_metadata(self, **updates: Any) -> Self:
         """Backward-compatible helper that merges metadata values immutably."""
-
         return self.merge_metadata(updates)
 
 

@@ -33,6 +33,7 @@ Example:
     >>> key = manager.generate(tenant_id="demo", scopes=["ingest:write"])
     >>> manager.authenticate(key.raw_secret)
     ('key_...', APIKeyRecord(...))
+
 """
 
 from __future__ import annotations
@@ -40,7 +41,6 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 import hashlib
 import json
 import secrets
@@ -49,7 +49,6 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..config.settings import APIKeyRecord, AppSettings, SecretResolver, get_settings
-
 
 # ============================================================================
 # DATA MODELS
@@ -67,6 +66,7 @@ class APIKey:
         tenant_id: Tenant identifier that owns the key.
         scopes: Iterable of scopes granted to the key.
         rotated_at: ISO-8601 timestamp string for the most recent rotation.
+
     """
 
     key_id: str
@@ -96,6 +96,7 @@ class APIKeyManager:
     Invariants:
         - ``self._records`` contains only ``APIKeyRecord`` instances.
         - Keys are addressed by ``key_id`` and must be unique.
+
     """
 
     def __init__(self, *, hashing_algorithm: str = "sha256") -> None:
@@ -108,8 +109,8 @@ class APIKeyManager:
         Raises:
             ValueError: If the provided algorithm is not supported by
                 :mod:`hashlib` when hashing is attempted.
-        """
 
+        """
         self.hashing_algorithm = hashing_algorithm
         self._records: dict[str, APIKeyRecord] = {}
 
@@ -118,8 +119,8 @@ class APIKeyManager:
 
         Args:
             records: Mapping of key identifier to ``APIKeyRecord`` metadata.
-        """
 
+        """
         self._records = dict(records)
 
     def generate(
@@ -136,8 +137,8 @@ class APIKeyManager:
         Returns:
             ``APIKey`` containing the identifier, plaintext secret, and hashed
             secret. The caller must persist the plaintext secret.
-        """
 
+        """
         key_id = key_id or f"key_{secrets.token_urlsafe(8)}"
         raw_secret = secrets.token_urlsafe(32)
         hashed = self._hash(raw_secret)
@@ -167,8 +168,8 @@ class APIKeyManager:
 
         Raises:
             KeyError: If the key identifier is unknown.
-        """
 
+        """
         if key_id not in self._records:
             raise KeyError(f"Unknown API key {key_id}")
         record = self._records[key_id]
@@ -186,8 +187,8 @@ class APIKeyManager:
 
         Raises:
             PermissionError: If the provided secret does not match any record.
-        """
 
+        """
         hashed = self._hash(provided_key)
         for key_id, record in self._records.items():
             if record.hashed_secret == hashed:
@@ -205,8 +206,8 @@ class APIKeyManager:
 
         Raises:
             ValueError: If the configured algorithm is unsupported.
-        """
 
+        """
         algorithm = getattr(hashlib, self.hashing_algorithm, None)
         if not algorithm:
             raise ValueError(f"Unsupported hashing algorithm {self.hashing_algorithm}")
@@ -230,8 +231,8 @@ def build_api_key_manager(settings: AppSettings | None = None) -> APIKeyManager:
     Notes:
         When the API key feature is disabled the returned manager will be empty
         but still functional for generating ad-hoc keys (useful in tests).
-    """
 
+    """
     settings = settings or get_settings()
     cfg = settings.security.api_keys
     manager = APIKeyManager(hashing_algorithm=cfg.hashing_algorithm)

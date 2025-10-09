@@ -36,6 +36,7 @@ Examples:
         raise FoundationError("Invalid request", status=400)
     except FoundationError as e:
         response = e.problem.to_response()
+
 """
 
 # IMPORTS
@@ -76,6 +77,7 @@ if _PYDANTIC_AVAILABLE:
                 detail="Invalid input format",
                 type="https://example.com/errors/validation"
             )
+
         """
 
         type: str = Field(default="about:blank")
@@ -93,6 +95,7 @@ if _PYDANTIC_AVAILABLE:
 
             Raises:
                 None: This method never raises exceptions.
+
             """
             data = self.model_dump()
             payload = {key: value for key, value in data.items() if value is not None}
@@ -126,6 +129,7 @@ else:  # pragma: no cover - optional dependency fallback
                 status=400,
                 detail="Invalid input format"
             )
+
         """
 
         title: str
@@ -143,6 +147,7 @@ else:  # pragma: no cover - optional dependency fallback
 
             Raises:
                 None: This method never raises exceptions.
+
             """
             return asdict(self)
 
@@ -154,6 +159,7 @@ else:  # pragma: no cover - optional dependency fallback
 
             Raises:
                 None: This method never raises exceptions.
+
             """
             data = self.model_dump()
             payload = {key: value for key, value in data.items() if value is not None}
@@ -181,6 +187,7 @@ class FoundationError(RuntimeError):
             raise FoundationError("Invalid configuration", status=400)
         except FoundationError as e:
             response = e.problem.to_response()
+
     """
 
     def __init__(self, message: str, *, status: int = 500, detail: str | None = None) -> None:
@@ -193,6 +200,7 @@ class FoundationError(RuntimeError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(message)
         self.problem = ProblemDetail(title=message, status=status, detail=detail)

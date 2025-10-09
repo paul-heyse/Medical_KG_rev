@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 from Medical_KG_rev.models.ir import Block, Document
 
@@ -120,7 +120,6 @@ class ContextualChunker(BaseChunker, ABC):
         blocks: Sequence[Block] | None = None,
     ) -> Iterable[Segment]:
         """Segment the document after context normalization."""
-
         if self._segmenter is not None:
             return self._segmenter.plan(contexts)
         return self.segment_contexts(contexts)
@@ -161,7 +160,6 @@ def resolve_sentence_encoder(
     encoder: object | None,
 ) -> object:
     """Resolve a sentence transformer encoder with optional GPU placement."""
-
     if encoder is not None:
         return encoder
     try:  # pragma: no cover - optional dependency
@@ -212,7 +210,7 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
 
     def encode_contexts(
         self, contexts: Sequence[BlockContext]
-    ) -> "np.ndarray":  # type: ignore[name-defined]
+    ) -> np.ndarray:  # type: ignore[name-defined]
         import numpy as np
 
         sentences = [ctx.text for ctx in contexts]

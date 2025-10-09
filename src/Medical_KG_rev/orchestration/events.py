@@ -20,6 +20,7 @@ Example:
     >>> factory = CloudEventFactory()
     >>> emitter = StageEventEmitter(kafka_client)
     >>> emitter.emit_started(ctx, "processing", attempt=1)
+
 """
 
 from __future__ import annotations
@@ -81,6 +82,7 @@ def _to_message(event: CloudEvent) -> dict[str, Any]:
 
     Returns:
         Kafka message with attributes and data separated.
+
     """
     payload = event.to_dict() if hasattr(event, "to_dict") else {**event}  # type: ignore[call-arg]
     attributes = {key: value for key, value in payload.items() if key != "data"}
@@ -97,6 +99,7 @@ class CloudEventFactory:
 
     Attributes:
         source_prefix: Prefix for event source identifiers.
+
     """
 
     source_prefix: str = "medical-kg/orchestration"
@@ -111,6 +114,7 @@ class CloudEventFactory:
 
         Returns:
             Base attributes for CloudEvent.
+
         """
         now = datetime.now(timezone.UTC).isoformat()
         subject = ctx.doc_id or ctx.correlation_id or "unknown"
@@ -133,6 +137,7 @@ class CloudEventFactory:
 
         Returns:
             CloudEvent representing stage start.
+
         """
         attributes = self._base_attributes("stage.started", ctx, stage)
         data = {
@@ -222,6 +227,7 @@ class StageEventEmitter:
         _kafka: Kafka client for publishing events.
         _topic: Kafka topic name for events.
         _factory: CloudEvent factory for creating events.
+
     """
 
     def __init__(
@@ -237,6 +243,7 @@ class StageEventEmitter:
             kafka: Kafka client for publishing events.
             factory: Optional CloudEvent factory.
             topic: Kafka topic name for events.
+
         """
         self._kafka = kafka
         self._topic = topic

@@ -7,6 +7,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
 import faiss
 import numpy as np
 
@@ -22,7 +23,6 @@ from ..models import (
     VectorRecord,
 )
 from ..types import VectorStorePort
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -321,7 +321,7 @@ class FaissVectorStore(VectorStorePort):
         distances, ids = index.search(vector.reshape(1, -1), search_k)
 
         matches: list[tuple[str, float]] = []
-        for distance, internal_id in zip(distances[0], ids[0]):
+        for distance, internal_id in zip(distances[0], ids[0], strict=False):
             if internal_id == -1:
                 continue
             vector_id = state.internal_to_vector_id.get(int(internal_id))

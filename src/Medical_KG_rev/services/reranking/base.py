@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import structlog
 
 from .errors import GPUUnavailableError
 from .fusion import normalization
-from .models import NormalizationStrategy, QueryDocumentPair, RerankResult, RerankingResponse
+from .models import NormalizationStrategy, QueryDocumentPair, RerankingResponse, RerankResult
 from .ports import RerankerPort
 
 logger = structlog.get_logger(__name__)
@@ -93,7 +94,7 @@ class BaseReranker(RerankerPort):
                     normalised = normalization.softmax(scores)
                 case _:
                     normalised = scores
-            for result, value in zip(evaluated, normalised):
+            for result, value in zip(evaluated, normalised, strict=False):
                 result.score = float(value)
 
         duration = perf_counter() - started

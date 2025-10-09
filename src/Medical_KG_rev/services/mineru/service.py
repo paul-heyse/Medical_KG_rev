@@ -53,6 +53,7 @@ Example:
     ... )
     >>> response = processor.process(request)
     >>> print(f"Processed {len(response.document.blocks)} blocks")
+
 """
 
 from __future__ import annotations
@@ -64,7 +65,7 @@ import asyncio
 import threading
 import time
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from importlib import metadata as importlib_metadata
 
 import structlog
@@ -123,6 +124,7 @@ class MineruOutOfMemoryError(MineruCliError, ChunkingMineruOutOfMemoryError):
         ...     processor.process(request)
         ... except MineruOutOfMemoryError:
         ...     print("GPU memory exhausted during processing")
+
     """
 
     def __init__(self) -> None:
@@ -144,6 +146,7 @@ class MineruGpuUnavailableError(MineruCliError, ChunkingMineruGpuUnavailableErro
         ...     processor.process(request)
         ... except MineruGpuUnavailableError:
         ...     print("GPU backend unavailable for processing")
+
     """
 
     def __init__(self) -> None:
@@ -200,6 +203,7 @@ class MineruProcessor:
         ... )
         >>> response = processor.process(request)
         >>> print(f"Processed {len(response.document.blocks)} blocks")
+
     """
 
     def __init__(
@@ -230,6 +234,7 @@ class MineruProcessor:
             If no settings are provided, default settings are loaded.
             Worker ID defaults to the current thread name if not provided.
             All components are initialized with sensible defaults.
+
         """
         self._settings = settings or get_settings().mineru
         self._worker_id = worker_id or threading.current_thread().name
@@ -285,6 +290,7 @@ class MineruProcessor:
             Attempts to fetch PDF content from storage using the request's
             storage URI. Logs warnings for failures but does not raise
             exceptions to allow graceful degradation.
+
         """
         if not request.storage_uri or not self._pdf_storage:
             return None
@@ -334,6 +340,7 @@ class MineruProcessor:
             ... )
             >>> response = processor.process(request)
             >>> print(f"Processed {len(response.document.blocks)} blocks")
+
         """
         # Fetch PDF content from storage if needed
         if not request.content and request.storage_uri:
@@ -404,6 +411,7 @@ class MineruProcessor:
             ... ]
             >>> response = processor.process_batch(requests)
             >>> print(f"Processed {len(response.documents)} documents")
+
         """
         request_list = list(requests)
         if not request_list:
@@ -465,6 +473,7 @@ class MineruProcessor:
         Note:
             Handles CLI execution with fallback to simulated CLI
             on failure. Orchestrates the processing pipeline.
+
         """
         cli_inputs = [
             MineruCliInput(document_id=request.document_id, content=request.content or b"")
@@ -513,6 +522,7 @@ class MineruProcessor:
         Note:
             Executes MinerU CLI using the configured CLI wrapper
             with vLLM HTTP backend.
+
         """
         cli_result = self._cli.run_batch(cli_inputs)
         return cli_result, "vllm-http", 0
@@ -531,6 +541,7 @@ class MineruProcessor:
         Note:
             Executes MinerU CLI using simulated backend as fallback
             when real backend fails. Creates simulated CLI if needed.
+
         """
         simulated = self._cli
         if not isinstance(simulated, SimulatedMineruCli):
@@ -552,6 +563,7 @@ class MineruProcessor:
             Analyzes the exception to determine if it's an out-of-memory
             error and updates metrics accordingly. Raises specific
             exceptions for OOM conditions.
+
         """
         reason = "oom" if self._looks_like_oom(str(exc)) else "cli-error"
         MINERU_CLI_FAILURES_TOTAL.labels(reason=reason).inc()
@@ -571,6 +583,7 @@ class MineruProcessor:
         Note:
             Validates the installed MinerU version against the expected
             version from settings. Logs version information for debugging.
+
         """
         try:
             installed = importlib_metadata.version("mineru")
@@ -603,6 +616,7 @@ class MineruProcessor:
         Note:
             Performs semantic version comparison by normalizing version
             strings to integer tuples and comparing component by component.
+
         """
         def _normalize(value: str) -> tuple[int, ...]:
             parts: list[int] = []
@@ -653,6 +667,7 @@ class MineruProcessor:
         Note:
             Extracts model names from parsed metadata and builds
             comprehensive processing metadata for observability.
+
         """
         model_names = {
             "layout": parsed.metadata.get("layout_model", "unknown"),
@@ -686,6 +701,7 @@ class MineruProcessor:
         Note:
             Performs case-insensitive search for OOM indicators
             in the error message.
+
         """
         lowered = message.lower()
         return "out of memory" in lowered or "oom" in lowered
@@ -699,6 +715,7 @@ class MineruProcessor:
         Note:
             Creates vLLM client with circuit breaker, timeout, and
             connection pool settings from configuration.
+
         """
         breaker_settings = self._settings.http_client.circuit_breaker
         circuit_breaker = None
@@ -730,6 +747,7 @@ class MineruProcessor:
         Note:
             Performs health check on vLLM server and raises exception
             if server is not accessible or healthy.
+
         """
         async def _check() -> bool:
             try:
@@ -781,6 +799,7 @@ class MineruGrpcService:
         >>> processor = MineruProcessor()
         >>> grpc_service = MineruGrpcService(processor)
         >>> # Used by gRPC server for remote processing
+
     """
 
     def __init__(self, processor: MineruProcessor) -> None:
@@ -788,6 +807,7 @@ class MineruGrpcService:
 
         Args:
             processor: MinerU processor instance for processing
+
         """
         self._processor = processor
 
@@ -808,6 +828,7 @@ class MineruGrpcService:
         Note:
             Handles gRPC-specific error translation and protocol buffer
             serialization. Delegates actual processing to the processor.
+
         """
         mineru_request = MineruRequest(
             tenant_id=request.tenant_id,
@@ -856,6 +877,7 @@ class MineruGrpcService:
         Note:
             Converts Document object to gRPC protocol buffer format.
             Handles optional fields with sensible defaults.
+
         """
         proto_document.document_id = document.document_id
         proto_document.tenant_id = document.tenant_id
@@ -879,6 +901,7 @@ class MineruGrpcService:
         Note:
             Converts ProcessingMetadata object to gRPC protocol buffer format.
             Handles optional fields with sensible defaults.
+
         """
         proto_metadata.document_id = metadata.document_id
         proto_metadata.worker_id = metadata.worker_id or ""

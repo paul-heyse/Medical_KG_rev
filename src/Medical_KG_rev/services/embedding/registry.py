@@ -38,6 +38,7 @@ Example:
     >>> embedder = registry.get("single_vector.qwen3.4096.v1")
     >>> configs = registry.active_configs()
     >>> print(f"Active models: {len(configs)}")
+
 """
 
 # ============================================================================
@@ -181,6 +182,7 @@ class EmbeddingModelRegistry:
         >>> embedder = registry.get("single_vector.qwen3.4096.v1")
         >>> configs = registry.active_configs()
         >>> print(f"Available models: {len(configs)}")
+
     """
 
     gpu_manager: Any | None = None
@@ -207,6 +209,7 @@ class EmbeddingModelRegistry:
         Note:
             This method is called automatically after dataclass
             initialization and performs all setup operations.
+
         """
         self.namespace_manager = self.namespace_manager or NamespaceManager()
         self.storage_router = self.storage_router or StorageRouter()
@@ -231,6 +234,7 @@ class EmbeddingModelRegistry:
         Note:
             Falls back to default configuration if file is not found,
             logging a warning about the fallback.
+
         """
         path_obj = Path(config_path) if config_path else None
         try:
@@ -261,6 +265,7 @@ class EmbeddingModelRegistry:
         Note:
             Looks for namespace configs in embedding/namespaces subdirectory
             relative to the config file path.
+
         """
         path_obj = Path(config_path) if config_path else None
         directory = None
@@ -277,6 +282,7 @@ class EmbeddingModelRegistry:
         Note:
             This method is called during initialization and when
             configurations are reloaded.
+
         """
         self.namespace_registry.reset()
         self._configs_by_namespace.clear()
@@ -302,6 +308,7 @@ class EmbeddingModelRegistry:
         Note:
             This method is called during initialization and when
             configurations are reloaded.
+
         """
         self.namespace_manager.reset()
         for config in self._configs_by_namespace.values():
@@ -313,6 +320,7 @@ class EmbeddingModelRegistry:
 
         Returns:
             Factory instance for creating embedders from configurations.
+
         """
         return self._factory
 
@@ -322,6 +330,7 @@ class EmbeddingModelRegistry:
 
         Returns:
             Registry instance containing registered embedder types.
+
         """
         return self._registry
 
@@ -331,6 +340,7 @@ class EmbeddingModelRegistry:
 
         Returns:
             Current configuration with active namespaces and settings.
+
         """
         return self._config
 
@@ -339,6 +349,7 @@ class EmbeddingModelRegistry:
 
         Returns:
             List of all registered embedder configurations.
+
         """
         return list(self._configs_by_namespace.values())
 
@@ -354,6 +365,7 @@ class EmbeddingModelRegistry:
             >>> registry = EmbeddingModelRegistry()
             >>> active = registry.active_configs()
             >>> print(f"Active models: {len(active)}")
+
         """
         actives = [
             self._configs_by_namespace[ns]
@@ -387,6 +399,7 @@ class EmbeddingModelRegistry:
             >>> registry = EmbeddingModelRegistry()
             >>> configs = registry.resolve(namespaces=["single_vector.qwen3.4096.v1"])
             >>> print(f"Resolved {len(configs)} configurations")
+
         """
         if namespaces:
             missing = [ns for ns in namespaces if ns not in self._configs_by_namespace]
@@ -422,6 +435,7 @@ class EmbeddingModelRegistry:
             >>> registry = EmbeddingModelRegistry()
             >>> embedder = registry.get("single_vector.qwen3.4096.v1")
             >>> embeddings = embedder.embed(["sample text"])
+
         """
         config = self._resolve_config(key)
         return self._factory.get(config)
@@ -442,6 +456,7 @@ class EmbeddingModelRegistry:
             >>> registry = EmbeddingModelRegistry()
             >>> config = registry.config_for("single_vector.qwen3.4096.v1")
             >>> print(f"Model: {config.name}, Dimensions: {config.dim}")
+
         """
         config = self._resolve_config(key)
         return config
@@ -457,6 +472,7 @@ class EmbeddingModelRegistry:
 
         Raises:
             ValueError: If the key is not found in registered configurations.
+
         """
         if isinstance(key, EmbedderConfig):
             return key
@@ -484,6 +500,7 @@ class EmbeddingModelRegistry:
             >>> registry = EmbeddingModelRegistry()
             >>> registry.reload(config_path="/new/config/path")
             >>> print("Configuration reloaded")
+
         """
         if config_path is not None:
             self.config_path = config_path

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import groupby
-from typing import Iterable, Sequence
 
 from Medical_KG_rev.models.ir import BlockType
 

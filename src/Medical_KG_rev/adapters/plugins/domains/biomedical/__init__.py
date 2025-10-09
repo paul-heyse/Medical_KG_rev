@@ -323,13 +323,11 @@ BIOMEDICAL_PLUGINS: tuple[type[BaseAdapterPlugin], ...] = (
 @lru_cache(maxsize=1)
 def builtin_biomedical_plugins() -> tuple[BaseAdapterPlugin, ...]:
     """Instantiate bundled biomedical plugins once for reuse."""
-
     return tuple(plugin() for plugin in BIOMEDICAL_PLUGINS)
 
 
 def register_biomedical_plugins(manager: AdapterPluginManager) -> list[BiomedicalAdapterMetadata]:
     """Register bundled biomedical adapters with a plugin manager."""
-
     registrations: list[BiomedicalAdapterMetadata] = []
     for plugin in builtin_biomedical_plugins():
         metadata = manager.register(plugin)
@@ -339,20 +337,20 @@ def register_biomedical_plugins(manager: AdapterPluginManager) -> list[Biomedica
 
 __all__ = [
     "BIOMEDICAL_PLUGINS",
-    "builtin_biomedical_plugins",
-    "register_biomedical_plugins",
-    "ClinicalTrialsAdapterPlugin",
-    "OpenFDADrugLabelAdapterPlugin",
-    "OpenFDADrugEventAdapterPlugin",
-    "OpenFDADeviceAdapterPlugin",
-    "OpenAlexAdapterPlugin",
-    "UnpaywallAdapterPlugin",
-    "CrossrefAdapterPlugin",
     "COREAdapterPlugin",
-    "PMCAdapterPlugin",
-    "RxNormAdapterPlugin",
+    "ChEMBLAdapterPlugin",
+    "ClinicalTrialsAdapterPlugin",
+    "CrossrefAdapterPlugin",
     "ICD11AdapterPlugin",
     "MeSHAdapterPlugin",
-    "ChEMBLAdapterPlugin",
+    "OpenAlexAdapterPlugin",
+    "OpenFDADeviceAdapterPlugin",
+    "OpenFDADrugEventAdapterPlugin",
+    "OpenFDADrugLabelAdapterPlugin",
+    "PMCAdapterPlugin",
+    "RxNormAdapterPlugin",
     "SemanticScholarAdapterPlugin",
+    "UnpaywallAdapterPlugin",
+    "builtin_biomedical_plugins",
+    "register_biomedical_plugins",
 ]

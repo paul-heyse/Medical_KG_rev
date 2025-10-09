@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 try:  # pragma: no cover - optional dependency for structured CloudEvents
@@ -17,7 +17,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback used in tests without
             super().__init__(attributes)
             self.data = data
 
-        def keys(self):  # noqa: D401 - behave like standard CloudEvent mapping
+        def keys(self):
             return super().keys()
 
 try:  # pragma: no cover - orchestration client optional in unit tests
@@ -29,17 +29,17 @@ except Exception:  # pragma: no cover - fallback for lightweight envs
         def __init__(self) -> None:
             self._topics: dict[str, list[dict[str, Any]]] = {}
 
-        def create_topics(self, topics):  # noqa: D401 - mimic interface
+        def create_topics(self, topics):
             for topic in topics:
                 self._topics.setdefault(topic, [])
 
-        def publish(self, topic: str, value: dict[str, Any], *, key=None, headers=None):  # noqa: D401
+        def publish(self, topic: str, value: dict[str, Any], *, key=None, headers=None):
             self._topics.setdefault(topic, []).append(value)
 
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _base_attributes(event_type: str, *, namespace: str, correlation_id: str | None) -> dict[str, Any]:

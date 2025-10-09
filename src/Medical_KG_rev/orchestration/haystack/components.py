@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
 import structlog
-
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
-    EmbedStage,
     EmbeddingBatch,
     EmbeddingVector,
+    EmbedStage,
     IndexReceipt,
     IndexStage,
     PipelineState,

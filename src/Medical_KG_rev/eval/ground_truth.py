@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
-
-import json
 
 
 @dataclass(slots=True)
@@ -56,7 +55,6 @@ class GroundTruthManager:
         directory: str | Path,
     ) -> Path:
         """Create a JSONL template for manual relevance annotation."""
-
         target_dir = Path(directory).expanduser()
         target_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
@@ -74,7 +72,6 @@ class GroundTruthManager:
 
     def save(self, name: str, records: Sequence[GroundTruthRecord], directory: str | Path) -> Path:
         """Persist a dataset to a versioned JSONL file."""
-
         target_dir = Path(directory).expanduser() / name
         target_dir.mkdir(parents=True, exist_ok=True)
         version = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")

@@ -6,7 +6,6 @@ import asyncio
 import hashlib
 import time
 from dataclasses import dataclass
-from typing import Any, Mapping
 
 import httpx
 
@@ -48,7 +47,7 @@ class StorageAwarePdfDownloadStage(DownloadStage):
         if self._pdf_storage is None:
             logger.warning("pdf_download_stage.no_storage", message="PDF storage not available, using in-memory only")
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]:
+    async def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]:
         """Download PDFs and store them in object storage."""
         pdf_urls = state.metadata.get("pdf_urls", [])
         if not pdf_urls:
@@ -59,7 +58,7 @@ class StorageAwarePdfDownloadStage(DownloadStage):
 
         for pdf_url in pdf_urls:
             try:
-                artifact = self._download_and_store_pdf(
+                artifact = await self._download_and_store_pdf(
                     ctx=ctx,
                     state=state,
                     pdf_url=pdf_url,
@@ -85,7 +84,7 @@ class StorageAwarePdfDownloadStage(DownloadStage):
 
         return artifacts
 
-    def _download_and_store_pdf(
+    async def _download_and_store_pdf(
         self,
         ctx: StageContext,
         state: PipelineState,

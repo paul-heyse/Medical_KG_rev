@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any
 from uuid import uuid4
 
 from .errors import AdapterPluginError
@@ -62,13 +63,13 @@ class AdapterExecutionContext:
             "pipeline": self.pipeline_name,
         }
 
-    def record_response(self, response: AdapterResponse) -> "AdapterExecutionContext":
+    def record_response(self, response: AdapterResponse) -> AdapterExecutionContext:
         enriched_metadata = {**response.metadata, **self.canonical_metadata}
         response.metadata = enriched_metadata
         self.response = response
         return self
 
-    def record_validation(self, outcome: ValidationOutcome) -> "AdapterExecutionContext":
+    def record_validation(self, outcome: ValidationOutcome) -> AdapterExecutionContext:
         self.validation = outcome
         return self
 
@@ -187,7 +188,7 @@ class AdapterPipeline:
     """Composable execution pipeline for adapter plugins."""
 
     def __init__(self, stages: Iterable[AdapterStage], *, name: str | None = None) -> None:
-        stages_tuple: Tuple[AdapterStage, ...] = tuple(stages)
+        stages_tuple: tuple[AdapterStage, ...] = tuple(stages)
         if not stages_tuple:
             raise AdapterPluginError("Adapter pipelines must contain at least one stage")
         self._stages = stages_tuple
@@ -203,15 +204,15 @@ class AdapterPipeline:
         finally:
             context.finalize()
 
-    def clone(self, *, name: str | None = None) -> "AdapterPipeline":
+    def clone(self, *, name: str | None = None) -> AdapterPipeline:
         return AdapterPipeline(self._stages, name=name or self.name)
 
     @property
-    def stage_names(self) -> Tuple[str, ...]:
+    def stage_names(self) -> tuple[str, ...]:
         return self._stage_names
 
     @classmethod
-    def default(cls, plugin: Any, metadata: AdapterMetadata) -> "AdapterPipeline":
+    def default(cls, plugin: Any, metadata: AdapterMetadata) -> AdapterPipeline:
         return cls(
             (
                 cls._fetch_stage(plugin, metadata),

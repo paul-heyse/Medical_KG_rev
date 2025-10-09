@@ -1,11 +1,13 @@
 """LLM assisted chunker implementations."""
 
 from __future__ import annotations
+
 """LLM assisted chunker implementations."""
 
-from dataclasses import dataclass, field
 import json
-from typing import Iterable, Mapping, Protocol, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from typing import Protocol
 
 import numpy as np
 
@@ -13,11 +15,11 @@ from Medical_KG_rev.models.ir import Document
 
 from ..assembly import ChunkAssembler
 from ..coherence import SemanticDriftDetector
+from ..exceptions import ChunkerConfigurationError
 from ..models import Chunk, Granularity
 from ..ports import BaseChunker
 from ..provenance import BlockContext, ProvenanceNormalizer, make_chunk_id
 from ..tokenization import TokenCounter, default_token_counter
-from ..exceptions import ChunkerConfigurationError
 from .semantic import SemanticSplitterChunker
 
 

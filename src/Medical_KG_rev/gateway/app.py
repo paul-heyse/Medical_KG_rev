@@ -35,6 +35,7 @@ Example:
     >>> from Medical_KG_rev.gateway.app import create_app
     >>> app = create_app()
     >>> # Run with: uvicorn Medical_KG_rev.gateway.app:app
+
 """
 
 # ==============================================================================
@@ -103,6 +104,7 @@ def create_problem_response(detail: ProblemDetail) -> JSONResponse:
 
     Returns:
         JSON response with appropriate status code and headers.
+
     """
     payload: dict[str, Any] = detail.model_dump(mode="json")
     status = payload.get("status", 500)
@@ -346,8 +348,8 @@ def create_app() -> FastAPI:
 # ==============================================================================
 
 __all__ = [
-    "create_app",
-    "create_problem_response",
     "JSONAPIResponseMiddleware",
     "SecurityHeadersMiddleware",
+    "create_app",
+    "create_problem_response",
 ]

@@ -80,13 +80,13 @@ def test_default_stage_factory_complies_with_protocols(stage_context, adapter_re
     factory = build_stage_factory(manager, pipeline_resource, JobLedger())
     state = PipelineState.initialise(context=stage_context, adapter_request=adapter_request)
 
-    ingest = factory.resolve(
-        "auto",
+    ingest = factory.resolve("auto")
+    ingest.execute(ctx=stage_context, state=state)
+
     factory = StageFactory(create_stage_plugin_manager(manager))
     state = PipelineState.initialise(context=stage_context, adapter_request=adapter_request)
 
-    ingest = factory.resolve(
-        "default",
+    ingest = factory.resolve("default")
         _definition("ingest", "ingest", {"adapter": "clinical-trials", "strict": False}),
     )
     assert isinstance(ingest, IngestStage)

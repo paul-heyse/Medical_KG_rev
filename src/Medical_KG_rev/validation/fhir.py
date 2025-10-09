@@ -20,6 +20,7 @@ Example:
     >>> validator = FHIRValidator()
     >>> resource = {"resourceType": "Evidence", "status": "active"}
     >>> validator.validate(resource)
+
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ class _CompiledSchema:
     Attributes:
         validator: Compiled JSON Schema validator.
         resource_type: FHIR resource type name.
+
     """
 
     validator: Draft202012Validator
@@ -225,6 +227,7 @@ class FHIRValidator:
 
         Args:
             schemas: Optional custom schemas to use instead of defaults.
+
         """
         source = schemas or FHIR_SCHEMAS
         self._validators: MutableMapping[str, _CompiledSchema] = {}
@@ -242,6 +245,7 @@ class FHIRValidator:
 
         Raises:
             FHIRValidationError: If validation fails.
+
         """
         resource_type = resource.get("resourceType")
         if not resource_type:
@@ -262,6 +266,7 @@ class FHIRValidator:
 
         Raises:
             FHIRValidationError: If validation fails.
+
         """
         self.validate(resource)
 
@@ -273,6 +278,7 @@ class FHIRValidator:
 
         Raises:
             FHIRValidationError: If validation fails.
+
         """
         self.validate(resource)
 
@@ -284,6 +290,7 @@ class FHIRValidator:
 
         Raises:
             FHIRValidationError: If validation fails.
+
         """
         self.validate(resource)
 

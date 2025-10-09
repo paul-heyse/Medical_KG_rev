@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import log1p
-from typing import Sequence
 
 from .base import BaseReranker
 from .models import QueryDocumentPair, RerankingResponse

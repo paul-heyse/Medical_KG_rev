@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Iterable, Mapping
 
 import numpy as np
+
 import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.records import RecordBuilder
-
 
 logger = structlog.get_logger(__name__)
 
@@ -21,7 +21,7 @@ def _token_vectors(tokens: list[str], dim: int) -> tuple[list[list[float]], list
     vectors: list[list[float]] = []
     positions: list[int] = []
     for index, token in enumerate(tokens):
-        digest = hashlib.sha1(f"{token}:{index}".encode("utf-8")).digest()
+        digest = hashlib.sha1(f"{token}:{index}".encode()).digest()
         repeats = (dim * 4 + len(digest) - 1) // len(digest)
         tiled = (digest * repeats)[: dim * 4]
         array = np.frombuffer(tiled, dtype=np.uint32)
@@ -72,7 +72,6 @@ class ColbertShardManager:
 
 def maxsim_score(query: Iterable[list[float]], document: Iterable[list[float]]) -> float:
     """Compute MaxSim score between query and document vectors."""
-
     doc_vectors = list(document)
     if not doc_vectors:
         return 0.0

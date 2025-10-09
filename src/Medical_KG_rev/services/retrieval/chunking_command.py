@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
-from typing import Any, Mapping, MutableMapping
+from typing import Any
 from uuid import uuid4
 
 from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
@@ -37,12 +38,11 @@ class ChunkCommand:
     metadata: Mapping[str, Any] = field(default_factory=dict)
     profile: str | None = None
     correlation_id: str = field(default_factory=lambda: uuid4().hex)
-    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    issued_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     context: Mapping[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:  # noqa: D401 - dataclass validation
+    def __post_init__(self) -> None:
         """Validate base command invariants."""
-
         if not isinstance(self.tenant_id, str) or not self.tenant_id.strip():
             raise InvalidDocumentError("Chunking requires a tenant identifier")
         if not isinstance(self.document_id, str) or not self.document_id.strip():
@@ -96,7 +96,7 @@ class ChunkCommand:
             "profile": (self.profile or "default"),
         }
 
-    def with_context(self, **context: Any) -> "ChunkCommand":
+    def with_context(self, **context: Any) -> ChunkCommand:
         payload = dict(self.context)
         payload.update(context)
         return replace(self, context=MappingProxyType(payload))
@@ -104,13 +104,13 @@ class ChunkCommand:
     @classmethod
     def from_request(
         cls,
-        request: "ChunkRequestProtocol",
+        request: ChunkRequestProtocol,
         *,
         text: str,
         metadata: Mapping[str, Any] | None = None,
         correlation_id: str | None = None,
         context: Mapping[str, Any] | None = None,
-    ) -> "ChunkCommand":
+    ) -> ChunkCommand:
         profile_hint = None
         source_metadata = metadata or {}
         if isinstance(source_metadata, Mapping):

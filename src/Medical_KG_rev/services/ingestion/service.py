@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Mapping, Sequence
 
 import structlog
-
 from Medical_KG_rev.chunking import Chunk, ChunkingOptions, ChunkingService
 from Medical_KG_rev.chunking.exceptions import (
     ChunkerConfigurationError,

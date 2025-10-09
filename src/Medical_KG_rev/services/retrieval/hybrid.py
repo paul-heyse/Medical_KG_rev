@@ -12,9 +12,10 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Protocol
 
-import structlog
 import yaml
 from structlog.stdlib import BoundLogger
+
+import structlog
 
 DEFAULT_COMPONENT_CONFIG = Path("config/retrieval/components.yaml")
 
@@ -60,7 +61,7 @@ class HybridComponentSettings:
     synonyms: Mapping[str, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_file(cls, path: Path | str) -> "HybridComponentSettings":
+    def from_file(cls, path: Path | str) -> HybridComponentSettings:
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         defaults: Mapping[str, object] = data.get("defaults", {}) if isinstance(data, Mapping) else {}
         components_cfg: Mapping[str, object] = (
@@ -132,7 +133,7 @@ class HybridSearchResult:
         }
 
     @classmethod
-    def from_cache(cls, payload: Mapping[str, Any]) -> "HybridSearchResult":
+    def from_cache(cls, payload: Mapping[str, Any]) -> HybridSearchResult:
         return cls(
             component_results={
                 str(name): list(results)
@@ -270,7 +271,7 @@ class HybridSearchCoordinator:
         for component, task in tasks.items():
             try:
                 component_results = await task
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 errors.append(f"{component}:timeout")
                 results[component] = []
             except Exception as exc:  # pragma: no cover - defensive guard

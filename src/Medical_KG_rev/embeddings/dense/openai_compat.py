@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 try:  # pragma: no cover - optional dependency guard
     import httpx
@@ -15,7 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environme
         class HTTPStatusError(HTTPError):
             pass
 
-        def post(self, *args: Any, **kwargs: Any):  # noqa: D401 - mimic httpx.post signature
+        def post(self, *args: Any, **kwargs: Any):
             raise RuntimeError("httpx is required for network operations")
 
     httpx = _HttpxFallback()  # type: ignore[assignment]

@@ -72,7 +72,6 @@ class UCUMValidator:
     # ------------------------------------------------------------------
     def validate_measurement(self, measurement: str, *, context: str) -> UnitValidationResult:
         """Validate a textual measurement such as "20 mg/dL"."""
-
         measurement = measurement.strip()
         if not measurement:
             raise UnitValidationError("Measurement is empty")
@@ -92,7 +91,6 @@ class UCUMValidator:
         context: str,
     ) -> UnitValidationResult:
         """Validate and normalise a numeric value with unit for a context."""
-
         if unit is None or str(unit).strip() == "":
             raise UnitValidationError("Unit is required for medical measurements")
         ctx = self._get_context(context)

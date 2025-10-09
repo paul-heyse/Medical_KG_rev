@@ -52,6 +52,7 @@ Example:
     >>> adapter = ClinicalTrialsAdapter()
     >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
     >>> documents = adapter.fetch_and_parse(context)
+
 """
 
 # ==============================================================================
@@ -113,6 +114,7 @@ def _require_parameter(context: AdapterContext, key: str) -> str:
         >>> nct_id = _require_parameter(context, "nct_id")
         >>> nct_id
         "NCT04267848"
+
     """
     try:
         value = context.parameters[key]
@@ -137,6 +139,7 @@ def _to_text(value: Any) -> str:
         "123"
         >>> _to_text(None)
         ""
+
     """
     if value is None:
         return ""
@@ -157,6 +160,7 @@ def _listify(items: Iterable[Any]) -> list[Any]:
     Example:
         >>> _listify([1, None, 2, "", 3])
         [1, 2, 3]
+
     """
     return [item for item in items if item]
 
@@ -174,6 +178,7 @@ def _collect_text(element: Element | None) -> str:
         >>> elem = ElementTree.fromstring("<p>Hello <b>world</b></p>")
         >>> _collect_text(elem)
         "Hello world"
+
     """
     if element is None:
         return ""
@@ -195,6 +200,7 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
         >>> config = _linear_retry_config(3, 1.0)
         >>> config.attempts
         3
+
     """
     initial = max(initial, 0.0)
     if initial == 0:
@@ -235,6 +241,7 @@ class ResilientHTTPAdapter(BaseAdapter):
         ...             base_url="https://api.example.com",
         ...             rate_limit_per_second=2.0
         ...         )
+
     """
 
     def __init__(
@@ -261,6 +268,7 @@ class ResilientHTTPAdapter(BaseAdapter):
             ...     base_url="https://api.example.com",
             ...     rate_limit_per_second=1.0
             ... )
+
         """
         super().__init__(name=name)
         self._owns_client = client is None
@@ -289,6 +297,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 
         Example:
             >>> data = adapter._get_json("/users", params={"limit": 10})
+
         """
         response = self._client.request("GET", path, params=params)
         response.raise_for_status()
@@ -309,6 +318,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 
         Example:
             >>> text = adapter._get_text("/status")
+
         """
         response = self._client.request("GET", path, params=params)
         response.raise_for_status()
@@ -326,6 +336,7 @@ class ResilientHTTPAdapter(BaseAdapter):
         Note:
             Persistence is handled by downstream ingestion pipeline;
             adapters simply return documents.
+
         """
         # Persistence is handled by downstream ingestion pipeline; adapters simply return documents.
         return None
@@ -335,6 +346,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 
         Example:
             >>> adapter.close()
+
         """
         if self._owns_client:
             self._client.close()
@@ -358,6 +370,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
         >>> adapter = ClinicalTrialsAdapter()
         >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -368,6 +381,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
 
         Example:
             >>> adapter = ClinicalTrialsAdapter()
+
         """
         super().__init__(
             name="clinicaltrials",
@@ -393,6 +407,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
         Example:
             >>> context = AdapterContext(parameters={"nct_id": "NCT04267848"})
             >>> studies = adapter.fetch(context)
+
         """
         nct_id = validate_nct_id(_require_parameter(context, "nct_id"))
         payload = self._get_json(f"/studies/{nct_id}", params={"format": "json"})
@@ -417,6 +432,7 @@ class ClinicalTrialsAdapter(ResilientHTTPAdapter):
         Example:
             >>> studies = [{"protocolSection": {...}}]
             >>> documents = adapter.parse(studies, context)
+
         """
         documents: list[Document] = []
         for study in payloads:
@@ -505,6 +521,7 @@ class OpenFDAAdapter(ResilientHTTPAdapter):
         >>> class MyFDAAdapter(OpenFDAAdapter):
         ...     def __init__(self):
         ...         super().__init__(name="my-fda", endpoint="/drug/label.json")
+
     """
 
     def __init__(self, *, name: str, endpoint: str, client: HttpClient | None = None) -> None:
@@ -517,6 +534,7 @@ class OpenFDAAdapter(ResilientHTTPAdapter):
 
         Example:
             >>> adapter = OpenFDAAdapter(name="test", endpoint="/drug/label.json")
+
         """
         super().__init__(
             name=name,
@@ -538,6 +556,7 @@ class OpenFDAAdapter(ResilientHTTPAdapter):
 
         Example:
             >>> results = adapter._query({"search": "brand_name:aspirin", "limit": 5})
+
         """
         payload = self._get_json(self._endpoint, params=params)
         return payload.get("results", [])
@@ -558,6 +577,7 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
         >>> adapter = OpenFDADrugLabelAdapter()
         >>> context = AdapterContext(parameters={"ndc": "12345-678-90"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -568,6 +588,7 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
 
         Example:
             >>> adapter = OpenFDADrugLabelAdapter()
+
         """
         super().__init__(name="openfda-drug-label", endpoint="/drug/label.json", client=client)
 
@@ -587,6 +608,7 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
         Example:
             >>> context = AdapterContext(parameters={"ndc": "12345-678-90"})
             >>> labels = adapter.fetch(context)
+
         """
         ndc = context.parameters.get("ndc")
         set_id = context.parameters.get("set_id")
@@ -617,6 +639,7 @@ class OpenFDADrugLabelAdapter(OpenFDAAdapter):
         Example:
             >>> labels = [{"set_id": "123", "indications_and_usage": "..."}]
             >>> documents = adapter.parse(labels, context)
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -672,6 +695,7 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
         >>> adapter = OpenFDADrugEventAdapter()
         >>> context = AdapterContext(parameters={"drug": "aspirin"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -679,6 +703,7 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(name="openfda-drug-event", endpoint="/drug/event.json", client=client)
 
@@ -694,6 +719,7 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
         Raises:
             ValueError: If drug parameter is missing
             HTTPError: If API request fails
+
         """
         drug_name = normalize_identifier(_require_parameter(context, "drug"))
         params = {"search": f'patient.drug.medicinalproduct:"{drug_name}"', "limit": 5}
@@ -710,6 +736,7 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -758,6 +785,7 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
         >>> adapter = OpenFDADeviceAdapter()
         >>> context = AdapterContext(parameters={"device_id": "KGS"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -765,6 +793,7 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="openfda-device", endpoint="/device/classification.json", client=client
@@ -782,6 +811,7 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
         Raises:
             ValueError: If device_id parameter is missing
             HTTPError: If API request fails
+
         """
         device_id = _require_parameter(context, "device_id")
         params = {"search": f'product_code:"{device_id}"', "limit": 1}
@@ -798,6 +828,7 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -838,6 +869,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
         >>> adapter = UnpaywallAdapter()
         >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(
@@ -848,6 +880,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
         Args:
             email: Email address for API requests (required by Unpaywall)
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="unpaywall",
@@ -870,6 +903,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If doi parameter is missing or invalid
             HTTPError: If API request fails
+
         """
         doi = validate_doi(_require_parameter(context, "doi"))
         payload = self._get_json(f"/{doi}", params={"email": self._email})
@@ -886,6 +920,7 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -929,6 +964,7 @@ class CrossrefAdapter(ResilientHTTPAdapter):
         >>> adapter = CrossrefAdapter()
         >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -936,6 +972,7 @@ class CrossrefAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="crossref",
@@ -957,6 +994,7 @@ class CrossrefAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If doi parameter is missing or invalid
             HTTPError: If API request fails
+
         """
         doi = validate_doi(_require_parameter(context, "doi"))
         payload = self._get_json(f"/works/{doi}")
@@ -974,6 +1012,7 @@ class CrossrefAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for message in payloads:
@@ -1021,6 +1060,7 @@ class COREAdapter(ResilientHTTPAdapter):
         >>> adapter = COREAdapter()
         >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1028,6 +1068,7 @@ class COREAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="core",
@@ -1049,6 +1090,7 @@ class COREAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If neither core_id nor doi parameter is provided
             HTTPError: If API request fails
+
         """
         core_id = context.parameters.get("core_id")
         doi = context.parameters.get("doi")
@@ -1072,6 +1114,7 @@ class COREAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -1117,6 +1160,7 @@ class PMCAdapter(ResilientHTTPAdapter):
         >>> adapter = PMCAdapter()
         >>> context = AdapterContext(parameters={"pmcid": "PMC1234567"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1124,6 +1168,7 @@ class PMCAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="pmc",
@@ -1145,6 +1190,7 @@ class PMCAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If pmcid parameter is missing or invalid
             HTTPError: If API request fails
+
         """
         pmcid = validate_pmcid(_require_parameter(context, "pmcid"))
         xml_text = self._get_text(f"/webservices/rest/{pmcid}/fullTextXML")
@@ -1159,6 +1205,7 @@ class PMCAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for xml_text in payloads:
@@ -1198,6 +1245,7 @@ class RxNormAdapter(ResilientHTTPAdapter):
         >>> adapter = RxNormAdapter()
         >>> context = AdapterContext(parameters={"drug_name": "aspirin"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1205,6 +1253,7 @@ class RxNormAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="rxnorm",
@@ -1226,6 +1275,7 @@ class RxNormAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If drug_name parameter is missing
             HTTPError: If API request fails
+
         """
         drug_name = normalize_identifier(_require_parameter(context, "drug_name"))
         payload = self._get_json("/REST/drugs", params={"name": drug_name})
@@ -1242,6 +1292,7 @@ class RxNormAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -1288,6 +1339,7 @@ class ICD11Adapter(ResilientHTTPAdapter):
         >>> adapter = ICD11Adapter()
         >>> context = AdapterContext(parameters={"code": "A00-B99"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1295,6 +1347,7 @@ class ICD11Adapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="icd11",
@@ -1316,6 +1369,7 @@ class ICD11Adapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If neither code nor term parameter is provided
             HTTPError: If API request fails
+
         """
         term = context.parameters.get("code")
         if term:
@@ -1337,6 +1391,7 @@ class ICD11Adapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for entity in payloads:
@@ -1382,6 +1437,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
         >>> adapter = MeSHAdapter()
         >>> context = AdapterContext(parameters={"term": "aspirin"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1389,6 +1445,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="mesh",
@@ -1410,6 +1467,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If neither descriptor_id nor term parameter is provided
             HTTPError: If API request fails
+
         """
         descriptor_id = context.parameters.get("descriptor_id")
         if descriptor_id:
@@ -1431,6 +1489,7 @@ class MeSHAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for descriptor in payloads:
@@ -1482,6 +1541,7 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
         >>> adapter = ChEMBLAdapter()
         >>> context = AdapterContext(parameters={"chembl_id": "CHEMBL25"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1489,6 +1549,7 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="chembl",
@@ -1510,6 +1571,7 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If neither chembl_id nor smiles parameter is provided
             HTTPError: If API request fails
+
         """
         chembl_id = context.parameters.get("chembl_id")
         smiles = context.parameters.get("smiles")
@@ -1535,6 +1597,7 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for molecule in payloads:
@@ -1586,6 +1649,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
         >>> adapter = SemanticScholarAdapter()
         >>> context = AdapterContext(parameters={"doi": "10.1038/nature12373"})
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, client: HttpClient | None = None) -> None:
@@ -1593,6 +1657,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
 
         Args:
             client: Optional HTTP client (creates default if None)
+
         """
         super().__init__(
             name="semantic-scholar",
@@ -1614,6 +1679,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
         Raises:
             ValueError: If neither doi nor paper_id parameter is provided
             HTTPError: If API request fails
+
         """
         doi = context.parameters.get("doi")
         if doi:
@@ -1637,6 +1703,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
 
         Returns:
             Sequence of parsed Document objects
+
         """
         documents: list[Document] = []
         for payload in payloads:

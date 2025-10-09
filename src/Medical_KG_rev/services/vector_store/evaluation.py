@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from math import log2
 from statistics import mean
 from time import perf_counter
@@ -90,7 +90,7 @@ def ann_parameter_sweep(
             truth = ground_truth.get(query.vector_name or "default", [])
             recall_scores[10] = recall_scores.get(10, 0.0) + compute_recall_at_k(results, truth, 10)
             ndcg_scores[10] = ndcg_scores.get(10, 0.0) + compute_ndcg(
-                results, {doc: 1.0 for doc in truth}, 10
+                results, dict.fromkeys(truth, 1.0), 10
             )
         count = len(queries) or 1
         runs.append(

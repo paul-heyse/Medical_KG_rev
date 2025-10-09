@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
-import json
-import time
 
 import numpy as np
 
@@ -528,5 +528,5 @@ class MilvusVectorStore(VectorStorePort):
         return path / f"{tenant_id}__{namespace}.milvus-snapshot.json"
 
 
-__all__ = ["MilvusVectorStore", "InMemoryMilvusClient", "MilvusLikeClient"]
+__all__ = ["InMemoryMilvusClient", "MilvusLikeClient", "MilvusVectorStore"]
 

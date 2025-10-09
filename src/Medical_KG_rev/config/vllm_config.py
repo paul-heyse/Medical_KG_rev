@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 try:  # pragma: no cover - optional dependency
     import yaml
@@ -77,7 +78,7 @@ class VLLMConfig:
     logging: VLLMLoggingConfig = field(default_factory=VLLMLoggingConfig)
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, Any]) -> "VLLMConfig":
+    def from_mapping(cls, data: Mapping[str, Any]) -> VLLMConfig:
         service = VLLMServiceConfig(**data.get("service", {}))
         model = VLLMModelConfig(**data.get("model", {}))
         batching = VLLMBatchingConfig(**data.get("batching", {}))
@@ -92,7 +93,7 @@ class VLLMConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: str | Path | None = None) -> "VLLMConfig":
+    def from_yaml(cls, path: str | Path | None = None) -> VLLMConfig:
         config_path = Path(path) if path is not None else DEFAULT_VLLM_CONFIG
         data = _load_mapping(config_path)
         if BaseModel is not None:
@@ -140,17 +141,16 @@ if BaseModel is not None:  # pragma: no cover - exercised when pydantic installe
 
 def load_vllm_config(path: str | Path | None = None) -> VLLMConfig:
     """Load the vLLM configuration from disk."""
-
     return VLLMConfig.from_yaml(path)
 
 
 __all__ = [
-    "VLLMConfig",
-    "VLLMModelConfig",
-    "VLLMServiceConfig",
+    "DEFAULT_VLLM_CONFIG",
     "VLLMBatchingConfig",
+    "VLLMConfig",
     "VLLMHealthCheckConfig",
     "VLLMLoggingConfig",
-    "DEFAULT_VLLM_CONFIG",
+    "VLLMModelConfig",
+    "VLLMServiceConfig",
     "load_vllm_config",
 ]

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
-import importlib.util
 
 if importlib.util.find_spec("yaml") is not None:  # pragma: no cover - depends on PyYAML
     from yaml import safe_load as _safe_load  # type: ignore
@@ -17,7 +16,6 @@ else:  # pragma: no cover - fallback when PyYAML unavailable
         return {}
 
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingKind
-
 
 DEFAULT_EMBEDDING_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embeddings.yaml"
 
@@ -43,7 +41,7 @@ class NamespaceDefinition:
     parameters: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any]) -> "NamespaceDefinition":
+    def from_mapping(cls, data: dict[str, Any]) -> NamespaceDefinition:
         return cls(
             name=str(data["name"]),
             provider=str(data["provider"]),
@@ -93,7 +91,7 @@ class EmbeddingsConfiguration:
     namespaces: dict[str, NamespaceDefinition] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any]) -> "EmbeddingsConfiguration":
+    def from_mapping(cls, data: dict[str, Any]) -> EmbeddingsConfiguration:
         namespaces: dict[str, NamespaceDefinition] = {}
         for namespace, raw in (data.get("namespaces") or {}).items():
             namespaces[namespace] = NamespaceDefinition.from_mapping(raw)
@@ -115,8 +113,8 @@ def load_embeddings_config(path: Path | None = None) -> EmbeddingsConfiguration:
 
 
 __all__ = [
+    "DEFAULT_EMBEDDING_CONFIG",
     "EmbeddingsConfiguration",
     "NamespaceDefinition",
-    "DEFAULT_EMBEDDING_CONFIG",
     "load_embeddings_config",
 ]

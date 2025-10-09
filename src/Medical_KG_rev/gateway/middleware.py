@@ -35,6 +35,7 @@ Performance Characteristics:
 Example:
     >>> from Medical_KG_rev.gateway.middleware import CachingMiddleware
     >>> app.add_middleware(CachingMiddleware, policies={...})
+
 """
 
 # ==============================================================================

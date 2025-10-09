@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Iterable
-from typing import Callable
+from collections.abc import Callable, Iterable
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
@@ -32,7 +31,6 @@ def _clone_section(section: Section, *, blocks: Iterable[Block]) -> Section:
 
 def drop_boilerplate(document: Document) -> Document:
     """Remove repeated headers/footers and empty blocks."""
-
     sections: list[Section] = []
     for section in document.sections:
         filtered_blocks: list[Block] = []
@@ -56,7 +54,6 @@ def drop_boilerplate(document: Document) -> Document:
 
 def exclude_references(document: Document) -> Document:
     """Drop sections that correspond to references/bibliographies."""
-
     retained: list[Section] = []
     for section in document.sections:
         title = (section.title or "").strip().lower()
@@ -70,7 +67,6 @@ def exclude_references(document: Document) -> Document:
 
 def deduplicate_page_furniture(document: Document) -> Document:
     """Remove duplicate short blocks that typically represent running headers."""
-
     seen: Counter[str] = Counter()
     for section in document.sections:
         for block in section.blocks:
@@ -96,7 +92,6 @@ def deduplicate_page_furniture(document: Document) -> Document:
 
 def preserve_tables_html(document: Document) -> Document:
     """Annotate low-confidence tables so downstream chunkers retain HTML."""
-
     sections: list[Section] = []
     for section in document.sections:
         new_blocks: list[Block] = []
@@ -128,7 +123,6 @@ FILTERS: dict[str, FilterFunc] = {
 
 def apply_filter_chain(document: Document, filter_names: Iterable[str]) -> Document:
     """Apply configured filters to *document* in order."""
-
     current = document
     for name in filter_names:
         func = FILTERS.get(name)
@@ -138,4 +132,4 @@ def apply_filter_chain(document: Document, filter_names: Iterable[str]) -> Docum
     return current
 
 
-__all__ = ["apply_filter_chain", "FILTERS"]
+__all__ = ["FILTERS", "apply_filter_chain"]

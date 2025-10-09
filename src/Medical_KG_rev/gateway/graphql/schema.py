@@ -7,29 +7,28 @@ from dataclasses import asdict
 from typing import Any
 
 import strawberry
-from strawberry import ID
 from fastapi import Request
+from strawberry import ID
 from strawberry.fastapi import GraphQLRouter
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
-from ..auth import Scopes
+from ...auth.scopes import Scopes
 from ..models import (
-    AdapterMetadataView,
     AdapterHealthView,
+    AdapterMetadataView,
     ChunkRequest,
     DocumentChunk,
     DocumentSummary,
     EmbeddingOptions,
-    EmbeddingMetadata,
     EmbeddingResponse,
     EmbeddingVector,
     EmbedRequest,
     EntityLinkRequest,
     ExtractionRequest,
     IngestionRequest,
-    NamespaceInfo,
     KnowledgeGraphWriteRequest,
+    NamespaceInfo,
     OperationStatus,
     Pagination,
     RetrievalResult,
@@ -100,7 +99,7 @@ def _embedding_to_type(vector: EmbeddingVector) -> EmbeddingVectorType:
     )
 
 
-def _embedding_result_to_type(result: EmbeddingResponse) -> "EmbeddingResultType":
+def _embedding_result_to_type(result: EmbeddingResponse) -> EmbeddingResultType:
     return EmbeddingResultType(
         namespace=result.namespace,
         embeddings=[_embedding_to_type(vector) for vector in result.embeddings],
@@ -113,7 +112,7 @@ def _embedding_result_to_type(result: EmbeddingResponse) -> "EmbeddingResultType
     )
 
 
-def _namespace_to_type(info: NamespaceInfo) -> "NamespaceInfoType":
+def _namespace_to_type(info: NamespaceInfo) -> NamespaceInfoType:
     return NamespaceInfoType(
         id=info.id,
         provider=info.provider,
@@ -136,7 +135,7 @@ def _chunk_to_type(chunk: DocumentChunk) -> DocumentChunkType:
     )
 
 
-def _adapter_metadata_to_type(metadata: AdapterMetadataView) -> "AdapterMetadataType":
+def _adapter_metadata_to_type(metadata: AdapterMetadataView) -> AdapterMetadataType:
     return AdapterMetadataType(
         name=metadata.name,
         version=metadata.version,
@@ -149,7 +148,7 @@ def _adapter_metadata_to_type(metadata: AdapterMetadataView) -> "AdapterMetadata
     )
 
 
-def _adapter_health_to_type(health: AdapterHealthView) -> "AdapterHealthType":
+def _adapter_health_to_type(health: AdapterHealthView) -> AdapterHealthType:
     return AdapterHealthType(name=health.name, healthy=health.healthy)
 
 
@@ -347,7 +346,7 @@ class EmbedInput:
     tenant_id: str | None = None
     namespace: str
     texts: list[str]
-    options: "EmbeddingOptionsInput" | None = None
+    options: EmbeddingOptionsInput | None = None
 
 
 @strawberry.input

@@ -13,20 +13,21 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import orjson
 import pluggy
-import structlog
 from attrs import define, evolve, field
-from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, ConfigDict, Field
 from structlog.stdlib import BoundLogger
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
+import structlog
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
@@ -35,17 +36,17 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 __all__ = [
     "STAGE_PLUGIN_NAMESPACE",
-    "hookspec",
-    "hookimpl",
+    "StagePlugin",
+    "StagePluginBuildError",
+    "StagePluginError",
+    "StagePluginHealth",
+    "StagePluginLookupError",
+    "StagePluginManager",
     "StagePluginMetadata",
     "StagePluginRegistration",
-    "StagePlugin",
-    "StagePluginHealth",
     "StagePluginResources",
-    "StagePluginManager",
-    "StagePluginError",
-    "StagePluginLookupError",
-    "StagePluginBuildError",
+    "hookimpl",
+    "hookspec",
 ]
 
 
@@ -68,7 +69,6 @@ class StagePluginMetadata(BaseModel):
 
     def serialise(self) -> bytes:
         """Return an ``orjson`` encoded payload for diagnostics."""
-
         return orjson.dumps(self.model_dump())
 
 
@@ -77,12 +77,11 @@ class StagePluginRegistration:
     """Registration record returned by plugin implementations."""
 
     metadata: StagePluginMetadata
-    builder: Callable[[StageDefinition, "StagePluginResources"], object]
-    provider: "StagePlugin | None" = None
+    builder: Callable[[StageDefinition, StagePluginResources], object]
+    provider: StagePlugin | None = None
 
-    def bind(self, provider: "StagePlugin") -> "StagePluginRegistration":
+    def bind(self, provider: StagePlugin) -> StagePluginRegistration:
         """Return a copy of the registration bound to the provider."""
-
         if self.provider is provider:
             return self
         return evolve(self, provider=provider)
@@ -95,18 +94,18 @@ class StagePluginResources:
     adapter_manager: AdapterPluginManager
     pipeline_resource: Any
     job_ledger: Any | None = None
-    object_store: "ObjectStore" | None = None
-    cache_backend: "CacheBackend" | None = None
-    pdf_storage: "PdfStorageClient" | None = None
-    document_storage: "DocumentStorageClient" | None = None
-    object_storage_settings: "ObjectStorageSettings" | None = None
-    redis_cache_settings: "RedisCacheSettings" | None = None
+    object_store: ObjectStore | None = None
+    cache_backend: CacheBackend | None = None
+    pdf_storage: PdfStorageClient | None = None
+    document_storage: DocumentStorageClient | None = None
+    object_storage_settings: ObjectStorageSettings | None = None
+    redis_cache_settings: RedisCacheSettings | None = None
     extras: dict[str, Any] = field(factory=dict)
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.extras.get(key, default)
 
-    def with_extra(self, **values: Any) -> "StagePluginResources":
+    def with_extra(self, **values: Any) -> StagePluginResources:
         payload = dict(self.extras)
         payload.update(values)
         return StagePluginResources(
@@ -184,7 +183,6 @@ class StagePlugin(ABC):
 
     def health_check(self) -> StagePluginHealth:
         """Return the current plugin health signal."""
-
         return StagePluginHealth(status="ok")
 
     def create_registration(
@@ -222,7 +220,6 @@ class StagePlugin(ABC):
         self, resources: StagePluginResources
     ) -> Sequence[StagePluginRegistration]:
         """Pluggy hook entry point delegating to :meth:`registrations`."""
-
         self._ensure_initialized(resources)
         registrations = self.registrations(resources)
         enriched: list[StagePluginRegistration] = []
@@ -271,7 +268,7 @@ class StagePluginManager:
     namespace: str = STAGE_PLUGIN_NAMESPACE
     _plugin_manager: pluggy.PluginManager = field(init=False)
     _registry: dict[str, list[StagePluginRegistration]] = field(init=False, factory=dict)
-    _states: dict[str, "_StageRegistrationState"] = field(init=False, factory=dict)
+    _states: dict[str, _StageRegistrationState] = field(init=False, factory=dict)
     _stage_index: dict[str, set[str]] = field(init=False, factory=dict)
     _logger: BoundLogger = field(init=False)
 
@@ -283,7 +280,6 @@ class StagePluginManager:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, max=5.0))
     def load_entrypoints(self, group: str | None = None) -> None:
         """Load plugins advertised through Python entry points."""
-
         entrypoint_group = group or self.namespace
         loaded = self._plugin_manager.load_setuptools_entrypoints(entrypoint_group) or []
         count = len(loaded) if isinstance(loaded, Iterable) else 0
@@ -296,7 +292,6 @@ class StagePluginManager:
 
     def register(self, plugin: object) -> None:
         """Register an explicit plugin object with the manager."""
-
         self._plugin_manager.register(plugin)
         self._logger.debug(
             "stage.plugin.registered",
@@ -306,7 +301,6 @@ class StagePluginManager:
 
     def unregister(self, plugin: StagePlugin | str) -> None:
         """Unregister a plugin contribution and release any associated resources."""
-
         provider: StagePlugin | None
         key: str
         if isinstance(plugin, StagePlugin):
@@ -352,7 +346,6 @@ class StagePluginManager:
 
     def describe_plugins(self) -> tuple[dict[str, Any], ...]:
         """Return diagnostic metadata about registered plugin contributions."""
-
         payload: list[dict[str, Any]] = []
         for name, state in self._states.items():
             payload.append(
@@ -370,7 +363,6 @@ class StagePluginManager:
 
     def check_health(self) -> dict[str, StagePluginHealth]:
         """Execute health checks for providers that expose them."""
-
         report: dict[str, StagePluginHealth] = {}
         for name, state in self._states.items():
             provider = state.provider
@@ -390,7 +382,6 @@ class StagePluginManager:
 
     def build_stage(self, definition: StageDefinition) -> object:
         """Instantiate a stage for the supplied definition."""
-
         stage_type = definition.stage_type
         registrations = self._registry.get(stage_type, [])
         if not registrations:
@@ -486,8 +477,6 @@ class StagePluginManager:
         self._registry = aggregated
         self._states = states
         self._stage_index = {name: state.stage_types for name, state in states.items()}
-                aggregated[entry.metadata.stage_type].append(entry)
-        self._registry = aggregated
         self._logger.debug(
             "stage.plugin.registry_refreshed",
             stage_types=sorted(self._registry),
@@ -514,7 +503,7 @@ class StagePluginManager:
         return StagePluginRegistration(metadata=metadata, builder=builder, provider=provider_obj)
 
     def _resolve_dependency_order(
-        self, states: dict[str, "_StageRegistrationState"]
+        self, states: dict[str, _StageRegistrationState]
     ) -> tuple[str, ...]:
         graph = {name: state.dependencies for name, state in states.items()}
         visited: set[str] = set()
@@ -559,7 +548,7 @@ class _StageRegistrationState:
     stage_types: set[str] = field(factory=set)
 
     @classmethod
-    def from_registration(cls, registration: StagePluginRegistration) -> "_StageRegistrationState":
+    def from_registration(cls, registration: StagePluginRegistration) -> _StageRegistrationState:
         provider_name = (
             registration.provider.name
             if isinstance(registration.provider, StagePlugin)

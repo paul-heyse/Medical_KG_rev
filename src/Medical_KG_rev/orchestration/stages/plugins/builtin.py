@@ -37,19 +37,19 @@ Examples:
     # Create an ingest stage
     definition = StageDefinition(name="ingest", stage_type="ingest", config={"adapter": "pdf"})
     stage = plugin.create_stage(definition, context)
+
 """
 
 # IMPORTS
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from Medical_KG_rev.orchestration.dagster.stages import HaystackPipelineResource
@@ -114,6 +114,7 @@ class CoreStagePlugin(StagePlugin):
         })
         plugin.initialise(context)
         stage = plugin.create_stage(definition, context)
+
     """
 
     def __init__(self) -> None:
@@ -124,6 +125,7 @@ class CoreStagePlugin(StagePlugin):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             StagePluginMetadata(
@@ -145,7 +147,7 @@ class CoreStagePlugin(StagePlugin):
             )
         )
         self._adapter_manager: AdapterPluginManager | None = None
-        self._pipeline_resource: "HaystackPipelineResource" | None = None
+        self._pipeline_resource: HaystackPipelineResource | None = None
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize the plugin with required dependencies.
@@ -156,6 +158,7 @@ class CoreStagePlugin(StagePlugin):
         Raises:
             KeyError: If required dependencies are missing from context
             TypeError: If dependencies have incorrect types
+
         """
         self._adapter_manager = context.require("adapter_manager")
         self._pipeline_resource = context.require("haystack_pipeline")
@@ -168,6 +171,7 @@ class CoreStagePlugin(StagePlugin):
 
         Raises:
             RuntimeError: If any required dependency is not available
+
         """
         if not isinstance(self._adapter_manager, AdapterPluginManager):
             raise RuntimeError("Adapter manager not available for core stage plugin")
@@ -189,6 +193,7 @@ class CoreStagePlugin(StagePlugin):
         Raises:
             ValueError: If stage type is unsupported or configuration is invalid
             RuntimeError: If required dependencies are not initialized
+
         """
         assert self._adapter_manager is not None
         assert self._pipeline_resource is not None
@@ -269,6 +274,7 @@ class PdfTwoPhasePlugin(StagePlugin):
         context = StagePluginContext({"job_ledger": ledger})
         plugin.initialise(context)
         stage = plugin.create_stage(definition, context)
+
     """
 
     def __init__(self) -> None:
@@ -279,6 +285,7 @@ class PdfTwoPhasePlugin(StagePlugin):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             StagePluginMetadata(
@@ -299,6 +306,7 @@ class PdfTwoPhasePlugin(StagePlugin):
         Raises:
             KeyError: If required dependencies are missing from context
             TypeError: If dependencies have incorrect types
+
         """
         self._ledger = context.require("job_ledger")
 
@@ -310,6 +318,7 @@ class PdfTwoPhasePlugin(StagePlugin):
 
         Raises:
             RuntimeError: If any required dependency is not available
+
         """
         if not isinstance(self._ledger, JobLedger):
             raise RuntimeError("Job ledger unavailable for PDF plugin")
@@ -327,6 +336,7 @@ class PdfTwoPhasePlugin(StagePlugin):
         Raises:
             ValueError: If stage type is unsupported or configuration is invalid
             RuntimeError: If required dependencies are not initialized
+
         """
         assert self._ledger is not None
         if definition.stage_type == "download":
@@ -354,6 +364,7 @@ class _PdfDownloadStage:
     Examples:
         stage = _PdfDownloadStage(ledger)
         artifacts = stage.execute(context, state)
+
     """
 
     def __init__(self, ledger: JobLedger) -> None:
@@ -364,6 +375,7 @@ class _PdfDownloadStage:
 
         Raises:
             None: Initialization always succeeds.
+
         """
         self._ledger = ledger
 
@@ -382,6 +394,7 @@ class _PdfDownloadStage:
 
         Raises:
             ValueError: If no payloads are available or payloads lack required URLs
+
         """
         payloads = list(state.require_payloads())
         if not payloads:
@@ -431,6 +444,7 @@ class _PdfGateStage:
     Examples:
         stage = _PdfGateStage(ledger, gate_name="mineru-ready")
         decision = stage.execute(context, state)
+
     """
 
     def __init__(self, ledger: JobLedger, *, gate_name: str) -> None:
@@ -442,6 +456,7 @@ class _PdfGateStage:
 
         Raises:
             None: Initialization always succeeds.
+
         """
         self._ledger = ledger
         self._gate_name = gate_name
@@ -463,6 +478,7 @@ class _PdfGateStage:
         Raises:
             ValueError: If no job identifier is available for ledger lookup
             PipelineGateNotReady: If MinerU processing is not yet complete
+
         """
         job_id = ctx.job_id or state.job_id
         if not job_id:

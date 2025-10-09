@@ -31,7 +31,6 @@ def record_stage_metrics(
     error: str | None,
 ) -> None:
     """Push orchestration metrics into Prometheus registries."""
-
     pipeline_label = pipeline or "unknown"
     labels = dict(pipeline=pipeline_label, stage=stage, stage_type=stage_type)
     if attempts:

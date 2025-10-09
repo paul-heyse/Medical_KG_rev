@@ -10,8 +10,9 @@ import without requiring a global service locator.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from Medical_KG_rev.models.ir import Document
 
@@ -66,7 +67,6 @@ def register_chunker(name: str, factory: ChunkerFactory | type[ChunkerPort]) -> 
     `ChunkerPort` instances.  This indirection allows implementations to defer
     heavy imports until they are actually required.
     """
-
     coerced = _coerce_factory(factory)
     if name in CHUNKER_REGISTRY:
         raise ChunkerRegistrationError(f"Chunker '{name}' already registered")
@@ -82,8 +82,8 @@ def get_chunker(name: str, **factory_kwargs: Any) -> ChunkerPort:
 
     Raises:
         UnknownChunkerError: If *name* is not present in the registry.
-    """
 
+    """
     try:
         factory = CHUNKER_REGISTRY[name]
     except KeyError as exc:  # pragma: no cover - error path exercised in tests
@@ -98,7 +98,6 @@ def chunk_document(
     profile_loader: Callable[[str], dict[str, Any]],
 ) -> list[Chunk]:
     """Helper that resolves *profile_name* and invokes the configured chunker."""
-
     profile = profile_loader(profile_name)
     chunker_type = profile["chunker_type"]
     chunker = get_chunker(chunker_type, profile=profile)
@@ -113,5 +112,4 @@ def reset_registry() -> None:
     This is primarily intended for tests which need to ensure isolated
     registration state.
     """
-
     CHUNKER_REGISTRY.clear()

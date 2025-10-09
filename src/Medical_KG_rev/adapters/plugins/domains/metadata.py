@@ -21,7 +21,7 @@ class DomainAdapterMetadata(AdapterMetadata):
         description="Compliance regimes satisfied by the adapter (e.g. HIPAA).",
     )
 
-    def with_entry_point(self, entry_point: str) -> "DomainAdapterMetadata":
+    def with_entry_point(self, entry_point: str) -> DomainAdapterMetadata:
         meta = self.model_copy(update={"entry_point": entry_point})
         return meta
 
@@ -49,7 +49,6 @@ class LegalAdapterMetadata(DomainAdapterMetadata):
 
 def as_metadata(metadata: AdapterMetadata) -> DomainAdapterMetadata:
     """Ensure metadata is represented as :class:`DomainAdapterMetadata`."""
-
     if isinstance(metadata, DomainAdapterMetadata):
         return metadata
     payload: dict[str, Any] = metadata.model_dump()

@@ -30,7 +30,6 @@ def _as_float32(vectors: Sequence[Sequence[float]]) -> np.ndarray:
 
 def quantize_int8(vectors: Sequence[Sequence[float]]) -> dict[str, object]:
     """Symmetric per-vector int8 quantisation with scale tracking."""
-
     matrix = _as_float32(vectors)
     scales = np.maximum(np.abs(matrix).max(axis=1, keepdims=True), 1e-6)
     quantized = np.clip(np.round(matrix / scales * 127.0), -128, 127).astype(np.int8)
@@ -39,14 +38,12 @@ def quantize_int8(vectors: Sequence[Sequence[float]]) -> dict[str, object]:
 
 def quantize_fp16(vectors: Sequence[Sequence[float]]) -> dict[str, object]:
     """Lossy fp16 conversion retaining fp32 restore metadata."""
-
     matrix = _as_float32(vectors)
     return {"values": matrix.astype(np.float16), "dtype": "float16"}
 
 
 def binary_quantize(vectors: Sequence[Sequence[float]]) -> dict[str, object]:
     """Convert vectors into packed binary signatures for Hamming search."""
-
     matrix = _as_float32(vectors)
     thresholded = (matrix >= 0).astype(np.uint8)
     packed = np.packbits(thresholded, axis=1)
@@ -64,7 +61,6 @@ def train_pq(
     vectors: Sequence[Sequence[float]], *, m: int, nbits: int
 ) -> dict[str, object]:
     """Train a simple product quantiser via k-means on subvectors."""
-
     matrix = _as_float32(vectors)
     subvectors = _split_subvectors(matrix, m)
     codebooks: list[np.ndarray] = []
@@ -104,7 +100,6 @@ def learn_opq_rotation(
     vectors: Sequence[Sequence[float]], *, m: int
 ) -> dict[str, object]:
     """Estimate an orthogonal rotation prior to PQ (OPQ)."""
-
     matrix = _as_float32(vectors)
     cov = np.cov(matrix, rowvar=False)
     eigvals, eigvecs = np.linalg.eigh(cov)
@@ -122,7 +117,6 @@ def two_stage_reorder(
     query_vector: Sequence[float] | None = None,
 ) -> list[tuple[str, float, dict[str, object]]]:
     """Reorder coarse ANN hits using float vectors."""
-
     if metric not in {"cosine", "l2"}:
         raise CompressionError(f"unsupported metric '{metric}' for reorder")
     if not coarse:
@@ -214,7 +208,6 @@ class CompressionManager:
 
 def batch_vectors(records: Iterable[Sequence[float]], *, batch_size: int) -> Iterable[list[Sequence[float]]]:
     """Yield fixed-size batches suitable for GPU uploads."""
-
     batch: list[Sequence[float]] = []
     for vector in records:
         batch.append(vector)

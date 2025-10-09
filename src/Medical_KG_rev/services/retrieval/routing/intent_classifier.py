@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
-import re
-from typing import Iterable, Mapping
 
 import structlog
 
@@ -80,7 +80,6 @@ class IntentClassifier:
         Manual overrides (either :class:`QueryIntent` or string values) take
         precedence and result in a classification with confidence ``1.0``.
         """
-
         query = (query or "").strip()
         override_intent = self._normalise_override(override)
         if override_intent is not None:
@@ -124,7 +123,6 @@ class IntentClassifier:
         The helper is lightweight and intended for unit-level regression
         coverage rather than runtime monitoring.
         """
-
         if not labelled_queries:
             return 1.0
         correct = 0

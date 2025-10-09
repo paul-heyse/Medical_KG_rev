@@ -43,15 +43,18 @@ Example:
     >>> artifacts = build_artifacts(tables=tables, figures=figures)
     >>> table = artifacts.tables.get("t1")
     >>> assert table is not None
+
 """
 
 from __future__ import annotations
+
+from collections.abc import Iterable, Iterator
 
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 from dataclasses import dataclass
-from typing import Any, Generic, Iterable, Iterator
+from typing import Any, Generic
 
 from Medical_KG_rev.models.artifact import ArtifactType
 from Medical_KG_rev.models.equation import Equation
@@ -89,6 +92,7 @@ class ArtifactCollection(Generic[ArtifactType]):
         >>> table = collection.get("t1")
         >>> assert table is not None
         >>> assert len(collection) == 2
+
     """
 
     items: tuple[ArtifactType, ...]
@@ -111,6 +115,7 @@ class ArtifactCollection(Generic[ArtifactType]):
             >>> tables = [Table(id="t1", content="..."), Table(id="t2", content="...")]
             >>> collection = ArtifactCollection.from_iterable(tables)
             >>> assert len(collection) == 2
+
         """
         items: list[ArtifactType] = []
         index: dict[str, ArtifactType] = {}
@@ -131,6 +136,7 @@ class ArtifactCollection(Generic[ArtifactType]):
             >>> collection = ArtifactCollection.from_iterable(tables)
             >>> for artifact in collection:
             ...     print(artifact.id)
+
         """
         return iter(self.items)
 
@@ -143,6 +149,7 @@ class ArtifactCollection(Generic[ArtifactType]):
         Example:
             >>> collection = ArtifactCollection.from_iterable(tables)
             >>> assert len(collection) == 2
+
         """
         return len(self.items)
 
@@ -161,6 +168,7 @@ class ArtifactCollection(Generic[ArtifactType]):
             >>> assert table is not None
             >>> missing = collection.get("nonexistent")
             >>> assert missing is None
+
         """
         if not identifier:
             return None
@@ -202,6 +210,7 @@ class MineruArtifacts:
         ...     equation_rendering={}
         ... )
         >>> table, figure, equation = artifacts.attachments_for("t1", "f1", "e1")
+
     """
 
     tables: ArtifactCollection[Table]
@@ -230,6 +239,7 @@ class MineruArtifacts:
             >>> assert table is not None
             >>> assert figure is not None
             >>> assert equation is not None
+
         """
         return (
             self.tables.get(table_id),
@@ -249,6 +259,7 @@ class MineruArtifacts:
             >>> assert "table_exports" in metadata
             >>> assert "figure_assets" in metadata
             >>> assert "equation_rendering" in metadata
+
         """
         return {
             "table_exports": self.table_exports,
@@ -306,6 +317,7 @@ def build_artifacts(
         >>> assert len(artifacts.tables) == 2
         >>> assert len(artifacts.figures) == 1
         >>> assert len(artifacts.equations) == 1
+
     """
     return MineruArtifacts(
         tables=ArtifactCollection.from_iterable(tables),

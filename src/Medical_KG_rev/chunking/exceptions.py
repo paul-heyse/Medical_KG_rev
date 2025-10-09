@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 class ChunkingError(RuntimeError):
@@ -76,14 +76,14 @@ class MineruGpuUnavailableError(ChunkingError):
 
 
 __all__ = [
-    "ChunkingError",
     "ChunkerConfigurationError",
     "ChunkerRegistryError",
-    "InvalidDocumentError",
+    "ChunkingError",
+    "ChunkingFailedError",
     "ChunkingUnavailableError",
+    "InvalidDocumentError",
+    "MineruGpuUnavailableError",
+    "MineruOutOfMemoryError",
     "ProfileNotFoundError",
     "TokenizerMismatchError",
-    "ChunkingFailedError",
-    "MineruOutOfMemoryError",
-    "MineruGpuUnavailableError",
 ]

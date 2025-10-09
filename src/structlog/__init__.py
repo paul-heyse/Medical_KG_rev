@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable, Mapping
 from datetime import datetime
-from typing import Any, Callable, Mapping
+from typing import Any
 
 __all__ = [
-    "get_logger",
+    "PrintLoggerFactory",
     "configure",
     "contextvars",
+    "get_logger",
+    "make_filtering_bound_logger",
     "processors",
     "stdlib",
-    "make_filtering_bound_logger",
-    "PrintLoggerFactory",
 ]
 
 
@@ -22,7 +23,7 @@ class _BoundLogger:
     def __init__(self, name: str) -> None:
         self._logger = logging.getLogger(name)
 
-    def bind(self, **_: Any) -> "_BoundLogger":
+    def bind(self, **_: Any) -> _BoundLogger:
         return self
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:

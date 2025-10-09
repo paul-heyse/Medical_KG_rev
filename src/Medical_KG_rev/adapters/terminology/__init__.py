@@ -8,8 +8,8 @@ from .adapter import (
 )
 
 __all__ = [
-    "RxNormAdapter",
+    "ChEMBLAdapter",
     "ICD11Adapter",
     "MeSHAdapter",
-    "ChEMBLAdapter",
+    "RxNormAdapter",
 ]

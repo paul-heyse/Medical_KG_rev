@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
+from .domains.metadata import DomainAdapterMetadata
 from .errors import AdapterPluginError
-from .pipeline import AdapterExecutionContext, AdapterExecutionMetrics, AdapterPipeline
 from .models import (
     AdapterMetadata,
     AdapterRequest,
     AdapterResponse,
     ValidationOutcome,
 )
-from .domains.metadata import DomainAdapterMetadata
+from .pipeline import AdapterExecutionContext, AdapterExecutionMetrics, AdapterPipeline
 
 
 @dataclass(slots=True)

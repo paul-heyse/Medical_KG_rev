@@ -1,6 +1,7 @@
 """FastAPI dependencies for authentication and authorization."""
 
 from __future__ import annotations
+
 """FastAPI dependencies wiring authentication subsystems together.
 
 This module exposes dependency factories and helper utilities used by the REST
@@ -24,7 +25,6 @@ from .context import SecurityContext
 from .jwt import AuthenticationError, JWTAuthenticator, build_authenticator
 from .rate_limit import RateLimiter, RateLimitExceeded, build_rate_limiter
 
-
 # ============================================================================
 # DEPENDENCY FACTORIES
 # ============================================================================
@@ -32,19 +32,16 @@ from .rate_limit import RateLimiter, RateLimitExceeded, build_rate_limiter
 
 def _get_authenticator() -> JWTAuthenticator:
     """Return a configured :class:`JWTAuthenticator` instance."""
-
     return build_authenticator()
 
 
 def _get_rate_limiter() -> RateLimiter:
     """Return the process-wide :class:`RateLimiter`."""
-
     return build_rate_limiter()
 
 
 def _get_api_key_manager() -> APIKeyManager:
     """Return the API key manager used for header authentication."""
-
     return build_api_key_manager()
 
 
@@ -74,8 +71,8 @@ async def get_security_context(
 
     Raises:
         HTTPException: When authentication fails for any reason.
-    """
 
+    """
     if api_key:
         try:
             key_id, record = api_keys.authenticate(api_key)
@@ -152,6 +149,7 @@ def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., Se
 
     Returns:
         FastAPI dependency that yields an authenticated :class:`SecurityContext`.
+
     """
 
     async def dependency(
@@ -165,8 +163,8 @@ def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., Se
 
         Raises:
             HTTPException: When rate limits are exceeded or scopes are missing.
-        """
 
+        """
         try:
             rate_limiter.check(context.identity, endpoint)
         except RateLimitExceeded as exc:

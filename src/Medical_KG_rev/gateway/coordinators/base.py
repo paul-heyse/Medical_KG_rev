@@ -41,6 +41,7 @@ Example:
     ...     metrics=CoordinatorMetrics.create("my_coordinator")
     ... )
     >>> result = coordinator(MyRequest(tenant_id="tenant1"))
+
 """
 from __future__ import annotations
 
@@ -106,6 +107,7 @@ class CoordinatorRequest:
         ...     metadata={"source": "api", "priority": "high"}
         ... )
         >>> print(f"Processing request for tenant: {request.tenant_id}")
+
     """
 
     tenant_id: str
@@ -147,6 +149,7 @@ class CoordinatorResult:
         ...     metadata={"status": "success", "items_processed": 42}
         ... )
         >>> print(f"Job {result.job_id} completed in {result.duration_s}s")
+
     """
 
     job_id: str
@@ -184,6 +187,7 @@ class CoordinatorError(RuntimeError):
         ... except CoordinatorError as e:
         ...     print(f"Coordinator failed: {e}")
         ...     print(f"Context: {e.context}")
+
     """
 
     def __init__(self, message: str, *, context: Mapping[str, Any] | None = None) -> None:
@@ -198,6 +202,7 @@ class CoordinatorError(RuntimeError):
             ...     "Circuit breaker open",
             ...     context={"request": request, "attempts": 3}
             ... )
+
         """
         super().__init__(message)
         self.context = context or {}
@@ -244,6 +249,7 @@ class CoordinatorMetrics:
         >>> with metrics.duration.time():  # Time an operation
         ...     # Perform coordinator work
         ...     pass
+
     """
 
     attempts: Counter
@@ -271,6 +277,7 @@ class CoordinatorMetrics:
             >>> metrics1 = CoordinatorMetrics.create("my_coordinator")
             >>> metrics2 = CoordinatorMetrics.create("my_coordinator")
             >>> assert metrics1 is metrics2  # Same instance
+
         """
         try:
             return _METRICS_CACHE[name]
@@ -341,6 +348,7 @@ class CoordinatorConfig:
         ...     retry_wait_max=5.0
         ... )
         >>> retrying = config.build_retrying()
+
     """
 
     name: str
@@ -364,6 +372,7 @@ class CoordinatorConfig:
             >>> config = CoordinatorConfig(name="test", retry_attempts=3)
             >>> retrying = config.build_retrying()
             >>> # Use retrying.call() to execute operations with retry logic
+
         """
         return Retrying(
             stop=stop_after_attempt(self.retry_attempts),
@@ -419,6 +428,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         ...     metrics=CoordinatorMetrics.create("my_coordinator")
         ... )
         >>> result = coordinator(MyRequest(tenant_id="tenant1"))
+
     """
 
     config: CoordinatorConfig
@@ -435,6 +445,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
             >>> coordinator = MyCoordinator(config=config, metrics=metrics)
             >>> # __post_init__ is called automatically
             >>> assert coordinator._retrying is not None
+
         """
         self._retrying = self.config.build_retrying()
         self._limiter = self.config.limiter
@@ -467,6 +478,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         Example:
             >>> result = coordinator(request)
             >>> print(f"Operation completed in {result.duration_s}s")
+
         """
         logger.debug(
             "gateway.coordinator.invoke",
@@ -532,6 +544,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         Example:
             >>> result = coordinator._execute_with_guards(request)
             >>> # Method handles all resilience concerns automatically
+
         """
         def _call() -> _ResultT:
             if self._breaker is not None:
@@ -585,6 +598,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         Example:
             >>> result = await BaseCoordinator._consume_limiter(limiter, lambda: execute())
             >>> # Function executes after rate limiter permits
+
         """
         async with limiter:
             return func()
@@ -617,6 +631,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
             ...     def _execute(self, request: MyRequest, **kwargs) -> MyResult:
             ...         # Implement specific coordinator logic
             ...         return MyResult(job_id="123", duration_s=1.0)
+
         """
 
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 try:  # pragma: no cover - optional dependency
     import yaml
@@ -52,7 +52,6 @@ def load_namespace_configs(
     fallback_config: EmbeddingsConfiguration | None = None,
 ) -> dict[str, NamespaceConfig]:
     """Load namespace configurations from YAML files or configuration fallback."""
-
     namespace_dir = directory or Path(os.environ.get("MK_EMBEDDING_NAMESPACE_DIR", DEFAULT_NAMESPACE_DIR))
     configs: dict[str, NamespaceConfig] = {}
     aggregated_path = namespace_dir.parent / "namespaces.yaml"
@@ -86,7 +85,6 @@ def load_registry(
     fallback_config: EmbeddingsConfiguration | None = None,
 ) -> EmbeddingNamespaceRegistry:
     """Load namespaces into a runtime registry instance."""
-
     registry = EmbeddingNamespaceRegistry()
     registry.bulk_register(load_namespace_configs(directory, fallback_config=fallback_config))
     return registry

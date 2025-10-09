@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 from uuid import uuid4
 
 import structlog
 from Medical_KG_rev.adapters import AdapterPluginError
-from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
+from Medical_KG_rev.adapters.plugins.models import AdapterDomain
 from Medical_KG_rev.models.entities import Claim, Entity
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.orchestration.haystack.components import (
@@ -610,16 +611,16 @@ def create_stage_plugin_manager(
 __all__ = [
     "AdapterIngestStage",
     "AdapterParseStage",
+    "CoreStagePlugin",
+    "HaystackPipelineResource",
     "IRValidationStage",
+    "NoOpDocumentWriter",
     "NoOpExtractStage",
     "NoOpKnowledgeGraphStage",
-    "SimpleDocumentSplitter",
-    "SimpleEmbedder",
-    "NoOpDocumentWriter",
-    "HaystackPipelineResource",
     "PdfDownloadStage",
     "PdfGateStage",
+    "SimpleDocumentSplitter",
+    "SimpleEmbedder",
     "create_default_pipeline_resource",
-    "CoreStagePlugin",
     "create_stage_plugin_manager",
 ]

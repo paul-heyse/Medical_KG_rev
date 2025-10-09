@@ -26,7 +26,6 @@ def validate_namespace_access(
     required_scope: str,
 ) -> NamespaceAccessResult:
     """Validate whether a tenant with a scope may access a namespace."""
-
     try:
         config = registry.get(namespace)
     except ValueError as exc:  # pragma: no cover - surfaced to caller

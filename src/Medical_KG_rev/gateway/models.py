@@ -34,6 +34,7 @@ Example:
     ...     detail="Invalid input provided"
     ... )
     >>> print(error.model_dump_json())
+
 """
 
 # ==============================================================================
@@ -234,7 +235,7 @@ class ChunkRequest(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _ensure_text(cls, values: "ChunkRequest") -> "ChunkRequest":
+    def _ensure_text(cls, values: ChunkRequest) -> ChunkRequest:
         text = values.text
         if text is None:
             option_text = values.options.get("text") if isinstance(values.options, dict) else None
@@ -410,7 +411,7 @@ class EvaluationRequest(BaseModel):
     use_cache: bool = True
 
     @model_validator(mode="after")
-    def _validate_source(self) -> "EvaluationRequest":
+    def _validate_source(self) -> EvaluationRequest:
         if not self.test_set_name and not self.queries:
             raise ValueError("Either 'test_set_name' or 'queries' must be provided")
         return self
@@ -424,7 +425,7 @@ class MetricSummaryView(BaseModel):
     ci_high: float | None = None
 
     @classmethod
-    def from_metric(cls, summary: MetricSummary) -> "MetricSummaryView":
+    def from_metric(cls, summary: MetricSummary) -> MetricSummaryView:
         return cls(
             mean=summary.mean,
             median=summary.median,
@@ -445,7 +446,7 @@ class EvaluationResponse(BaseModel):
     config: dict[str, Any]
 
     @classmethod
-    def from_result(cls, result: EvaluationResult) -> "EvaluationResponse":
+    def from_result(cls, result: EvaluationResult) -> EvaluationResponse:
         metrics = {name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()}
         latency = MetricSummaryView.from_metric(result.latency)
         config = json.loads(result.config.to_json())
@@ -529,6 +530,7 @@ def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationRes
 
     Returns:
         Batch operation result with summary statistics.
+
     """
     items = list(statuses)
     succeeded = sum(

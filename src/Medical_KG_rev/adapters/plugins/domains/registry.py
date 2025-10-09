@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
-from typing import Mapping
+from collections.abc import Iterable, Mapping
 
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterMetadata
 

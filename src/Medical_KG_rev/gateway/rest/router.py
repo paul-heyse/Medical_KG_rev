@@ -36,6 +36,7 @@ Example:
     >>> from Medical_KG_rev.gateway.rest.router import router
     >>> app = FastAPI()
     >>> app.include_router(router)
+
 """
 
 # ==============================================================================
@@ -45,7 +46,7 @@ Example:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse, Response
@@ -55,12 +56,8 @@ from ...auth import Scopes, SecurityContext, secure_endpoint
 from ...auth.audit import get_audit_trail
 from ...services.health import HealthService
 from ..models import (
-    AdapterConfigSchemaView,
-    AdapterHealthView,
-    AdapterMetadataView,
     BatchOperationResult,
     ChunkRequest,
-    EmbeddingResponse,
     EmbedRequest,
     EntityLinkRequest,
     EvaluationRequest,
@@ -69,15 +66,9 @@ from ..models import (
     IngestionRequest,
     JobStatus,
     KnowledgeGraphWriteRequest,
-    NamespaceInfo,
-    NamespacePolicyDiagnosticsView,
-    NamespacePolicyHealthView,
     NamespacePolicyInvalidateRequest,
-    NamespacePolicyMetricsView,
-    NamespacePolicyStatus,
     NamespacePolicyUpdateRequest,
     NamespaceValidationRequest,
-    NamespaceValidationResponse,
     PipelineIngestionRequest,
     PipelineQueryRequest,
     RetrievalResult,
@@ -893,9 +884,9 @@ async def list_audit_logs(
 # ==============================================================================
 
 __all__ = [
-    "router",
-    "health_router",
     "JSONAPI_CONTENT_TYPE",
-    "PresenterDep",
     "LifecycleDep",
+    "PresenterDep",
+    "health_router",
+    "router",
 ]

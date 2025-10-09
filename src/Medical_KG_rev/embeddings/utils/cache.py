@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Generic, Hashable, TypeVar
+from typing import Generic, TypeVar
 
 import structlog
 

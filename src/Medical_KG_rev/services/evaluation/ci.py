@@ -30,6 +30,7 @@ Example:
     >>> baseline_recall = 0.85
     >>> current_recall = 0.82
     >>> enforce_recall_threshold(baseline_recall, current_recall, tolerance=0.05)
+
 """
 
 # ==============================================================================
@@ -57,6 +58,7 @@ def enforce_recall_threshold(
 
     Raises:
         RuntimeError: If performance regression exceeds tolerance.
+
     """
     if baseline <= 0:
         return

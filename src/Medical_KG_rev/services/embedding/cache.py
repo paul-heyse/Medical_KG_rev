@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 from datetime import datetime
-import json
 from typing import Protocol
 
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
@@ -58,13 +58,13 @@ class EmbeddingCache(Protocol):
 class NullEmbeddingCache:
     """No-op cache implementation used when Redis is unavailable."""
 
-    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None:  # noqa: D401 - interface compliance
+    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None:
         return None
 
-    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:  # noqa: D401 - interface compliance
+    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:
         return None
 
-    def invalidate_namespace(self, namespace: str) -> None:  # noqa: D401 - interface compliance
+    def invalidate_namespace(self, namespace: str) -> None:
         return None
 
 
@@ -77,7 +77,7 @@ class InMemoryEmbeddingCache:
     def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None:
         return self._records.get((namespace, embedding_id))
 
-    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:  # noqa: D401 - TTL unused for in-memory cache
+    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:
         self._records[(record.namespace, record.id)] = record
 
     def invalidate_namespace(self, namespace: str) -> None:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Iterable
 
 try:  # pragma: no cover - optional dependency
     import tiktoken

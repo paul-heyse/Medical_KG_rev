@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 from .provenance import BlockContext
 from .tokenization import TokenCounter, default_token_counter
@@ -26,7 +26,6 @@ def _clone_context(
     counter: TokenCounter,
 ) -> BlockContext:
     """Clone a block context with updated text and offsets."""
-
     return BlockContext(
         block=base.block,
         section=base.section,
@@ -59,7 +58,6 @@ class TableHandler:
 
     def iter_slices(self, context: BlockContext) -> Iterable[TableSlice]:
         """Yield logical slices for a table block."""
-
         if not context.text:
             return []
         rows = self._extract_rows(context)
@@ -130,7 +128,6 @@ class TableHandler:
 
     def _extract_rows(self, context: BlockContext) -> list[dict[str, object]]:
         """Parse raw table text into logical rows with offsets."""
-
         metadata_rows: Sequence[str] | None = None
         meta = context.block.metadata
         if isinstance(meta, dict):

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
 
 import yaml
 
@@ -68,7 +68,7 @@ class TenantRerankPolicy:
             return RerankDecision(True, "default:on", "global-config")
         if self.experiment_ratio <= 0:
             return RerankDecision(False, "default:off", "global-config")
-        seed = f"{tenant_id}:{query}".encode("utf-8")
+        seed = f"{tenant_id}:{query}".encode()
         digest = hashlib.blake2b(seed, digest_size=8).digest()
         # Map digest to a floating point value in [0, 1).
         threshold = int.from_bytes(digest, "big") / float(1 << (8 * len(digest)))

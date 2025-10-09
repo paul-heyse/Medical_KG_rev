@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
 from Medical_KG_rev.models.ir import Document
 
+from ..adapters.mapping import OffsetMapper
 from ..assembly import ChunkAssembler
 from ..exceptions import ChunkerConfigurationError
 from ..models import Chunk, Granularity
-from ..provenance import BlockContext, ProvenanceNormalizer
-from ..tokenization import TokenCounter, default_token_counter
 from ..ports import BaseChunker
+from ..provenance import BlockContext, ProvenanceNormalizer
 from ..sentence_splitters import sentence_splitter_factory
-from ..adapters.mapping import OffsetMapper
+from ..tokenization import TokenCounter, default_token_counter
 
 
 class TextTilingChunker(BaseChunker):

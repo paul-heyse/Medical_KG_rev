@@ -34,6 +34,7 @@ Example:
     >>> from Medical_KG_rev.gateway.presentation.lifecycle import RequestLifecycle
     >>> lifecycle = RequestLifecycle(method="GET", path="/api/test")
     >>> lifecycle.complete(200)
+
 """
 
 # ==============================================================================
@@ -42,10 +43,10 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Mapping
 from uuid import uuid4
 
 from fastapi import Request
@@ -66,7 +67,7 @@ from Medical_KG_rev.utils.logging import (
 
 logger = get_logger(__name__)
 
-_CURRENT_LIFECYCLE: ContextVar["RequestLifecycle" | None] = ContextVar(
+_CURRENT_LIFECYCLE: ContextVar[RequestLifecycle | None] = ContextVar(
     "gateway_request_lifecycle",
     default=None,
 )
@@ -92,7 +93,6 @@ class RequestLifecycle:
 
     def complete(self, status_code: int) -> None:
         """Record a successful response if not already completed."""
-
         if self.status_code is not None:
             return
         self.status_code = status_code
@@ -102,14 +102,12 @@ class RequestLifecycle:
 
     def fail(self, exc: BaseException, *, status_code: int = 500) -> None:
         """Record an error outcome for the request."""
-
         self.error = str(exc)
         self.complete(status_code)
 
     @property
     def duration_seconds(self) -> float:
         """Return the elapsed time since the lifecycle started."""
-
         end = self.finished_at or perf_counter()
         return max(end - self.started_at, 0.0)
 
@@ -127,7 +125,6 @@ class RequestLifecycle:
 
     def apply(self, response: Response, *, correlation_header: str | None) -> None:
         """Apply lifecycle metadata to the outbound response headers."""
-
         if correlation_header:
             response.headers.setdefault(correlation_header, self.correlation_id)
         response.headers.setdefault("X-Response-Time-Ms", f"{self.duration_ms:.2f}")
@@ -138,7 +135,6 @@ class RequestLifecycle:
 
     def meta(self, extra: Mapping[str, object] | None = None) -> dict[str, object]:
         """Return a metadata dictionary enriched with correlation details."""
-
         payload: dict[str, object] = {
             "correlation_id": self.correlation_id,
             "duration_ms": round(self.duration_ms, 3),
@@ -157,6 +153,7 @@ def current_lifecycle() -> RequestLifecycle | None:
 
     Returns:
         Current request lifecycle instance or None if not set.
+
     """
     return _CURRENT_LIFECYCLE.get()
 
@@ -169,6 +166,7 @@ def push_lifecycle(lifecycle: RequestLifecycle) -> Token:
 
     Returns:
         Token for restoring the previous context.
+
     """
     return _CURRENT_LIFECYCLE.set(lifecycle)
 
@@ -178,6 +176,7 @@ def pop_lifecycle(token: Token) -> None:
 
     Args:
         token: Token returned by push_lifecycle.
+
     """
     _CURRENT_LIFECYCLE.reset(token)
 
@@ -264,6 +263,6 @@ __all__ = [
     "RequestLifecycle",
     "RequestLifecycleMiddleware",
     "current_lifecycle",
-    "push_lifecycle",
     "pop_lifecycle",
+    "push_lifecycle",
 ]

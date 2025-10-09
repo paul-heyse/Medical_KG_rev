@@ -10,11 +10,9 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import datetime
-
 
 # ============================================================================
 # DATA MODELS
@@ -43,6 +41,7 @@ class SecurityContext:
         ... )
         >>> context.has_scope("ingest:write")
         True
+
     """
 
     subject: str
@@ -62,8 +61,8 @@ class SecurityContext:
 
         Returns:
             ``True`` if the context includes the scope or a wildcard.
-        """
 
+        """
         return scope in self.scopes or "*" in self.scopes
 
     @property
@@ -72,8 +71,8 @@ class SecurityContext:
 
         Returns:
             Stable identifier string combining subject or key ID.
-        """
 
+        """
         return self.key_id or self.subject
 
     def with_scope(self, *extra_scopes: str) -> SecurityContext:
@@ -85,8 +84,8 @@ class SecurityContext:
         Returns:
             A new :class:`SecurityContext` instance containing the merged scope
             set while preserving other metadata.
-        """
 
+        """
         merged_scopes: set[str] = set(self.scopes).union(extra_scopes)
         data: MutableMapping[str, object] = {
             "subject": self.subject,

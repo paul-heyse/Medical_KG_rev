@@ -157,7 +157,6 @@ class GpuManager:
         warmup: bool = False,
     ) -> Iterator[GpuDevice]:
         """Context manager that reserves the GPU for a microservice call."""
-
         lib = self._ensure_torch()
         device = self.get_device()
         self._require_memory(lib, device, required_memory_mb)
@@ -178,7 +177,6 @@ class GpuManager:
 
     def wait_for_gpu(self, timeout: float = 5.0, interval: float = 0.5) -> GpuDevice:
         """Poll until a GPU becomes available or timeout occurs."""
-
         deadline = time.monotonic() + timeout
         last_error: Exception | None = None
         while time.monotonic() < deadline:

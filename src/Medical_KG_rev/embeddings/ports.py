@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-import re
-from typing import Any, Literal, Protocol, Sequence, runtime_checkable
-
+from typing import Any, Literal, Protocol, runtime_checkable
 
 EmbeddingKind = Literal["single_vector", "multi_vector", "sparse", "neural_sparse"]
 

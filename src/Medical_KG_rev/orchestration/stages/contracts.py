@@ -14,9 +14,10 @@ import copy
 import json as _json
 import time
 import zlib
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from importlib import util as importlib_util
-from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import structlog
 from prometheus_client import Counter, Histogram
@@ -38,7 +39,7 @@ else:  # pragma: no cover - fallback for lightweight environments
             for key, value in data.items():
                 setattr(self, key, value)
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> BaseModel:
             payload = self.model_dump(mode="python")
             if update:
                 payload.update(update)
@@ -48,7 +49,7 @@ else:  # pragma: no cover - fallback for lightweight environments
             return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+        def model_validate(cls, payload: Mapping[str, Any]) -> BaseModel:
             return cls(**dict(payload))
 
     def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
@@ -71,7 +72,7 @@ else:  # pragma: no cover - fallback for lightweight test environments
         parameters: dict[str, Any] = field(default_factory=dict)
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "AdapterRequest":
+        def model_validate(cls, payload: Mapping[str, Any]) -> AdapterRequest:
             return cls(
                 tenant_id=str(payload.get("tenant_id", "")),
                 correlation_id=payload.get("correlation_id"),
@@ -79,7 +80,7 @@ else:  # pragma: no cover - fallback for lightweight test environments
                 parameters=dict(payload.get("parameters", {})),
             )
 
-        def model_copy(self, *, deep: bool = False) -> "AdapterRequest":
+        def model_copy(self, *, deep: bool = False) -> AdapterRequest:
             return AdapterRequest(
                 tenant_id=self.tenant_id,
                 correlation_id=self.correlation_id,
@@ -115,7 +116,7 @@ else:  # pragma: no cover - fallback shim
         chunker_version: str
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "Chunk":
+        def model_validate(cls, payload: Mapping[str, Any]) -> Chunk:
             return cls(
                 chunk_id=str(payload.get("chunk_id")),
                 doc_id=str(payload.get("doc_id")),
@@ -145,7 +146,7 @@ else:  # pragma: no cover - fallback shim
         text: str
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "Entity":
+        def model_validate(cls, payload: Mapping[str, Any]) -> Entity:
             return cls(id=str(payload.get("id", "")), type=str(payload.get("type", "")), text=str(payload.get("text", "")))
 
         def model_dump(self, mode: str = "json") -> dict[str, Any]:
@@ -158,7 +159,7 @@ else:  # pragma: no cover - fallback shim
         statement: str
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "Claim":
+        def model_validate(cls, payload: Mapping[str, Any]) -> Claim:
             return cls(id=str(payload.get("id", "")), statement=str(payload.get("statement", "")))
 
         def model_dump(self, mode: str = "json") -> dict[str, Any]:
@@ -177,7 +178,7 @@ else:  # pragma: no cover - fallback shim
         metadata: dict[str, Any] = field(default_factory=dict)
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "Document":
+        def model_validate(cls, payload: Mapping[str, Any]) -> Document:
             return cls(
                 id=str(payload.get("id", "")),
                 source=str(payload.get("source", "")),
@@ -192,10 +193,7 @@ else:  # pragma: no cover - fallback shim
                 "sections": list(self.sections),
                 "metadata": copy.deepcopy(self.metadata),
             }
-import time
-import zlib
 from dataclasses import dataclass, field
-from typing import Any, Callable, ClassVar, Mapping, Protocol, Sequence, runtime_checkable
 
 import orjson
 from attrs import asdict as attr_asdict
@@ -207,7 +205,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-import structlog
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
 from Medical_KG_rev.models.entities import Claim, Entity
@@ -222,7 +219,6 @@ from Medical_KG_rev.orchestration.state import (
     record_stage_metrics,
     serialise_payload,
 )
-from prometheus_client import Counter, Histogram
 
 RawPayload = dict[str, Any]
 
@@ -300,7 +296,7 @@ else:  # pragma: no cover - fallback for lightweight environments
             for key, value in data.items():
                 setattr(self, key, value)
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "BaseModel":
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> BaseModel:
             payload = self.model_dump(mode="python")
             if update:
                 payload.update(update)
@@ -310,7 +306,7 @@ else:  # pragma: no cover - fallback for lightweight environments
             return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "BaseModel":
+        def model_validate(cls, payload: Mapping[str, Any]) -> BaseModel:
             return cls(**dict(payload))
 
     def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
@@ -426,21 +422,18 @@ if PYDANTIC_AVAILABLE:
         pipeline_name: str | None = None
         pipeline_version: str | None = None
 
-        def with_metadata(self, **values: Any) -> "StageContext":
+        def with_metadata(self, **values: Any) -> StageContext:
             """Return a new context instance with additional metadata."""
-
             updated = {**self.metadata, **values}
             return self.model_copy(update={"metadata": updated})
 
         def to_dict(self) -> dict[str, Any]:
             """Return a serialisable representation of the context."""
-
             return self.model_dump(mode="json")
 
         @classmethod
-        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+        def from_dict(cls, payload: Mapping[str, Any]) -> StageContext:
             """Rehydrate a context from a mapping payload."""
-
             return cls.model_validate(payload)
 
 else:
@@ -457,7 +450,7 @@ else:
         pipeline_name: str | None = None
         pipeline_version: str | None = None
 
-        def with_metadata(self, **values: Any) -> "StageContext":
+        def with_metadata(self, **values: Any) -> StageContext:
             updated = dict(self.metadata)
             updated.update(values)
             return StageContext(
@@ -482,7 +475,7 @@ else:
             }
 
         @classmethod
-        def from_dict(cls, payload: Mapping[str, Any]) -> "StageContext":
+        def from_dict(cls, payload: Mapping[str, Any]) -> StageContext:
             return cls(
                 tenant_id=str(payload.get("tenant_id")),
                 job_id=payload.get("job_id"),
@@ -493,7 +486,7 @@ else:
                 pipeline_version=payload.get("pipeline_version"),
             )
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> "StageContext":
+        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> StageContext:
             payload = self.to_dict()
             if update:
                 payload.update(update)
@@ -503,7 +496,7 @@ else:
             return self.to_dict()
 
         @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> "StageContext":
+        def model_validate(cls, payload: Mapping[str, Any]) -> StageContext:
             return cls.from_dict(payload)
 logger = structlog.get_logger(__name__)
 _STATE_SERIALISE_COUNTER = Counter(
@@ -602,7 +595,6 @@ class StageContext:
 
     def with_metadata(self, **values: Any) -> StageContext:
         """Return a new context instance with additional metadata."""
-
         updated = dict(self.metadata)
         updated.update(values)
         return StageContext(
@@ -617,7 +609,6 @@ class StageContext:
 
     def to_dict(self) -> dict[str, Any]:
         """Return a serialisable representation of the context."""
-
         return {
             "tenant_id": self.tenant_id,
             "job_id": self.job_id,
@@ -631,7 +622,6 @@ class StageContext:
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> StageContext:
         """Rehydrate a context from a mapping payload."""
-
         return cls(
             tenant_id=str(payload.get("tenant_id")),
             job_id=payload.get("job_id"),
@@ -713,16 +703,16 @@ class StagePerformanceSample:
 class PipelineStateLifecycleHook:
     """Callback hooks executed when stages progress."""
 
-    on_started: Callable[["PipelineState", str, str], None] | None = None
+    on_started: Callable[[PipelineState, str, str], None] | None = None
     on_completed: Callable[[
-        "PipelineState",
+        PipelineState,
         str,
         str,
         int,
         int,
         int,
     ], None] | None = None
-    on_failed: Callable[["PipelineState", str, str, BaseException], None] | None = None
+    on_failed: Callable[[PipelineState, str, str, BaseException], None] | None = None
 
 
 @dataclass(slots=True)
@@ -732,12 +722,12 @@ class PipelineStateProfiler:
     samples: list[StagePerformanceSample] = field(default_factory=list)
     _inflight: dict[str, float] = field(default_factory=dict, init=False, repr=False)
 
-    def on_stage_started(self, _state: "PipelineState", stage: str, stage_type: str) -> None:
+    def on_stage_started(self, _state: PipelineState, stage: str, stage_type: str) -> None:
         self._inflight[stage] = time.perf_counter()
 
     def on_stage_completed(
         self,
-        _state: "PipelineState",
+        _state: PipelineState,
         stage: str,
         stage_type: str,
         duration_ms: int,
@@ -762,7 +752,7 @@ class PipelineStateProfiler:
 
     def on_stage_failed(
         self,
-        _state: "PipelineState",
+        _state: PipelineState,
         stage: str,
         _stage_type: str,
         _error: BaseException,
@@ -899,7 +889,7 @@ class PipelineState:
     )
     _profiler: PipelineStateProfiler = field(default_factory=PipelineStateProfiler, init=False, repr=False)
 
-    _VALIDATORS: ClassVar[list[tuple[str | None, Callable[["PipelineState"], None]]]] = []
+    _VALIDATORS: ClassVar[list[tuple[str | None, Callable[[PipelineState], None]]]] = []
     _STAGE_DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
         "parse": ("ingest",),
         "ir-validation": ("parse",),
@@ -951,7 +941,6 @@ class PipelineState:
         payload: Mapping[str, Any] | None = None,
     ) -> PipelineState:
         """Factory helper used during bootstrap to create a state instance."""
-
         return cls(
             context=context,
             adapter_request=adapter_request,
@@ -962,7 +951,6 @@ class PipelineState:
     @classmethod
     def required_stage_types(cls, stage_type: str) -> tuple[str, ...]:
         """Return the upstream stage types required before executing ``stage_type``."""
-
         return cls._STAGE_DEPENDENCIES.get(stage_type, ())
 
     # ------------------------------------------------------------------
@@ -976,12 +964,10 @@ class PipelineState:
 
     def is_dirty(self) -> bool:
         """Return whether the state has pending changes since last snapshot."""
-
         return self._dirty
 
-    def clone(self) -> "PipelineState":
+    def clone(self) -> PipelineState:
         """Return a deep copy of the current pipeline state."""
-
         context_copy = StageContext.from_dict(self.context.to_dict())
         adapter_copy = self.adapter_request.model_copy(deep=True)
         clone = PipelineState.initialise(
@@ -1026,7 +1012,6 @@ class PipelineState:
 
     def register_lifecycle_hook(self, hook: PipelineStateLifecycleHook) -> None:
         """Register a lifecycle hook that observes stage progress."""
-
         self._lifecycle_hooks.append(hook)
 
     def notify_stage_started(self, stage: str, stage_type: str) -> None:
@@ -1061,7 +1046,6 @@ class PipelineState:
 
     def profiling_summary(self) -> dict[str, Any]:
         """Return aggregated profiling metrics recorded for the pipeline run."""
-
         return self._profiler.summary()
 
     def profiling_samples(self) -> tuple[StagePerformanceSample, ...]:
@@ -1070,7 +1054,6 @@ class PipelineState:
     @property
     def tenant_id(self) -> str:
         """Return the tenant that owns the current state."""
-
         return self._tenant_id
 
     @staticmethod
@@ -1084,7 +1067,6 @@ class PipelineState:
         include_stage_results: bool = True,
     ) -> PipelineStateSnapshot:
         """Capture and store a checkpoint snapshot for later rollback."""
-
         snapshot = self.snapshot(include_stage_results=include_stage_results)
         self._checkpoints[self._checkpoint_label(label)] = snapshot
         logger.debug(
@@ -1096,7 +1078,6 @@ class PipelineState:
 
     def get_checkpoint(self, label: str | None = None) -> PipelineStateSnapshot | None:
         """Return a previously captured checkpoint snapshot if it exists."""
-
         return self._checkpoints.get(self._checkpoint_label(label))
 
     def has_checkpoint(self, label: str | None = None) -> bool:
@@ -1109,7 +1090,6 @@ class PipelineState:
         restore_stage_results: bool = True,
     ) -> PipelineStateSnapshot | None:
         """Restore the pipeline to a stored checkpoint if available."""
-
         snapshot = self.get_checkpoint(label)
         if snapshot is not None:
             self.restore(snapshot, restore_stage_results=restore_stage_results)
@@ -1122,17 +1102,14 @@ class PipelineState:
 
     def clear_checkpoint(self, label: str | None = None) -> None:
         """Drop a previously stored checkpoint."""
-
         self._checkpoints.pop(self._checkpoint_label(label), None)
 
     def clear_checkpoints(self) -> None:
         """Remove all stored checkpoints."""
-
         self._checkpoints.clear()
 
     def ensure_tenant_scope(self, tenant_id: str) -> None:
         """Validate that the state is being accessed by the owning tenant."""
-
         if tenant_id != self._tenant_id:
             raise PipelineStateValidationError(
                 f"PipelineState initialised for tenant '{self._tenant_id}' cannot be reused for tenant '{tenant_id}'"
@@ -1274,10 +1251,7 @@ class PipelineState:
 
     def ensure_ready_for(self, stage_type: str) -> None:
         """Validate preconditions required by the requested stage type."""
-
-        if stage_type in {"parse", "ir-validation"}:
-            self.require_payloads()
-        elif stage_type == "download":
+        if stage_type in {"parse", "ir-validation"} or stage_type == "download":
             self.require_payloads()
         elif stage_type == "chunk":
             self.require_document()
@@ -1327,7 +1301,6 @@ class PipelineState:
 
     def apply_stage_output(self, stage_type: str, stage_name: str, output: Any) -> None:
         """Persist a stage output onto the typed state structure."""
-
         key = self._stage_state_key(stage_type)
         if stage_type == "ingest":
             values = output or []
@@ -1495,7 +1468,6 @@ class PipelineState:
         stage_type: str | None = None,
     ) -> None:
         """Record failure metadata for a stage."""
-
         self.record_stage_metrics(
             stage_name,
             stage_type=stage_type,
@@ -1507,7 +1479,6 @@ class PipelineState:
 
     def cleanup_stage(self, stage_type: str) -> None:
         """Drop large stage outputs to allow garbage collection."""
-
         key = self._stage_state_key(stage_type)
         if key == "payloads":
             self.payloads = ()
@@ -1530,7 +1501,6 @@ class PipelineState:
 
     def dependencies_satisfied(self, dependencies: Sequence[str]) -> bool:
         """Return True when all dependency stages have completed successfully."""
-
         for dependency in dependencies:
             snapshot = self.stage_results.get(dependency)
             if snapshot is None or snapshot.error:
@@ -1539,7 +1509,6 @@ class PipelineState:
 
     def ensure_dependencies(self, stage_name: str, dependencies: Sequence[str]) -> None:
         """Raise if any dependency is missing or failed."""
-
         unmet: list[str] = []
         for dependency in dependencies:
             snapshot = self.stage_results.get(dependency)
@@ -1555,7 +1524,6 @@ class PipelineState:
 
     def mark_pdf_downloaded(self, *, metadata: Mapping[str, Any] | None = None) -> None:
         """Flag the PDF gate as downloaded and merge metadata."""
-
         self.pdf_gate.downloaded = True
         self.pdf_gate.merge_metadata(metadata)
         self.metadata.setdefault("pdf", {})["downloaded"] = True
@@ -1563,7 +1531,6 @@ class PipelineState:
 
     def mark_pdf_ir_ready(self, *, metadata: Mapping[str, Any] | None = None) -> None:
         """Flag the PDF gate as ready for IR stage and merge metadata."""
-
         self.pdf_gate.ir_ready = True
         self.pdf_gate.merge_metadata(metadata)
         self.metadata.setdefault("pdf", {})["ir_ready"] = True
@@ -1571,7 +1538,6 @@ class PipelineState:
 
     def reset_pdf_gate(self) -> None:
         """Reset the PDF gate state."""
-
         self.pdf_gate = PdfGateState()
         if "pdf" in self.metadata:
             self.metadata.pop("pdf", None)
@@ -1582,7 +1548,6 @@ class PipelineState:
     # ------------------------------------------------------------------
     def snapshot(self, *, include_stage_results: bool = True) -> PipelineStateSnapshot:
         """Capture an immutable snapshot for later rollback or diagnostics."""
-
         stage_payload: dict[str, StageResultSnapshot] = {}
         if include_stage_results:
             stage_payload = {
@@ -1622,7 +1587,6 @@ class PipelineState:
         restore_stage_results: bool = True,
     ) -> None:
         """Restore the state from a previously captured snapshot."""
-
         self.payloads = tuple(copy.deepcopy(snapshot.payloads))
         self.document = copy.deepcopy(snapshot.document)
         self.chunks = tuple(copy.deepcopy(snapshot.chunks))
@@ -1653,7 +1617,6 @@ class PipelineState:
 
     def rollback(self, snapshot: PipelineStateSnapshot) -> None:
         """Alias for :meth:`restore` to emphasise rollback semantics."""
-
         self.restore(snapshot)
 
     # ------------------------------------------------------------------
@@ -1666,7 +1629,6 @@ class PipelineState:
         use_cache: bool = True,
     ) -> dict[str, Any]:
         """Return a metadata snapshot suitable for logging or Kafka payloads."""
-
         if use_cache and not self._dirty and self._serialised_cache is not None:
             _STATE_SERIALISATION_LATENCY.labels(format="dict").observe(0.0)
             return copy.deepcopy(self._serialised_cache)
@@ -1734,7 +1696,6 @@ class PipelineState:
 
     def to_legacy_dict(self) -> dict[str, Any]:
         """Return a dictionary compatible with legacy dict-based state consumers."""
-
         payload: dict[str, Any] = {
             "version": self.schema_version,
             "job_id": self.job_id,
@@ -1813,7 +1774,6 @@ class PipelineState:
 
     def serialise_json(self, *, use_cache: bool = True) -> str:
         """Return a JSON encoded snapshot of the state."""
-
         payload = self.serialise(use_cache=use_cache)
         if use_cache and not self._dirty:
             cached = self._SERIALISATION_CACHE.get(self._cache_key())
@@ -1826,7 +1786,6 @@ class PipelineState:
 
     def serialise_compressed(self, *, use_cache: bool = True) -> bytes:
         """Compress the JSON snapshot for efficient transport."""
-
         if not self._dirty and self._cache.compressed is not None:
             return self._cache.compressed
         json_bytes = self._cache.json_bytes
@@ -1848,7 +1807,6 @@ class PipelineState:
 
     def serialise_base64(self) -> str:
         """Return a base64 encoded compressed snapshot."""
-
         start = time.perf_counter()
         compressed = self.serialise_compressed()
         encoded = base64.b64encode(compressed).decode("ascii")
@@ -1858,7 +1816,6 @@ class PipelineState:
 
     def persist_with_retry(self, persist: Callable[[dict[str, Any]], None]) -> None:
         """Persist the current snapshot using tenacity-backed retries."""
-
         snapshot = self.serialise()
 
         @retry(
@@ -1903,7 +1860,6 @@ class PipelineState:
 
     def serialise_base64(self, *, use_cache: bool = True) -> str:
         """Return a base64 encoded compressed snapshot."""
-
         payload = self.serialise(use_cache=use_cache)
         blob = dumps_orjson(payload)
         if use_cache and not self._dirty:
@@ -1924,7 +1880,6 @@ class PipelineState:
         format: str = "json",
     ) -> Any:
         """Persist the state payload using the supplied writer with retries."""
-
         if format == "json":
             payload = self.serialise_json().encode("utf-8")
         elif format == "compressed":
@@ -1951,7 +1906,6 @@ class PipelineState:
 
     def diff(self, other: PipelineState) -> dict[str, tuple[Any, Any]]:
         """Produce a minimal diff between two states."""
-
         entries: dict[str, tuple[Any, Any]] = {}
         if len(self.payloads) != len(other.payloads):
             entries["payload_count"] = (len(self.payloads), len(other.payloads))
@@ -1997,7 +1951,6 @@ class PipelineState:
         adapter_request: AdapterRequest,
     ) -> PipelineState:
         """Best-effort recovery for pipeline state snapshots."""
-
         if isinstance(payload, (bytes, bytearray)):
             decoded = zlib.decompress(bytes(payload)).decode("utf-8")
             decoded = zlib.decompress(bytes(payload))
@@ -2071,7 +2024,6 @@ class PipelineState:
 
     def hydrate_legacy(self, payload: Mapping[str, Any]) -> None:
         """Populate the state using a legacy dictionary payload."""
-
         self.payload = dict(payload.get("payload", {}))
         raw_payloads = payload.get("payloads")
         if isinstance(raw_payloads, Sequence):
@@ -2194,7 +2146,6 @@ class PipelineState:
         adapter_request: AdapterRequest,
     ) -> PipelineState:
         """Rehydrate a typed state from a legacy dictionary payload."""
-
         state = cls.initialise(
             context=context,
             adapter_request=adapter_request,
@@ -2209,7 +2160,7 @@ class PipelineState:
     @classmethod
     def register_validator(
         cls,
-        validator: Callable[["PipelineState"], None],
+        validator: Callable[[PipelineState], None],
         *,
         name: str | None = None,
     ) -> None:
@@ -2222,10 +2173,9 @@ class PipelineState:
     def validate(
         self,
         *,
-        extra_rules: Sequence[Callable[["PipelineState"], None]] | None = None,
+        extra_rules: Sequence[Callable[[PipelineState], None]] | None = None,
     ) -> None:
         """Run registered validators against the state."""
-
         for name, validator in self._VALIDATORS:
             try:
                 validator(self)
@@ -2240,7 +2190,6 @@ class PipelineState:
 
     def validate_transition(self, stage_type: str) -> None:
         """Ensure the state is ready for the requested stage transition."""
-
         for dependency, satisfied in self._dependency_status(stage_type).items():
             if not satisfied:
                 _STATE_DEPENDENCY_FAILURES.labels(stage_type=stage_type).inc()
@@ -2343,25 +2292,25 @@ class GateStage(Protocol):
 
 __all__ = [
     "ChunkStage",
+    "DownloadArtifact",
+    "DownloadStage",
     "EmbedStage",
     "EmbeddingBatch",
     "EmbeddingVector",
-    "DownloadArtifact",
-    "GateDecision",
     "ExtractStage",
+    "GateDecision",
+    "GateStage",
     "GraphWriteReceipt",
-    "IngestStage",
     "IndexReceipt",
     "IndexStage",
-    "DownloadStage",
-    "GateStage",
+    "IngestStage",
+    "KGStage",
+    "ParseStage",
     "PipelineGateNotReady",
     "PipelineState",
     "PipelineStateSnapshot",
     "PipelineStateValidationError",
-    "KGStage",
-    "StageResultSnapshot",
-    "ParseStage",
     "RawPayload",
     "StageContext",
+    "StageResultSnapshot",
 ]

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 import structlog
-
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +39,7 @@ class _TokenizerWrapper:
 
     def count(self, text: str) -> int:
         tokenizer = self._load()
-        encode = getattr(tokenizer, "encode")
+        encode = tokenizer.encode
         tokens = encode(text, add_special_tokens=False)
         return len(tokens)
 
@@ -85,7 +84,7 @@ class TokenizerCache:
 
 
 __all__ = [
+    "TokenLimitExceededError",
     "TokenizerCache",
     "TokenizerUnavailableError",
-    "TokenLimitExceededError",
 ]

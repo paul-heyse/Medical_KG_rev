@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
-
 import math
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
 from .metrics import evaluate_query
 

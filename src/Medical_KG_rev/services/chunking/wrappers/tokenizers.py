@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import Callable
+from collections.abc import Callable
+from functools import cache
 
 DEFAULT_HF_MODEL = "Qwen/Qwen2.5-Coder-1.5B"
 DEFAULT_TIKTOKEN_MODEL = "gpt-4o-mini"
@@ -25,12 +25,12 @@ def _load_tiktoken(model_name: str):  # pragma: no cover - heavy dependency
         return tiktoken.get_encoding("cl100k_base")
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_hf_tokenizer(model_name: str = DEFAULT_HF_MODEL):
     return _load_hf_tokenizer(model_name)
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_tiktoken_encoder(model_name: str = DEFAULT_TIKTOKEN_MODEL):
     return _load_tiktoken(model_name)
 

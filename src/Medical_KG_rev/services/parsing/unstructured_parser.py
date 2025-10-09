@@ -10,8 +10,8 @@ class UnstructuredParser:
 
     def __init__(self) -> None:
         try:
-            from unstructured.partition.xml import partition_xml
             from unstructured.partition.html import partition_html
+            from unstructured.partition.xml import partition_xml
         except ImportError as exc:  # pragma: no cover - optional dependency
             raise RuntimeError("unstructured[local-inference]>=0.12.0 is required") from exc
         self._partition_xml = partition_xml

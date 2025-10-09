@@ -41,6 +41,7 @@ Example:
     config = load_adapter_config(Path("adapters/config/openalex.yaml"))
     adapter = create_adapter_from_config(config)
     documents = adapter.fetch_and_parse(context)
+
 """
 
 # ==============================================================================
@@ -89,6 +90,7 @@ class RateLimitConfig:
 
     Example:
         RateLimitConfig(requests=100, per_seconds=60.0)  # 100 requests per minute
+
     """
 
     requests: int
@@ -105,6 +107,7 @@ class RateLimitConfig:
             >>> config = RateLimitConfig(requests=60, per_seconds=60.0)
             >>> config.rate_per_second
             1.0
+
         """
         return self.requests / self.per_seconds
 
@@ -126,6 +129,7 @@ class RequestConfig:
             params={"filter": "open_access.is_oa:true"},
             headers={"User-Agent": "Medical-KG-Rev/1.0"}
         )
+
     """
 
     method: str
@@ -143,6 +147,7 @@ class ResponseConfig:
 
     Example:
         ResponseConfig(items_path="results")  # Extract from response.results
+
     """
 
     items_path: str | None = None
@@ -167,6 +172,7 @@ class MappingConfig:
             body="full_text",
             metadata={"doi": "doi", "authors": "authors"}
         )
+
     """
 
     document_id: str
@@ -199,6 +205,7 @@ class AdapterConfig:
             mapping=MappingConfig(document_id="id", title="title"),
             rate_limit=RateLimitConfig(requests=100, per_seconds=60.0)
         )
+
     """
 
     name: str
@@ -221,6 +228,7 @@ class RateLimitModel(BaseModel):
     Validation:
         - requests must be greater than 0
         - per_seconds must be greater than 0
+
     """
 
     requests: int = Field(gt=0)
@@ -237,6 +245,7 @@ class RequestModel(BaseModel):
         path: Request path with optional parameter placeholders
         params: Query parameters with optional placeholders
         headers: HTTP headers with optional placeholders
+
     """
 
     method: str = Field(default="GET")
@@ -252,6 +261,7 @@ class ResponseModel(BaseModel):
 
     Attributes:
         items_path: JSONPath-like path to extract items from response
+
     """
 
     items_path: str | None = None
@@ -268,6 +278,7 @@ class MappingModel(BaseModel):
         summary: Path to document summary/abstract (optional)
         body: Path to document body content (optional)
         metadata: Mapping of metadata keys to API response paths
+
     """
 
     document_id: str = Field(alias="id")
@@ -290,6 +301,7 @@ class AdapterConfigModel(BaseModel):
         response: Response parsing configuration
         mapping: Data mapping configuration
         rate_limit: Rate limiting configuration (optional)
+
     """
 
     name: str | None = None
@@ -328,6 +340,7 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         >>> config = load_adapter_config(Path("config.yaml"))
         >>> adapter = YAMLConfiguredAdapter(config)
         >>> documents = adapter.fetch_and_parse(context)
+
     """
 
     def __init__(self, config: AdapterConfig, client: HttpClient | None = None) -> None:
@@ -340,6 +353,7 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         Example:
             >>> config = AdapterConfig(...)
             >>> adapter = YAMLConfiguredAdapter(config)
+
         """
         rate = config.rate_limit.rate_per_second if config.rate_limit else 5.0
         super().__init__(
@@ -372,6 +386,7 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         Example:
             >>> context = AdapterContext(parameters={"work_id": "W123"})
             >>> items = adapter.fetch(context)
+
         """
         formatter = _FormatDict(context.parameters)
         path = formatter.format(self._config.request.path)
@@ -402,6 +417,7 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
         Example:
             >>> payloads = [{"id": "W123", "title": "Test Paper"}]
             >>> documents = adapter.parse(payloads, context)
+
         """
         documents: list[Document] = []
         for payload in payloads:
@@ -499,6 +515,7 @@ def load_adapter_config(path: Path) -> AdapterConfig:
         >>> config = load_adapter_config(Path("adapters/config/openalex.yaml"))
         >>> print(config.name)
         openalex
+
     """
     data = yaml.safe_load(path.read_text())
     if not data:
@@ -551,6 +568,7 @@ def create_adapter_from_config(
     Example:
         >>> config = load_adapter_config(Path("config.yaml"))
         >>> adapter = create_adapter_from_config(config)
+
     """
     return YAMLConfiguredAdapter(config, client=client)
 
@@ -570,6 +588,7 @@ class _FormatDict(dict):
 
         Args:
             parameters: Parameter values for substitution
+
         """
         super().__init__(parameters)
 
@@ -581,6 +600,7 @@ class _FormatDict(dict):
 
         Raises:
             ValueError: Always raised for missing parameters
+
         """
         raise ValueError(f"Missing required parameter '{key}' for adapter configuration")
 
@@ -592,6 +612,7 @@ class _FormatDict(dict):
 
         Returns:
             Formatted string with substituted values
+
         """
         return template.format_map(self)
 
@@ -605,6 +626,7 @@ def _format_structure(value: Any, formatter: _FormatDict) -> Any:
 
     Returns:
         Formatted value with parameter substitution
+
     """
     if isinstance(value, str):
         return formatter.format(value)
@@ -630,6 +652,7 @@ def _resolve_items(payload: Any, path: str | None) -> Sequence[Mapping[str, Any]
         >>> items = _resolve_items(data, "results")
         >>> len(items)
         2
+
     """
     if path is None:
         if isinstance(payload, list):
@@ -662,6 +685,7 @@ def _resolve_path(data: Any, path: str | None) -> Any:
         >>> value = _resolve_path(data, "results[0].title")
         >>> value
         "Test"
+
     """
     if path is None:
         return data
@@ -703,6 +727,7 @@ def _to_text(value: Any) -> str:
         "123"
         >>> _to_text(None)
         ""
+
     """
     if value is None:
         return ""

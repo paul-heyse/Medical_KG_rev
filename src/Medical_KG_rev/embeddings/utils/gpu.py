@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Final
 
 import structlog
-
 from Medical_KG_rev.services import GpuNotAvailableError
 
 logger = structlog.get_logger(__name__)
@@ -54,7 +53,6 @@ def probe() -> GPUStatus:
 
 def memory_info(device: int = 0) -> GPUMemoryInfo:
     """Return a snapshot of GPU memory usage when CUDA is available."""
-
     if torch is None or not torch.cuda.is_available():  # pragma: no cover - optional dependency
         return GPUMemoryInfo(available=False)
     try:
@@ -96,7 +94,6 @@ def ensure_memory_budget(
     reserve_mb: int | None = None,
 ) -> None:
     """Fail fast when the GPU memory budget for an operation would be exceeded."""
-
     if not require_gpu:
         return
     if fraction is None and reserve_mb is None:
@@ -129,8 +126,8 @@ def ensure_memory_budget(
 
 
 __all__ = [
-    "GPUStatus",
     "GPUMemoryInfo",
+    "GPUStatus",
     "ensure_available",
     "ensure_memory_budget",
     "memory_info",

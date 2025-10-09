@@ -44,6 +44,7 @@ Example:
     >>> service = MineruGrpcService()
     >>> response = service.ProcessPdf(request)
     >>> assert response.documents is not None
+
 """
 
 # ==============================================================================
@@ -51,12 +52,12 @@ Example:
 # ==============================================================================
 
 __all__ = [
+    "MineruGpuUnavailableError",
     "MineruGrpcService",
+    "MineruOutOfMemoryError",
     "MineruProcessor",
     "MineruRequest",
     "MineruResponse",
-    "MineruOutOfMemoryError",
-    "MineruGpuUnavailableError",
 ]
 
 
@@ -79,6 +80,7 @@ def __getattr__(name: str):  # pragma: no cover - simple lazy import helper
     Example:
         >>> service = __getattr__("MineruGrpcService")
         >>> assert service is not None
+
     """
     if name in __all__:
         from .service import (

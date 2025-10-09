@@ -46,6 +46,7 @@ Example:
     >>> document = postprocessor.build_document(parsed, request, provenance)
     >>> assert len(document.blocks) > 0
     >>> assert len(document.tables) >= 0
+
 """
 
 from __future__ import annotations
@@ -57,10 +58,11 @@ import csv
 import json
 import mimetypes
 from collections import defaultdict
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import structlog
 from Medical_KG_rev.models.equation import Equation
@@ -110,6 +112,7 @@ class MineruPostProcessor:
         ...     inline_equation_character_limit=120
         ... )
         >>> document = postprocessor.build_document(parsed, request, provenance)
+
     """
 
     def __init__(
@@ -132,6 +135,7 @@ class MineruPostProcessor:
             ...     figure_storage=storage_client,
             ...     inline_equation_character_limit=120
             ... )
+
         """
         self._preserve_layout = preserve_layout
         self._figure_storage = figure_storage
@@ -157,6 +161,7 @@ class MineruPostProcessor:
             >>> document = postprocessor.build_document(parsed, request, provenance)
             >>> assert document.document_id == request.document_id
             >>> assert len(document.blocks) > 0
+
         """
         artifacts = self._prepare_artifacts(parsed, request)
 
@@ -216,6 +221,7 @@ class MineruPostProcessor:
             >>> assert len(artifacts.tables) >= 0
             >>> assert len(artifacts.figures) >= 0
             >>> assert len(artifacts.equations) >= 0
+
         """
         tables, table_exports = self._prepare_tables(parsed.tables)
         figures, figure_assets = self._prepare_figures(
@@ -246,6 +252,7 @@ class MineruPostProcessor:
             >>> prepared, exports = postprocessor._prepare_tables(tables)
             >>> assert len(prepared) == len(tables)
             >>> assert len(exports) == len(tables)
+
         """
         prepared: list[Table] = []
         exports: dict[str, dict[str, str]] = {}
@@ -284,6 +291,7 @@ class MineruPostProcessor:
             ...     figures=figures
             ... )
             >>> assert len(prepared) == len(figures)
+
         """
         prepared: list[Figure] = []
         assets: dict[str, dict[str, str]] = {}
@@ -321,6 +329,7 @@ class MineruPostProcessor:
             >>> prepared, rendering = postprocessor._prepare_equations(equations)
             >>> assert len(prepared) == len(equations)
             >>> assert len(rendering) == len(equations)
+
         """
         prepared: list[Equation] = []
         rendering: dict[str, str] = {}
@@ -352,6 +361,7 @@ class MineruPostProcessor:
             >>> assert "json" in serializations
             >>> assert "csv" in serializations
             >>> assert "markdown" in serializations
+
         """
         cells_payload = [cell.model_dump() for cell in table.cells]
         payload = {
@@ -384,6 +394,7 @@ class MineruPostProcessor:
         Example:
             >>> count = postprocessor._infer_column_count(table)
             >>> assert count > 0
+
         """
         if table.headers:
             return len(table.headers)
@@ -402,6 +413,7 @@ class MineruPostProcessor:
             >>> grid = postprocessor._build_table_grid(table)
             >>> assert len(grid) > 0
             >>> assert len(grid[0]) > 0
+
         """
         rows = max((cell.row + cell.rowspan for cell in table.cells), default=0)
         header_count = len(table.headers)
@@ -439,6 +451,7 @@ class MineruPostProcessor:
             ... )
             >>> if storage_info:
             ...     assert "url" in storage_info
+
         """
         path = Path(figure.image_path)
         if not path.exists():
@@ -488,6 +501,7 @@ class MineruPostProcessor:
         Example:
             >>> mode = postprocessor._infer_equation_render_mode(equation)
             >>> assert mode in ["inline", "link"]
+
         """
         if not getattr(equation, "latex", ""):
             return "link"
@@ -509,6 +523,7 @@ class MineruPostProcessor:
             >>> service_block = postprocessor._build_block(parsed_block, artifacts)
             >>> assert service_block.id == parsed_block.id
             >>> assert service_block.ir_block is not None
+
         """
         attached_table, attached_figure, attached_equation = artifacts.attachments_for(
             block.table_id, block.figure_id, block.equation_id
@@ -589,6 +604,7 @@ class MineruPostProcessor:
             ...     equation=None
             ... )
             >>> assert block_type == BlockType.PARAGRAPH
+
         """
         if table:
             return BlockType.TABLE
@@ -629,11 +645,12 @@ class MineruPostProcessor:
             ... )
             >>> assert ir_doc.id == request.document_id
             >>> assert len(ir_doc.sections) > 0
+
         """
         document_id = request.document_id
         tenant_id = request.tenant_id
         sections_by_page: dict[int, list[IrBlock]] = defaultdict(list)
-        for raw_block, ir_block in zip(parsed.blocks, ir_blocks):
+        for raw_block, ir_block in zip(parsed.blocks, ir_blocks, strict=False):
             sections_by_page[raw_block.page].append(ir_block)
         sections = [
             Section(
@@ -669,10 +686,11 @@ class MineruPostProcessor:
             >>> provenance = postprocessor._build_provenance(parsed, existing_provenance)
             >>> assert "document_id" in provenance
             >>> assert "processed_at" in provenance
+
         """
         result = dict(provenance)
         result.setdefault("document_id", parsed.document_id)
-        result.setdefault("processed_at", datetime.now(timezone.utc).isoformat())
+        result.setdefault("processed_at", datetime.now(UTC).isoformat())
         return result
 
 

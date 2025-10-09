@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import mimetypes
-from typing import Iterable
+from collections.abc import Iterable
 
 try:  # Optional dependency
     import boto3
@@ -198,7 +198,7 @@ class FigureStorageClient:
 
     async def _list_keys(self, prefix: str) -> Iterable[str]:
         if hasattr(self._backend, "list_prefix"):
-            return await getattr(self._backend, "list_prefix")(prefix)
+            return await self._backend.list_prefix(prefix)
         return []
 
     def _safe_segment(self, value: str) -> str:
@@ -219,4 +219,4 @@ class FigureStorageClient:
                 loop.close()
 
 
-__all__ = ["InMemoryObjectStore", "S3ObjectStore", "FigureStorageClient"]
+__all__ = ["FigureStorageClient", "InMemoryObjectStore", "S3ObjectStore"]

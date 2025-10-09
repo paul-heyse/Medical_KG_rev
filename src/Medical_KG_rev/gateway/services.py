@@ -34,6 +34,7 @@ Example:
     >>> service = get_gateway_service()
     >>> result = service.chunk_document(ChunkRequest(...))
     >>> print(f"Created {len(result)} chunks")
+
 """
 
 # ============================================================================
@@ -42,10 +43,9 @@ Example:
 
 from __future__ import annotations
 
-import math
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, field
 from time import perf_counter
 from typing import Any
 
@@ -53,9 +53,6 @@ from aiolimiter import AsyncLimiter
 from pybreaker import CircuitBreaker
 
 import structlog
-from Medical_KG_rev.embeddings.ports import (
-    EmbeddingRecord,
-)
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
@@ -78,7 +75,6 @@ from ..orchestration.stages.contracts import StageContext
 from ..services.embedding.namespace.registry import EmbeddingNamespaceRegistry
 from ..services.embedding.persister import (
     EmbeddingPersister,
-    PersistenceContext,
     PersisterRuntimeSettings,
     build_persister,
 )
@@ -122,7 +118,6 @@ from .models import (
     EmbeddingMetadata,
     EmbeddingOptions,
     EmbeddingResponse,
-    EmbeddingVector,
     EmbedRequest,
     EntityLinkRequest,
     EntityLinkResult,
@@ -229,6 +224,7 @@ class GatewayService:
         ...     text="Sample text for chunking"
         ... ))
         >>> print(f"Created {len(chunks)} chunks")
+
     """
 
     _PIPELINE_NAME = "gateway-direct"
@@ -273,6 +269,7 @@ class GatewayService:
 
         Raises:
             RuntimeError: If required dependencies cannot be initialized
+
         """
         self.job_lifecycle = JobLifecycleManager(self.ledger, self.events)
         if self.stage_factory is None:
@@ -686,6 +683,7 @@ class GatewayService:
             ... )
             >>> chunks = service.chunk_document(request)
             >>> print(f"Created {len(chunks)} chunks")
+
         """
         if self.chunking_coordinator is None:
             raise RuntimeError("Chunking coordinator not initialised")
@@ -754,6 +752,7 @@ class GatewayService:
             ... )
             >>> response = service.embed(request)
             >>> print(f"Generated {len(response.embeddings)} embeddings")
+
         """
         if self.embedding_coordinator is None:
             raise RuntimeError("Embedding coordinator not initialised")

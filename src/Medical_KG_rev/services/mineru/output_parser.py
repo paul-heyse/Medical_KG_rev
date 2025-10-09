@@ -43,6 +43,7 @@ Example:
     >>> document = parser.parse_path(Path("output.json"))
     >>> assert len(document.blocks) > 0
     >>> assert len(document.tables) >= 0
+
 """
 
 from __future__ import annotations
@@ -85,6 +86,7 @@ class MineruOutputParserError(RuntimeError):
         ...     document = parser.parse_path(Path("invalid.json"))
         ... except MineruOutputParserError as e:
         ...     print(f"Parsing failed: {e}")
+
     """
 
     pass
@@ -132,6 +134,7 @@ class ParsedBlock:
         ...     reading_order=1,
         ...     metadata={"source": "mineru"}
         ... )
+
     """
 
     id: str
@@ -179,6 +182,7 @@ class ParsedDocument:
         ...     equations=[equation1],
         ...     metadata={"format": "pdf"}
         ... )
+
     """
 
     document_id: str
@@ -211,6 +215,7 @@ class MineruOutputParser:
         >>> parser = MineruOutputParser()
         >>> document = parser.parse_path(Path("output.json"))
         >>> assert document.document_id is not None
+
     """
 
     def parse_path(self, path: Path) -> ParsedDocument:
@@ -229,6 +234,7 @@ class MineruOutputParser:
             >>> parser = MineruOutputParser()
             >>> document = parser.parse_path(Path("output.json"))
             >>> assert len(document.blocks) > 0
+
         """
         if not path.exists():
             raise MineruOutputParserError(f"MinerU output file not found: {path}")
@@ -255,6 +261,7 @@ class MineruOutputParser:
             >>> payload = {"document_id": "doc-1", "blocks": [], "tables": []}
             >>> document = parser.parse_dict(payload)
             >>> assert document.document_id == "doc-1"
+
         """
         document_id = str(payload.get("document_id", ""))
         if not document_id:
@@ -299,6 +306,7 @@ class MineruOutputParser:
             >>> markdown = "# Title\\n\\nParagraph text"
             >>> document = parser.parse_markdown("doc-1", markdown)
             >>> assert len(document.blocks) == 2
+
         """
         blocks: list[ParsedBlock] = []
         for idx, line in enumerate(markdown.splitlines(), start=1):
@@ -340,6 +348,7 @@ class MineruOutputParser:
             >>> payload = {"id": "blk-1", "page": 1, "type": "paragraph", "text": "Hello"}
             >>> block = parser._parse_block(payload)
             >>> assert block.id == "blk-1"
+
         """
         bbox_value = payload.get("bbox")
         bbox = tuple(float(value) for value in bbox_value) if bbox_value else None
@@ -372,6 +381,7 @@ class MineruOutputParser:
             >>> payload = {"id": "tbl-1", "page": 1, "cells": [], "headers": []}
             >>> table = parser._parse_table(payload)
             >>> assert table.id == "tbl-1"
+
         """
         cells = tuple(self._parse_table_cell(cell) for cell in payload.get("cells", []))
         headers = tuple(str(value) for value in payload.get("headers", []))
@@ -401,6 +411,7 @@ class MineruOutputParser:
             >>> payload = {"row": 0, "column": 0, "content": "Cell text"}
             >>> cell = parser._parse_table_cell(payload)
             >>> assert cell.content == "Cell text"
+
         """
         bbox_value = payload.get("bbox")
         bbox = tuple(float(value) for value in bbox_value) if bbox_value else None
@@ -428,6 +439,7 @@ class MineruOutputParser:
             >>> payload = {"id": "fig-1", "page": 1, "image_path": "path/to/image.png"}
             >>> figure = parser._parse_figure(payload)
             >>> assert figure.id == "fig-1"
+
         """
         bbox_value = payload.get("bbox")
         bbox = tuple(float(value) for value in bbox_value) if bbox_value else None
@@ -458,6 +470,7 @@ class MineruOutputParser:
             >>> payload = {"id": "eq-1", "page": 1, "latex": "x^2 + y^2 = z^2"}
             >>> equation = parser._parse_equation(payload)
             >>> assert equation.id == "eq-1"
+
         """
         bbox_value = payload.get("bbox")
         bbox = tuple(float(value) for value in bbox_value) if bbox_value else None
@@ -486,6 +499,7 @@ class MineruOutputParser:
             >>> assert result == {"key": "value"}
             >>> result = parser._ensure_dict("string")
             >>> assert result == {"value": "string"}
+
         """
         if isinstance(value, dict):
             return value
@@ -506,6 +520,7 @@ class MineruOutputParser:
             >>> assert result == 123
             >>> result = parser._maybe_int("invalid")
             >>> assert result is None
+
         """
         try:
             return int(value)
@@ -527,6 +542,7 @@ class MineruOutputParser:
             >>> assert result == 123.45
             >>> result = parser._maybe_float("invalid")
             >>> assert result is None
+
         """
         try:
             return float(value)

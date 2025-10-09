@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..base import ContextualChunker
 from ..provenance import BlockContext
-from ..segmentation import Segment, SectionSegmenter
+from ..segmentation import SectionSegmenter, Segment
 from ..tokenization import TokenCounter
 
 

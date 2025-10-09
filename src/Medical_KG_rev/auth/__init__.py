@@ -11,13 +11,12 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 import importlib.util
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .context import SecurityContext
 from .scopes import Scopes
-
 
 # ============================================================================
 # EXPORTS
@@ -41,8 +40,8 @@ else:  # pragma: no cover - optional dependency fallback
 
         Raises:
             RuntimeError: Always raised because FastAPI is unavailable.
-        """
 
+        """
         raise RuntimeError("FastAPI is required for get_security_context")
 
     def secure_endpoint(*args: Any, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -50,8 +49,8 @@ else:  # pragma: no cover - optional dependency fallback
 
         Raises:
             RuntimeError: Always raised because FastAPI is unavailable.
-        """
 
+        """
         raise RuntimeError("FastAPI is required to secure endpoints")
 
     __all__.extend(["get_security_context", "secure_endpoint"])

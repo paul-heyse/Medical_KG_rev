@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import importlib.util
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import importlib.util
 import structlog
-
 
 logger = structlog.get_logger(__name__)
 
@@ -46,7 +45,7 @@ class DomainConfig:
     default_features: dict[str, bool] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, Any]) -> "DomainConfig":
+    def from_mapping(cls, data: Mapping[str, Any]) -> DomainConfig:
         return cls(
             id=str(data["id"]),
             description=str(data.get("description", "")),
@@ -71,7 +70,7 @@ class DomainRegistry:
         return iter(self.domains.values())
 
     @classmethod
-    def from_path(cls, path: Path) -> "DomainRegistry":
+    def from_path(cls, path: Path) -> DomainRegistry:
         raw = yaml.safe_load(path.read_text()) if path.exists() else {}
         data = raw or {}
         domains: dict[str, DomainConfig] = {}

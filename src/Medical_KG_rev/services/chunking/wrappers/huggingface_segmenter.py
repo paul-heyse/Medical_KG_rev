@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Callable, Sequence, Tuple
 
-Segment = Tuple[int, int, str]
+Segment = tuple[int, int, str]
 
 # Common biomedical abbreviations that should not terminate a sentence even
 # though they end with a period.
-_ABBREVIATION_SUFFIXES: Tuple[str, ...] = (
+_ABBREVIATION_SUFFIXES: tuple[str, ...] = (
     "Fig.",
     "Figs.",
     "Dr.",
@@ -29,7 +29,6 @@ _ABBREVIATION_SUFFIXES: Tuple[str, ...] = (
 
 def _default_loader() -> Callable[[str], List[Segment]]:  # pragma: no cover - heavy dependency path
     """Load a Hugging Face tokenizer and return a callable segmenter."""
-
     model_name = os.getenv("MEDICAL_KG_SENTENCE_MODEL")
     if not model_name:
         warnings.warn(
@@ -62,7 +61,7 @@ def _default_loader() -> Callable[[str], List[Segment]]:  # pragma: no cover - h
 class _TokenizerSentenceSplitter:
     """Adapter that uses a fast Hugging Face tokenizer to locate sentences."""
 
-    tokenizer: "transformers.PreTrainedTokenizerBase"
+    tokenizer: transformers.PreTrainedTokenizerBase
 
     def __call__(self, text: str) -> List[Segment]:
         backend = getattr(self.tokenizer, "backend_tokenizer", None)
@@ -75,7 +74,7 @@ class _TokenizerSentenceSplitter:
         if not tokens:
             return []
 
-        spans: List[Tuple[int, int]] = []
+        spans: List[tuple[int, int]] = []
         current_start: int | None = None
         for token, (start, end) in tokens:
             if current_start is None:
@@ -141,7 +140,7 @@ def _should_close_sentence(token: str, text: str, start: int, end: int) -> bool:
     return False
 
 
-def _trim_offsets(text: str, start: int, end: int) -> Tuple[int, int]:
+def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:
     end = min(len(text), max(start, end))
     while start < end and text[start].isspace():
         start += 1

@@ -36,6 +36,7 @@ Example:
     >>> persister = build_persister(storage_router, settings=settings)
     >>> report = persister.persist_batch(records, context)
     >>> print(f"Persisted {report.persisted} records in {report.duration_ms}ms")
+
 """
 
 # ============================================================================
@@ -46,9 +47,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Mapping, MutableMapping, Sequence
+from typing import Any
 
 import structlog
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
@@ -88,6 +90,7 @@ class PersistenceContext:
         ...     job_id="job_123",
         ...     normalize=True
         ... )
+
     """
 
     tenant_id: str
@@ -117,6 +120,7 @@ class PersistenceReport:
         >>> report.persisted = 100
         >>> report.duration_ms = 250.5
         >>> print(f"Persisted {report.persisted} records in {report.duration_ms}ms")
+
     """
 
     persisted: int = 0
@@ -132,6 +136,7 @@ class PersistenceReport:
 
         Note:
             This method is thread-safe and can be called from multiple threads.
+
         """
         self.errors.append(message)
 
@@ -154,6 +159,7 @@ class PersisterRuntimeSettings:
         ...     cache_limit=512,
         ...     hybrid_backends={"text": "vector_store", "image": "database"}
         ... )
+
     """
 
     backend: str = "vector_store"
@@ -161,7 +167,7 @@ class PersisterRuntimeSettings:
     hybrid_backends: Mapping[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, Any] | None) -> "PersisterRuntimeSettings":
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> PersisterRuntimeSettings:
         """Create settings from a configuration mapping.
 
         Args:
@@ -172,6 +178,7 @@ class PersisterRuntimeSettings:
 
         Note:
             Invalid or missing values use defaults. Hybrid backends must be a mapping.
+
         """
         if not payload:
             return cls()
@@ -229,6 +236,7 @@ class EmbeddingPersister(ABC):
         ...         pass
         >>> persister = CustomPersister(telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
+
     """
 
     def __init__(self, *, telemetry: EmbeddingTelemetry | None = None) -> None:
@@ -239,6 +247,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Sets up logging, cache, and LRU tracking with default limits.
+
         """
         self._telemetry = telemetry
         self._logger = logger.bind(persister=self.__class__.__name__)
@@ -262,6 +271,7 @@ class EmbeddingPersister(ABC):
             Implementations should update report.persisted, report.skipped,
             and report.errors as appropriate. Cache updates are handled
             by the base class.
+
         """
 
     def persist_batch(self, records: Sequence[EmbeddingRecord], context: PersistenceContext) -> PersistenceReport:
@@ -280,6 +290,7 @@ class EmbeddingPersister(ABC):
         Note:
             Emits telemetry events and logs errors if telemetry is configured.
             Performance is measured in milliseconds.
+
         """
         report = PersistenceReport()
         started = perf_counter()
@@ -306,6 +317,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Evicts oldest records if cache limit is exceeded.
+
         """
         self._cache[record.id] = record
         self._recent.appendleft(record.id)
@@ -324,6 +336,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Only returns records that are currently cached.
+
         """
         if ids is None:
             return list(self._cache.values())
@@ -340,6 +353,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Safe to call with non-existent IDs.
+
         """
         removed = 0
         for item_id in ids:
@@ -358,6 +372,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Performs exact match on all specified metadata keys.
+
         """
         if not metadata:
             return list(self._cache.values())
@@ -375,6 +390,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Useful for debugging cache behavior and performance.
+
         """
         return {
             "cached_records": len(self._cache),
@@ -389,6 +405,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Used by health check endpoints and monitoring systems.
+
         """
         return {
             "persister": self.__class__.__name__,
@@ -406,6 +423,7 @@ class EmbeddingPersister(ABC):
 
         Note:
             Logs configuration changes for audit purposes.
+
         """
         if "cache_limit" in kwargs:
             limit = int(kwargs["cache_limit"])
@@ -435,6 +453,7 @@ class VectorStorePersister(EmbeddingPersister):
     Example:
         >>> persister = VectorStorePersister(storage_router, telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
+
     """
 
     def __init__(
@@ -448,6 +467,7 @@ class VectorStorePersister(EmbeddingPersister):
         Args:
             storage_router: StorageRouter for vector store operations
             telemetry: Optional telemetry instance for metrics
+
         """
         super().__init__(telemetry=telemetry)
         self._storage_router = storage_router
@@ -459,6 +479,7 @@ class VectorStorePersister(EmbeddingPersister):
             records: Embedding records to persist
             context: Persistence context (unused by this implementation)
             report: Report to update with persistence results
+
         """
         for record in records:
             self._storage_router.persist(record)
@@ -478,6 +499,7 @@ class DatabasePersister(EmbeddingPersister):
     Example:
         >>> persister = DatabasePersister(telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
+
     """
 
     def __init__(self, *, telemetry: EmbeddingTelemetry | None = None) -> None:
@@ -485,6 +507,7 @@ class DatabasePersister(EmbeddingPersister):
 
         Args:
             telemetry: Optional telemetry instance for metrics
+
         """
         super().__init__(telemetry=telemetry)
         self._store: dict[str, EmbeddingRecord] = {}
@@ -496,6 +519,7 @@ class DatabasePersister(EmbeddingPersister):
             records: Embedding records to persist
             context: Persistence context (unused by this implementation)
             report: Report to update with persistence results
+
         """
         for record in records:
             self._store[record.id] = record
@@ -510,6 +534,7 @@ class DatabasePersister(EmbeddingPersister):
 
         Returns:
             List of embedding records from store
+
         """
         if ids is None:
             return list(self._store.values())
@@ -523,6 +548,7 @@ class DatabasePersister(EmbeddingPersister):
 
         Returns:
             Number of records successfully deleted
+
         """
         removed = 0
         for item_id in ids:
@@ -545,6 +571,7 @@ class DryRunPersister(EmbeddingPersister):
         >>> persister = DryRunPersister(telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
         >>> print(f"Would have processed {len(persister.operations)} operations")
+
     """
 
     def __init__(self, *, telemetry: EmbeddingTelemetry | None = None) -> None:
@@ -552,6 +579,7 @@ class DryRunPersister(EmbeddingPersister):
 
         Args:
             telemetry: Optional telemetry instance for metrics
+
         """
         super().__init__(telemetry=telemetry)
         self._operations: list[PersistenceContext] = []
@@ -563,6 +591,7 @@ class DryRunPersister(EmbeddingPersister):
             records: Embedding records (counted as skipped)
             context: Persistence context to record
             report: Report to update with skip count
+
         """
         self._operations.append(context)
         report.skipped += len(records)
@@ -573,6 +602,7 @@ class DryRunPersister(EmbeddingPersister):
 
         Returns:
             Tuple of persistence contexts that would have been processed
+
         """
         return tuple(self._operations)
 
@@ -590,6 +620,7 @@ class MockPersister(EmbeddingPersister):
         >>> persister = MockPersister()
         >>> report = persister.persist_batch(records, context)
         >>> assert len(persister.persisted_records) == len(records)
+
     """
 
     def __init__(self) -> None:
@@ -604,6 +635,7 @@ class MockPersister(EmbeddingPersister):
             records: Embedding records to store
             context: Persistence context (unused)
             report: Report to update with persistence count
+
         """
         self.persisted_records.extend(records)
         for record in records:
@@ -624,6 +656,7 @@ class HybridPersister(EmbeddingPersister):
         >>> persisters = {"text": VectorStorePersister(router), "image": DatabasePersister()}
         >>> persister = HybridPersister(persisters, telemetry=telemetry)
         >>> report = persister.persist_batch(mixed_records, context)
+
     """
 
     def __init__(
@@ -637,6 +670,7 @@ class HybridPersister(EmbeddingPersister):
         Args:
             persisters: Mapping of embedding kinds to persister instances
             telemetry: Optional telemetry instance for metrics
+
         """
         super().__init__(telemetry=telemetry)
         self._persisters = dict(persisters)
@@ -651,6 +685,7 @@ class HybridPersister(EmbeddingPersister):
 
         Note:
             Records without registered persisters are counted as errors.
+
         """
         grouped: dict[str, list[EmbeddingRecord]] = {}
         for record in records:
@@ -693,6 +728,7 @@ def _build_backend(
 
     Note:
         Private helper function for build_persister.
+
     """
     backend = backend.lower()
     if backend == "vector_store":
@@ -730,6 +766,7 @@ def build_persister(
         >>> settings = PersisterRuntimeSettings(backend="vector_store", cache_limit=512)
         >>> persister = build_persister(router, telemetry=telemetry, settings=settings)
         >>> report = persister.persist_batch(records, context)
+
     """
     resolved = (
         settings
@@ -756,14 +793,14 @@ def build_persister(
 
 
 __all__ = [
-    "EmbeddingPersister",
-    "VectorStorePersister",
     "DatabasePersister",
     "DryRunPersister",
-    "MockPersister",
+    "EmbeddingPersister",
     "HybridPersister",
-    "PersisterRuntimeSettings",
-    "build_persister",
+    "MockPersister",
     "PersistenceContext",
     "PersistenceReport",
+    "PersisterRuntimeSettings",
+    "VectorStorePersister",
+    "build_persister",
 ]

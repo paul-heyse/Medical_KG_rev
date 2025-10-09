@@ -29,13 +29,15 @@ Examples:
     report = translator.translate(exception, command=chunk_command, job_id="job-123")
     if report:
         return report.problem
+
 """
 
 # IMPORTS
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from Medical_KG_rev.chunking.exceptions import (
     ChunkerConfigurationError,
@@ -76,6 +78,7 @@ class ChunkingErrorReport:
             metric="ProfileNotFoundError",
             job_id="job-123"
         )
+
     """
 
     problem: ProblemDetail
@@ -110,6 +113,7 @@ class ChunkingErrorTranslator:
             base_path="/v1/chunk"
         )
         report = translator.translate(exception, command=chunk_command)
+
     """
 
     def __init__(self, *, strategies: Sequence[str], base_path: str = "/v1/chunk") -> None:
@@ -121,6 +125,7 @@ class ChunkingErrorTranslator:
 
         Raises:
             None: Initialization always succeeds.
+
         """
         self._strategies = tuple(strategies)
         self._base_path = base_path.rstrip("/")
@@ -148,6 +153,7 @@ class ChunkingErrorTranslator:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         profile = self._profile(command)
         instance = f"{self._base_path}/{command.document_id}"
@@ -276,6 +282,7 @@ class ChunkingErrorTranslator:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         problem = context.get("problem")
         if isinstance(problem, ProblemDetail):
@@ -307,6 +314,7 @@ class ChunkingErrorTranslator:
 
         Raises:
             ValidationError: If the payload is invalid
+
         """
         payload = {
             "type": type_ or "https://medical-kg/errors/chunking",
@@ -330,6 +338,7 @@ class ChunkingErrorTranslator:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         profile = command.options.get("profile")
         if isinstance(profile, str) and profile:

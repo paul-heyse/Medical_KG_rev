@@ -49,6 +49,7 @@ Example:
     ...         await breaker.record_failure()
     ... else:
     ...     raise CircuitBreakerOpenError("Circuit is open")
+
 """
 
 from __future__ import annotations
@@ -57,7 +58,7 @@ from __future__ import annotations
 # IMPORTS
 # ==============================================================================
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 
 # ==============================================================================
@@ -82,6 +83,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
         Example:
             >>> logger = _FallbackLogger("test")
             >>> logger.info("Test message", key="value")
+
         """
 
         def __init__(self, name: str) -> None:
@@ -89,6 +91,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
             Args:
                 name: Logger name for identification
+
             """
             self._logger = logging.getLogger(name)
 
@@ -101,6 +104,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
             Returns:
                 Formatted message string
+
             """
             if not details:
                 return message
@@ -113,6 +117,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Debug message text
                 **kwargs: Structured data to include
+
             """
             self._logger.debug(self._format(message, kwargs))
 
@@ -122,6 +127,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Info message text
                 **kwargs: Structured data to include
+
             """
             self._logger.info(self._format(message, kwargs))
 
@@ -131,6 +137,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Warning message text
                 **kwargs: Structured data to include
+
             """
             self._logger.warning(self._format(message, kwargs))
 
@@ -140,6 +147,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Error message text
                 **kwargs: Structured data to include
+
             """
             self._logger.error(self._format(message, kwargs))
 
@@ -151,6 +159,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
         Returns:
             Fallback logger instance
+
         """
         return _FallbackLogger(name)
 
@@ -166,6 +175,7 @@ except Exception:  # pragma: no cover - fallback gauge when metrics unavailable
         Example:
             >>> gauge = _FallbackGauge()
             >>> gauge.set(1.0)  # No-op
+
         """
 
         def set(self, value: float) -> None:  # type: ignore[override]
@@ -173,6 +183,7 @@ except Exception:  # pragma: no cover - fallback gauge when metrics unavailable
 
             Args:
                 value: Gauge value to set
+
             """
             return None
 
@@ -205,6 +216,7 @@ class CircuitState(Enum):
     Example:
         >>> state = CircuitState.CLOSED
         >>> assert state.value == 0
+
     """
 
     CLOSED = 0
@@ -223,6 +235,7 @@ class CircuitBreakerOpenError(Exception):
         >>> breaker = CircuitBreaker()
         >>> if not await breaker.can_execute():
         ...     raise CircuitBreakerOpenError("Circuit is open")
+
     """
 
     pass
@@ -269,6 +282,7 @@ class CircuitBreaker:
         ...         await breaker.record_failure()
         ... else:
         ...     raise CircuitBreakerOpenError("Circuit is open")
+
     """
 
     def __init__(
@@ -291,6 +305,7 @@ class CircuitBreaker:
         Example:
             >>> breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
             >>> assert breaker.state == CircuitState.CLOSED
+
         """
         if failure_threshold < 1:
             raise ValueError("failure_threshold must be >= 1")
@@ -331,6 +346,7 @@ class CircuitBreaker:
             >>> breaker = CircuitBreaker()
             >>> can_execute = await breaker.can_execute()
             >>> assert can_execute is True  # Initially closed
+
         """
         async with self._lock:
             if self.state == CircuitState.CLOSED:
@@ -340,7 +356,7 @@ class CircuitBreaker:
                 if self.last_failure_time is None:
                     return False
 
-                elapsed = datetime.now(timezone.utc) - self.last_failure_time
+                elapsed = datetime.now(UTC) - self.last_failure_time
                 if elapsed >= timedelta(seconds=self.recovery_timeout):
                     self._transition_to_half_open()
                     return True
@@ -364,6 +380,7 @@ class CircuitBreaker:
             >>> breaker = CircuitBreaker()
             >>> await breaker.record_success()
             >>> assert breaker.success_count == 0  # Not in half-open state
+
         """
         async with self._lock:
             if self.state == CircuitState.HALF_OPEN:
@@ -393,9 +410,10 @@ class CircuitBreaker:
             >>> await breaker.record_failure()
             >>> await breaker.record_failure()
             >>> assert breaker.state == CircuitState.OPEN
+
         """
         async with self._lock:
-            self.last_failure_time = datetime.now(timezone.utc)
+            self.last_failure_time = datetime.now(UTC)
 
             if self.state == CircuitState.CLOSED:
                 self.failure_count += 1
@@ -420,6 +438,7 @@ class CircuitBreaker:
 
         Note:
             This method assumes the lock is already held.
+
         """
         self.state = CircuitState.OPEN
         self.success_count = 0
@@ -440,6 +459,7 @@ class CircuitBreaker:
 
         Note:
             This method assumes the lock is already held.
+
         """
         self.state = CircuitState.HALF_OPEN
         self.failure_count = 0
@@ -456,6 +476,7 @@ class CircuitBreaker:
 
         Note:
             This method assumes the lock is already held.
+
         """
         self.state = CircuitState.CLOSED
         self.failure_count = 0

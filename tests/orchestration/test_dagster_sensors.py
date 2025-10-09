@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dagster import RunRequest, SkipReason
-from dagster._core.test_utils import build_sensor_context
+from dagster._core.test_utils import build_asset_context
 
 from Medical_KG_rev.orchestration.dagster.runtime import pdf_ir_ready_sensor
 from Medical_KG_rev.orchestration.ledger import JobLedger
@@ -9,7 +9,7 @@ from Medical_KG_rev.orchestration.ledger import JobLedger
 
 def test_pdf_ir_sensor_skips_when_no_jobs() -> None:
     ledger = JobLedger()
-    context = build_sensor_context(resources={"job_ledger": ledger})
+    context = build_asset_context(resources={"job_ledger": ledger})
 
     results = list(pdf_ir_ready_sensor(context))
     assert len(results) == 1
@@ -39,7 +39,7 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
     ledger.mark_processing(job_id, stage="gate_pdf_ir_ready")
     ledger.set_pdf_ir_ready(job_id)
 
-    context = build_sensor_context(resources={"job_ledger": ledger})
+    context = build_asset_context(resources={"job_ledger": ledger})
     results = list(pdf_ir_ready_sensor(context))
 
     assert results

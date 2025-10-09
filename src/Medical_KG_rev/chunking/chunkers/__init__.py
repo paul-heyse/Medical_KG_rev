@@ -8,12 +8,13 @@ from typing import Any
 __all__ = [
     "BayesSegChunker",
     "C99Chunker",
-    "DiscourseSegmenterChunker",
     "ClinicalRoleChunker",
-    "LDATopicChunker",
+    "DiscourseSegmenterChunker",
     "GraphPartitionChunker",
     "GraphRAGChunker",
     "GrobidSectionChunker",
+    "LDATopicChunker",
+    "LLMChapteringChunker",
     "LayoutAwareChunker",
     "LayoutHeuristicChunker",
     "SectionAwareChunker",
@@ -22,7 +23,6 @@ __all__ = [
     "SlidingWindowChunker",
     "TableChunker",
     "TextTilingChunker",
-    "LLMChapteringChunker",
 ]
 
 _CHUNKER_MAP = {

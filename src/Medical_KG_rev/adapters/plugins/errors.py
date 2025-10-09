@@ -22,6 +22,7 @@ Examples:
         plugin.initialize()
     except AdapterPluginError as e:
         logger.error("Plugin initialization failed", exc_info=e)
+
 """
 
 # IMPORTS
@@ -43,6 +44,7 @@ class AdapterPluginError(RuntimeError):
             plugin.load_config()
         except AdapterPluginError as e:
             handle_plugin_error(e)
+
     """
 
 

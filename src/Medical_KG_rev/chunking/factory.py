@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from threading import RLock
-from typing import Iterable, Mapping
 
 from .configuration import ChunkerSettings
 from .exceptions import ChunkerConfigurationError

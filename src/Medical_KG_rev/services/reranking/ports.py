@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
-from .models import NormalizationStrategy, QueryDocumentPair, RerankResult, RerankingResponse
+from .models import NormalizationStrategy, QueryDocumentPair, RerankingResponse
 
 
 class RerankerPort(Protocol):

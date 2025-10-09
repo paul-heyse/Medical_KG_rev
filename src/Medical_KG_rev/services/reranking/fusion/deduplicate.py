@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from ..models import ScoredDocument
 

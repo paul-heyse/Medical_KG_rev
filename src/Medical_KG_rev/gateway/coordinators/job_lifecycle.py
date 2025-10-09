@@ -37,6 +37,7 @@ Example:
     ... )
     >>> job_id = manager.create_job("tenant1", "embed", metadata={"model": "bert"})
     >>> manager.mark_completed(job_id, {"embeddings": 100})
+
 """
 from __future__ import annotations
 
@@ -44,8 +45,9 @@ from __future__ import annotations
 # IMPORTS
 # ============================================================================
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
@@ -121,6 +123,7 @@ class JobLifecycleManager:
         ... )
         >>> job_id = manager.create_job("tenant1", "embed", metadata={"model": "bert"})
         >>> manager.mark_completed(job_id, {"embeddings": 100})
+
     """
 
     ledger: JobLedger
@@ -143,6 +146,7 @@ class JobLifecycleManager:
             >>> manager = JobLifecycleManager(ledger=ledger, events=events)
             >>> # __post_init__ is called automatically
             >>> assert manager._retrying is not None
+
         """
         self._retrying = Retrying(
             stop=stop_after_attempt(self.retry_attempts),
@@ -190,8 +194,8 @@ class JobLifecycleManager:
             ...     metadata={"model": "bert", "texts": 5}
             ... )
             >>> print(f"Created job: {job_id}")
-        """
 
+        """
         job_id = job_id or f"job-{uuid.uuid4().hex[:12]}"
         doc_key = f"{operation}:{job_id}"
         payload = {
@@ -260,6 +264,7 @@ class JobLifecycleManager:
             ...     metadata={"model": "bert"}
             ... )
             >>> print(f"Job status: {entry.status}")
+
         """
         logger.info(
             "gateway.job.idempotent_create",
@@ -293,6 +298,7 @@ class JobLifecycleManager:
         Example:
             >>> manager.mark_completed("job-123", {"embeddings": 100, "duration": 5.2})
             >>> # Job is marked completed and SSE event is published
+
         """
         metadata = dict(payload or {})
         logger.info("gateway.job.complete", job_id=job_id, metadata=metadata)
@@ -318,6 +324,7 @@ class JobLifecycleManager:
         Example:
             >>> manager.update_metadata("job-123", {"progress": 50, "processed": 25})
             >>> # Job metadata is updated in the ledger
+
         """
         logger.debug("gateway.job.metadata", job_id=job_id, metadata=dict(metadata))
         self._call_ledger(self.ledger.update_metadata, job_id, dict(metadata))
@@ -354,6 +361,7 @@ class JobLifecycleManager:
             ...     metadata={"error_code": "MODEL_NOT_FOUND"}
             ... )
             >>> # Job is marked failed and SSE event is published
+
         """
         payload = {"reason": reason, **dict(metadata or {})}
         logger.warning(
@@ -401,6 +409,7 @@ class JobLifecycleManager:
             ...     metadata={"cancelled_by": "user"}
             ... )
             >>> # Job is marked cancelled and SSE event is published
+
         """
         payload = {"reason": reason, **dict(metadata or {})}
         logger.info("gateway.job.cancel", job_id=job_id, payload=payload)
@@ -432,6 +441,7 @@ class JobLifecycleManager:
         Example:
             >>> result = manager._call_ledger(ledger.create, job_id="123", tenant_id="t1")
             >>> # Operation is retried automatically on failure
+
         """
         try:
             return self._retrying.call(func, *args, **kwargs)

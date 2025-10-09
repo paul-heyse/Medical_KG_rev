@@ -43,6 +43,7 @@ Example:
     ... )
     >>> snapshot = telemetry.snapshot()
     >>> print(f"Embedding batches: {snapshot.embedding_batches}")
+
 """
 
 # ============================================================================
@@ -52,8 +53,9 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, MutableMapping
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Mapping, MutableMapping
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -76,7 +78,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
         allow telemetry to function without the observability dependency.
         """
 
-        def labels(self, *args: object, **kwargs: object) -> "_CounterProxy":
+        def labels(self, *args: object, **kwargs: object) -> _CounterProxy:
             """Return self for method chaining."""
             return self
 
@@ -132,6 +134,7 @@ class TelemetrySettings:
     Example:
         >>> settings = TelemetrySettings(enable_metrics=True, sample_rate=0.1)
         >>> telemetry = StandardEmbeddingTelemetry(settings)
+
     """
 
     enable_metrics: bool = True
@@ -158,6 +161,7 @@ class TelemetrySnapshot:
         >>> snapshot = telemetry.snapshot()
         >>> print(f"Processed {snapshot.embedding_batches} batches")
         >>> print(f"Last operation took {snapshot.last_duration_ms}ms")
+
     """
 
     policy_evaluations: int = 0
@@ -208,6 +212,7 @@ class EmbeddingTelemetry(ABC):
         ...         pass
         >>> telemetry = CustomTelemetry()
         >>> telemetry.record_embedding_started(namespace="test", tenant_id="t1")
+
     """
 
     def __init__(self, settings: TelemetrySettings | None = None) -> None:
@@ -220,6 +225,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             Logger is automatically bound to the concrete class name
             for structured logging identification.
+
         """
         self._settings = settings or TelemetrySettings()
         self._snapshot = TelemetrySnapshot()
@@ -232,6 +238,7 @@ class EmbeddingTelemetry(ABC):
         Returns:
             Current telemetry configuration including metrics, logging,
             and sampling settings.
+
         """
         return self._settings
 
@@ -245,6 +252,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             Only provided settings are updated; others remain unchanged.
             Invalid keys are ignored.
+
         """
         values = asdict(self._settings) | kwargs
         self._settings = TelemetrySettings(**values)
@@ -260,6 +268,7 @@ class EmbeddingTelemetry(ABC):
         Example:
             >>> snapshot = telemetry.snapshot()
             >>> print(f"Policy evaluations: {snapshot.policy_evaluations}")
+
         """
         return TelemetrySnapshot(**asdict(self._snapshot))
 
@@ -272,10 +281,11 @@ class EmbeddingTelemetry(ABC):
         Note:
             This updates the last_duration_ms field in the snapshot
             for monitoring and alerting purposes.
+
         """
         self._snapshot.last_duration_ms = duration_ms
 
-    def record_policy_evaluation(self, decision: "NamespaceAccessDecision") -> None:
+    def record_policy_evaluation(self, decision: NamespaceAccessDecision) -> None:
         """Record a namespace policy evaluation.
 
         Increments the policy evaluation counter and delegates to
@@ -287,11 +297,12 @@ class EmbeddingTelemetry(ABC):
         Note:
             This is called for all policy evaluations, both allowed
             and denied, to track policy usage patterns.
+
         """
         self._snapshot.policy_evaluations += 1
         self._record_decision("evaluated", decision)
 
-    def record_policy_denied(self, decision: "NamespaceAccessDecision") -> None:
+    def record_policy_denied(self, decision: NamespaceAccessDecision) -> None:
         """Record a namespace policy denial.
 
         Increments the policy denial counter and delegates to
@@ -303,6 +314,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             This is called specifically for denied access attempts
             to track security violations and policy enforcement.
+
         """
         self._snapshot.policy_denials += 1
         self._record_decision("denied", decision)
@@ -321,6 +333,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             This is typically called at the beginning of embedding
             operations to track usage patterns and performance.
+
         """
         if self._settings.enable_logging:
             self._logger.info(
@@ -356,6 +369,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             This updates both metrics and logs, and records the
             duration for performance monitoring.
+
         """
         self._snapshot.embedding_batches += 1
         self._record_duration(duration_ms)
@@ -392,6 +406,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             This is called when embedding operations fail to track
             error rates and identify problematic patterns.
+
         """
         self._snapshot.embedding_failures += 1
         if self._settings.enable_logging:
@@ -404,7 +419,7 @@ class EmbeddingTelemetry(ABC):
 
     def record_persistence(
         self,
-        report: "PersistenceReport",
+        report: PersistenceReport,
         *,
         namespace: str,
         tenant_id: str,
@@ -422,6 +437,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             This accumulates persistence statistics in the snapshot
             metadata for storage monitoring and capacity planning.
+
         """
         self._snapshot.metadata.setdefault("persistence", {})
         persistence = self._snapshot.metadata["persistence"]
@@ -430,7 +446,7 @@ class EmbeddingTelemetry(ABC):
             persistence[namespace] += getattr(report, "persisted", 0)
 
     @abstractmethod
-    def _record_decision(self, event: str, decision: "NamespaceAccessDecision") -> None:
+    def _record_decision(self, event: str, decision: NamespaceAccessDecision) -> None:
         """Record a namespace policy decision.
 
         Abstract method for implementation-specific decision recording.
@@ -444,6 +460,7 @@ class EmbeddingTelemetry(ABC):
         Note:
             Implementations should handle metrics collection, logging,
             and any custom telemetry logic for policy decisions.
+
         """
 
 
@@ -478,6 +495,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         >>> telemetry.record_embedding_started(namespace="medical", tenant_id="t1")
         >>> metrics = telemetry.operational_metrics()
         >>> print(f"Denials: {metrics['denials_by_namespace']}")
+
     """
 
     def __init__(
@@ -492,6 +510,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
 
         Note:
             Initializes namespace denial tracking for operational metrics.
+
         """
         super().__init__(settings=settings)
         self._denials_by_namespace: MutableMapping[str, int] = {}
@@ -509,6 +528,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         Note:
             For denied events, tracks cross-tenant access attempts
             and emits warning logs. For evaluated events, emits debug logs.
+
         """
         namespace = getattr(decision, "namespace", "unknown")
         tenant_id = getattr(decision, "tenant_id", "unknown")
@@ -557,6 +577,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
             >>> telemetry = StandardEmbeddingTelemetry()
             >>> metrics = telemetry.operational_metrics()
             >>> print(f"Total denials: {sum(metrics['denials_by_namespace'].values())}")
+
         """
         return {
             "denials_by_namespace": dict(self._denials_by_namespace),

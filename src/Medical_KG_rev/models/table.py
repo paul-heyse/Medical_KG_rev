@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -59,7 +58,6 @@ class Table(StructuredArtifact):
 
     def to_markdown(self) -> str:
         """Render the table into GitHub-flavoured Markdown."""
-
         grid = self._grid()
         if not grid:
             return ""
@@ -71,7 +69,6 @@ class Table(StructuredArtifact):
 
     def to_html(self) -> str:
         """Render the table into a simple HTML representation."""
-
         grid = self._grid()
         if not grid:
             return "<table></table>"

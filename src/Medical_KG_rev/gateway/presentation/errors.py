@@ -29,13 +29,15 @@ Examples:
         meta={"field": "body"}
     )
     json_payload = error.as_json()
+
 """
 
 # IMPORTS
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 
 # DATA MODELS
@@ -64,6 +66,7 @@ class ErrorDetail:
             title="Invalid request format",
             detail="The request body is malformed"
         )
+
     """
 
     status: int
@@ -80,6 +83,7 @@ class ErrorDetail:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         payload = {
             "status": str(self.status),

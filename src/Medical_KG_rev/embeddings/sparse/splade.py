@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import importlib
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import structlog
 
@@ -12,13 +12,11 @@ from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.records import RecordBuilder
 
-
 logger = structlog.get_logger(__name__)
 
 
 def build_rank_features_mapping(namespace: str) -> Mapping[str, object]:
     """Generate an OpenSearch mapping for SPLADE `rank_features`."""
-
     field_name = namespace.replace(".", "_")
     return {
         "properties": {
@@ -36,7 +34,6 @@ class PyseriniNotInstalledError(RuntimeError):
 
 def _load_pyserini_encoder(mode: str) -> type:
     """Import the appropriate Pyserini encoder class."""
-
     try:
         module = importlib.import_module("pyserini.encode")
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional dependency

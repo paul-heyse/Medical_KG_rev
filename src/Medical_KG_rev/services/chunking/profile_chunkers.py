@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from Medical_KG_rev.models.ir import BlockType, Document, Section
 
@@ -104,7 +105,7 @@ class CTGovRegistryChunker(BaseProfileChunker):
         metadata: Sequence[dict[str, Any]],
     ) -> List[Chunk]:
         chunks: List[Chunk] = []
-        for contexts, text, extra in zip(groups, texts, metadata):
+        for contexts, text, extra in zip(groups, texts, metadata, strict=False):
             if not text:
                 continue
             chunk = _build_chunk_from_contexts(
@@ -135,7 +136,7 @@ class CTGovRegistryChunker(BaseProfileChunker):
             if isinstance(block_meta, dict):
                 if block_metadata:
                     for key in ("title", "time_frame", "measure_type"):
-                        if key in block_meta and block_meta[key]:
+                        if block_meta.get(key):
                             metadata[f"ctgov_{key}"] = block_meta[key]
                 if table and "html" in block_meta and block_meta["html"]:
                     metadata.setdefault("table_html", block_meta["html"])
@@ -186,7 +187,7 @@ class SPLLabelChunker(BaseProfileChunker):
             )
 
         chunks = []
-        for contexts, text, (section, extras) in zip(groups, texts, section_info):
+        for contexts, text, (section, extras) in zip(groups, texts, section_info, strict=False):
             chunk = _build_chunk_from_contexts(
                 document=filtered,
                 profile_name=profile,
@@ -267,7 +268,7 @@ class GuidelineChunker(BaseProfileChunker):
                 continue
 
         chunks: List[Chunk] = []
-        for contexts, text, extra in zip(groups, texts, metadata):
+        for contexts, text, extra in zip(groups, texts, metadata, strict=False):
             chunk = _build_chunk_from_contexts(
                 document=filtered,
                 profile_name=profile,
@@ -301,7 +302,7 @@ class GuidelineChunker(BaseProfileChunker):
             block_meta = getattr(contexts[0].block, "metadata", {})
             if isinstance(block_meta, dict):
                 for key in ("recommendation_id", "strength", "certainty"):
-                    if key in block_meta and block_meta[key]:
+                    if block_meta.get(key):
                         metadata[key] = block_meta[key]
         return metadata
 

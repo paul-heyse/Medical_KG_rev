@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..base import ContextualChunker
 from ..data import load_json_resource
 from ..provenance import BlockContext
 from ..segmentation import Segment
 from ..tokenization import TokenCounter
-
 
 _TAXONOMY = load_json_resource("clinical_sections.json")
 

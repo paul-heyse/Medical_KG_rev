@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, ClassVar, Mapping
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, PositiveInt, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -56,13 +57,11 @@ class AdapterConfig(BaseSettings):
 
     def json_schema(self) -> Mapping[str, Any]:
         """Return JSON schema for documentation purposes."""
-
         return self.model_json_schema()
 
     @classmethod
-    def from_env(cls) -> "AdapterConfig":
+    def from_env(cls) -> AdapterConfig:
         """Load configuration from environment variables respecting precedence."""
-
         return cls()
 
 
@@ -112,9 +111,8 @@ class AdapterCostEstimate(BaseModel):
         cls,
         requests_per_second: float,
         window: timedelta,
-    ) -> "AdapterCostEstimate":
+    ) -> AdapterCostEstimate:
         """Derive a naive cost estimate based on rate limits and window sizes."""
-
         if requests_per_second <= 0:
             return cls(estimated_requests=1, estimated_latency_seconds=float(window.total_seconds()))
         estimated_requests = max(1, int(window.total_seconds() * requests_per_second))
@@ -147,11 +145,11 @@ class ValidationOutcome(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
     @classmethod
-    def success(cls) -> "ValidationOutcome":
+    def success(cls) -> ValidationOutcome:
         return cls(valid=True)
 
     @classmethod
-    def failure(cls, *errors: str) -> "ValidationOutcome":
+    def failure(cls, *errors: str) -> ValidationOutcome:
         return cls(valid=False, errors=list(errors))
 
 
@@ -184,7 +182,7 @@ class AdapterMetadata(BaseModel):
         summary: str,
         config_model: type[AdapterConfig] | None = None,
         **kwargs: Any,
-    ) -> "AdapterMetadata":
+    ) -> AdapterMetadata:
         schema: Mapping[str, Any] = {}
         if config_model is not None:
             schema = config_model().json_schema()

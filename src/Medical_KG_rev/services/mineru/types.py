@@ -44,16 +44,19 @@ Example:
     ...     duration_seconds=1.5,
     ...     metadata=processing_metadata
     ... )
+
 """
 
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from Medical_KG_rev.models.equation import Equation
 from Medical_KG_rev.models.figure import Figure
@@ -104,6 +107,7 @@ class Block:
         ...     reading_order=1,
         ...     metadata={"font": "Arial", "size": 12}
         ... )
+
     """
 
     id: str
@@ -153,6 +157,7 @@ class Document:
         ...     tables=[extracted_table],
         ...     metadata={"title": "Research Paper", "author": "Dr. Smith"}
         ... )
+
     """
 
     document_id: str
@@ -194,6 +199,7 @@ class MineruRequest:
         ...     document_id="doc_123",
         ...     content=pdf_bytes
         ... )
+
     """
 
     tenant_id: str
@@ -222,12 +228,13 @@ class MineruResponse:
         ...     duration_seconds=1.5,
         ...     metadata=processing_metadata
         ... )
+
     """
 
     document: Document
     processed_at: datetime
     duration_seconds: float
-    metadata: "ProcessingMetadata"
+    metadata: ProcessingMetadata
 
 
 @dataclass(slots=True)
@@ -250,12 +257,13 @@ class MineruBatchResponse:
         ...     duration_seconds=3.0,
         ...     metadata=[meta1, meta2]
         ... )
+
     """
 
     documents: list[Document]
     processed_at: datetime
     duration_seconds: float
-    metadata: list["ProcessingMetadata"]
+    metadata: list[ProcessingMetadata]
 
 
 @dataclass(slots=True)
@@ -278,6 +286,7 @@ class MineruBatchRequest:
         ...     tenant_id="tenant_1",
         ...     requests=[req1, req2, req3]
         ... )
+
     """
 
     tenant_id: str
@@ -329,6 +338,7 @@ class ProcessingMetadata:
         ...     cli_stderr="",
         ...     cli_descriptor="MinerU CLI v0.1.0"
         ... )
+
     """
 
     document_id: str
@@ -358,6 +368,7 @@ class ProcessingMetadata:
             >>> metadata_dict = metadata.as_dict()
             >>> print(metadata_dict["started_at"])
             "2023-01-01T12:00:00+00:00"
+
         """
         return {
             "document_id": self.document_id,
@@ -365,8 +376,8 @@ class ProcessingMetadata:
             "model_names": dict(self.model_names),
             "gpu_id": self.gpu_id,
             "worker_id": self.worker_id,
-            "started_at": self.started_at.astimezone(timezone.utc).isoformat(),
-            "completed_at": self.completed_at.astimezone(timezone.utc).isoformat(),
+            "started_at": self.started_at.astimezone(UTC).isoformat(),
+            "completed_at": self.completed_at.astimezone(UTC).isoformat(),
             "duration_seconds": self.duration_seconds,
             "cli_stdout": self.cli_stdout,
             "cli_stderr": self.cli_stderr,
@@ -382,9 +393,9 @@ class ProcessingMetadata:
 __all__ = [
     "Block",
     "Document",
-    "MineruRequest",
-    "MineruResponse",
     "MineruBatchRequest",
     "MineruBatchResponse",
+    "MineruRequest",
+    "MineruResponse",
     "ProcessingMetadata",
 ]

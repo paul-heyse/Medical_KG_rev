@@ -22,6 +22,7 @@ Example:
     >>> config = RetryConfig(attempts=3, backoff_strategy=BackoffStrategy.EXPONENTIAL)
     >>> client = HttpClient(config=config)
     >>> response = client.get("https://api.example.com/data")
+
 """
 
 from __future__ import annotations
@@ -32,13 +33,12 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Iterable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from enum import Enum
-from typing import Awaitable, Callable
 
 import httpx
 from aiolimiter import AsyncLimiter

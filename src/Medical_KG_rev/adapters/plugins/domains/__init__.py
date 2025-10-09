@@ -11,7 +11,7 @@ from .registry import DomainAdapterRegistry
 __all__ = [
     "BiomedicalAdapterMetadata",
     "DomainAdapterMetadata",
+    "DomainAdapterRegistry",
     "FinancialAdapterMetadata",
     "LegalAdapterMetadata",
-    "DomainAdapterRegistry",
 ]

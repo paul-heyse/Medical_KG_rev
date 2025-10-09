@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Iterable, Sequence
 
 try:  # pragma: no cover - optional dependency
     import torch
@@ -13,7 +13,6 @@ except Exception:  # pragma: no cover - torch may be absent in CI
 
 def gpu_available() -> bool:
     """Return True when CUDA devices are visible."""
-
     if torch is None:
         return False
     return bool(torch.cuda.is_available())
@@ -43,7 +42,6 @@ class GPUResourceManager:
 
     def ensure(self) -> bool:
         """Ensure GPU availability, raising when required."""
-
         available = gpu_available()
         if self.require_gpu and not available:
             raise RuntimeError("GPU requested but not available")
@@ -77,7 +75,6 @@ class GPUFallbackStrategy:
 
 def get_gpu_stats() -> list[GPUStats]:
     """Return stats for each visible GPU device."""
-
     if torch is None or not getattr(torch, "cuda", None) or not torch.cuda.is_available():  # type: ignore[attr-defined]
         return []
     stats: list[GPUStats] = []
@@ -100,7 +97,6 @@ def plan_batches(
     logger: Callable[[str], None] | None = None,
 ) -> Sequence[range]:
     """Yield ranges describing how to batch work depending on GPU availability."""
-
     available = manager.ensure()
     batch_size = manager.choose_batch_size(available=available, total=total)
     if not available and logger:
@@ -115,7 +111,6 @@ def plan_batches(
 
 def summarise_stats(stats: Iterable[GPUStats]) -> dict[str, float]:
     """Summarise GPU stats for Prometheus or logging."""
-
     stats = list(stats)
     if not stats:
         return {"devices": 0, "max_utilisation": 0.0}

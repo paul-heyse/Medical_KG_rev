@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from datetime import time as time_of_day
 from pathlib import Path
 from threading import Event, Thread
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
 
 from .ground_truth import GroundTruthManager, GroundTruthRecord
 from .metrics import evaluate_query
@@ -77,7 +78,6 @@ class EvalHarness:
         variants: Mapping[str, Callable[[GroundTruthRecord], Sequence[str]]],
     ) -> Mapping[str, EvaluationReport]:
         """Evaluate multiple retrieval strategies for side-by-side comparison."""
-
         results: dict[str, EvaluationReport] = {}
         for name, retrieve in variants.items():
             results[name] = self.run(dataset_name, retrieve)
@@ -89,7 +89,6 @@ class EvalHarness:
         history_path: str | Path,
     ) -> None:
         """Append evaluation metrics to a JSONL history for regression detection."""
-
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "name": report.name,
@@ -109,9 +108,8 @@ class EvalHarness:
         retrieval: Callable[[GroundTruthRecord], float] | None = None,
         fusion: Callable[[GroundTruthRecord], float] | None = None,
         rerank: Callable[[GroundTruthRecord], float] | None = None,
-    ) -> "StageEvaluationResult":
+    ) -> StageEvaluationResult:
         """Compute per-stage metrics using provided evaluators."""
-
         totals: dict[str, float] = {}
         counts: dict[str, int] = {}
         for record in self.ground_truth.queries(dataset_name):
@@ -138,9 +136,8 @@ class EvalHarness:
         output_dir: str | Path,
         *,
         hour_utc: int = 2,
-    ) -> "NightlyEvaluationRunner":
+    ) -> NightlyEvaluationRunner:
         """Schedule nightly evaluation runs at the specified UTC hour."""
-
         runner = NightlyEvaluationRunner(
             harness=self,
             dataset=dataset_name,
@@ -213,6 +210,6 @@ class NightlyEvaluationRunner:
 __all__ = [
     "EvalHarness",
     "EvaluationReport",
-    "StageEvaluationResult",
     "NightlyEvaluationRunner",
+    "StageEvaluationResult",
 ]

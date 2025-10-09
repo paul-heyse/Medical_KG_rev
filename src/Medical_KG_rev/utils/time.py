@@ -7,13 +7,11 @@ from datetime import UTC, datetime
 
 def utc_now() -> datetime:
     """Return current UTC time with tzinfo."""
-
     return datetime.now(UTC)
 
 
 def ensure_utc(value: datetime) -> datetime:
     """Ensure datetime is timezone aware and converted to UTC."""
-
     if value.tzinfo is None:
         raise ValueError("Datetime must include timezone information")
     return value.astimezone(UTC)

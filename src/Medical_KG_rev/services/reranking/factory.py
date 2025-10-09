@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .errors import RerankingError, UnknownRerankerError
@@ -56,7 +57,6 @@ class RerankerFactory:
 
     def clear_cache(self) -> None:
         """Evict cached reranker instances (useful for tests)."""
-
         self._instances.clear()
 
     def resolve(self, name: str | None, config: RerankerConfig | None = None) -> RerankerPort:
@@ -83,11 +83,11 @@ class RerankerFactory:
             if hasattr(reranker, "batch_size") and config.batch_size:
                 reranker.batch_size = config.batch_size  # type: ignore[attr-defined]
             if hasattr(reranker, "precision"):
-                setattr(reranker, "precision", config.precision)
+                reranker.precision = config.precision
             if hasattr(reranker, "device"):
-                setattr(reranker, "device", config.device)
+                reranker.device = config.device
             if hasattr(reranker, "quantization") and config.quantization:
-                setattr(reranker, "quantization", config.quantization)
+                reranker.quantization = config.quantization
         return reranker
 class _LazyColbertIndex:
     """Placeholder index that raises helpful errors until configured."""

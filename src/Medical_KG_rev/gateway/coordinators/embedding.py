@@ -53,6 +53,7 @@ Example:
     ...     options=EmbeddingOptions(model="sentence-transformers/all-MiniLM-L6-v2")
     ... ))
     >>> print(f"Generated {len(result.response.vectors)} embeddings")
+
 """
 from __future__ import annotations
 
@@ -104,6 +105,7 @@ class EmbeddingRequest(CoordinatorRequest):
         texts: Sequence of text strings to be embedded. All texts must be non-empty.
         options: Optional embedding configuration including model selection, batch size,
                 and other embedding parameters.
+
     """
 
     def __init__(
@@ -125,6 +127,7 @@ class EmbeddingRequest(CoordinatorRequest):
             options: Optional embedding configuration.
             correlation_id: Optional correlation ID for request tracking.
             metadata: Optional metadata for request context.
+
         """
         super().__init__(
             tenant_id=tenant_id,
@@ -143,7 +146,9 @@ class EmbeddingResult(CoordinatorResult):
     Attributes:
         response: EmbeddingResponse containing generated vectors and metadata.
                  None if embedding operation failed.
+
     """
+
     response: EmbeddingResponse | None = None
 
 
@@ -205,6 +210,7 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
         ...     options=EmbeddingOptions(model="sentence-transformers/all-MiniLM-L6-v2")
         ... ))
         >>> print(f"Generated {len(result.response.vectors)} embeddings")
+
     """
 
     def __init__(
@@ -241,6 +247,7 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
             ...     telemetry=EmbeddingTelemetry(),
             ...     config=CoordinatorConfig(name="embedding")
             ... )
+
         """
         from .base import CoordinatorMetrics
 
@@ -282,6 +289,7 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
             ... )
             >>> result = coordinator._execute(request)
             >>> print(f"Generated {len(result.response.vectors)} embeddings")
+
         """
         decision = self._evaluate_namespace(request)
         if not decision.allowed:
@@ -495,6 +503,7 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
             >>> decision = coordinator._evaluate_namespace(request)
             >>> if decision.allowed:
             ...     print("Access granted")
+
         """
         try:
             return self._policy.evaluate(
@@ -536,6 +545,7 @@ class EmbeddingCoordinator(BaseCoordinator[EmbeddingRequest, EmbeddingResult]):
             ... )
             >>> print(metadata["faiss_index"])
             /data/faiss/tenant1/medical-docs.index
+
         """
         sanitized_namespace = namespace.replace(".", "-")
         if kind in {"single_vector", "multi_vector"}:

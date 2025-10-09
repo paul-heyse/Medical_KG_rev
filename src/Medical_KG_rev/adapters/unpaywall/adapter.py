@@ -38,6 +38,7 @@ Example:
     ...     parameters={"doi": "10.1371/journal.pone.0123456"}
     ... )
     >>> documents = adapter.fetch_and_parse(context)
+
 """
 
 # ==============================================================================
@@ -228,6 +229,6 @@ class UnpaywallAdapter(ResilientHTTPAdapter):
 # ==============================================================================
 
 __all__ = [
-    "UnpaywallAdapter",
     "ResilientHTTPAdapter",
+    "UnpaywallAdapter",
 ]

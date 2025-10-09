@@ -9,7 +9,7 @@ from .adapter import (
 
 __all__ = [
     "OpenFDAAdapter",
-    "OpenFDADrugLabelAdapter",
-    "OpenFDADrugEventAdapter",
     "OpenFDADeviceAdapter",
+    "OpenFDADrugEventAdapter",
+    "OpenFDADrugLabelAdapter",
 ]

@@ -23,6 +23,7 @@ Example:
     >>> client = Neo4jClient(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     >>> with client.with_transaction() as tx:
     ...     client.create_node(tx, "Document", {"document_id": "doc1"})
+
 """
 
 # ==============================================================================
@@ -84,6 +85,7 @@ class Neo4jClient:
         >>> client = Neo4jClient(driver=neo4j_driver)
         >>> result = client.merge_node("Document", {"document_id": "doc1", "title": "Test"})
         >>> client.link("Document", "Entity", "MENTIONS", "doc1", "entity1")
+
     """
 
     driver: Any
@@ -108,6 +110,7 @@ class Neo4jClient:
         Example:
             >>> with client._session() as session:
             ...     result = session.run("MATCH (n) RETURN count(n)")
+
         """
         session = self.driver.session()
         try:
@@ -142,6 +145,7 @@ class Neo4jClient:
             ...     "CREATE (n:Document {document_id: $id})",
             ...     {"id": "doc1"}
             ... )
+
         """
         with self._session() as session:
             return session.execute_write(lambda tx: tx.run(query, parameters or {}).data())
@@ -172,6 +176,7 @@ class Neo4jClient:
             ...     "Document",
             ...     {"document_id": "doc1", "title": "Test Document"}
             ... )
+
         """
         self.validator.validate_node(label, properties)
         query, parameters = self.templates.merge_node(label, properties)
@@ -215,6 +220,7 @@ class Neo4jClient:
             ...     "doc1", "entity1",
             ...     {"sentence_index": 5}
             ... )
+
         """
         query, parameters = self.templates.link_nodes(
             start_label,
@@ -252,6 +258,7 @@ class Neo4jClient:
             ...     tx.run("CREATE (e:Entity {id: 'entity1'})")
             ...     return "success"
             >>> result = client.with_transaction(create_document_and_entity)
+
         """
         with self._session() as session:
             return session.execute_write(func)

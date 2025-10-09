@@ -30,6 +30,7 @@ Example:
     >>> python -m Medical_KG_rev.gateway.main --export-openapi
     >>> python -m Medical_KG_rev.gateway.main --export-graphql
     >>> python -m Medical_KG_rev.gateway.main --export-asyncapi
+
 """
 
 # ==============================================================================
@@ -92,6 +93,7 @@ def export_openapi() -> str:
 
     Returns:
         YAML-formatted OpenAPI specification.
+
     """
     app = create_app()
     openapi_schema: dict[str, Any] = app.openapi()
@@ -103,6 +105,7 @@ def export_graphql() -> str:
 
     Returns:
         GraphQL schema definition language (SDL) string.
+
     """
     return schema.as_str()
 
@@ -112,6 +115,7 @@ def export_asyncapi() -> str:
 
     Returns:
         YAML-formatted AsyncAPI specification.
+
     """
     return ASYNCAPI_TEMPLATE
 
@@ -156,9 +160,9 @@ def main() -> None:
 # ==============================================================================
 
 __all__ = [
-    "export_openapi",
-    "export_graphql",
     "export_asyncapi",
+    "export_graphql",
+    "export_openapi",
     "main",
 ]
 

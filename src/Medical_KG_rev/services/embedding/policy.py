@@ -36,6 +36,7 @@ Example:
     >>> policy = build_policy_chain(registry, dry_run=True)
     >>> decision = policy.evaluate(namespace="medical", tenant_id="tenant1", required_scope="read")
     >>> print(f"Access allowed: {decision.allowed}")
+
 """
 
 # ============================================================================
@@ -45,9 +46,9 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
 from dataclasses import asdict, dataclass, field, replace
 from time import perf_counter
-from typing import Callable, Iterable, Mapping, MutableMapping, Tuple
 
 import structlog
 from Medical_KG_rev.services.embedding.namespace.access import (
@@ -100,6 +101,7 @@ class NamespaceAccessDecision:
         ...     allowed=True, reason="Tenant has read access"
         ... )
         >>> print(f"Access granted: {decision.allowed}")
+
     """
 
     namespace: str
@@ -128,6 +130,7 @@ class NamespaceAccessDecision:
             ...     allowed=False, reason="Tenant not authorized"
             ... )
             >>> assert decision.denied_due_to_tenant() == True
+
         """
         if self.allowed:
             return False
@@ -155,6 +158,7 @@ class NamespacePolicySettings:
         ...     cache_ttl_seconds=120.0, max_cache_entries=1024
         ... )
         >>> policy = StandardNamespacePolicy(registry, settings=settings)
+
     """
 
     cache_ttl_seconds: float = 60.0
@@ -172,6 +176,7 @@ class _CacheEntry:
     Attributes:
         decision: The cached policy decision
         expires_at: Timestamp when the cache entry expires
+
     """
 
     decision: NamespaceAccessDecision
@@ -223,6 +228,7 @@ class NamespaceAccessPolicy(ABC):
         ...         return NamespaceAccessDecision(...)
         >>> policy = CustomPolicy(registry)
         >>> decision = policy.evaluate(namespace="test", tenant_id="t1", required_scope="read")
+
     """
 
     def __init__(
@@ -242,11 +248,12 @@ class NamespaceAccessPolicy(ABC):
         Note:
             Logger is automatically bound to the concrete class name
             for structured logging identification.
+
         """
         self._registry = registry
         self._telemetry = telemetry
         self._settings = settings or NamespacePolicySettings()
-        self._cache: MutableMapping[Tuple[str, str, str], _CacheEntry] = {}
+        self._cache: MutableMapping[tuple[str, str, str], _CacheEntry] = {}
         self._evaluations: int = 0
         self._denials: int = 0
         self._cache_hits: int = 0
@@ -258,6 +265,7 @@ class NamespaceAccessPolicy(ABC):
 
         Returns:
             Registry instance for namespace configuration lookup.
+
         """
         return self._registry
 
@@ -267,6 +275,7 @@ class NamespaceAccessPolicy(ABC):
 
         Returns:
             Current policy configuration including cache and dry-run settings.
+
         """
         return self._settings
 
@@ -280,6 +289,7 @@ class NamespaceAccessPolicy(ABC):
         Note:
             Only provided settings are updated; others remain unchanged.
             Cache is invalidated after settings update.
+
         """
         new_values = asdict(self._settings) | kwargs
         self._settings = NamespacePolicySettings(**new_values)
@@ -307,6 +317,7 @@ class NamespaceAccessPolicy(ABC):
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
             ... )
             >>> print(f"Access allowed: {decision.allowed}")
+
         """
         cache_key = (namespace, tenant_id, required_scope)
         entry = self._cache.get(cache_key)
@@ -351,6 +362,7 @@ class NamespaceAccessPolicy(ABC):
         Note:
             This method is called automatically when settings are updated
             to ensure cache consistency.
+
         """
         if namespace is None:
             self._cache.clear()
@@ -370,6 +382,7 @@ class NamespaceAccessPolicy(ABC):
             >>> policy = StandardNamespacePolicy(registry)
             >>> health = policy.health_status()
             >>> print(f"Policy: {health['policy']}, Evaluations: {health['evaluations']}")
+
         """
         return {
             "policy": self.__class__.__name__,
@@ -388,6 +401,7 @@ class NamespaceAccessPolicy(ABC):
         Note:
             This method is intended for debugging and development,
             not for production monitoring.
+
         """
         return {
             "settings": asdict(self._settings),
@@ -406,6 +420,7 @@ class NamespaceAccessPolicy(ABC):
             >>> policy = StandardNamespacePolicy(registry)
             >>> stats = policy.stats()
             >>> print(f"Cache hits: {stats['cache_hits']}")
+
         """
         return {
             "evaluations": self._evaluations,
@@ -429,6 +444,7 @@ class NamespaceAccessPolicy(ABC):
             This method must be implemented by subclasses to provide
             the actual policy logic. The base class handles caching,
             telemetry, and statistics.
+
         """
 
     def operational_metrics(self) -> Mapping[str, object]:
@@ -443,6 +459,7 @@ class NamespaceAccessPolicy(ABC):
             >>> policy = StandardNamespacePolicy(registry)
             >>> metrics = policy.operational_metrics()
             >>> print(f"Cache hit ratio: {metrics['cache_hit_ratio']:.2f}")
+
         """
         return {
             "policy": self.__class__.__name__,
@@ -479,6 +496,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
         ...     namespace="medical", tenant_id="tenant1", required_scope="read"
         ... )
         >>> print(f"Access allowed: {decision.allowed}")
+
     """
 
     def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
@@ -505,6 +523,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
             ... )
             >>> print(f"Reason: {decision.reason}")
+
         """
         try:
             config = self.registry.get(namespace)
@@ -571,6 +590,7 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         ...     namespace="medical", tenant_id="tenant1", required_scope="read"
         ... )
         >>> print(f"Always allowed: {decision.allowed}")
+
     """
 
     def __init__(
@@ -588,6 +608,7 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         Note:
             The dry-run policy inherits the delegate's registry and
             settings, but can override the telemetry system.
+
         """
         super().__init__(
             delegate.registry,
@@ -620,6 +641,7 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
             ... )
             >>> print(f"Dry-run denied: {decision.metadata.get('dry_run_denied', False)}")
+
         """
         decision = self._delegate.evaluate(
             namespace=namespace,
@@ -671,12 +693,13 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         ...     namespace="test", tenant_id="t1", required_scope="read"
         ... )
         >>> print(f"Mock decision: {decision.allowed}")
+
     """
 
     def __init__(
         self,
         registry: EmbeddingNamespaceRegistry,
-        decisions: Mapping[Tuple[str, str, str], NamespaceAccessDecision] | None = None,
+        decisions: Mapping[tuple[str, str, str], NamespaceAccessDecision] | None = None,
     ) -> None:
         """Initialize mock policy with registry and optional decisions.
 
@@ -687,6 +710,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         Note:
             If no decisions are provided, an empty mapping is used.
             Decisions can be added later using register_decision.
+
         """
         super().__init__(registry)
         self._decisions = dict(decisions or {})
@@ -720,6 +744,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
             ...     namespace="test", tenant_id="t1", scope="read",
             ...     allowed=True, reason="Test access"
             ... )
+
         """
         config = None
         try:
@@ -764,6 +789,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
             ...     namespace="test", tenant_id="t1", required_scope="read"
             ... )
             >>> print(f"Decision: {decision.allowed}")
+
         """
         key = (namespace, tenant_id, required_scope)
         if key not in self._decisions:
@@ -801,6 +827,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         >>> decision = policy.evaluate(
         ...     namespace="test", tenant_id="t1", required_scope="read"
         ... )
+
     """
 
     def __init__(
@@ -823,6 +850,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         Note:
             The resolver callable is responsible for implementing the
             custom access control logic.
+
         """
         super().__init__(registry, telemetry=telemetry, settings=settings)
         self._resolver = resolver
@@ -854,6 +882,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
             >>> decision = policy._evaluate(
             ...     namespace="test", tenant_id="t1", required_scope="read"
             ... )
+
         """
         decision = self._resolver(namespace, tenant_id, required_scope)
         if decision.config is None:
@@ -899,6 +928,7 @@ def build_policy_chain(
         >>> decision = policy.evaluate(
         ...     namespace="test", tenant_id="t1", required_scope="read"
         ... )
+
     """
     policy: NamespaceAccessPolicy = StandardNamespacePolicy(registry, telemetry=telemetry, settings=settings)
     if dry_run:
@@ -909,12 +939,12 @@ def build_policy_chain(
 
 
 __all__ = [
+    "CustomNamespacePolicy",
+    "DryRunNamespacePolicy",
+    "MockNamespacePolicy",
     "NamespaceAccessDecision",
     "NamespaceAccessPolicy",
     "NamespacePolicySettings",
     "StandardNamespacePolicy",
-    "DryRunNamespacePolicy",
-    "MockNamespacePolicy",
-    "CustomNamespacePolicy",
     "build_policy_chain",
 ]

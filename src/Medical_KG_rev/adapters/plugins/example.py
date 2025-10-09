@@ -8,8 +8,8 @@ from Medical_KG_rev.adapters.plugins.models import (
     AdapterMetadata,
     AdapterRequest,
     AdapterResponse,
-    BiomedicalPayload,
     AdapterResponseEnvelope,
+    BiomedicalPayload,
 )
 
 

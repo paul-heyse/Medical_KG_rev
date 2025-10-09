@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import os
 import threading
-import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import hvac
-import structlog
-from pydantic import BaseModel, Field, SecretStr, ValidationError
+from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +40,7 @@ class AdapterSettings(BaseSettings):
         return self.model_json_schema()
 
     @classmethod
-    def load(cls) -> "AdapterSettings":
+    def load(cls) -> AdapterSettings:
         settings = cls()
         logger.debug("adapter.settings.loaded", settings=settings.model_dump(exclude={"vault_token"}))
         return settings
@@ -111,7 +111,6 @@ class SettingsHotReloader:
 
 def migrate_yaml_to_env(yaml_path: Path, env_prefix: str = "MK_ADAPTER_") -> dict[str, str]:
     """Convert legacy YAML configuration to environment variables."""
-
     import yaml
 
     with yaml_path.open("r", encoding="utf-8") as handle:
@@ -135,7 +134,7 @@ class ConfigValidationResult:
     errors: list[str]
 
     @classmethod
-    def from_exception(cls, exc: ValidationError) -> "ConfigValidationResult":
+    def from_exception(cls, exc: ValidationError) -> ConfigValidationResult:
         return cls(False, [str(error["msg"]) for error in exc.errors()])
 
 

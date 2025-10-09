@@ -56,6 +56,7 @@ Example:
     ...     limit=10
     ... )
     >>> print(f"Retrieved {len(results)} results")
+
 """
 
 from __future__ import annotations
@@ -64,11 +65,11 @@ from __future__ import annotations
 # IMPORTS
 # ==============================================================================
 import asyncio
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Callable, Mapping, Sequence
 
 import structlog
 from Medical_KG_rev.auth.context import SecurityContext
@@ -154,7 +155,9 @@ class RetrievalResult:
         ...     metadata={"source": "document.pdf"}
         ... )
         >>> print(f"Final score: {result.rerank_score or result.retrieval_score}")
+
     """
+
     id: str
     text: str
     retrieval_score: float
@@ -215,6 +218,7 @@ class RetrievalService:
         ...     tenant_id="tenant1",
         ...     limit=10
         ... )
+
     """
 
     def __init__(
@@ -259,6 +263,7 @@ class RetrievalService:
             The service initializes with sensible defaults for optional
             components. Model handles are loaded on demand to improve
             startup performance.
+
         """
         self.opensearch = opensearch
         self.faiss = faiss
@@ -377,6 +382,7 @@ class RetrievalService:
             ...     rerank=True
             ... )
             >>> print(f"Found {len(results)} results")
+
         """
         security_context = context or (
             self._context_factory()

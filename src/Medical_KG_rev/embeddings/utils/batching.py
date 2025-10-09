@@ -25,7 +25,6 @@ class BatchProgress:
 
 def batched(items: Sequence[T], batch_size: int) -> Iterator[Sequence[T]]:
     """Yield batches of *batch_size* items from *items*."""
-
     if batch_size <= 0:
         raise ValueError("batch_size must be positive")
     for start in range(0, len(items), batch_size):
@@ -38,7 +37,6 @@ def paired_batches(
     batch_size: int,
 ) -> Iterator[tuple[Sequence[T], Sequence[T]]]:
     """Yield aligned batches from two sequences of equal length."""
-
     if len(left) != len(right):
         raise ValueError("Sequences must be equal length")
     for left_batch, right_batch in zip(batched(left, batch_size), batched(right, batch_size), strict=True):
@@ -52,7 +50,6 @@ def iter_with_progress(
     progress: BatchProgress | None = None,
 ) -> Iterator[Sequence[T]]:
     """Iterate over *items* in batches while updating the provided progress tracker."""
-
     for batch in batched(items, batch_size):
         yield batch
         if progress:

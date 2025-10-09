@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
@@ -34,7 +34,6 @@ class BlockContext:
 
 def _extract_page_number(metadata: dict[str, object]) -> int | None:
     """Best-effort extraction of page number from block metadata."""
-
     for key in ("page", "page_number", "page_no", "pageIndex"):
         value = metadata.get(key)
         if isinstance(value, int) and value >= 1:

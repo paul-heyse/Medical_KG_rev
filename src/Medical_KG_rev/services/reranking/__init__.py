@@ -1,19 +1,25 @@
 """Public exports for the reranking subsystem."""
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
+from .evaluation.harness import EvaluationResult, RerankerEvaluator
 from .factory import RerankerFactory
+from .fusion.service import FusionService
+from .late_interaction import ColbertIndexReranker, ColBERTReranker, QdrantColBERTReranker
+from .lexical import BM25FReranker, BM25Reranker
+from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .model_registry import (
     DEFAULT_CACHE_DIR as RERANKER_CACHE_DIR,
+)
+from .model_registry import (
     DEFAULT_CONFIG_PATH as RERANKER_CONFIG_PATH,
+)
+from .model_registry import (
     ModelDownloader,
+    ModelDownloadError,
     ModelHandle,
     RerankerModel,
     RerankerModelRegistry,
 )
-from .fusion.service import FusionService
-from .late_interaction import ColBERTReranker, ColbertIndexReranker, QdrantColBERTReranker
-from .lexical import BM25FReranker, BM25Reranker
-from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import (
     CacheMetrics,
     FusionResponse,
@@ -22,53 +28,53 @@ from .models import (
     NormalizationStrategy,
     PipelineSettings,
     QueryDocumentPair,
-    RerankResult,
     RerankerConfig,
     RerankingResponse,
+    RerankResult,
     ScoredDocument,
 )
 from .pipeline.batch_processor import BatchProcessor
 from .pipeline.cache import RedisCacheBackend, RerankCacheManager
 from .pipeline.circuit import CircuitBreaker
 from .rerank_engine import RerankingEngine
-from .evaluation.harness import EvaluationResult, RerankerEvaluator
 
 __all__ = [
+    "RERANKER_CACHE_DIR",
+    "RERANKER_CONFIG_PATH",
     "BGEReranker",
-    "MiniLMReranker",
-    "MonoT5Reranker",
-    "QwenReranker",
+    "BM25FReranker",
+    "BM25Reranker",
+    "BatchProcessor",
+    "CacheMetrics",
+    "CircuitBreaker",
     "ColBERTReranker",
     "ColbertIndexReranker",
-    "QdrantColBERTReranker",
-    "BM25Reranker",
-    "BM25FReranker",
-    "OpenSearchLTRReranker",
-    "VespaRankProfileReranker",
-    "RerankerFactory",
+    "EvaluationResult",
+    "FusionResponse",
     "FusionService",
     "FusionSettings",
     "FusionStrategy",
-    "FusionResponse",
-    "PipelineSettings",
-    "NormalizationStrategy",
-    "QueryDocumentPair",
-    "RerankResult",
-    "RerankerConfig",
-    "RerankingResponse",
-    "ScoredDocument",
-    "BatchProcessor",
-    "RerankCacheManager",
-    "RedisCacheBackend",
-    "CacheMetrics",
-    "CircuitBreaker",
-    "RerankingEngine",
-    "EvaluationResult",
-    "RerankerEvaluator",
-    "RERANKER_CACHE_DIR",
-    "RERANKER_CONFIG_PATH",
+    "MiniLMReranker",
+    "ModelDownloadError",
     "ModelDownloader",
     "ModelHandle",
+    "MonoT5Reranker",
+    "NormalizationStrategy",
+    "OpenSearchLTRReranker",
+    "PipelineSettings",
+    "QdrantColBERTReranker",
+    "QueryDocumentPair",
+    "QwenReranker",
+    "RedisCacheBackend",
+    "RerankCacheManager",
+    "RerankResult",
+    "RerankerConfig",
+    "RerankerEvaluator",
+    "RerankerFactory",
     "RerankerModel",
     "RerankerModelRegistry",
+    "RerankingEngine",
+    "RerankingResponse",
+    "ScoredDocument",
+    "VespaRankProfileReranker",
 ]

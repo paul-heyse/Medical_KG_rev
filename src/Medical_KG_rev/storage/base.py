@@ -21,6 +21,7 @@ Example:
     ...     async def put(self, key: str, data: bytes) -> None:
     ...         # Implementation
     ...         pass
+
 """
 
 # ==============================================================================
@@ -49,6 +50,7 @@ class ObjectMetadata:
     Attributes:
         content_type: MIME type of the stored object.
         size: Size of the object in bytes.
+
     """
 
     content_type: str | None
@@ -81,6 +83,7 @@ class ObjectStore(ABC):
 
         Raises:
             StorageError: If the operation fails.
+
         """
         raise NotImplementedError
 
@@ -96,6 +99,7 @@ class ObjectStore(ABC):
 
         Raises:
             StorageError: If the operation fails.
+
         """
         raise NotImplementedError
 
@@ -108,6 +112,7 @@ class ObjectStore(ABC):
 
         Raises:
             StorageError: If the operation fails.
+
         """
         raise NotImplementedError
 
@@ -129,6 +134,7 @@ class LedgerStore(ABC):
 
         Raises:
             StorageError: If the operation fails.
+
         """
         raise NotImplementedError
 
@@ -144,6 +150,7 @@ class LedgerStore(ABC):
 
         Raises:
             StorageError: If the operation fails.
+
         """
         raise NotImplementedError
 
@@ -163,6 +170,7 @@ class CacheBackend(ABC):
 
         Returns:
             Cached value if found, None otherwise.
+
         """
         raise NotImplementedError
 
@@ -174,6 +182,7 @@ class CacheBackend(ABC):
             key: Cache key.
             value: Value to cache.
             ttl: Time to live in seconds.
+
         """
         raise NotImplementedError
 
@@ -183,6 +192,7 @@ class CacheBackend(ABC):
 
         Args:
             key: Cache key.
+
         """
         raise NotImplementedError
 

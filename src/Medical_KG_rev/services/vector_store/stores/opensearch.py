@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from typing import Any
 import json
 import time
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -25,7 +25,6 @@ from ..models import (
 )
 from ..types import VectorStorePort
 from .memory import InMemoryVectorStore
-
 
 _SPECIAL_FILTER_KEYS = {"lexical_query", "mode", "vector_weight"}
 
@@ -433,7 +432,7 @@ class OpenSearchKNNStore(VectorStorePort):
             return {}
         max_value = max(scores.values())
         if max_value <= 0:
-            return {key: 0.0 for key in scores}
+            return dict.fromkeys(scores, 0.0)
         return {key: value / max_value for key, value in scores.items()}
 
 

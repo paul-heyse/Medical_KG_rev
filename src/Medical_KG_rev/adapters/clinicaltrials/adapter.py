@@ -14,7 +14,6 @@ from Medical_KG_rev.utils.http_client import (
     RateLimitConfig,
     RetryConfig,
 )
-from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_nct_id
 
 

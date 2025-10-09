@@ -18,7 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .equation import Equation
 from .figure import Figure
-from .table import Table, TableCell
+from .table import Table
+
 
 class IRBaseModel(BaseModel):
     """Base model that enforces strict validation across the IR."""
@@ -129,14 +130,12 @@ class Document(IRBaseModel):
 
     def iter_blocks(self) -> Iterable[Block]:
         """Iterate over all blocks contained in the document."""
-
         for section in self.sections:
             for block in section.blocks:
                 yield block
 
     def find_spans(self, predicate: Any | None = None) -> list[Span]:
         """Return spans that match the predicate."""
-
         spans: list[Span] = []
         for block in self.iter_blocks():
             for span in block.spans:

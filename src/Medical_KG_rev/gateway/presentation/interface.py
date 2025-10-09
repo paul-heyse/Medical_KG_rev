@@ -30,6 +30,7 @@ Example:
     >>> class JSONPresenter:
     ...     def success(self, data, *, status_code=200, meta=None):
     ...         return JSONResponse(data, status_code=status_code)
+
 """
 
 # ==============================================================================
@@ -38,7 +39,8 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Protocol
+from collections.abc import Mapping
+from typing import Any, Protocol
 
 from fastapi import Response
 
@@ -80,6 +82,6 @@ class RequestParser(Protocol):
 # ==============================================================================
 
 __all__ = [
-    "ResponsePresenter",
     "RequestParser",
+    "ResponsePresenter",
 ]

@@ -38,6 +38,7 @@ Example:
     ...     parameters={"doi": "10.1371/journal.pone.0123456"}
     ... )
     >>> documents = adapter.fetch_and_parse(context)
+
 """
 
 # ==============================================================================
@@ -47,8 +48,8 @@ Example:
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Mapping, Sequence
-from typing import Any, Iterator, cast
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from typing import Any, cast
 
 import structlog
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter

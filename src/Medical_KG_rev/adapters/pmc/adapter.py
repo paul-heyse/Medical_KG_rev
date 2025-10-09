@@ -39,6 +39,7 @@ Example:
     ...     parameters={"pmcid": "PMC123456"}
     ... )
     >>> documents = adapter.fetch_and_parse(context)
+
 """
 
 # ==============================================================================

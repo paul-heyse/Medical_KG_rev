@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from statistics import mean
-from typing import Mapping, Sequence
-
-import math
 
 
 @dataclass(slots=True)
@@ -99,7 +98,6 @@ class RerankerEvaluator:
         self, evaluations: Sequence[EvaluationResult]
     ) -> list[tuple[float, float]]:
         """Return (latency, ndcg) points for plotting accuracy vs latency."""
-
         return [
             (result.latency_p95_ms, result.ndcg_at_10)
             for result in sorted(evaluations, key=lambda item: item.latency_p95_ms)
@@ -124,7 +122,6 @@ class RerankerEvaluator:
         self, evaluations: Sequence[EvaluationResult]
     ) -> list[EvaluationResult]:
         """Sort rerankers by nDCG@10 descending while favouring lower latency ties."""
-
         return sorted(
             evaluations,
             key=lambda result: (result.ndcg_at_10, -result.latency_p95_ms),

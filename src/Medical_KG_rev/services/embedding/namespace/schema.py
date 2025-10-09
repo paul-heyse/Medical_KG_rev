@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 
 try:  # pragma: no cover - optional dependency guard
     from pydantic import BaseModel, Field  # type: ignore
@@ -12,7 +13,8 @@ except ModuleNotFoundError:  # pragma: no cover - fallback when pydantic missing
     BaseModel = None  # type: ignore[assignment]
     Field = None  # type: ignore[assignment]
 
-from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingKind as AdapterEmbeddingKind
+from Medical_KG_rev.embeddings.ports import EmbedderConfig
+from Medical_KG_rev.embeddings.ports import EmbeddingKind as AdapterEmbeddingKind
 
 
 class EmbeddingKind(str, Enum):
@@ -24,7 +26,7 @@ class EmbeddingKind(str, Enum):
     NEURAL_SPARSE = "neural_sparse"
 
     @classmethod
-    def from_adapter(cls, value: AdapterEmbeddingKind) -> "EmbeddingKind":
+    def from_adapter(cls, value: AdapterEmbeddingKind) -> EmbeddingKind:
         return cls(value)  # type: ignore[arg-type]
 
 
@@ -55,7 +57,6 @@ if BaseModel is not None:
 
         def to_embedder_config(self, namespace: str) -> EmbedderConfig:
             """Convert the namespace definition into an embedder adapter config."""
-
             param_map = dict(self.parameters)
             if self.endpoint and "endpoint" not in param_map:
                 param_map["endpoint"] = self.endpoint

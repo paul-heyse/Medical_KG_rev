@@ -58,6 +58,6 @@ class LegalPrecedentAdapterPlugin(BaseAdapterPlugin):
 
 
 __all__ = [
-    "LegalPrecedentAdapterPlugin",
     "LegalCaseConfig",
+    "LegalPrecedentAdapterPlugin",
 ]

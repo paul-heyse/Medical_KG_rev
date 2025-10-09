@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, ClassVar, Mapping, MutableMapping, Sequence
+from typing import Any, ClassVar
 
 from Medical_KG_rev.orchestration.ledger import JobLedgerEntry
 from Medical_KG_rev.utils.logging import get_logger
@@ -164,7 +165,6 @@ class OpenLineageEmitter:
     @property
     def events(self) -> Sequence[Mapping[str, Any]]:
         """Expose emitted events for testing and diagnostics."""
-
         return tuple(self._events)
 
     def clear(self) -> None:
@@ -253,7 +253,7 @@ class OpenLineageEmitter:
         extra_metadata: Mapping[str, Any] | None = None,
         error: str | None = None,
     ) -> Mapping[str, Any]:
-        event_time = datetime.now(timezone.utc).isoformat()
+        event_time = datetime.now(UTC).isoformat()
         run_facets, job_facets = self._build_facets(
             ledger_entry=ledger_entry,
             run_metadata=run_metadata,

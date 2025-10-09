@@ -177,7 +177,7 @@ class FAISSIndex:
         use_gpu: bool = True,
         metric: str = "ip",
         gpu_device: int = 0,
-    ) -> "FAISSIndex":
+    ) -> FAISSIndex:
         target = Path(path)
         cpu_index = faiss.read_index(str(target))
         instance = cls.__new__(cls)

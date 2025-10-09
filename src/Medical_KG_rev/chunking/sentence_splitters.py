@@ -91,7 +91,6 @@ class PySBDSentenceSplitter:
 
 def sentence_splitter_factory(name: str) -> SentenceSplitter:
     """Return a sentence splitter adapter based on configuration."""
-
     normalized = name.lower()
     if normalized in {"nltk", "punkt"}:
         return NLTKSentenceSplitter()

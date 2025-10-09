@@ -51,6 +51,7 @@ Example:
     ...     intent_hint_provider=default_intent_provider
     ... )
     >>> print(f"Generated {len(chunks)} chunks")
+
 """
 
 from __future__ import annotations
@@ -59,9 +60,10 @@ from __future__ import annotations
 # IMPORTS
 # ==============================================================================
 import uuid
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Iterable, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
@@ -96,7 +98,9 @@ class _BlockContext:
         ...     start=100, end=111
         ... )
         >>> print(f"Text: {context.text}, Range: {context.start}-{context.end}")
+
     """
+
     block: Block
     section: Section
     text: str
@@ -125,6 +129,7 @@ def iter_block_contexts(document: Document) -> Iterable[_BlockContext]:
         >>> document = Document(id="doc1", sections=[...])
         >>> for context in iter_block_contexts(document):
         ...     print(f"Block: {context.text[:50]}... at {context.start}-{context.end}")
+
     """
     cursor = 0
     for section in document.sections:
@@ -168,6 +173,7 @@ def group_contexts(
         ...     contexts, respect_boundaries=["section", "table"]
         ... )
         >>> print(f"Created {len(groups)} groups")
+
     """
     groups: list[list[_BlockContext]] = []
     current: list[_BlockContext] = []
@@ -236,6 +242,7 @@ def build_chunk(
         ...     intent_hint="diagnosis"
         ... )
         >>> print(f"Chunk ID: {chunk.chunk_id}")
+
     """
     doc_offsets = [offset for offset in mapping if offset is not None]
     if not doc_offsets:
@@ -250,7 +257,7 @@ def build_chunk(
     if metadata:
         resolved_metadata.update(metadata)
     resolved_metadata.setdefault("source_system", document.source)
-    resolved_metadata.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+    resolved_metadata.setdefault("created_at", datetime.now(UTC).isoformat())
     resolved_metadata.setdefault("chunker_version", "unknown")
     intent_value = intent_hint or ""
     section_metadata = getattr(section, "metadata", None)
@@ -306,6 +313,7 @@ def assemble_chunks(
         ...     intent_hint_provider=default_intent_provider
         ... )
         >>> print(f"Assembled {len(chunks)} chunks")
+
     """
     chunks: list[Chunk] = []
     for idx, text in enumerate(chunk_texts):
@@ -362,6 +370,7 @@ def identity_intent_provider(section: Section | None) -> str | None:
     Example:
         >>> intent = identity_intent_provider(section)
         >>> print(f"Intent: {intent}")
+
     """
     if section is None:
         return None
@@ -387,6 +396,7 @@ def default_intent_provider(section: Section | None) -> str | None:
     Example:
         >>> intent_hint = default_intent_provider(section)
         >>> print(f"Intent hint: {intent_hint}")
+
     """
     if section is None:
         return None

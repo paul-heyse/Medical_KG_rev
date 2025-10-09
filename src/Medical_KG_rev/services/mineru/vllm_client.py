@@ -48,6 +48,7 @@ Example:
     ...         messages=[{"role": "user", "content": "Hello"}]
     ...     )
     ...     print(response["choices"][0]["message"]["content"])
+
 """
 
 from __future__ import annotations
@@ -84,6 +85,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
         Example:
             >>> logger = _FallbackLogger("test")
             >>> logger.info("message", key="value")
+
         """
 
         def __init__(self, name: str) -> None:
@@ -91,6 +93,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
             Args:
                 name: Logger name for identification
+
             """
             self._logger = logging.getLogger(name)
 
@@ -103,6 +106,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
             Returns:
                 Formatted message string
+
             """
             if not details:
                 return message
@@ -115,6 +119,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Debug message text
                 **kwargs: Structured details
+
             """
             self._logger.debug(self._format(message, kwargs))
 
@@ -124,6 +129,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Info message text
                 **kwargs: Structured details
+
             """
             self._logger.info(self._format(message, kwargs))
 
@@ -133,6 +139,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Warning message text
                 **kwargs: Structured details
+
             """
             self._logger.warning(self._format(message, kwargs))
 
@@ -142,6 +149,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
             Args:
                 message: Error message text
                 **kwargs: Structured details
+
             """
             self._logger.error(self._format(message, kwargs))
 
@@ -153,6 +161,7 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
         Returns:
             Fallback logger instance
+
         """
         return _FallbackLogger(name)
 try:  # pragma: no cover - metrics may be unavailable in lightweight envs
@@ -172,6 +181,7 @@ except Exception:  # pragma: no cover - provide dummy metrics for tests without 
         Example:
             >>> metric = _DummyMetric()
             >>> metric.labels(error="test").inc()  # No-op
+
         """
 
         def __init__(self) -> None:
@@ -184,6 +194,7 @@ except Exception:  # pragma: no cover - provide dummy metrics for tests without 
             Args:
                 *_: Ignored positional arguments
                 **__: Ignored keyword arguments
+
             """
             return None
 
@@ -193,6 +204,7 @@ except Exception:  # pragma: no cover - provide dummy metrics for tests without 
             Args:
                 *_: Ignored positional arguments
                 **__: Ignored keyword arguments
+
             """
             return None
 
@@ -201,6 +213,7 @@ except Exception:  # pragma: no cover - provide dummy metrics for tests without 
 
             Returns:
                 Dummy timer context manager
+
             """
             class _Timer:
                 """Dummy timer context manager."""
@@ -245,6 +258,7 @@ class VLLMClientError(Exception):
         ...     await client.chat_completion(messages=[...])
         ... except VLLMClientError as e:
         ...     print(f"vLLM error: {e}")
+
     """
 
 
@@ -259,6 +273,7 @@ class VLLMTimeoutError(VLLMClientError):
         ...     await client.chat_completion(messages=[...])
         ... except VLLMTimeoutError:
         ...     print("Request timed out")
+
     """
 
 
@@ -273,6 +288,7 @@ class VLLMServerError(VLLMClientError):
         ...     await client.chat_completion(messages=[...])
         ... except VLLMServerError as e:
         ...     print(f"Server error: {e}")
+
     """
 
 
@@ -289,6 +305,7 @@ def _record_retry(retry_state: RetryCallState) -> None:
     Note:
         Updates metrics and logs retry attempts for monitoring
         and debugging purposes.
+
     """
     attempt = retry_state.attempt_number
     MINERU_VLLM_CLIENT_RETRIES.labels(retry_number=str(attempt)).inc()
@@ -337,6 +354,7 @@ class VLLMClient:
         ...     response = await client.chat_completion(
         ...         messages=[{"role": "user", "content": "Hello"}]
         ...     )
+
     """
 
     def __init__(
@@ -364,6 +382,7 @@ class VLLMClient:
         Note:
             Creates HTTPX client with connection pooling and
             configures retry and circuit breaker settings.
+
         """
         self.base_url = base_url.rstrip("/")
         self.client = httpx.AsyncClient(
@@ -387,11 +406,12 @@ class VLLMClient:
             retry_backoff_multiplier=self._retry_backoff_multiplier,
         )
 
-    async def __aenter__(self) -> "VLLMClient":
+    async def __aenter__(self) -> VLLMClient:
         """Enter async context manager.
 
         Returns:
             Self for use in async context
+
         """
         return self
 
@@ -405,6 +425,7 @@ class VLLMClient:
 
         Note:
             Ensures client is properly closed on exit.
+
         """
         await self.close()
 
@@ -414,6 +435,7 @@ class VLLMClient:
         Note:
             Closes the underlying HTTPX client and all
             associated connections.
+
         """
         await self.client.aclose()
 
@@ -434,6 +456,7 @@ class VLLMClient:
         Example:
             >>> encoded = VLLMClient.encode_image_base64(image_bytes)
             >>> print(f"data:image/jpeg;base64,{encoded}")
+
         """
         return base64.b64encode(image_bytes).decode("utf-8")
 
@@ -449,6 +472,7 @@ class VLLMClient:
         Note:
             Internal method for posting requests to the
             chat completions endpoint.
+
         """
         return await self.client.post("/v1/chat/completions", json=payload)
 
@@ -491,8 +515,8 @@ class VLLMClient:
             ...     temperature=0.7
             ... )
             >>> print(response["choices"][0]["message"]["content"])
-        """
 
+        """
         if not await self.circuit_breaker.can_execute():
             MINERU_VLLM_CLIENT_FAILURES.labels(error_type="circuit_open").inc()
             raise CircuitBreakerOpenError("Circuit breaker is open, vLLM server unavailable")
@@ -516,9 +540,8 @@ class VLLMClient:
                 before_sleep=_record_retry,
                 reraise=True,
             ):
-                with attempt:
-                    with MINERU_VLLM_REQUEST_DURATION.time():
-                        response = await self._post_chat_completions(payload)
+                with attempt, MINERU_VLLM_REQUEST_DURATION.time():
+                    response = await self._post_chat_completions(payload)
 
             response.raise_for_status()
             data = response.json()
@@ -574,8 +597,8 @@ class VLLMClient:
             ...     print("vLLM server is healthy")
             ... else:
             ...     print("vLLM server is unhealthy")
-        """
 
+        """
         try:
             response = await self.client.get("/health", timeout=5.0)
         except Exception as exc:  # pragma: no cover - defensive logging

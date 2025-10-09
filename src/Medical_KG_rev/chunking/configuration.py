@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
-from .models import ChunkerConfig, Granularity
 from .exceptions import ChunkerConfigurationError, ProfileNotFoundError
+from .models import ChunkerConfig, Granularity
 
 
 class ChunkerSettings(BaseModel):

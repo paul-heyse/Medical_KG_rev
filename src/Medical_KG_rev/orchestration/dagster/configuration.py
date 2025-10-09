@@ -6,11 +6,11 @@ import asyncio
 import json
 import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import (
@@ -196,13 +196,12 @@ class ResiliencePolicy(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
-    _rate_limiter: "AsyncLimiter | None" = PrivateAttr(default=None)
-    _circuit_breakers: dict[str, "CircuitBreaker"] = PrivateAttr(default_factory=dict)
+    _rate_limiter: AsyncLimiter | None = PrivateAttr(default=None)
+    _circuit_breakers: dict[str, CircuitBreaker] = PrivateAttr(default_factory=dict)
 
     def create_retry(self, stage: str, hooks: StageExecutionHooks | None = None):
-        from tenacity import retry, stop_after_attempt
-        from tenacity import wait_none
-        from tenacity.wait import wait_exponential, wait_fixed, wait_incrementing
+        from tenacity import retry, stop_after_attempt, wait_none
+        from tenacity.wait import wait_exponential, wait_incrementing
 
         backoff = self.config.backoff
         if backoff.strategy is BackoffStrategy.NONE:
@@ -271,7 +270,7 @@ class ResiliencePolicy(BaseModel):
         self._circuit_breakers[stage] = breaker
         return breaker
 
-    def get_rate_limiter(self) -> "AsyncLimiter | None":
+    def get_rate_limiter(self) -> AsyncLimiter | None:
         try:
             from aiolimiter import AsyncLimiter
         except ModuleNotFoundError:  # pragma: no cover - optional dependency
@@ -295,7 +294,6 @@ def build_stage_dependency_graph(
     stages: Sequence[StageDefinition],
 ) -> dict[str, set[str]]:
     """Combine explicit and inferred dependencies for pipeline stages."""
-
     graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
     index_map = {stage.name: idx for idx, stage in enumerate(stages)}
     type_to_names: dict[str, list[str]] = {}
@@ -331,7 +329,7 @@ def derive_stage_execution_order(stages: Sequence[StageDefinition]) -> list[str]
 
 
 def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:
-    in_degree: dict[str, int] = {node: 0 for node in graph}
+    in_degree: dict[str, int] = dict.fromkeys(graph, 0)
     for deps in graph.values():
         for dep in deps:
             in_degree[dep] = in_degree.get(dep, 0) + 1
@@ -358,7 +356,7 @@ class _CacheEntry:
 class _SyncLimiter:
     """Run an AsyncLimiter behind a dedicated event loop for sync callers."""
 
-    def __init__(self, limiter: "AsyncLimiter") -> None:
+    def __init__(self, limiter: AsyncLimiter) -> None:
         self._limiter = limiter
         self._loop = asyncio.new_event_loop()
         self._ready = threading.Event()
@@ -386,7 +384,7 @@ class _SyncLimiter:
         self._thread.join(timeout=1.0)
 
     @property
-    def limiter(self) -> "AsyncLimiter":
+    def limiter(self) -> AsyncLimiter:
         return self._limiter
 
 
@@ -594,7 +592,6 @@ class ResiliencePolicyLoader:
 
 def export_pipeline_schema(path: str | Path) -> None:
     """Write the JSON schema for pipeline topology configs to disk."""
-
     schema = PipelineTopologyConfig.model_json_schema(by_alias=True)
     resolved = Path(path)
     resolved.parent.mkdir(parents=True, exist_ok=True)

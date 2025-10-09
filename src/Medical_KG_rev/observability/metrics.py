@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from time import perf_counter
-from typing import Any, Mapping
+from typing import Any
 
 import structlog
 
@@ -22,7 +22,6 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
     Response = Any  # type: ignore[assignment]
 
 from Medical_KG_rev.config.settings import AppSettings
-from Medical_KG_rev.observability.alerts import get_alert_manager
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
     get_correlation_id,
@@ -251,7 +250,7 @@ RESILIENCE_RATE_LIMIT_WAIT = Histogram(
 )
 
 
-def _normalise_path(request: "Request") -> str:
+def _normalise_path(request: Request) -> str:
     route = request.scope.get("route")
     return getattr(route, "path", request.url.path)
 
@@ -329,26 +328,23 @@ def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: igno
         return response
 
     @app.get(path, include_in_schema=False)
-    async def metrics_endpoint() -> "Response":
+    async def metrics_endpoint() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 def record_resilience_retry(policy: str, stage: str) -> None:
     """Increment retry counter for the supplied policy and stage."""
-
     RESILIENCE_RETRY_ATTEMPTS.labels(policy, stage).inc()
 
 
 def record_resilience_circuit_state(policy: str, stage: str, state: str) -> None:
     """Update gauge with the numeric circuit breaker state."""
-
     mapping = {"closed": 0.0, "open": 1.0, "half-open": 2.0}
     RESILIENCE_CIRCUIT_STATE.labels(policy, stage).set(mapping.get(state.lower(), -1.0))
 
 
 def record_resilience_rate_limit_wait(policy: str, stage: str, wait_seconds: float) -> None:
     """Observe rate limit wait duration."""
-
     RESILIENCE_RATE_LIMIT_WAIT.labels(policy, stage).observe(wait_seconds)
 
 
@@ -383,7 +379,6 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
 
 def record_chunking_document(profile: str, duration_seconds: float, chunks: int) -> None:
     """Record metrics for a completed chunking operation."""
-
     labels = (profile or "unknown",)
     _increment_with_exemplar(CHUNKING_DOCUMENTS, labels)
     _observe_with_exemplar(CHUNKING_DURATION, labels, max(duration_seconds, 0.0))
@@ -392,20 +387,17 @@ def record_chunking_document(profile: str, duration_seconds: float, chunks: int)
 
 def record_chunking_failure(profile: str | None, error_type: str) -> None:
     """Increment chunking failure counter for the supplied error type."""
-
     labels = (profile or "unknown", error_type)
     _increment_with_exemplar(CHUNKING_FAILURES, labels)
 
 
 def increment_mineru_gate_triggered() -> None:
     """Increment the MinerU gate triggered counter."""
-
     MINERU_GATE_TRIGGERED.inc()
 
 
 def increment_postpdf_start_triggered() -> None:
     """Increment the post-PDF start triggered counter."""
-
     POSTPDF_START_TRIGGERED.inc()
 
 

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, MutableMapping, Sequence
+from typing import Any
 
 
 class FusionStrategy(str, Enum):
@@ -60,7 +61,7 @@ class ScoredDocument:
     def add_score(self, strategy: str, score: float) -> None:
         self.strategy_scores[strategy] = float(score)
 
-    def copy_for_rank(self) -> "ScoredDocument":
+    def copy_for_rank(self) -> ScoredDocument:
         return ScoredDocument(
             doc_id=self.doc_id,
             content=self.content,

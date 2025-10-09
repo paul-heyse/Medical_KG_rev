@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, MutableMapping
+from collections.abc import Iterable, MutableMapping
 from dataclasses import dataclass, field
 from json import dumps, loads
 from time import monotonic

@@ -1,21 +1,21 @@
 """Domain-aware modular chunking system."""
 
-from .configuration import ChunkingConfig, ChunkingProfile, ChunkerSettings
+from .configuration import ChunkerSettings, ChunkingConfig, ChunkingProfile
 from .factory import ChunkerFactory
 from .models import Chunk, ChunkerConfig, Granularity
 from .pipeline import MultiGranularityPipeline
-from .runtime import ChunkerSession, ChunkingRuntime
 from .ports import BaseChunker
 from .registry import ChunkerRegistry, default_registry
+from .runtime import ChunkerSession, ChunkingRuntime
 from .segmentation import (
     LayoutSegmenter,
+    SectionSegmenter,
     Segment,
     SegmentAccumulator,
     Segmenter,
-    SectionSegmenter,
     SlidingWindowSegmenter,
 )
-from .service import ChunkingService, ChunkingOptions
+from .service import ChunkingOptions, ChunkingService
 
 __all__ = [
     "BaseChunker",
@@ -23,20 +23,20 @@ __all__ = [
     "ChunkerConfig",
     "ChunkerFactory",
     "ChunkerRegistry",
+    "ChunkerSession",
+    "ChunkerSettings",
     "ChunkingConfig",
     "ChunkingOptions",
     "ChunkingProfile",
-    "ChunkingService",
     "ChunkingRuntime",
-    "ChunkerSettings",
-    "ChunkerSession",
+    "ChunkingService",
     "Granularity",
     "LayoutSegmenter",
     "MultiGranularityPipeline",
+    "SectionSegmenter",
     "Segment",
     "SegmentAccumulator",
     "Segmenter",
-    "SectionSegmenter",
     "SlidingWindowSegmenter",
     "default_registry",
 ]

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-import structlog
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
+
+import structlog
 
 from .serialization import dumps_orjson, encode_base64
 
@@ -40,7 +41,6 @@ class PipelineStatePersister:
 
     def persist(self, job_id: str, *, stage: str, payload: dict[str, Any]) -> str:
         """Persist the serialised payload and return the encoded snapshot."""
-
         snapshot = encode_base64(dumps_orjson(payload))
 
         def _attempt() -> None:
@@ -72,6 +72,5 @@ class PipelineStatePersister:
 
     def persist_state(self, job_id: str, *, stage: str, state: Any) -> str:
         """Helper to persist using a PipelineState instance."""
-
         payload = getattr(state, "serialise", lambda: state)()
         return self.persist(job_id, stage=stage, payload=payload)

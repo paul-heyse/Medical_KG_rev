@@ -38,6 +38,7 @@ Example:
     ...     parameters={"rxcui": "12345"}
     ... )
     >>> documents = adapter.fetch_and_parse(context)
+
 """
 
 

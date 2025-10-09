@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from Medical_KG_rev.models.ir import Document
 
 from ..port import Chunk, ChunkerPort
-from ..runtime import assemble_chunks, group_contexts, iter_block_contexts, default_intent_provider
+from ..runtime import assemble_chunks, default_intent_provider, group_contexts, iter_block_contexts
 
 
 class BaseProfileChunker(ChunkerPort):

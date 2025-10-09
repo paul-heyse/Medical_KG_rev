@@ -46,9 +46,8 @@ logger = structlog.get_logger(__name__)
 _FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
 
 
-def setup_observability(app: "FastAPI", settings: "AppSettings") -> None:
+def setup_observability(app: FastAPI, settings: AppSettings) -> None:
     """Configure logging, tracing, metrics, and error tracking for the app."""
-
     if not _FASTAPI_AVAILABLE:
         logger.warning(
             "observability.fastapi.unavailable",

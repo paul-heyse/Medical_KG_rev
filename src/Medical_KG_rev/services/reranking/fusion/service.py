@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
-from ..models import FusionResponse, FusionSettings, FusionStrategy, NormalizationStrategy, ScoredDocument
+from ..models import (
+    FusionResponse,
+    FusionSettings,
+    FusionStrategy,
+    ScoredDocument,
+)
 from . import deduplicate
 from .rrf import rrf
 from .weighted import weighted
@@ -28,7 +33,7 @@ class FusionService:
         else:  # Learned fusion proxies to weighted but keeps strategy metadata
             fused = weighted(
                 ranked_lists,
-                weights=self.settings.weights or {key: 1.0 for key in ranked_lists},
+                weights=self.settings.weights or dict.fromkeys(ranked_lists, 1.0),
                 normalization=self.settings.normalization.value,
             )
             fused.metrics = {

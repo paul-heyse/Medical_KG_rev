@@ -49,6 +49,7 @@ Example:
     ...     total_batches=1
     ... )
     >>> assert len(response.documents) > 0
+
 """
 
 from __future__ import annotations
@@ -57,8 +58,8 @@ from __future__ import annotations
 # IMPORTS
 # ==============================================================================
 import time
-from datetime import datetime, timezone
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 
 import structlog
 
@@ -102,6 +103,7 @@ class PipelineMetrics:
         >>> metrics = PipelineMetrics("worker-1")
         >>> metrics.record_cli_duration("cuda:0", 120.5)
         >>> metrics.record_extraction(parsed_document)
+
     """
 
     def __init__(self, worker_id: str) -> None:
@@ -113,6 +115,7 @@ class PipelineMetrics:
         Example:
             >>> metrics = PipelineMetrics("worker-1")
             >>> assert metrics._worker_id == "worker-1"
+
         """
         self._worker_id = worker_id
 
@@ -126,6 +129,7 @@ class PipelineMetrics:
         Example:
             >>> metrics = PipelineMetrics("worker-1")
             >>> metrics.record_cli_duration("cuda:0", 120.5)
+
         """
         MINERU_PROCESSING_DURATION_SECONDS.labels(
             worker_id=self._worker_id, gpu_id=gpu_label
@@ -140,6 +144,7 @@ class PipelineMetrics:
         Example:
             >>> metrics = PipelineMetrics("worker-1")
             >>> metrics.record_extraction(parsed_document)
+
         """
         unique_pages = {block.page for block in parsed.blocks}
         MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(
@@ -188,6 +193,7 @@ class MineruPipeline:
         ...     batch_index=0,
         ...     total_batches=1
         ... )
+
     """
 
     def __init__(
@@ -210,6 +216,7 @@ class MineruPipeline:
             ...     postprocessor=postprocessor,
             ...     metrics=metrics
             ... )
+
         """
         self._parser = parser
         self._postprocessor = postprocessor
@@ -254,9 +261,10 @@ class MineruPipeline:
             ...     total_batches=1
             ... )
             >>> assert len(response.documents) > 0
+
         """
         if not requests:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return MineruBatchResponse(
                 documents=[], processed_at=now, duration_seconds=0.0, metadata=[]
             )
@@ -269,9 +277,9 @@ class MineruPipeline:
         ).info("mineru.pipeline.batch_started")
 
         start_monotonic = time.monotonic()
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         cli_result, gpu_label, planned_memory_mb = execute_cli(cli_inputs)
-        completed_at = datetime.now(timezone.utc)
+        completed_at = datetime.now(UTC)
         duration = time.monotonic() - start_monotonic
 
         if not cli_result.outputs:

@@ -13,7 +13,6 @@ from .models import PipelineStateModel
 
 def serialise_payload(payload: dict[str, Any]) -> PipelineStateModel:
     """Validate and normalise a PipelineState payload."""
-
     return PipelineStateModel.model_validate(payload)
 
 
@@ -32,8 +31,8 @@ def encode_base64(blob: bytes) -> str:
 
 
 __all__ = [
-    "serialise_payload",
-    "dumps_orjson",
     "dumps_json",
+    "dumps_orjson",
     "encode_base64",
+    "serialise_payload",
 ]

@@ -70,6 +70,4 @@ def simulated_processor() -> MineruProcessor:
         yield processor
     finally:
         run_async(client.close())
-        vllm_client=_HealthyVLLMClient(),
-    )
     return processor

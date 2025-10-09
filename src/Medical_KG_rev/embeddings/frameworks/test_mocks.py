@@ -31,6 +31,7 @@ Examples:
     query_embedder = QueryOnly()
     embedding = query_embedder.embed_query("test query")
     assert "test query" in query_embedder.calls
+
 """
 
 # IMPORTS
@@ -52,6 +53,7 @@ class BatchOnly:
         embedder = BatchOnly()
         embeddings = embedder.embed_documents(["text1", "text2"])
         # Returns: [[3.0, 3.0, 3.0], [3.0, 3.0, 3.0]]
+
     """
 
     def embed_documents(self, texts):  # pragma: no cover - invoked via delegate helper
@@ -62,6 +64,7 @@ class BatchOnly:
 
         Returns:
             List of embedding vectors
+
         """
         return [[float(len(text))] * 3 for text in texts]
 
@@ -73,6 +76,7 @@ class BatchOnly:
 
         Returns:
             List of embedding vectors
+
         """
         return [[float(len(text))] * 3 for text in texts]
 
@@ -93,6 +97,7 @@ class QueryOnly:
         embedder = QueryOnly()
         embedding = embedder.embed_query("test")
         assert "test" in embedder.calls
+
     """
 
     def __init__(self) -> None:
@@ -100,6 +105,7 @@ class QueryOnly:
 
         Raises:
             None: Initialization always succeeds.
+
         """
         self.calls: list[str] = []
 
@@ -111,6 +117,7 @@ class QueryOnly:
 
         Returns:
             Embedding vector
+
         """
         self.calls.append(text)
         length = float(len(text))
@@ -124,6 +131,7 @@ class QueryOnly:
 
         Returns:
             List of embedding vectors
+
         """
         self.calls.extend(texts)
         return [[float(len(text)), float(len(text)) + 1.0] for text in texts]
@@ -142,6 +150,7 @@ class LlamaStyle:
         embedder = LlamaStyle()
         embedding = embedder.get_text_embedding("test")
         # Returns: [4.0, 2.0, 1.0]
+
     """
 
     def get_text_embedding(self, text):  # pragma: no cover - invoked via delegate helper
@@ -152,6 +161,7 @@ class LlamaStyle:
 
         Returns:
             Embedding vector
+
         """
         base = float(len(text))
         return [base, base / 2.0, base / 4.0]
@@ -164,6 +174,7 @@ class LlamaStyle:
 
         Returns:
             List of embedding vectors
+
         """
         return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]
 
@@ -175,5 +186,6 @@ class LlamaStyle:
 
         Returns:
             List of embedding vectors
+
         """
         return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]

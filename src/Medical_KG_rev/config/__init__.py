@@ -25,24 +25,24 @@ from .vllm_config import (
 )
 
 __all__ = [
+    "DEFAULT_PYSERINI_CONFIG",
+    "DEFAULT_VLLM_CONFIG",
     "DomainConfig",
     "DomainRegistry",
-    "DEFAULT_VLLM_CONFIG",
-    "VLLMConfig",
-    "VLLMModelConfig",
-    "VLLMServiceConfig",
-    "VLLMBatchingConfig",
-    "VLLMHealthCheckConfig",
-    "VLLMLoggingConfig",
-    "load_vllm_config",
-    "DEFAULT_PYSERINI_CONFIG",
     "PyseriniConfig",
-    "PyseriniServiceConfig",
-    "PyseriniModelConfig",
     "PyseriniExpansionConfig",
     "PyseriniExpansionSideConfig",
+    "PyseriniModelConfig",
     "PyseriniOpenSearchConfig",
+    "PyseriniServiceConfig",
+    "VLLMBatchingConfig",
+    "VLLMConfig",
+    "VLLMHealthCheckConfig",
+    "VLLMLoggingConfig",
+    "VLLMModelConfig",
+    "VLLMServiceConfig",
     "load_pyserini_config",
+    "load_vllm_config",
 ]
 
 try:  # pragma: no cover - optional settings dependency

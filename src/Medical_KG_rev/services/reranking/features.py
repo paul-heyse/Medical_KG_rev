@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from statistics import mean
-from typing import Callable, Mapping, MutableMapping, Protocol, Sequence
+from typing import Protocol
 
 from .models import QueryDocumentPair
 
@@ -90,7 +91,7 @@ class FeaturePipeline:
         return [extractor.name for extractor in self.extractors]
 
     @classmethod
-    def default(cls) -> "FeaturePipeline":
+    def default(cls) -> FeaturePipeline:
         return cls(
             extractors=[
                 MetadataFeature(name="bm25_score", key="bm25_score"),
@@ -110,7 +111,6 @@ class FeaturePipeline:
 
 def _derive_interaction_feature(features: MutableMapping[str, float]) -> None:
     """Derive interaction terms once base features have been extracted."""
-
     lexical = features.get("bm25_score", 0.0)
     dense = features.get("dense_score", 0.0)
     overlap = features.get("query_document_overlap", 0.0)

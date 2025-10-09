@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import time
 from collections import deque
+from collections.abc import Awaitable, Callable
 from enum import Enum
 from functools import wraps
-import time
-from collections import deque
-from enum import Enum
-from functools import wraps
-from typing import Any, Awaitable, Callable, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import httpx
 from aiolimiter import AsyncLimiter
 from pybreaker import CircuitBreaker, CircuitBreakerError
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 from tenacity import (
     RetryCallState,
     retry,
@@ -23,8 +21,6 @@ from tenacity import (
     wait_exponential,
     wait_fixed,
 )
-
-from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 
 try:  # pragma: no cover - optional dependency
     from prometheus_client import Counter, Gauge
@@ -83,7 +79,6 @@ def retry_on_failure(
     retry_exceptions: tuple[type[Exception], ...] = (Exception,),
 ) -> Callable[[FuncT], FuncT]:
     """Create a retry decorator backed by Tenacity."""
-
     wait_strategy = _build_wait_strategy(config)
 
     def before_sleep(retry_state: RetryCallState) -> None:  # pragma: no cover - logging hook
@@ -249,7 +244,7 @@ class ResilientHTTPClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "ResilientHTTPClient":
+    async def __aenter__(self) -> ResilientHTTPClient:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

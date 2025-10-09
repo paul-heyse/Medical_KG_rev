@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Mapping, Sequence
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+from Medical_KG_rev.observability.metrics import set_chunking_circuit_state
 
-from .configuration import ChunkerSettings, ChunkingConfig, DEFAULT_CONFIG_PATH
-from .factory import ChunkerFactory
-from .models import Chunk, Granularity
+from .configuration import DEFAULT_CONFIG_PATH, ChunkerSettings, ChunkingConfig
 from .exceptions import (
     ChunkerConfigurationError,
     ChunkingFailedError,
@@ -20,8 +19,9 @@ from .exceptions import (
     InvalidDocumentError,
     TokenizerMismatchError,
 )
-from .runtime import ChunkingRuntime, ChunkerSession
-from Medical_KG_rev.observability.metrics import set_chunking_circuit_state
+from .factory import ChunkerFactory
+from .models import Chunk, Granularity
+from .runtime import ChunkerSession, ChunkingRuntime
 
 
 class _ChunkingCircuitBreaker:
@@ -96,9 +96,8 @@ class _ChunkingCircuitBreaker:
         self,
         *,
         skip_failures: tuple[type[Exception], ...] = (),
-    ) -> "Iterator[None]":
+    ) -> Iterator[None]:
         """Guard a chunking attempt and update circuit state automatically."""
-
         self.guard()
         try:
             yield

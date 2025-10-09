@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
 from dataclasses import dataclass
-import importlib
-from typing import Any, Type
 
 from .exceptions import ChunkerConfigurationError, ChunkerRegistryError
 from .models import ChunkerConfig

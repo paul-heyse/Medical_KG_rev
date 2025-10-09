@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from Medical_KG_rev.models.ir import Document
 
 from ..assembly import ChunkAssembler
 from ..exceptions import ChunkerConfigurationError
 from ..models import Chunk, Granularity
+from ..ports import BaseChunker
 from ..provenance import ProvenanceNormalizer
 from ..tokenization import TokenCounter, default_token_counter
-from ..ports import BaseChunker
 from .mapping import OffsetMapper
 
 

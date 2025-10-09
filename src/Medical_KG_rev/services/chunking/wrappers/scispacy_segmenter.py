@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from functools import lru_cache
-from typing import Callable, Iterable, Tuple
 
-Segment = Tuple[int, int, str]
+Segment = tuple[int, int, str]
 
-_ABBREVIATION_SUFFIXES: Tuple[str, ...] = (
+_ABBREVIATION_SUFFIXES: tuple[str, ...] = (
     "Fig.",
     "Figs.",
     "Dr.",
@@ -67,7 +67,7 @@ def _cached_loader() -> Callable[[str], Iterable[object]]:
     return _default_loader()
 
 
-def _trim_offsets(text: str, start: int, end: int) -> Tuple[int, int]:
+def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:
     end = min(len(text), max(start, end))
     while start < end and text[start].isspace():
         start += 1

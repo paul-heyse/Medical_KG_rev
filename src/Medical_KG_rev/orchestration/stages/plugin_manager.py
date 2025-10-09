@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 import pluggy
 from attrs import define, field
@@ -122,7 +123,6 @@ class StagePluginManager:
 
     def load_entrypoints(self) -> None:
         """Discover and register plugins declared via entry points."""
-
         if self._loaded:
             return
         discovered = self._plugin_manager.load_setuptools_entrypoints(self.namespace)
@@ -140,7 +140,6 @@ class StagePluginManager:
 
     def register(self, plugin: StagePlugin) -> None:
         """Register a StagePlugin instance and index stage types."""
-
         metadata = plugin.metadata
         try:
             metadata = StagePluginMetadata.model_validate(metadata.model_dump())
@@ -208,7 +207,6 @@ class StagePluginManager:
     )
     def create_stage(self, definition: Any) -> object:
         """Instantiate a stage for the given definition using registered plugins."""
-
         stage_type = str(getattr(definition, "stage_type", "")).lower()
         if stage_type not in self._stage_index:
             raise StagePluginNotAvailable(f"No stage plugin registered for '{stage_type}'")
@@ -242,14 +240,14 @@ class StagePluginManager:
 __all__ = [
     "StagePlugin",
     "StagePluginContext",
-    "StagePluginManager",
-    "StagePluginMetadata",
     "StagePluginError",
-    "StagePluginNotAvailable",
     "StagePluginExecutionError",
     "StagePluginLoadError",
+    "StagePluginManager",
+    "StagePluginMetadata",
+    "StagePluginNotAvailable",
     "StagePluginSpec",
-    "hookspec",
     "hookimpl",
+    "hookspec",
 ]
 

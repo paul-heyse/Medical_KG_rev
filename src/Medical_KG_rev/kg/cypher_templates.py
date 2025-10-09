@@ -22,6 +22,7 @@ Example:
     >>> query, params = templates.merge_node("Document", {"document_id": "doc1"})
     >>> print(query)
     MERGE (n:Document {document_id: $props.document_id}) SET n.document_id = $props.document_id RETURN n
+
 """
 
 from __future__ import annotations
@@ -73,6 +74,7 @@ class CypherTemplates:
         >>> query, params = templates.merge_node("Document", {"document_id": "doc1"})
         >>> print(query)
         MERGE (n:Document {document_id: $props.document_id}) SET n.document_id = $props.document_id RETURN n
+
     """
 
     node_schema: Mapping[str, NodeSchema]
@@ -107,6 +109,7 @@ class CypherTemplates:
             ... )
             >>> print(query)
             MERGE (n:Document {document_id: $props.document_id}) SET n.document_id = $props.document_id, n.title = $props.title RETURN n
+
         """
         schema = self._get_schema(label)
         key_property = schema.key
@@ -158,6 +161,7 @@ class CypherTemplates:
             ... )
             >>> print(query)
             MATCH (a:Document {document_id: $start}) MATCH (b:Entity {entity_id: $end}) MERGE (a)-[r:MENTIONS]->(b) SET r += $props RETURN r
+
         """
         start_schema = self._get_schema(start_label)
         end_schema = self._get_schema(end_label)
@@ -189,6 +193,7 @@ class CypherTemplates:
 
         Note:
             This is a private method used internally for schema validation.
+
         """
         try:
             return self.node_schema[label]
@@ -207,6 +212,7 @@ class CypherTemplates:
         Note:
             This is a private method used internally for query generation.
             Generates assignments in the form "n.key = $props.key".
+
         """
         assignments: Iterable[str] = (f"n.{key} = $props.{key}" for key in properties)
         return ", ".join(assignments)

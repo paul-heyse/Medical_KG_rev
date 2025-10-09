@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass, field
 
 import numpy as np
+
 import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest

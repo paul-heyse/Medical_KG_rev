@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import exp
 from statistics import mean, pstdev
-from typing import Iterable, Sequence
 
 
 def min_max(values: Sequence[float]) -> list[float]:

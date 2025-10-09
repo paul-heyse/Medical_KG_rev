@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
 
 import structlog
-
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import (
     record_cache_hit_rate,
@@ -18,12 +17,11 @@ from Medical_KG_rev.observability.metrics import (
 
 from .errors import CircuitBreakerOpenError, RerankingError
 from .factory import RerankerFactory
-from .models import RerankResult, RerankerConfig, RerankingResponse, ScoredDocument
+from .models import RerankingResponse, RerankResult, ScoredDocument
 from .pipeline.batch_processor import BatchProcessor
 from .pipeline.cache import RerankCacheManager
 from .pipeline.circuit import CircuitBreaker
 from .pipeline.runtime import RerankRuntime
-from .ports import RerankerPort
 
 logger = structlog.get_logger(__name__)
 

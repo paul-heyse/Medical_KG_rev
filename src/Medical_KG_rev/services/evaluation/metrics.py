@@ -31,6 +31,7 @@ Example:
     >>> relevances = [1.0, 0.0, 1.0, 0.0, 0.0]
     >>> precision = precision_at_k(relevances, k=3)
     >>> print(f"Precision@3: {precision:.3f}")
+
 """
 
 # ==============================================================================
@@ -58,8 +59,8 @@ def recall_at_k(relevances: Sequence[float], total_relevant: int, k: int) -> flo
         relevances: Ordered sequence of graded relevance scores.
         total_relevant: Number of relevant documents for the query.
         k: Rank cutoff.
-    """
 
+    """
     if k <= 0:
         raise ValueError("k must be positive")
     hits = sum(1 for grade in relevances[:k] if grade > 0)
@@ -70,7 +71,6 @@ def recall_at_k(relevances: Sequence[float], total_relevant: int, k: int) -> flo
 
 def precision_at_k(relevances: Sequence[float], k: int) -> float:
     """Return Precision@K for the given ranking."""
-
     if k <= 0:
         raise ValueError("k must be positive")
     if not relevances:
@@ -81,7 +81,6 @@ def precision_at_k(relevances: Sequence[float], k: int) -> float:
 
 def mean_reciprocal_rank(relevances: Sequence[float]) -> float:
     """Return the reciprocal of the rank of the first relevant item."""
-
     for index, grade in enumerate(relevances, start=1):
         if grade > 0:
             return 1.0 / float(index)
@@ -90,7 +89,6 @@ def mean_reciprocal_rank(relevances: Sequence[float]) -> float:
 
 def average_precision(relevances: Sequence[float]) -> float:
     """Return mean average precision for a ranked list."""
-
     hits = 0
     score = 0.0
     for index, grade in enumerate(relevances, start=1):
@@ -112,7 +110,6 @@ def ndcg_at_k(relevances: Sequence[float], k: int) -> float:
     The implementation delegates to :func:`sklearn.metrics.ndcg_score` to
     guarantee parity with widely used IR tooling.
     """
-
     if k <= 0:
         raise ValueError("k must be positive")
     if not relevances:
@@ -149,7 +146,6 @@ def evaluate_ranking(
 
     Returns a mapping with Recall@K, Precision@K (optional), nDCG@K, MRR and MAP.
     """
-
     relevances = [relevance_judgments.get(doc_id, 0.0) for doc_id in retrieved_ids]
     total_relevant = sum(1 for value in relevance_judgments.values() if value > 0)
     metrics: dict[str, float] = {}
@@ -165,7 +161,6 @@ def evaluate_ranking(
 
 def mean_metric(values: Iterable[Mapping[str, float]], metric: str) -> float:
     """Utility used by reporting helpers to average a given metric."""
-
     collected = [payload.get(metric, 0.0) for payload in values]
     return mean(collected) if collected else 0.0
 

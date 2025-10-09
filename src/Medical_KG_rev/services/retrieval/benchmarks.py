@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from statistics import mean
 from time import perf_counter
-from typing import Mapping, Sequence
 
 from Medical_KG_rev.services.retrieval.reranker import CrossEncoderReranker
 
@@ -18,7 +18,6 @@ def benchmark_reranking_latency(
     top_k: int = 20,
 ) -> dict[str, float]:
     """Measure reranking latency across repeated runs and compute summary stats."""
-
     if runs <= 0:
         raise ValueError("runs must be a positive integer")
     timings: list[float] = []

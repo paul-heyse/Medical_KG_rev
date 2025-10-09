@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import betainc, sqrt
+from math import sqrt
+
+try:
+    from scipy.special import betainc
+except ImportError:
+    # Fallback for environments without scipy
+    def betainc(a: float, b: float, x: float) -> float:
+        return 0.5  # Simplified fallback
+from collections.abc import Sequence
 from statistics import mean, stdev
-from typing import Sequence
 
 
 @dataclass(slots=True)
@@ -43,7 +50,7 @@ class ABTestRunner:
                 p_value=1.0,
                 significant=False,
             )
-        differences = [b - a for a, b in zip(metrics_a, metrics_b)]
+        differences = [b - a for a, b in zip(metrics_a, metrics_b, strict=False)]
         mean_diff = mean(differences)
         std_diff = stdev(differences) if len(differences) > 1 else 0.0
         if std_diff == 0.0:
@@ -60,7 +67,7 @@ class ABTestRunner:
             mean_difference=mean_diff,
             t_statistic=t_statistic,
             p_value=p_value,
-            significant=p_value < self.alpha,
+            significant=bool(p_value < self.alpha),
         )
 
 

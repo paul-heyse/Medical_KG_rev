@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 from uuid import uuid4
 
 from dagster import (
@@ -56,7 +57,6 @@ from Medical_KG_rev.orchestration.stages.plugins import (
     StagePluginManager,
 )
 from Medical_KG_rev.orchestration.stages.plugins.builtin import (
-    CoreStagePlugin,
     PdfTwoPhasePlugin,
 )
 from Medical_KG_rev.orchestration.state import PipelineStatePersister, StatePersistenceError
@@ -137,7 +137,6 @@ def build_stage_factory(
     job_ledger: JobLedger,
 ) -> StageFactory:
     """Initialise the stage plugin manager and return a bound factory."""
-
     settings = get_settings()
     object_store = create_object_store(settings.object_storage)
     cache_backend = create_cache_backend(settings.redis_cache)
@@ -171,7 +170,6 @@ def build_stage_factory(
 )
 def bootstrap_op(context) -> PipelineState:
     """Initialise the orchestration state for a Dagster run."""
-
     ctx_payload = context.op_config["context"]
     adapter_payload = context.op_config["adapter_request"]
     payload = context.op_config.get("payload", {})
@@ -227,7 +225,7 @@ def _make_stage_op(
         persister = PipelineStatePersister(metadata_store=ledger)
         dependencies = stage_definition.depends_on
 
-        execute = getattr(stage, "execute")
+        execute = stage.execute
         execution_state: dict[str, Any] = {
             "attempts": 0,
             "duration": 0.0,
@@ -417,7 +415,6 @@ class BuiltPipelineJob:
 
 def _normalise_name(name: str) -> str:
     """Return a Dagster-safe identifier derived from the pipeline name."""
-
     candidate = re.sub(r"[^0-9A-Za-z_]+", "_", name)
     if not candidate:
         return "pipeline"
@@ -675,7 +672,6 @@ def submit_to_dagster(
     payload: Mapping[str, Any] | None = None,
 ) -> DagsterRunResult:
     """Convenience helper mirroring the legacy orchestration API."""
-
     return orchestrator.submit(
         pipeline=pipeline,
         context=context,
@@ -735,7 +731,6 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
 
 def build_default_orchestrator() -> DagsterOrchestrator:
     """Construct a Dagster orchestrator with default stage builders."""
-
     pipeline_loader = PipelineConfigLoader()
     resilience_loader = ResiliencePolicyLoader()
     adapter_manager = get_plugin_manager()
@@ -779,6 +774,6 @@ __all__ = [
     "DagsterRunResult",
     "StageFactory",
     "StageResolutionError",
-    "submit_to_dagster",
     "pdf_ir_ready_sensor",
+    "submit_to_dagster",
 ]

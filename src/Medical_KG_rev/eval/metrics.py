@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from math import log2
-from typing import Iterable, Mapping, Sequence
 
 
 def ndcg_at_k(relevances: Sequence[float], k: int) -> float:

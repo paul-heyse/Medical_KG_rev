@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from time import perf_counter
-from typing import Callable, Iterator, Mapping, MutableMapping, Sequence, TypeVar
+from typing import TypeVar
 
 import structlog
-
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import record_pipeline_stage
 
 from ..errors import InvalidPairFormatError, RerankingError
-from ..models import QueryDocumentPair, RerankResult, RerankingResponse, ScoredDocument
+from ..models import QueryDocumentPair, RerankingResponse, RerankResult, ScoredDocument
 from ..ports import RerankerPort
 from .batch_processor import BatchProcessor
 from .cache import RerankCacheManager

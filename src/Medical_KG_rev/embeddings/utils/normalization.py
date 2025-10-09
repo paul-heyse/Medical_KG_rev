@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from math import sqrt
-from typing import Iterable, Sequence
 
 
 def l2_normalize(vector: Sequence[float]) -> list[float]:

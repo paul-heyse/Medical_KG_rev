@@ -18,7 +18,6 @@ def apply_tenant_context(
     http_request: Request | None = None,
 ) -> TModel:
     """Ensure request payloads inherit the authenticated tenant context."""
-
     tenant_id = getattr(request_model, "tenant_id", None)
     if tenant_id and tenant_id != security.tenant_id:
         raise PermissionError("Tenant mismatch")

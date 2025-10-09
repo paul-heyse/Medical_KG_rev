@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from math import log
 from typing import Any
@@ -160,15 +160,15 @@ class SparseQueryBuilder:
         self.should: list[Mapping[str, Any]] = []
         self.filters: list[Mapping[str, Any]] = []
 
-    def add_term(self, field: str, value: str) -> "SparseQueryBuilder":
+    def add_term(self, field: str, value: str) -> SparseQueryBuilder:
         self.must.append({"term": {field: value}})
         return self
 
-    def add_rank_feature(self, field: str, weight: float) -> "SparseQueryBuilder":
+    def add_rank_feature(self, field: str, weight: float) -> SparseQueryBuilder:
         self.should.append({"rank_feature": {"field": field, "boost": weight}})
         return self
 
-    def add_filter(self, field: str, value: Any) -> "SparseQueryBuilder":
+    def add_filter(self, field: str, value: Any) -> SparseQueryBuilder:
         self.filters.append({"term": {field: value}})
         return self
 

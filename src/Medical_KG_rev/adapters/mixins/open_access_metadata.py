@@ -41,21 +41,21 @@ class OpenAccessMetadataMixin:
         # Extract open access URL
         url_fields = ["oa_url", "open_access_url", "pdf_url", "download_url", "url"]
         for field in url_fields:
-            if field in data and data[field]:
+            if data.get(field):
                 metadata["oa_url"] = data[field]
                 break
 
         # Extract license information
         license_fields = ["license", "licence", "rights", "copyright"]
         for field in license_fields:
-            if field in data and data[field]:
+            if data.get(field):
                 metadata["license"] = data[field]
                 break
 
         # Extract repository information
         repo_fields = ["repository", "repo", "source", "provider"]
         for field in repo_fields:
-            if field in data and data[field]:
+            if data.get(field):
                 metadata["repository"] = data[field]
                 break
 
@@ -109,14 +109,14 @@ class OpenAccessMetadataMixin:
         # Extract license text
         license_fields = ["license", "licence", "rights", "copyright"]
         for field in license_fields:
-            if field in data and data[field]:
+            if data.get(field):
                 license_info["license"] = data[field]
                 break
 
         # Extract license URL
         url_fields = ["license_url", "licence_url", "rights_url", "copyright_url"]
         for field in url_fields:
-            if field in data and data[field]:
+            if data.get(field):
                 license_info["license_url"] = data[field]
                 break
 

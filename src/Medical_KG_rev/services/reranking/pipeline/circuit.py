@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from dataclasses import dataclass, field
 from time import monotonic
-from typing import MutableMapping
 
 
 @dataclass(slots=True)

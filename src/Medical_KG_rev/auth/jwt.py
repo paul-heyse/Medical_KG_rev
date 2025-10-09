@@ -10,7 +10,6 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 import asyncio
 import time
 from collections.abc import Iterable
@@ -20,7 +19,6 @@ import httpx
 from jose import JWTError, jwt
 
 from ..config.settings import AppSettings, get_settings
-
 
 # ============================================================================
 # JWKS CACHE
@@ -35,6 +33,7 @@ class JWKSCache:
         _ttl: Cache TTL in seconds.
         _expires_at: Epoch timestamp for when the cache should refresh.
         _keys: Cached key material keyed by ``kid``.
+
     """
 
     def __init__(self, url: str, *, ttl: int = 300) -> None:
@@ -43,8 +42,8 @@ class JWKSCache:
         Args:
             url: HTTPS URL to the JWKS endpoint.
             ttl: Number of seconds to cache keys before refreshing.
-        """
 
+        """
         self._url = url
         self._ttl = ttl
         self._expires_at = 0.0
@@ -59,14 +58,13 @@ class JWKSCache:
 
         Returns:
             Dictionary with JWKS key material or ``None`` when not found.
-        """
 
+        """
         await self._ensure_keys()
         return self._keys.get(kid)
 
     async def _ensure_keys(self) -> None:
         """Refresh cached keys when stale or missing."""
-
         async with self._lock:
             if self._keys and time.time() < self._expires_at:
                 return
@@ -92,6 +90,7 @@ class JWTAuthenticator:
         audience: Expected audience claim.
         algorithms: Acceptable signature algorithms.
         cache: :class:`JWKSCache` storing signing keys.
+
     """
 
     def __init__(
@@ -111,8 +110,8 @@ class JWTAuthenticator:
             jwks_url: JWKS endpoint URL.
             algorithms: Acceptable signature algorithms.
             cache_ttl: Seconds to cache JWKS responses.
-        """
 
+        """
         self.issuer = issuer
         self.audience = audience
         self.algorithms = tuple(algorithms)
@@ -129,8 +128,8 @@ class JWTAuthenticator:
 
         Raises:
             AuthenticationError: When token structure or signature is invalid.
-        """
 
+        """
         try:
             header = jwt.get_unverified_header(token)
         except JWTError as exc:  # pragma: no cover - defensive
@@ -171,8 +170,8 @@ def build_authenticator(settings: AppSettings | None = None) -> JWTAuthenticator
 
     Returns:
         Configured :class:`JWTAuthenticator` instance.
-    """
 
+    """
     cfg = (settings or get_settings()).security.oauth
     return JWTAuthenticator(
         issuer=cfg.issuer,
@@ -185,4 +184,4 @@ def build_authenticator(settings: AppSettings | None = None) -> JWTAuthenticator
 # EXPORTS
 # ============================================================================
 
-__all__ = ["AuthenticationError", "JWTAuthenticator", "JWKSCache", "build_authenticator"]
+__all__ = ["AuthenticationError", "JWKSCache", "JWTAuthenticator", "build_authenticator"]

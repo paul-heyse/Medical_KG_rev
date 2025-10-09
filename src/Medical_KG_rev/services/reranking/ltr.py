@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from math import exp
-from typing import Callable, Mapping, MutableMapping, Sequence
 
 try:  # pragma: no cover - optional dependency
     import numpy as np
@@ -40,7 +40,7 @@ class LambdaMARTModel:
     feature_order: list[str] = field(default_factory=list)
     coefficients: Mapping[str, float] = field(default_factory=dict)
     intercept: float = 0.0
-    booster: "xgboost.Booster | None" = None  # type: ignore[name-defined]
+    booster: xgboost.Booster | None = None  # type: ignore[name-defined]
 
     def score_many(self, vectors: Sequence[FeatureVector]) -> list[float]:
         if not self.feature_order and vectors:
@@ -57,7 +57,7 @@ class LambdaMARTModel:
     ) -> tuple[list[float], list[Mapping[str, float]]]:
         scores = self.score_many(vectors)
         contributions: list[Mapping[str, float]] = []
-        for vector, score in zip(vectors, scores):
+        for vector, score in zip(vectors, scores, strict=False):
             breakdown: MutableMapping[str, float] = {}
             for feature, value in vector.values.items():
                 weight = self.coefficients.get(feature, 0.0)
@@ -83,7 +83,7 @@ class LTRDataset:
     feature_order: Sequence[str]
     groups: list[str] | None = None
 
-    def to_dmatrix(self) -> "xgboost.DMatrix | None":  # type: ignore[name-defined]
+    def to_dmatrix(self) -> xgboost.DMatrix | None:  # type: ignore[name-defined]
         if xgboost is None:
             return None
         matrix = [vector.as_ordered(self.feature_order) for vector in self.features]
@@ -158,7 +158,7 @@ class OpenSearchLTRReranker(BaseReranker):
                     "model": self.model.name,
                     "version": self.model.version,
                 }
-                for vector, breakdown in zip(vectors, contributions)
+                for vector, breakdown in zip(vectors, contributions, strict=False)
             ]
         return BatchScore(scores=scores, extra_metadata=metadata)
 
@@ -170,7 +170,6 @@ class OpenSearchLTRReranker(BaseReranker):
         size: int | None = None,
     ) -> Mapping[str, object]:
         """Return an OpenSearch query using the stored feature set."""
-
         return {
             "size": size or len(doc_ids),
             "query": {
@@ -259,7 +258,7 @@ class VespaRankProfileReranker(BaseReranker):
             batch_size=16,
             requires_gpu=False,
         )
-        self._onnx_session: "ort.InferenceSession | None" = None  # type: ignore[name-defined]
+        self._onnx_session: ort.InferenceSession | None = None  # type: ignore[name-defined]
         self._onnx_input: str | None = None
 
     def attach_onnx_model(self, model_path: str, input_name: str = "input") -> None:
@@ -306,6 +305,6 @@ class VespaRankProfileReranker(BaseReranker):
                     "contributions": breakdown,
                     "profile": self.profile.to_dict(),
                 }
-                for vector, breakdown in zip(vectors, contributions)
+                for vector, breakdown in zip(vectors, contributions, strict=False)
             ]
         return BatchScore(scores=scores, extra_metadata=metadata)

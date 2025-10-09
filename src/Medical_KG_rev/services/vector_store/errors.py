@@ -31,6 +31,7 @@ Examples:
         vector_store.store(namespace, vectors)
     except NamespaceNotFoundError as e:
         return e.problem.to_response()
+
 """
 
 # IMPORTS
@@ -62,6 +63,7 @@ class VectorStoreError(FoundationError):
             detail="Internal vector store error"
         )
         response = error.problem.to_response()
+
     """
 
     def __init__(self, message: str, *, status: int, detail: str | None = None, extra: dict[str, Any] | None = None) -> None:
@@ -75,6 +77,7 @@ class VectorStoreError(FoundationError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(message, status=status, detail=detail)
         if extra:
@@ -95,6 +98,7 @@ class NamespaceNotFoundError(VectorStoreError):
             vector_store.get_namespace("unknown", tenant_id="tenant-1")
         except NamespaceNotFoundError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, namespace: str, *, tenant_id: str) -> None:
@@ -106,6 +110,7 @@ class NamespaceNotFoundError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             "Vector namespace not found",
@@ -129,6 +134,7 @@ class DimensionMismatchError(VectorStoreError):
             vector_store.store(namespace, vectors)
         except DimensionMismatchError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, expected: int, actual: int, *, namespace: str) -> None:
@@ -141,6 +147,7 @@ class DimensionMismatchError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             "Vector dimension mismatch",
@@ -164,6 +171,7 @@ class ResourceExhaustedError(VectorStoreError):
             vector_store.store(namespace, large_vectors)
         except ResourceExhaustedError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, namespace: str, *, detail: str | None = None) -> None:
@@ -175,6 +183,7 @@ class ResourceExhaustedError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             "Vector store capacity exceeded",
@@ -198,6 +207,7 @@ class BackendUnavailableError(VectorStoreError):
             vector_store.query(namespace, query_vector)
         except BackendUnavailableError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, message: str = "Vector backend unavailable", *, retry_after: float | None = None) -> None:
@@ -209,6 +219,7 @@ class BackendUnavailableError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             message,
@@ -232,6 +243,7 @@ class ScopeError(VectorStoreError):
             vector_store.store(namespace, vectors)
         except ScopeError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, *, required_scope: str) -> None:
@@ -242,6 +254,7 @@ class ScopeError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             "Missing required scope",
@@ -265,6 +278,7 @@ class InvalidNamespaceConfigError(VectorStoreError):
             vector_store.create_namespace(config)
         except InvalidNamespaceConfigError as e:
             return e.problem.to_response()
+
     """
 
     def __init__(self, namespace: str, *, detail: str) -> None:
@@ -276,6 +290,7 @@ class InvalidNamespaceConfigError(VectorStoreError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             "Invalid namespace configuration",

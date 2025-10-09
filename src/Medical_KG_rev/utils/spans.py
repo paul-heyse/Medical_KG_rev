@@ -9,7 +9,6 @@ from Medical_KG_rev.models import Span
 
 def merge_overlapping(spans: Sequence[Span]) -> list[Span]:
     """Merge overlapping spans into non-overlapping intervals."""
-
     if not spans:
         return []
     ordered = sorted(spans, key=lambda span: span.start)
@@ -26,5 +25,4 @@ def merge_overlapping(spans: Sequence[Span]) -> list[Span]:
 
 def spans_within(bounds: Span, spans: Iterable[Span]) -> list[Span]:
     """Return spans that fall entirely within bounds."""
-
     return [span for span in spans if span.start >= bounds.start and span.end <= bounds.end]

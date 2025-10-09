@@ -46,6 +46,7 @@ Example:
     >>> with MINERU_PROCESSING_DURATION_SECONDS.labels(worker_id="worker-1", gpu_id="gpu-0").time():
     ...     # MinerU processing code
     ...     pass
+
 """
 
 from __future__ import annotations
@@ -112,11 +113,11 @@ MINERU_WORKER_QUEUE_DEPTH = Gauge(
 # ==============================================================================
 
 __all__ = [
-    "MINERU_PROCESSING_DURATION_SECONDS",
-    "MINERU_GPU_MEMORY_USAGE_BYTES",
     "MINERU_CLI_FAILURES_TOTAL",
-    "MINERU_PDF_PAGES_PROCESSED_TOTAL",
-    "MINERU_TABLE_EXTRACTION_COUNT",
     "MINERU_FIGURE_EXTRACTION_COUNT",
+    "MINERU_GPU_MEMORY_USAGE_BYTES",
+    "MINERU_PDF_PAGES_PROCESSED_TOTAL",
+    "MINERU_PROCESSING_DURATION_SECONDS",
+    "MINERU_TABLE_EXTRACTION_COUNT",
     "MINERU_WORKER_QUEUE_DEPTH",
 ]

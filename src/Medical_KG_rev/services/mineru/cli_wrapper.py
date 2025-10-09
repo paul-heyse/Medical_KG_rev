@@ -44,6 +44,7 @@ Example:
     >>> inputs = [MineruCliInput(document_id="doc1", content=pdf_bytes)]
     >>> result = cli.run_batch(inputs)
     >>> print(f"Processed {len(result.outputs)} documents")
+
 """
 
 from __future__ import annotations
@@ -58,9 +59,9 @@ import subprocess
 import tempfile
 import time
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import structlog
 from Medical_KG_rev.config.settings import MineruSettings
@@ -88,6 +89,7 @@ class MineruCliError(RuntimeError):
         ...     cli.run_batch(inputs)
         ... except MineruCliError as e:
         ...     print(f"CLI failed: {e}")
+
     """
 
 
@@ -115,6 +117,7 @@ class MineruCliInput:
         ...     document_id="doc_123",
         ...     content=pdf_bytes
         ... )
+
     """
 
     document_id: str
@@ -141,6 +144,7 @@ class MineruCliOutput:
         ...     document_id="doc_123",
         ...     path=Path("/tmp/output/doc_123.json")
         ... )
+
     """
 
     document_id: str
@@ -171,6 +175,7 @@ class MineruCliResult:
         ...     stderr="",
         ...     duration_seconds=1.5
         ... )
+
     """
 
     outputs: list[MineruCliOutput]
@@ -206,6 +211,7 @@ class MineruCliBase:
         ...         pass
         ...     def describe(self):
         ...         return "custom-cli"
+
     """
 
     def __init__(self, settings: MineruSettings) -> None:
@@ -213,6 +219,7 @@ class MineruCliBase:
 
         Args:
             settings: MinerU configuration settings
+
         """
         self._settings = settings
 
@@ -230,6 +237,7 @@ class MineruCliBase:
 
         Raises:
             NotImplementedError: Must be implemented by subclasses
+
         """
         raise NotImplementedError
 
@@ -241,6 +249,7 @@ class MineruCliBase:
 
         Raises:
             NotImplementedError: Must be implemented by subclasses
+
         """
         raise NotImplementedError
 
@@ -267,6 +276,7 @@ class SubprocessMineruCli(MineruCliBase):
         >>> cli = SubprocessMineruCli(settings, timeout_seconds=300)
         >>> result = cli.run_batch(inputs)
         >>> print(f"Processed {len(result.outputs)} documents")
+
     """
 
     def __init__(
@@ -284,6 +294,7 @@ class SubprocessMineruCli(MineruCliBase):
         Note:
             Uses settings timeout if none provided. Command is
             extracted from settings for execution.
+
         """
         super().__init__(settings)
         self._command = settings.cli_command
@@ -298,6 +309,7 @@ class SubprocessMineruCli(MineruCliBase):
         Note:
             Checks if the first component of the command
             is available in the system PATH.
+
         """
         executable = self._command.split()[0]
         if shutil.which(executable) is None:
@@ -308,6 +320,7 @@ class SubprocessMineruCli(MineruCliBase):
 
         Returns:
             String description including command
+
         """
         return f"subprocess-cli(command={self._command})"
 
@@ -324,6 +337,7 @@ class SubprocessMineruCli(MineruCliBase):
         Note:
             Adds parse command, input/output paths, format,
             backend, and vLLM URL to the base command.
+
         """
         command = self._command.split()
         command.extend(
@@ -362,6 +376,7 @@ class SubprocessMineruCli(MineruCliBase):
             Creates temporary directories, writes PDF files,
             executes CLI command, and collects outputs.
             Handles timeouts and error conditions.
+
         """
         self._ensure_command()
         inputs = list(batch)
@@ -435,6 +450,7 @@ class SimulatedMineruCli(MineruCliBase):
         >>> cli = SimulatedMineruCli(settings)
         >>> result = cli.run_batch(inputs)
         >>> print(f"Simulated processing: {len(result.outputs)} outputs")
+
     """
 
     def describe(self) -> str:
@@ -442,6 +458,7 @@ class SimulatedMineruCli(MineruCliBase):
 
         Returns:
             String description identifying simulation
+
         """
         return "simulated-cli"
 
@@ -465,6 +482,7 @@ class SimulatedMineruCli(MineruCliBase):
             input content as text and creating blocks,
             tables, and metadata. Outputs are written
             to temporary JSON files.
+
         """
         outputs: list[MineruCliOutput] = []
         stdout_lines = []
@@ -569,8 +587,8 @@ def create_cli(settings: MineruSettings) -> MineruCliBase:
         >>> cli = create_cli(settings)
         >>> print(f"Using CLI: {cli.describe()}")
         >>> result = cli.run_batch(inputs)
-    """
 
+    """
     try:
         cli = SubprocessMineruCli(settings)
         cli._ensure_command()

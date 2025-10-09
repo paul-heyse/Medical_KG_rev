@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 try:  # pragma: no cover - optional dependency
     import yaml
@@ -71,7 +72,7 @@ class PyseriniConfig:
     opensearch: PyseriniOpenSearchConfig = field(default_factory=PyseriniOpenSearchConfig)
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, Any]) -> "PyseriniConfig":
+    def from_mapping(cls, data: Mapping[str, Any]) -> PyseriniConfig:
         service = PyseriniServiceConfig(**data.get("service", {}))
         model = PyseriniModelConfig(**data.get("model", {}))
         expansion = PyseriniExpansionConfig(
@@ -88,7 +89,7 @@ class PyseriniConfig:
         return cls(service=service, model=model, expansion=expansion, opensearch=opensearch)
 
     @classmethod
-    def from_yaml(cls, path: str | Path | None = None) -> "PyseriniConfig":
+    def from_yaml(cls, path: str | Path | None = None) -> PyseriniConfig:
         config_path = Path(path) if path is not None else DEFAULT_PYSERINI_CONFIG
         data = _load_mapping(config_path)
         if BaseModel is not None:
@@ -135,12 +136,12 @@ def load_pyserini_config(path: str | Path | None = None) -> PyseriniConfig:
 
 
 __all__ = [
+    "DEFAULT_PYSERINI_CONFIG",
     "PyseriniConfig",
-    "PyseriniServiceConfig",
-    "PyseriniModelConfig",
     "PyseriniExpansionConfig",
     "PyseriniExpansionSideConfig",
+    "PyseriniModelConfig",
     "PyseriniOpenSearchConfig",
-    "DEFAULT_PYSERINI_CONFIG",
+    "PyseriniServiceConfig",
     "load_pyserini_config",
 ]

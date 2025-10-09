@@ -27,6 +27,7 @@ Example:
     ... )
     >>> ledger.mark_processing(job.job_id, "processing")
     >>> ledger.mark_completed(job.job_id)
+
 """
 
 from __future__ import annotations
@@ -70,6 +71,7 @@ class JobTransition:
         stage: Processing stage where transition occurred.
         reason: Optional reason for the transition.
         timestamp: When the transition occurred.
+
     """
 
     from_status: str
@@ -104,6 +106,7 @@ class JobLedgerEntry:
         retry_count_per_stage: Retry count by stage.
         pdf_downloaded: PDF download status.
         pdf_ir_ready: PDF IR readiness status.
+
     """
 
     job_id: str
@@ -132,6 +135,7 @@ class JobLedgerEntry:
 
         Returns:
             True if job status is completed, failed, or cancelled.
+
         """
         return self.status in TERMINAL_STATUSES
 
@@ -140,8 +144,8 @@ class JobLedgerEntry:
 
         Returns:
             Deep copy of the job entry with immutable collections.
-        """
 
+        """
         return JobLedgerEntry(
             job_id=self.job_id,
             doc_key=self.doc_key,

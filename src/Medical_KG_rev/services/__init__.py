@@ -31,7 +31,7 @@ else:  # pragma: no cover - optional dependency fallback
     class GpuManager:
         """Stub GPU manager used when torch is unavailable."""
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - delegating stub
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise GpuNotAvailableError("PyTorch with CUDA support is required for GPU services")
 
     __all__.extend(["GpuManager", "GpuNotAvailableError"])

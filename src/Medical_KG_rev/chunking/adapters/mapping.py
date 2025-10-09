@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence, Tuple
 
 from ..provenance import BlockContext
 from ..tokenization import TokenCounter, default_token_counter
@@ -49,7 +49,7 @@ class OffsetMapper:
         self.separator = separator
         self.counter = token_counter or default_token_counter()
         self.aggregated_text = separator.join(ctx.text for ctx in self.contexts)
-        self._spans: list[Tuple[int, int, BlockContext]] = []
+        self._spans: list[tuple[int, int, BlockContext]] = []
         cursor = 0
         for ctx in self.contexts:
             start = cursor

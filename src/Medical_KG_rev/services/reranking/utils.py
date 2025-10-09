@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 
 def clamp(value: float, *, lower: float = 0.0, upper: float = 1.0) -> float:
     """Clamp *value* between *lower* and *upper* bounds."""
-
     if lower > upper:
         lower, upper = upper, lower
     try:
@@ -20,7 +20,6 @@ def clamp(value: float, *, lower: float = 0.0, upper: float = 1.0) -> float:
 
 def mean_or_default(values: Iterable[float], default: float = 0.0) -> float:
     """Compute the mean of *values* ignoring non-numeric inputs."""
-
     numeric: list[float] = []
     for value in values:
         if isinstance(value, (int, float)):

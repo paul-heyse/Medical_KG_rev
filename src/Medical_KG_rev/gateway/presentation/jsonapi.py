@@ -33,6 +33,7 @@ Example:
     >>> from Medical_KG_rev.gateway.presentation.jsonapi import JSONAPIPresenter
     >>> presenter = JSONAPIPresenter()
     >>> response = presenter.success({"data": "value"})
+
 """
 
 # ==============================================================================
@@ -43,8 +44,8 @@ from __future__ import annotations
 
 import gzip
 import json
-from collections.abc import Iterable
-from typing import Any, Mapping, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
+from typing import Any
 
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
@@ -74,6 +75,7 @@ def _normalise_payload(data: Any) -> Any:
 
     Returns:
         Normalized data suitable for JSON:API serialization.
+
     """
     if isinstance(data, BaseModel):
         return data.model_dump(mode="json")

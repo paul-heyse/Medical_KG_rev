@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
-from dataclasses import dataclass
 import math
-from typing import Iterable, Sequence
 import xml.etree.ElementTree as ET
+from collections import defaultdict, deque
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document
 
@@ -296,7 +296,7 @@ class GraphRAGChunker(ContextualChunker):
 
 __all__ = [
     "DiscourseSegmenterChunker",
+    "GraphRAGChunker",
     "GrobidSectionChunker",
     "LayoutAwareChunker",
-    "GraphRAGChunker",
 ]

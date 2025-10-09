@@ -16,6 +16,7 @@ from .object_store import FigureStorageClient, InMemoryObjectStore, S3ObjectStor
 __all__ = [
     "CacheBackend",
     "DocumentStorageClient",
+    "FigureStorageClient",
     "InMemoryCache",
     "InMemoryLedger",
     "InMemoryObjectStore",
@@ -26,7 +27,6 @@ __all__ = [
     "PdfAsset",
     "PdfStorageClient",
     "RedisCache",
-    "FigureStorageClient",
     "S3ObjectStore",
     "StorageError",
     "create_cache_backend",

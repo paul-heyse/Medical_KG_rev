@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
+from collections.abc import AsyncIterator, Callable, Iterator, Sequence
 from time import perf_counter
-from typing import Callable
 
 import structlog
 

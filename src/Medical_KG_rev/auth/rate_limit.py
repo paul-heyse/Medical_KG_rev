@@ -5,7 +5,6 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 import time
 from dataclasses import dataclass
 
@@ -30,6 +29,7 @@ class TokenBucket:
         refill_rate: Tokens added per second.
         tokens: Current token count.
         updated_at: Monotonic timestamp of the last refill or consumption.
+
     """
 
     capacity: int
@@ -45,8 +45,8 @@ class TokenBucket:
 
         Returns:
             ``True`` when the bucket contained enough tokens, ``False`` otherwise.
-        """
 
+        """
         now = time.monotonic()
         elapsed = now - self.updated_at
         self.updated_at = now
@@ -70,8 +70,8 @@ class RateLimitExceeded(RuntimeError):
 
         Args:
             retry_after: Number of seconds a caller should wait before retrying.
-        """
 
+        """
         super().__init__("Rate limit exceeded")
         self.retry_after = retry_after
 
@@ -89,8 +89,8 @@ class RateLimiter:
 
         Args:
             settings: Rate limit configuration sourced from application settings.
-        """
 
+        """
         self.settings = settings
         self._buckets: dict[str, TokenBucket] = {}
 
@@ -103,8 +103,8 @@ class RateLimiter:
 
         Raises:
             RateLimitExceeded: When the caller has exhausted their rate limit.
-        """
 
+        """
         limit = self.settings.endpoint_overrides.get(endpoint, self.settings.requests_per_minute)
         burst = max(self.settings.burst, 1)
         key = f"{identity}:{endpoint}"
@@ -141,8 +141,8 @@ def build_rate_limiter(settings: AppSettings | None = None) -> RateLimiter:
 
     Returns:
         Configured :class:`RateLimiter` ready for dependency injection.
-    """
 
+    """
     cfg = (settings or get_settings()).security.rate_limit
     return RateLimiter(cfg)
 

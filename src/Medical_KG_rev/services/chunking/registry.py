@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from .wrappers import langchain_splitter, llamaindex_parser, simple
 from . import profile_chunkers
+from .wrappers import langchain_splitter, llamaindex_parser, simple
 
 
 def register_defaults() -> None:
     """Register built-in chunker implementations."""
-
     simple.register()
     try:
         langchain_splitter.register()

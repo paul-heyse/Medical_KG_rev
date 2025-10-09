@@ -1,6 +1,6 @@
-"""Audit logging utilities for security-sensitive actions."""
+"""Audit logging utilities for security-sensitive actions.
 
-"""Audit logging helpers for authentication events.
+Audit logging helpers for authentication events.
 
 The authentication subsystem relies on lightweight audit logging to track
 security-sensitive actions such as key usage, scope violations, and rate-limit
@@ -33,7 +33,6 @@ from __future__ import annotations
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
 import builtins
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -61,6 +60,7 @@ class AuditEntry:
         action: Name of the action (e.g., ``"authenticate"``).
         resource: Resource acted upon.
         metadata: Additional contextual metadata for downstream consumers.
+
     """
 
     timestamp: datetime
@@ -87,7 +87,6 @@ class AuditTrail:
 
     def __init__(self) -> None:
         """Initialize the in-memory audit trail."""
-
         self._entries: list[AuditEntry] = []
 
     def record(
@@ -108,8 +107,8 @@ class AuditTrail:
 
         Returns:
             The stored :class:`AuditEntry` instance for further inspection.
-        """
 
+        """
         entry = AuditEntry(
             timestamp=datetime.now(UTC),
             tenant_id=context.tenant_id,
@@ -137,8 +136,8 @@ class AuditTrail:
 
         Returns:
             Sorted list of :class:`AuditEntry` instances ordered newest first.
-        """
 
+        """
         items = [entry for entry in self._entries if entry.tenant_id == tenant_id]
         return sorted(items, key=lambda item: item.timestamp, reverse=True)[:limit]
 
@@ -153,7 +152,6 @@ _audit_trail = AuditTrail()
 
 def get_audit_trail() -> AuditTrail:
     """Return the global audit trail instance used by authentication flows."""
-
     return _audit_trail
 
 

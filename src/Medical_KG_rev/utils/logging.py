@@ -146,7 +146,6 @@ def configure_logging(
     settings: LoggingSettings | None = None,
 ) -> None:
     """Configure global logging for the application."""
-
     scrub_fields: Iterable[str] | None = None
     if settings is not None:
         level = settings.level
@@ -195,7 +194,6 @@ def configure_logging(
 
 def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
     """Configure OpenTelemetry tracing provider."""
-
     if trace is None or TracerProvider is None or Resource is None or TraceIdRatioBased is None:
         logging.getLogger(__name__).warning(
             "telemetry.opentelemetry.unavailable",
@@ -230,7 +228,6 @@ def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
 
 def bind_correlation_id(value: str) -> Token:
     """Bind a correlation identifier to the current execution context."""
-
     token = _correlation_id.set(value)
     if structlog:
         structlog.contextvars.bind_contextvars(correlation_id=value)
@@ -239,7 +236,6 @@ def bind_correlation_id(value: str) -> Token:
 
 def reset_correlation_id(token: Token | None) -> None:
     """Reset the correlation identifier context."""
-
     if token is not None:
         _correlation_id.reset(token)
     if structlog:
@@ -251,11 +247,9 @@ def reset_correlation_id(token: Token | None) -> None:
 
 def get_correlation_id() -> str | None:
     """Return the currently bound correlation identifier, if any."""
-
     return _correlation_id.get()
 
 
 def get_logger(name: str) -> logging.Logger:
     """Helper to fetch configured logger."""
-
     return logging.getLogger(name)

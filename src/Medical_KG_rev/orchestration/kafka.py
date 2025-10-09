@@ -40,7 +40,6 @@ class KafkaClient:
     # ------------------------------------------------------------------
     def create_topics(self, topics: Iterable[str]) -> None:
         """Ensure topics exist by initialising their queues."""
-
         for topic in topics:
             if topic not in self._topics:
                 self._topics[topic] = []
@@ -96,7 +95,6 @@ class KafkaClient:
 
     def peek(self, topic: str) -> KafkaMessage | None:
         """Return the next message for a topic without consuming it."""
-
         if topic not in self._topics:
             raise ValueError(f"Topic '{topic}' has not been created")
         if not self._topics[topic]:

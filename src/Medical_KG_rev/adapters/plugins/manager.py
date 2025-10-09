@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from importlib import metadata
-from typing import Any, Callable
+from typing import Any
 
 import pluggy
 
+from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 from Medical_KG_rev.adapters.plugins.models import (
+    AdapterCostEstimate,
+    AdapterDomain,
     AdapterMetadata,
     AdapterRequest,
     AdapterResponse,
-    AdapterDomain,
     ValidationOutcome,
-    AdapterCostEstimate,
 )
-from Medical_KG_rev.adapters.plugins.domains import DomainAdapterRegistry
 
 from .errors import AdapterPluginError
 from .pipeline import AdapterExecutionState, AdapterPipelineFactory
@@ -76,7 +76,6 @@ class AdapterPluginManager:
         entry_point: str | None = None,
     ) -> AdapterMetadata:
         """Register a plugin object and cache its metadata."""
-
         registration_name = name or getattr(plugin, "__name__", plugin.__class__.__name__)
         self._pm.register(plugin, name=registration_name)
         metadata = self._resolve_metadata(plugin)
@@ -103,7 +102,6 @@ class AdapterPluginManager:
 
     def discover_entry_points(self, group: str = "medical_kg.adapters") -> list[AdapterMetadata]:
         """Discover adapters declared via Python entry points."""
-
         discovered: list[AdapterMetadata] = []
         for entry_point in metadata.entry_points().select(group=group):
             plugin = entry_point.load()
@@ -130,7 +128,6 @@ class AdapterPluginManager:
 
     def domains(self) -> dict[AdapterDomain, tuple[str, ...]]:
         """Return mapping of domains to registered adapter names."""
-
         return {domain: names for domain, names in self._registry.domains().items()}
 
     # ------------------------------------------------------------------

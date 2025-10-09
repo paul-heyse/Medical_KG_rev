@@ -40,6 +40,7 @@ Examples:
 
     # Validate quality
     test_set.ensure_quality()
+
 """
 
 # ==============================================================================
@@ -87,6 +88,7 @@ class QueryType(str, Enum):
         query_type = QueryType.EXACT_TERM
         if query_type == QueryType.COMPLEX_CLINICAL:
             # Handle complex clinical query
+
     """
 
     EXACT_TERM = "exact_term"
@@ -120,6 +122,7 @@ class QueryJudgment:
             relevant_docs=(("doc1", 3.0), ("doc2", 2.0))
         )
         relevance_map = judgment.as_relevance_mapping()
+
     """
 
     query_id: str
@@ -136,6 +139,7 @@ class QueryJudgment:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         return {doc_id: float(grade) for doc_id, grade in self.relevant_docs}
 
@@ -147,6 +151,7 @@ class QueryJudgment:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         return any(grade > 0 for _, grade in self.relevant_docs)
 
@@ -175,6 +180,7 @@ class TestSet:
             queries=(query1, query2, query3)
         )
         eval_set, holdout_set = test_set.split(holdout_ratio=0.2)
+
     """
 
     name: str
@@ -190,6 +196,7 @@ class TestSet:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         buckets: dict[QueryType, list[QueryJudgment]] = defaultdict(list)
         for record in self.queries:
@@ -208,6 +215,7 @@ class TestSet:
 
         Raises:
             ValueError: If holdout_ratio is not between 0 and 1
+
         """
         if not 0 < holdout_ratio < 1:
             raise ValueError("holdout_ratio must be between 0 and 1")
@@ -233,6 +241,7 @@ class TestSet:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         return {
             "name": self.name,
@@ -256,6 +265,7 @@ class TestSet:
 
         Raises:
             ValueError: If the test set fails quality validation
+
         """
         ids = {query.query_id for query in self.queries}
         if len(ids) != len(self.queries):
@@ -281,6 +291,7 @@ class TestSet:
 
         Raises:
             None: This method never raises exceptions.
+
         """
         stratified = self.stratify()
         return {key.value: float(len(bucket)) for key, bucket in stratified.items()}
@@ -316,6 +327,7 @@ class TestSetManager:
         # Load from filesystem
         manager = TestSetManager(root="/path/to/test_sets")
         test_set = manager.load("custom_queries")
+
     """
 
     def __init__(self, root: str | Path | None = None) -> None:
@@ -326,6 +338,7 @@ class TestSetManager:
 
         Raises:
             None: Initialization always succeeds.
+
         """
         self.root = Path(root) if root is not None else None
         self._resource_root: Traversable | None
@@ -348,6 +361,7 @@ class TestSetManager:
 
         Raises:
             FileNotFoundError: If the test set is not found
+
         """
         filename = f"{name}.yaml"
         if self.root is not None:
@@ -375,6 +389,7 @@ class TestSetManager:
         Raises:
             YAMLError: If YAML parsing fails
             IOError: If file reading fails
+
         """
         if isinstance(location, Path):
             text = location.read_text(encoding="utf-8")
@@ -397,6 +412,7 @@ class TestSetManager:
             FileNotFoundError: If the test set is not found
             ValueError: If version validation fails
             ValueError: If quality validation fails
+
         """
         cache_key = (name, expected_version)
         if cache_key in self._cache:
@@ -435,6 +451,7 @@ class TestSetManager:
             RuntimeError: If manager was initialized without filesystem root
             ValueError: If quality validation fails
             IOError: If file writing fails
+
         """
         if self.root is None:
             raise RuntimeError(
@@ -468,6 +485,7 @@ def _parse_queries(values: Iterable[Mapping[str, object]]) -> list[QueryJudgment
 
     Raises:
         ValueError: If query data is invalid
+
     """
     records: list[QueryJudgment] = []
     for payload in values:
@@ -506,6 +524,7 @@ def build_test_set(name: str, queries: Sequence[Mapping[str, object]], *, versio
 
     Raises:
         ValueError: If quality validation fails
+
     """
     test_set = TestSet(name=name, version=version, queries=tuple(_parse_queries(queries)))
     test_set.ensure_quality()
@@ -524,6 +543,7 @@ def cohens_kappa(labels_a: Sequence[object], labels_b: Sequence[object]) -> floa
 
     Raises:
         ValueError: If sequences have different lengths
+
     """
     if len(labels_a) != len(labels_b):
         raise ValueError("Sequences must be of equal length")

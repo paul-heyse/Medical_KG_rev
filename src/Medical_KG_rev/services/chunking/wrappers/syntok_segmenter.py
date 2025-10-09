@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from functools import lru_cache
-from typing import Callable, Iterable, Tuple
 
-Segment = Tuple[int, int, str]
+Segment = tuple[int, int, str]
 
 
 class SyntokSentenceSegmenter:

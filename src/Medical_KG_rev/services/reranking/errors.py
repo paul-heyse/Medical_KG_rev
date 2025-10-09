@@ -29,6 +29,7 @@ Examples:
         reranker.rank(pairs)
     except InvalidPairFormatError as e:
         return e.to_problem().to_response()
+
 """
 
 # IMPORTS
@@ -64,6 +65,7 @@ class RerankingError(RuntimeError):
             detail="Internal reranking error"
         )
         problem = error.to_problem()
+
     """
 
     def __init__(
@@ -86,6 +88,7 @@ class RerankingError(RuntimeError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(title)
         self.title = title
@@ -102,6 +105,7 @@ class RerankingError(RuntimeError):
 
         Raises:
             None: This method never raises exceptions.
+
         """
         return ProblemDetail(
             title=self.title,
@@ -126,6 +130,7 @@ class InvalidPairFormatError(RerankingError):
             validate_pairs(pairs)
         except InvalidPairFormatError as e:
             return e.to_problem()
+
     """
 
     def __init__(self, detail: str) -> None:
@@ -136,6 +141,7 @@ class InvalidPairFormatError(RerankingError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             title="Invalid query/document pair", status=400, detail=detail
@@ -156,6 +162,7 @@ class UnknownRerankerError(RerankingError):
             get_reranker("unknown-id")
         except UnknownRerankerError as e:
             return e.to_problem()
+
     """
 
     def __init__(self, reranker_id: str, available: list[str]) -> None:
@@ -167,6 +174,7 @@ class UnknownRerankerError(RerankingError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             title="Reranker not found",
@@ -190,6 +198,7 @@ class GPUUnavailableError(RerankingError):
             gpu_reranker.rank(pairs)
         except GPUUnavailableError as e:
             return e.to_problem()
+
     """
 
     def __init__(self, reranker_id: str) -> None:
@@ -200,6 +209,7 @@ class GPUUnavailableError(RerankingError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             title="GPU unavailable",
@@ -223,6 +233,7 @@ class CircuitBreakerOpenError(RerankingError):
             reranker.rank(pairs)
         except CircuitBreakerOpenError as e:
             return e.to_problem()
+
     """
 
     def __init__(self, reranker_id: str) -> None:
@@ -233,6 +244,7 @@ class CircuitBreakerOpenError(RerankingError):
 
         Raises:
             None: Initialization always succeeds.
+
         """
         super().__init__(
             title="Reranker temporarily unavailable",

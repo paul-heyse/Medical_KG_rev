@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Callable, Tuple
 
-Segment = Tuple[int, int, str]
+Segment = tuple[int, int, str]
 
 
 def get_sentence_splitter(name: str) -> Callable[[str], list[Segment]]:

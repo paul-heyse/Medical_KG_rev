@@ -43,7 +43,7 @@ class PdfAsset:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PdfAsset":
+    def from_dict(cls, data: dict[str, Any]) -> PdfAsset:
         """Create from dictionary."""
         return cls(**data)
 
@@ -200,8 +200,6 @@ class DocumentStorageClient:
         suffix: str = "metadata.json",
     ) -> str:
         """Store document metadata and return S3 key."""
-        import time
-
         # Generate keys
         s3_key = self._generate_key(tenant_id, document_id, suffix)
         cache_key = self._generate_cache_key(tenant_id, document_id, suffix)

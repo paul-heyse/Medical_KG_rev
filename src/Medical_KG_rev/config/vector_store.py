@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -27,7 +28,7 @@ class CompressionConfig(BaseModel):
         )
 
     @model_validator(mode="after")
-    def _validate_params(self) -> "CompressionConfig":
+    def _validate_params(self) -> CompressionConfig:
         if self.kind == "pq" and (self.pq_m is None or self.pq_nbits is None):
             raise ValueError("pq compression requires pq_m and pq_nbits")
         if self.kind == "opq" and (self.pq_m is None or self.pq_nbits is None or self.opq_m is None):
@@ -112,7 +113,6 @@ def load_vector_store_config(path: Path | None = None) -> VectorStoreConfig:
 
 def detect_backend_capabilities(store: VectorStorePort) -> dict[str, Any]:
     """Return a normalised capability mapping for the supplied adapter."""
-
     capabilities = getattr(store, "capabilities", None)
     if callable(capabilities):
         result = capabilities()
@@ -126,7 +126,6 @@ def detect_backend_capabilities(store: VectorStorePort) -> dict[str, Any]:
 
 def migrate_vector_store_config(data: Mapping[str, Any]) -> dict[str, Any]:
     """Migrate legacy configuration structures into the current schema."""
-
     migrated: dict[str, Any] = dict(data)
     if "vector_store" in migrated:
         migrated = dict(migrated["vector_store"])
@@ -144,11 +143,11 @@ def migrate_vector_store_config(data: Mapping[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "CompressionConfig",
-    "detect_backend_capabilities",
-    "NamespaceConfigModel",
     "NamedVectorConfig",
+    "NamespaceConfigModel",
     "TenantVectorConfig",
     "VectorStoreConfig",
+    "detect_backend_capabilities",
     "load_vector_store_config",
     "migrate_vector_store_config",
 ]

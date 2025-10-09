@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 import structlog
-
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import record_pipeline_stage
 
+from ..fusion.service import FusionService
 from ..models import PipelineSettings, ScoredDocument
 from ..rerank_engine import RerankingEngine
-from ..fusion.service import FusionService
 from .runtime import PipelineRuntime
 
 logger = structlog.get_logger(__name__)

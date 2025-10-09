@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Iterable, Sequence
 
 from Medical_KG_rev.models.ir import Document
 

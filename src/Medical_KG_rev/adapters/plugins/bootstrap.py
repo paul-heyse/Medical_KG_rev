@@ -16,7 +16,6 @@ _MANAGER: AdapterPluginManager | None = None
 
 def plugin_framework_enabled() -> bool:
     """Check feature flag controlling whether the plugin framework is active."""
-
     value = os.getenv("MK_USE_PLUGIN_FRAMEWORK", "1").lower()
     return value not in {"0", "false", "no"}
 
@@ -29,7 +28,6 @@ def _register_builtin(manager: AdapterPluginManager) -> None:
 
 def get_plugin_manager(refresh: bool = False) -> AdapterPluginManager:
     """Return a singleton plugin manager populated with bundled adapters."""
-
     global _MANAGER
     if not plugin_framework_enabled():
         raise RuntimeError("Adapter plugin framework is disabled via MK_USE_PLUGIN_FRAMEWORK")
@@ -42,13 +40,12 @@ def get_plugin_manager(refresh: bool = False) -> AdapterPluginManager:
 
 def list_adapters_by_domain() -> dict[AdapterDomain, tuple[str, ...]]:
     """Helper returning a mapping of domain to adapter names."""
-
     manager = get_plugin_manager()
     return manager.domains()
 
 
 __all__ = [
     "get_plugin_manager",
-    "plugin_framework_enabled",
     "list_adapters_by_domain",
+    "plugin_framework_enabled",
 ]

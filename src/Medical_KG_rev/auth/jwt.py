@@ -1,5 +1,3 @@
-"""JWT validation utilities."""
-
 """JWT authentication utilities for verifying OAuth access tokens.
 
 The gateway uses JSON Web Tokens (JWTs) issued by external identity providers

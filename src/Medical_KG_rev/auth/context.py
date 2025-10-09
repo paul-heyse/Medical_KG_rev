@@ -1,5 +1,3 @@
-"""Security context primitives shared across FastAPI dependencies."""
-
 """Security context utilities shared across authentication flows.
 
 The context encapsulates authentication metadata derived from API keys or JWT

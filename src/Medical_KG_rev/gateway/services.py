@@ -62,8 +62,7 @@ from ..adapters.plugins.models import AdapterRequest
 from ..auth.scopes import Scopes
 from ..config.settings import get_settings
 from ..kg import ShaclValidator, ValidationError
-from ..observability.events import record_business_event
-from ..observability.metrics import observe_job_duration
+from ..observability.metrics import observe_job_duration, record_business_event
 from ..orchestration import HaystackRetriever, JobLedger, JobLedgerEntry
 from ..orchestration.dagster import (
     DagsterOrchestrator,
@@ -1470,4 +1469,3 @@ def get_gateway_service() -> GatewayService:
 # ============================================================================
 # EXPORTS
 # ============================================================================
-

@@ -1,11 +1,10 @@
-"""Runtime pipeline state caching utilities."""
 """Caching utilities for pipeline state serialisation."""
 
 from __future__ import annotations
 
 import time
 from collections import OrderedDict
-from typing import MutableMapping
+from typing import TYPE_CHECKING, MutableMapping
 
 from attrs import define, field
 
@@ -14,7 +13,8 @@ from Medical_KG_rev.observability.metrics import (
     PIPELINE_STATE_CACHE_MISSES,
     PIPELINE_STATE_CACHE_SIZE,
 )
-from Medical_KG_rev.orchestration.stages.contracts import PipelineStateSnapshot
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from Medical_KG_rev.orchestration.stages.contracts import PipelineStateSnapshot
 
 
 @define(slots=True)
@@ -23,12 +23,12 @@ class PipelineStateCache:
 
     max_entries: int = 64
     ttl_seconds: float | None = None
-    _entries: MutableMapping[str, PipelineStateSnapshot] = field(
+    _entries: MutableMapping[str, "PipelineStateSnapshot"] = field(
         factory=OrderedDict, init=False
     )
     _timestamps: MutableMapping[str, float] = field(factory=dict, init=False)
 
-    def store(self, key: str, snapshot: PipelineStateSnapshot) -> None:
+    def store(self, key: str, snapshot: "PipelineStateSnapshot") -> None:
         """Store a snapshot for the provided key."""
 
         self._entries[key] = snapshot
@@ -37,7 +37,7 @@ class PipelineStateCache:
         self._prune()
         PIPELINE_STATE_CACHE_SIZE.set(len(self._entries))
 
-    def get(self, key: str) -> PipelineStateSnapshot | None:
+    def get(self, key: str) -> "PipelineStateSnapshot" | None:
         """Return a cached snapshot if available and not expired."""
 
         snapshot = self._entries.get(key)

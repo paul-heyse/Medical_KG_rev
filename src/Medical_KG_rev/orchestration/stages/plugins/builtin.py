@@ -49,14 +49,10 @@ import structlog
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
-from Medical_KG_rev.orchestration.dagster.stages import (
-    AdapterIngestStage,
-    AdapterParseStage,
-    HaystackPipelineResource,
-    IRValidationStage,
-    NoOpExtractStage,
-    NoOpKnowledgeGraphStage,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from Medical_KG_rev.orchestration.dagster.stages import HaystackPipelineResource
 from Medical_KG_rev.orchestration.haystack.components import (
     HaystackChunker,
     HaystackEmbedder,
@@ -149,7 +145,7 @@ class CoreStagePlugin(StagePlugin):
             )
         )
         self._adapter_manager: AdapterPluginManager | None = None
-        self._pipeline_resource: HaystackPipelineResource | None = None
+        self._pipeline_resource: "HaystackPipelineResource" | None = None
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize the plugin with required dependencies.
@@ -175,6 +171,8 @@ class CoreStagePlugin(StagePlugin):
         """
         if not isinstance(self._adapter_manager, AdapterPluginManager):
             raise RuntimeError("Adapter manager not available for core stage plugin")
+        from Medical_KG_rev.orchestration.dagster.stages import HaystackPipelineResource
+
         if not isinstance(self._pipeline_resource, HaystackPipelineResource):
             raise RuntimeError("Haystack pipeline resource not available")
 
@@ -198,6 +196,8 @@ class CoreStagePlugin(StagePlugin):
         stage_type = definition.stage_type
         config: Mapping[str, Any] = definition.config
         if stage_type == "ingest":
+            from Medical_KG_rev.orchestration.dagster.stages import AdapterIngestStage
+
             adapter = config.get("adapter")
             if not adapter:
                 raise ValueError(f"Stage '{definition.name}' requires an adapter")
@@ -213,8 +213,10 @@ class CoreStagePlugin(StagePlugin):
                 extra_parameters=parameters if isinstance(parameters, Mapping) else {},
             )
         if stage_type == "parse":
+            from Medical_KG_rev.orchestration.dagster.stages import AdapterParseStage
             return AdapterParseStage()
         if stage_type == "ir-validation":
+            from Medical_KG_rev.orchestration.dagster.stages import IRValidationStage
             return IRValidationStage()
         if stage_type == "chunk":
             splitter = self._pipeline_resource.splitter
@@ -229,8 +231,10 @@ class CoreStagePlugin(StagePlugin):
                 sparse_writer=self._pipeline_resource.sparse_writer,
             )
         if stage_type == "extract":
+            from Medical_KG_rev.orchestration.dagster.stages import NoOpExtractStage
             return NoOpExtractStage()
         if stage_type == "knowledge-graph":
+            from Medical_KG_rev.orchestration.dagster.stages import NoOpKnowledgeGraphStage
             return NoOpKnowledgeGraphStage()
         if stage_type == "pdf-download":
             return StorageAwarePdfDownloadStage()
@@ -488,4 +492,3 @@ __all__ = [
     "CoreStagePlugin",
     "PdfTwoPhasePlugin",
 ]
-

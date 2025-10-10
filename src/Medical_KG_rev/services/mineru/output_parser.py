@@ -218,6 +218,30 @@ class MineruOutputParser:
 
     """
 
+    def parse_json(self, json_content: str) -> ParsedDocument:
+        """Parse MinerU output from JSON content string.
+
+        Args:
+            json_content: MinerU output as JSON string
+
+        Returns:
+            Parsed document with all extracted content
+
+        Raises:
+            MineruOutputParserError: If JSON is invalid
+
+        Example:
+            >>> parser = MineruOutputParser()
+            >>> document = parser.parse_json('{"blocks": [...]}')
+            >>> assert len(document.blocks) > 0
+
+        """
+        try:
+            data = json.loads(json_content)
+            return self.parse_dict(data)
+        except json.JSONDecodeError as exc:
+            raise MineruOutputParserError(f"Invalid JSON content: {exc}") from exc
+
     def parse_path(self, path: Path) -> ParsedDocument:
         """Parse MinerU output from a file path.
 
@@ -244,11 +268,13 @@ class MineruOutputParser:
             raise MineruOutputParserError(f"Invalid MinerU JSON output: {exc}") from exc
         return self.parse_dict(payload)
 
-    def parse_dict(self, payload: dict[str, Any]) -> ParsedDocument:
-        """Parse MinerU output from a dictionary.
+    def parse_dict(self, payload: dict[str, Any] | list[Any]) -> ParsedDocument:
+        """Parse MinerU output from a dictionary or list.
 
         Args:
-            payload: Dictionary containing MinerU output data
+            payload: Dictionary or list containing MinerU output data
+                    - Old format (dict): {"document_id": "...", "blocks": [...]}
+                    - New format (list): [[{block}, {block}], [{block}]]  # pages of blocks
 
         Returns:
             Parsed document with all extracted content
@@ -263,6 +289,11 @@ class MineruOutputParser:
             >>> assert document.document_id == "doc-1"
 
         """
+        # Handle MinerU v2.5.4+ format (list of pages)
+        if isinstance(payload, list):
+            return self._parse_pages_format(payload)
+
+        # Handle old format (dict)
         document_id = str(payload.get("document_id", ""))
         if not document_id:
             raise MineruOutputParserError("MinerU output missing 'document_id'")
@@ -288,6 +319,94 @@ class MineruOutputParser:
             tables=len(tables),
             figures=len(figures),
             equations=len(equations),
+        )
+        return parsed
+
+    def _parse_pages_format(self, pages: list[list[dict[str, Any]]]) -> ParsedDocument:
+        """Parse MinerU v2.5.4+ output format (list of pages).
+
+        Args:
+            pages: List of pages, where each page is a list of content blocks
+
+        Returns:
+            Parsed document with all extracted content
+
+        Note:
+            MinerU v2.5.4 outputs: [[{block}, {block}], [{block}]]
+            Each block has: type, content, bbox, angle
+
+        """
+        all_blocks: list[ContentBlock] = []
+        all_tables: list[Table] = []
+        all_figures: list[Figure] = []
+
+        import uuid
+
+        for page_num, page_blocks in enumerate(pages):
+            for block_data in page_blocks:
+                block_type = block_data.get("type", "text")
+                content = block_data.get("content", "")
+                bbox = block_data.get("bbox", [])
+
+                # Generate UUID-based unique IDs for each block
+                block_id = str(uuid.uuid4())
+
+                # Map MinerU v2.5.4 types to our internal types
+                if block_type in ("table", "table_caption"):
+                    # Tables in new format
+                    table = self._parse_table({
+                        "id": block_id,
+                        "content": content,
+                        "bbox": bbox,
+                        "page_number": page_num,
+                        "metadata": {"mineru_type": block_type}
+                    })
+                    all_tables.append(table)
+                elif block_type in ("image", "figure", "figure_caption"):
+                    # Figures in new format
+                    figure = self._parse_figure({
+                        "id": block_id,
+                        "content": content,
+                        "bbox": bbox,
+                        "page_number": page_num,
+                        "metadata": {"mineru_type": block_type}
+                    })
+                    all_figures.append(figure)
+                else:
+                    # Everything else is a content block
+                    block = self._parse_block({
+                        "id": block_id,
+                        "block_type": block_type,  # header, title, text, etc.
+                        "text": content,  # Use 'text' instead of 'content' for ParsedBlock
+                        "bbox": bbox,
+                        "page": page_num,
+                        "metadata": {"angle": block_data.get("angle", 0)}
+                    })
+                    all_blocks.append(block)
+
+        # Generate a document_id from content hash if not provided
+        import hashlib
+        content_str = "".join(b.text or "" for b in all_blocks[:10] if b.text)  # First 10 blocks with text
+        if not content_str and all_blocks:
+            content_str = str(len(all_blocks))  # Fallback to block count
+        document_id = f"mineru_{hashlib.md5(content_str.encode()).hexdigest()[:12]}"
+
+        parsed = ParsedDocument(
+            document_id=document_id,
+            blocks=all_blocks,
+            tables=all_tables,
+            figures=all_figures,
+            equations=[],  # v2.5.4 doesn't separate equations
+            metadata={"format": "mineru_v2.5.4", "pages": len(pages)}
+        )
+
+        logger.debug(
+            "mineru.output.parsed_v2.5.4",
+            document_id=document_id,
+            pages=len(pages),
+            blocks=len(all_blocks),
+            tables=len(all_tables),
+            figures=len(all_figures),
         )
         return parsed
 

@@ -621,7 +621,7 @@ The system SHALL provide health checks and metrics per vector store backend.
 
 - **Upstream**: `add-universal-embedding-system` (embeddings must be generated)
 - **Downstream**: `add-reranking-fusion-system` (reranking consumes retrieval results)
-- **Python packages**: `qdrant-client`, `faiss-gpu`, `pymilvus`, `opensearch-py`, `weaviate-client`, `pgvector`, `hnswlib`, `nmslib`, `annoy`, `scann`
+- **Python packages**: `qdrant-client`, `faiss-cpu`, `pymilvus`, `opensearch-py`, `weaviate-client`, `pgvector`, `hnswlib`, `nmslib`, `annoy`, `scann`
 
 ---
 

@@ -42,7 +42,7 @@ The archived MinerU implementation (`openspec/changes/archive/add-mineru-gpu-cli
 
 This design is based on official documentation from:
 
-- **vLLM Docker Deployment**: [https://docs.vllm.ai/en/v0.8.4/deployment/docker.html](https://docs.vllm.ai/en/v0.8.4/deployment/docker.html)
+- **vLLM Docker Deployment**: [https://docs.vllm.ai/en/v0.11.0/deployment/docker.html](https://docs.vllm.ai/en/v0.11.0/deployment/docker.html)
 - **vLLM OpenAI-Compatible Server**: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
 - **MinerU Docker Deployment**: [https://opendatalab.github.io/MinerU/quick_start/docker_deployment/](https://opendatalab.github.io/MinerU/quick_start/docker_deployment/)
 - **MinerU HTTP Client Mode**: [https://opendatalab.github.io/MinerU/usage/quick_usage/](https://opendatalab.github.io/MinerU/usage/quick_usage/)
@@ -183,7 +183,7 @@ services:
 
 **References**:
 
-- vLLM Docker guide: [https://docs.vllm.ai/en/v0.8.4/deployment/docker.html](https://docs.vllm.ai/en/v0.8.4/deployment/docker.html)
+- vLLM Docker guide: [https://docs.vllm.ai/en/v0.11.0/deployment/docker.html](https://docs.vllm.ai/en/v0.11.0/deployment/docker.html)
 - OpenAI server docs: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
 
 ### Decision 2: Qwen2.5-VL-7B-Instruct as Vision-Language Model
@@ -452,7 +452,7 @@ networks:
 
 **References**:
 
-- vLLM Docker guide: [https://docs.vllm.ai/en/v0.8.4/deployment/docker.html](https://docs.vllm.ai/en/v0.8.4/deployment/docker.html)
+- vLLM Docker guide: [https://docs.vllm.ai/en/v0.11.0/deployment/docker.html](https://docs.vllm.ai/en/v0.11.0/deployment/docker.html)
 - MinerU Docker deployment: [https://opendatalab.github.io/MinerU/quick_start/docker_deployment/](https://opendatalab.github.io/MinerU/quick_start/docker_deployment/)
 
 ### Decision 6: Kubernetes Service for Load Balancing
@@ -1179,7 +1179,7 @@ RUN python -c "from huggingface_hub import snapshot_download; \
 
 ### Official Documentation
 
-- **vLLM Docker**: [https://docs.vllm.ai/en/v0.8.4/deployment/docker.html](https://docs.vllm.ai/en/v0.8.4/deployment/docker.html)
+- **vLLM Docker**: [https://docs.vllm.ai/en/v0.11.0/deployment/docker.html](https://docs.vllm.ai/en/v0.11.0/deployment/docker.html)
 - **vLLM OpenAI Server**: [https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
 - **vLLM Continuous Batching**: [https://docs.vllm.ai/en/stable/index.html](https://docs.vllm.ai/en/stable/index.html)
 - **Qwen2.5-VL**: [https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen2.5-VL.html](https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen2.5-VL.html)

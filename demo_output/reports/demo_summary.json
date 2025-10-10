@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-10-09 15:44:41",
+  "demo_type": "PDF Processing Simulation",
+  "sample_size": 20,
+  "email": "paul@heyse.io",
+  "results": {
+    "papers_fetched": 5,
+    "papers_with_pdfs": 5,
+    "pdfs_downloaded": 3,
+    "pdfs_processed": 0,
+    "processing_errors": 3,
+    "processing_details": [
+      {
+        "paper_id": "https://openalex.org/W2171860505",
+        "title": "Machine learning, medical diagnosis, and biomedical engineering research - commentary",
+        "error": "'ProcessingMetadata' object has no attribute 'processing_time_ms'",
+        "success": false
+      },
+      {
+        "paper_id": "https://openalex.org/W3048817558",
+        "title": "Improving the accuracy of medical diagnosis with causal machine learning",
+        "error": "'ProcessingMetadata' object has no attribute 'processing_time_ms'",
+        "success": false
+      },
+      {
+        "paper_id": "https://openalex.org/W2468387181",
+        "title": "Machine learning approaches in medical image analysis: From detection to diagnosis",
+        "error": "'ProcessingMetadata' object has no attribute 'processing_time_ms'",
+        "success": false
+      }
+    ]
+  },
+  "success_rate": {
+    "papers_fetched": 5,
+    "papers_with_pdfs": 5,
+    "pdfs_downloaded": 3,
+    "pdfs_processed": 0,
+    "processing_errors": 3,
+    "pdf_availability_rate": 1.0,
+    "processing_success_rate": 0.0
+  }
+}

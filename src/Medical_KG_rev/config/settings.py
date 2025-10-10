@@ -91,6 +91,70 @@ class ObjectStorageSettings(BaseModel):
     )
 
 
+class ConnectorPdfSettings(BaseModel):
+    """Shared configuration for PDF-capable connectors."""
+
+    contact_email: str = Field(
+        default="oss@medical-kg.local",
+        description="Contact email supplied for polite pool compliance",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        description="Custom user agent string used for outbound requests",
+    )
+    requests_per_second: float = Field(
+        default=3.0,
+        gt=0,
+        description="Target requests-per-second budget enforced per connector",
+    )
+    burst: int = Field(
+        default=3,
+        ge=1,
+        description="Burst size for short spikes above the steady RPS budget",
+    )
+    timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="HTTP client timeout applied to download requests",
+    )
+    max_file_size_mb: float = Field(
+        default=100.0,
+        gt=0,
+        description="Maximum PDF size accepted from the connector in megabytes",
+    )
+    retry_attempts: int = Field(
+        default=3,
+        ge=0,
+        description="Number of retry attempts for failed downloads",
+    )
+    retry_backoff_seconds: float = Field(
+        default=1.0,
+        ge=0.0,
+        description="Base backoff delay between retries",
+    )
+    max_redirects: int = Field(
+        default=5,
+        ge=0,
+        description="Maximum number of redirects followed during downloads",
+    )
+
+    def polite_headers(self) -> dict[str, str]:
+        """Return polite pool headers used by HTTP clients."""
+
+        headers: dict[str, str] = {}
+        if self.contact_email:
+            headers.setdefault("From", self.contact_email)
+        if self.user_agent:
+            headers.setdefault("User-Agent", self.user_agent)
+        return headers
+
+    @property
+    def max_file_size_bytes(self) -> int:
+        """Expose the configured maximum PDF size in bytes."""
+
+        return int(self.max_file_size_mb * 1024 * 1024)
+
+
 class RedisCacheSettings(BaseModel):
     """Redis cache configuration for PDF metadata."""
 
@@ -124,7 +188,7 @@ class OpenAlexSettings(BaseModel):
     )
     pdf: ConnectorPdfSettings = Field(
         default_factory=lambda: ConnectorPdfSettings(
-            contact_email="oss@medical-kg.local",
+            contact_email="paul@heyse.io",
             requests_per_second=5.0,
             burst=5,
             timeout_seconds=30.0,
@@ -623,70 +687,6 @@ class RedisCacheSettings(BaseModel):
     key_prefix: str = Field(default="medical-kg", description="Key prefix for cache entries")
     default_ttl: int = Field(default=3600, ge=0, description="Default TTL in seconds")
     max_connections: int = Field(default=10, ge=1, description="Maximum connection pool size")
-
-
-class ConnectorPdfSettings(BaseModel):
-    """Shared configuration for PDF-capable connectors."""
-
-    contact_email: str = Field(
-        default="oss@medical-kg.local",
-        description="Contact email supplied for polite pool compliance",
-    )
-    user_agent: str | None = Field(
-        default=None,
-        description="Custom user agent string used for outbound requests",
-    )
-    requests_per_second: float = Field(
-        default=3.0,
-        gt=0,
-        description="Target requests-per-second budget enforced per connector",
-    )
-    burst: int = Field(
-        default=3,
-        ge=1,
-        description="Burst size for short spikes above the steady RPS budget",
-    )
-    timeout_seconds: float = Field(
-        default=30.0,
-        gt=0,
-        description="HTTP client timeout applied to download requests",
-    )
-    max_file_size_mb: float = Field(
-        default=100.0,
-        gt=0,
-        description="Maximum PDF size accepted from the connector in megabytes",
-    )
-    retry_attempts: int = Field(
-        default=3,
-        ge=0,
-        description="Number of retry attempts for failed downloads",
-    )
-    retry_backoff_seconds: float = Field(
-        default=1.0,
-        ge=0.0,
-        description="Base backoff delay between retries",
-    )
-    max_redirects: int = Field(
-        default=5,
-        ge=0,
-        description="Maximum number of redirects followed during downloads",
-    )
-
-    def polite_headers(self) -> dict[str, str]:
-        """Return polite pool headers used by HTTP clients."""
-
-        headers: dict[str, str] = {}
-        if self.contact_email:
-            headers.setdefault("From", self.contact_email)
-        if self.user_agent:
-            headers.setdefault("User-Agent", self.user_agent)
-        return headers
-
-    @property
-    def max_file_size_bytes(self) -> int:
-        """Expose the configured maximum PDF size in bytes."""
-
-        return int(self.max_file_size_mb * 1024 * 1024)
 
 
 def migrate_reranking_config(payload: Mapping[str, Any]) -> RerankingSettings:

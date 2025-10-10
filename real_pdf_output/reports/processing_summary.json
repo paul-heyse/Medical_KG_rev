@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-10-09 15:46:58",
+  "input_directory": "random_papers_output/pdfs",
+  "output_directory": "real_pdf_output",
+  "results": {
+    "pdfs_found": 2,
+    "pdfs_processed": 0,
+    "processing_errors": 2,
+    "processing_details": [
+      {
+        "pdf_file": "random_papers_output/pdfs/W2162544110.pdf",
+        "error": "Simulated CLI expects UTF-8 encoded content",
+        "success": false
+      },
+      {
+        "pdf_file": "random_papers_output/pdfs/W2497721881.pdf",
+        "error": "Simulated CLI expects UTF-8 encoded content",
+        "success": false
+      }
+    ]
+  },
+  "success_rate": {
+    "pdfs_found": 2,
+    "pdfs_processed": 0,
+    "processing_errors": 2,
+    "processing_success_rate": 0.0
+  }
+}

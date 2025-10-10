@@ -1,0 +1,20 @@
+{
+  "paper_id": "https://openalex.org/W2497721881",
+  "title": "World Medical Association Declaration of Helsinki: Ethical Principles for Medical Research Involving Human Subjects",
+  "doi": "10.1093/ACPROF:OSO/9780199241323.003.0025",
+  "pdf_size_mb": 0.13956546783447266,
+  "processing_time_seconds": 3.4806690216064453,
+  "document_blocks": 51,
+  "tables_extracted": 0,
+  "figures_extracted": 0,
+  "document_id": "W2497721881",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 3480,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "success": true,
+  "timestamp": "2025-10-09 20:23:01"
+}

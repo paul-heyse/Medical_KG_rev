@@ -261,7 +261,7 @@ fastapi==0.104.1          # Multi-protocol API gateway
 pydantic==2.5.0           # Data validation and serialization
 sqlalchemy==2.0.23        # Database ORM and query building
 structlog==23.2.0         # Structured logging framework
-tenacity==8.2.3           # Retry logic with exponential backoff
+tenacity>=8.2,<9           # Retry logic with exponential backoff
 pybreaker==0.6.0          # Circuit breaker pattern
 aiolimiter==1.1.0         # Async rate limiting
 ```
@@ -300,9 +300,9 @@ redis-py-cluster==2.1.3    # Redis cluster client
 boto3==1.40.45            # AWS SDK for object storage
 kafka-python-ng==2.2.2    # Kafka client for messaging
 grpcio>=1.75.1            # gRPC framework
-grpcio-tools>=1.62.3      # Protocol buffer compiler
-grpcio-health-checking>=1.62.3 # gRPC health checking
-grpcio-status>=1.62.3    # gRPC status handling
+grpcio-tools>=1.75.1      # Protocol buffer compiler
+grpcio-health-checking>=1.75.1 # gRPC health checking
+grpcio-status>=1.75.1    # gRPC status handling
 ```
 
 **Observability & Monitoring:**

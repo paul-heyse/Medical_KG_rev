@@ -1,205 +1,222 @@
-version: '3.9'
+version: "3.9"
 
 services:
-  gateway:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    image: medical-kg/gateway:dev
-    environment:
-      MK_ENV: dev
-      MK_TELEMETRY__EXPORTER: jaeger
-      MK_TELEMETRY__ENDPOINT: http://jaeger:4318
-      MK_OBSERVABILITY__LOGGING__LEVEL: INFO
-      MK_OBSERVABILITY__SENTRY__DSN: ''
-      MK_OBSERVABILITY__METRICS__PATH: /metrics
-      MK_OBSERVABILITY__LOGGING__CORRELATION_ID_HEADER: X-Correlation-ID
-      MK_SECURITY__OAUTH__ISSUER: https://idp.local/realms/medical
-      MK_SECURITY__OAUTH__AUDIENCE: medical-kg
-      MK_SECURITY__OAUTH__TOKEN_URL: https://idp.local/realms/medical/protocol/openid-connect/token
-      MK_SECURITY__OAUTH__JWKS_URL: https://idp.local/realms/medical/protocol/openid-connect/certs
-      MK_SECURITY__OAUTH__CLIENT_ID: medical-gateway
-      MK_SECURITY__OAUTH__CLIENT_SECRET: dev-secret
-      MK_EMBEDDING__POLICY__CACHE_TTL_SECONDS: '60'
-      MK_EMBEDDING__POLICY__MAX_CACHE_ENTRIES: '512'
-      MK_EMBEDDING__POLICY__DRY_RUN: 'false'
-      MK_EMBEDDING__PERSISTER__BACKEND: vector_store
-      MK_EMBEDDING__PERSISTER__CACHE_LIMIT: '256'
-    ports:
-      - '8000:8000'
-    depends_on:
-      kafka:
-        condition: service_started
-      neo4j:
-        condition: service_healthy
-      opensearch:
-        condition: service_healthy
-      jaeger:
-        condition: service_started
-      prometheus:
-        condition: service_started
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/metrics']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    gateway:
+        build:
+            context: ..
+            dockerfile: Dockerfile
+        image: medical-kg/gateway:dev
+        environment:
+            MK_ENV: dev
+            MK_TELEMETRY__EXPORTER: jaeger
+            MK_TELEMETRY__ENDPOINT: http://jaeger:4318
+            MK_OBSERVABILITY__LOGGING__LEVEL: INFO
+            MK_OBSERVABILITY__SENTRY__DSN: ""
+            MK_OBSERVABILITY__METRICS__PATH: /metrics
+            MK_OBSERVABILITY__LOGGING__CORRELATION_ID_HEADER: X-Correlation-ID
+            MK_SECURITY__OAUTH__ISSUER: https://idp.local/realms/medical
+            MK_SECURITY__OAUTH__AUDIENCE: medical-kg
+            MK_SECURITY__OAUTH__TOKEN_URL: https://idp.local/realms/medical/protocol/openid-connect/token
+            MK_SECURITY__OAUTH__JWKS_URL: https://idp.local/realms/medical/protocol/openid-connect/certs
+            MK_SECURITY__OAUTH__CLIENT_ID: medical-gateway
+            MK_SECURITY__OAUTH__CLIENT_SECRET: dev-secret
+            MK_EMBEDDING__POLICY__CACHE_TTL_SECONDS: "60"
+            MK_EMBEDDING__POLICY__MAX_CACHE_ENTRIES: "512"
+            MK_EMBEDDING__POLICY__DRY_RUN: "false"
+            MK_EMBEDDING__PERSISTER__BACKEND: vector_store
+            MK_EMBEDDING__PERSISTER__CACHE_LIMIT: "256"
+        ports:
+            - "8000:8000"
+        depends_on:
+            kafka:
+                condition: service_started
+            neo4j:
+                condition: service_healthy
+            opensearch:
+                condition: service_healthy
+            jaeger:
+                condition: service_started
+            prometheus:
+                condition: service_started
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/metrics"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - '2181:2181'
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+        ports:
+            - "2181:2181"
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    depends_on:
-      - zookeeper
-    ports:
-      - '9092:9092'
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-    healthcheck:
-      test: ['CMD', 'kafka-topics', '--bootstrap-server', 'localhost:9092', '--list']
-      interval: 15s
-      timeout: 10s
-      retries: 10
+    kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        depends_on:
+            - zookeeper
+        ports:
+            - "9092:9092"
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "kafka-topics",
+                    "--bootstrap-server",
+                    "localhost:9092",
+                    "--list",
+                ]
+            interval: 15s
+            timeout: 10s
+            retries: 10
 
-  neo4j:
-    image: neo4j:5.12
-    environment:
-      NEO4J_AUTH: neo4j/testpassword
-      NEO4JLABS_PLUGINS: '["apoc"]'
-    ports:
-      - '7474:7474'
-      - '7687:7687'
-    volumes:
-      - neo4j-data:/data
-    healthcheck:
-      test: ['CMD-SHELL', 'neo4j status | grep "Running"']
-      interval: 15s
-      timeout: 10s
-      retries: 5
+    neo4j:
+        image: neo4j:5.12
+        environment:
+            NEO4J_AUTH: neo4j/testpassword
+            NEO4JLABS_PLUGINS: '["apoc"]'
+        ports:
+            - "7474:7474"
+            - "7687:7687"
+        volumes:
+            - neo4j-data:/data
+        healthcheck:
+            test: ["CMD-SHELL", 'neo4j status | grep "Running"']
+            interval: 15s
+            timeout: 10s
+            retries: 5
 
-  opensearch:
-    image: opensearchproject/opensearch:2.11.0
-    environment:
-      discovery.type: single-node
-      plugins.security.disabled: 'true'
-      OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m'
-    ports:
-      - '9200:9200'
-      - '9600:9600'
-    volumes:
-      - opensearch-data:/usr/share/opensearch/data
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -sSf http://localhost:9200 >/dev/null']
-      interval: 15s
-      timeout: 10s
-      retries: 5
+    opensearch:
+        image: opensearchproject/opensearch:2.11.0
+        environment:
+            discovery.type: single-node
+            plugins.security.disabled: "true"
+            OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+            - "9200:9200"
+            - "9600:9600"
+        volumes:
+            - opensearch-data:/usr/share/opensearch/data
+        healthcheck:
+            test: ["CMD-SHELL", "curl -sSf http://localhost:9200 >/dev/null"]
+            interval: 15s
+            timeout: 10s
+            retries: 5
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.53
-    ports:
-      - '16686:16686'
-      - '4317:4317'
-      - '4318:4318'
+    jaeger:
+        image: jaegertracing/all-in-one:1.53
+        ports:
+            - "16686:16686"
+            - "4317:4317"
+            - "4318:4318"
 
-  prometheus:
-    image: prom/prometheus:v2.49.1
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
-    ports:
-      - '9090:9090'
+    prometheus:
+        image: prom/prometheus:v2.49.1
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+        volumes:
+            - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+        ports:
+            - "9090:9090"
 
-  grafana:
-    image: grafana/grafana:10.4.3
-    depends_on:
-      - prometheus
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
-      - ./monitoring/grafana/dashboards/:/var/lib/grafana/dashboards/
-    ports:
-      - '3000:3000'
+    grafana:
+        image: grafana/grafana:10.4.3
+        depends_on:
+            - prometheus
+        environment:
+            GF_SECURITY_ADMIN_USER: admin
+            GF_SECURITY_ADMIN_PASSWORD: admin
+        volumes:
+            - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+            - ./monitoring/grafana/dashboards/:/var/lib/grafana/dashboards/
+        ports:
+            - "3000:3000"
 
-  vllm-server:
-    image: vllm/vllm-openai:v0.8.4
-    command: >
-      python -m vllm.entrypoints.openai.api_server \
-        --model Qwen/Qwen2.5-VL-7B-Instruct \
-        --host 0.0.0.0 \
-        --port 8000 \
-        --gpu-memory-utilization 0.92 \
-        --max-model-len 32768 \
-        --tensor-parallel-size 1 \
-        --dtype auto \
-        --enforce-eager
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    environment:
-      CUDA_VISIBLE_DEVICES: '0'
-    ports:
-      - '8000:8000'
-    volumes:
-      - ~/.cache/huggingface:/root/.cache/huggingface:ro
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
-    ipc: host
-    ulimits:
-      memlock: -1
-      stack: 67108864
+    vllm-server:
+        image: vllm/vllm-openai:v0.11.0
+        command: >
+            python -m vllm.entrypoints.openai.api_server \
+              --model Qwen/Qwen2.5-VL-7B-Instruct \
+              --host 0.0.0.0 \
+              --port 8000 \
+              --gpu-memory-utilization 0.92 \
+              --max-model-len 32768 \
+              --tensor-parallel-size 1 \
+              --dtype auto \
+              --enforce-eager
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        environment:
+            CUDA_VISIBLE_DEVICES: "0"
+        ports:
+            - "8000:8000"
+        volumes:
+            - ~/.cache/huggingface:/root/.cache/huggingface:ro
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 120s
+        ipc: host
+        ulimits:
+            memlock: -1
+            stack: 67108864
 
-  mineru-worker:
-    image: ghcr.io/your-org/mineru-worker:split-container
-    environment:
-      MK_MINERU__VLLM_SERVER__BASE_URL: http://vllm-server:8000
-      MK_MINERU__WORKERS__BACKEND: vlm-http-client
-      MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: '10'
-      MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: '5'
-      MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: '3'
-    depends_on:
-      vllm-server:
-        condition: service_healthy
+    mineru-worker:
+        build:
+            context: ..
+            dockerfile: ops/docker/Dockerfile.mineru-worker
+        image: medical-kg/mineru-worker:dev
+        environment:
+            MK_MINERU__VLLM_SERVER__BASE_URL: http://vllm-server:8000
+            MK_MINERU__WORKERS__BACKEND: vlm-http-client
+            MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: "10"
+            MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: "5"
+            MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: "3"
+            PYTHONPATH: /app
+        depends_on:
+            vllm-server:
+                condition: service_healthy
+        healthcheck:
+            test:
+                ["CMD", "python", "-c", "import Medical_KG_rev.services.mineru"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
 
-  loki:
-    image: grafana/loki:2.9.7
-    command: ['-config.file=/etc/loki/local-config.yaml']
-    volumes:
-      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
-    ports:
-      - '3100:3100'
+    loki:
+        image: grafana/loki:2.9.7
+        command: ["-config.file=/etc/loki/local-config.yaml"]
+        volumes:
+            - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+        ports:
+            - "3100:3100"
 
-  promtail:
-    image: grafana/promtail:2.9.7
-    command: ['-config.file=/etc/promtail/config.yml']
-    volumes:
-      - /var/log:/var/log:ro
-      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
-    depends_on:
-      - loki
+    promtail:
+        image: grafana/promtail:2.9.7
+        command: ["-config.file=/etc/promtail/config.yml"]
+        volumes:
+            - /var/log:/var/log:ro
+            - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+        depends_on:
+            - loki
 
 volumes:
-  neo4j-data:
-  opensearch-data:
+    neo4j-data:
+    opensearch-data:

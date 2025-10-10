@@ -299,7 +299,7 @@
 
   ```txt
   pyserini>=0.22.0
-  faiss-gpu>=1.7.4
+  faiss-cpu>=1.12.0
   redis[hiredis]>=5.0.0
   ```
 
@@ -2052,7 +2052,7 @@
 | 3. vLLM Dense Embedding | 15 | Week 1-2 | **LIBRARY**: vllm>=0.3.0, openai>=1.0.0 |
 | 4. Pyserini Sparse Embedding | 12 | Week 1-2 | **LIBRARY**: pyserini>=0.22.0 |
 | 5. Multi-Namespace Registry | 15 | Week 2 | **LIBRARY**: pydantic-settings |
-| 6. FAISS Storage Integration | 12 | Week 2-3 | **LIBRARY**: faiss-gpu>=1.7.4 |
+| 6. FAISS Storage Integration | 12 | Week 2-3 | **LIBRARY**: faiss-cpu>=1.12.0 |
 | 7. Testing | 81 | Week 3-4 | Core requirement |
 | 8. Performance Optimization | 10 | Week 3 | Core requirement |
 | 9. Monitoring & Observability | 10 | Week 3 | **Enhanced from Gap Analysis** |
@@ -2067,7 +2067,7 @@
 
 - **vllm>=0.3.0** - OpenAI-compatible serving for Qwen3-Embedding-8B
 - **pyserini>=0.22.0** - SPLADE-v3 wrapper with document-side expansion
-- **faiss-gpu>=1.7.4** - GPU-accelerated dense vector search (HNSW index)
+- **faiss-cpu>=1.12.0** - FAISS dense vector search (CPU build, HNSW index)
 - **openai>=1.0.0** - Client library for vLLM OpenAI-compatible API
 - **transformers>=4.38.0** - Qwen3 tokenizer for token budget validation
 - **pydantic-settings** - Configuration management (vLLM, namespace registry, Pyserini)

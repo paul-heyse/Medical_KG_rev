@@ -73,17 +73,23 @@ services:
             retries: 5
 
     vllm-server:
-        image: vllm/vllm-openai:v0.8.4
-        command: >
-            python -m vllm.entrypoints.openai.api_server \
-              --model Qwen/Qwen2.5-VL-7B-Instruct \
-              --host 0.0.0.0 \
-              --port 8000 \
-              --gpu-memory-utilization 0.92 \
-              --max-model-len 32768 \
-              --tensor-parallel-size 1 \
-              --dtype auto \
-              --enforce-eager
+        image: vllm/vllm-openai:v0.11.0
+        command:
+            - --model
+            - opendatalab/MinerU2.5-2509-1.2B
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8000"
+            - --gpu-memory-utilization
+            - "0.75"
+            - --max-model-len
+            - "8192"
+            - --tensor-parallel-size
+            - "1"
+            - --dtype
+            - auto
+            - --trust-remote-code
         deploy:
             resources:
                 reservations:
@@ -109,18 +115,28 @@ services:
             - medical-kg-net
 
     mineru-worker:
-        image: ghcr.io/your-org/mineru-worker:split-container
+        build:
+            context: .
+            dockerfile: ops/docker/Dockerfile.mineru-worker
+        image: medical-kg/mineru-worker:latest
         environment:
             MK_MINERU__VLLM_SERVER__BASE_URL: http://vllm-server:8000
             MK_MINERU__WORKERS__BACKEND: vlm-http-client
-            MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: '10'
-            MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: '5'
-            MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: '3'
+            MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: "10"
+            MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: "5"
+            MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: "3"
+            PYTHONPATH: /app
         depends_on:
             vllm-server:
                 condition: service_healthy
         networks:
             - medical-kg-net
+        healthcheck:
+            test:
+                ["CMD", "python", "-c", "import Medical_KG_rev.services.mineru"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
 
     vllm-qwen3:
         build:
@@ -147,7 +163,8 @@ volumes:
     neo4j-data:
 
 networks:
-  default:
-    name: medical-kg-network
-  medical-kg-net:
-    external: true
+    default:
+        name: medical-kg-network
+    medical-kg-net:
+        name: medical-kg-network
+        driver: bridge

@@ -16,7 +16,7 @@
 - [x] 1.11 **Integrate `pyalex>=0.1.0`**: Design OpenAlex adapter using official pyalex client for PDF retrieval
 - [ ] 1.12 **Integrate `httpx>=0.28.1`**: Replace legacy HTTP clients with modern async httpx for all adapters
 - [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic with exponential backoff for external API calls
-- [ ] 1.14 **Integrate `pydantic>=2.11.10`**: Design typed adapter request/response models with validation
+- [ ] 1.14 **Integrate `pydantic>=2.7,<2.11`**: Design typed adapter request/response models with validation
 - [ ] 1.15 **Integrate `pluggy>=1.6.0`**: Ensure adapter decomposition works with existing plugin system
 - [ ] 1.16 **Integrate `aiohttp>=3.12.15`**: Add async HTTP client support for high-throughput adapters
 - [ ] 1.17 **Integrate `aiolimiter>=1.2.1`**: Implement rate limiting for external API compliance

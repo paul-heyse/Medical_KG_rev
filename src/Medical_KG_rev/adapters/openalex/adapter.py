@@ -175,15 +175,23 @@ class OpenAlexAdapter(BaseAdapter, PdfManifestMixin, StorageHelperMixin):
         documents: list[Document] = []
         for payload in payloads:
             work = dict(payload)
-            document = self._build_document(work)
             manifest_assets = work.get("pdf_assets")
+
+            # Build document with manifest metadata included
             if isinstance(manifest_assets, Sequence) and manifest_assets:
                 manifest = self.build_pdf_manifest(
                     connector="openalex",
                     assets=cast(Sequence[Mapping[str, Any]], manifest_assets),
                     polite_headers=self._polite_headers,
                 )
-                self.attach_manifest_to_documents([document], manifest)
+                # Include manifest in the work data before building document
+                work["pdf_manifest"] = manifest.as_metadata()
+                urls = list(manifest.pdf_urls())
+                if urls:
+                    work.setdefault("pdf_urls", urls)
+                    work["document_type"] = "pdf"
+
+            document = self._build_document(work)
             documents.append(document)
         return documents
 
@@ -313,6 +321,11 @@ def _build_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
         "oa_status": open_access.get("oa_status"),
         "pdf_assets": list(pdf_assets),
     }
+
+    # Include PDF manifest if present
+    pdf_manifest = payload.get("pdf_manifest")
+    if pdf_manifest:
+        metadata["pdf_manifest"] = pdf_manifest
 
     if pdf_urls:
         metadata["pdf_urls"] = list(pdf_urls)

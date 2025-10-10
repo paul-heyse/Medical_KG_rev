@@ -147,7 +147,7 @@
 ## 2. Foundation & Dependencies
 
 - [x] 2.1 Add **langchain-text-splitters>=0.2.0** to requirements.txt
-- [x] 2.2 Add **llama-index-core>=0.10.0** for node parsers
+- [x] 2.2 Add **llama-index-core>=0.12.0,<0.12.1** for node parsers
 - [x] 2.3 Document Hugging Face tokenizer requirement for sentence segmentation
 - [x] 2.4 Add **syntok>=1.4.4** for fast sentence splitting
 - [x] 2.5 Add **unstructured[local-inference]>=0.12.0** for XML/HTML

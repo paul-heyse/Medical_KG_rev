@@ -805,7 +805,7 @@ watch -n 1 nvidia-smi
 
 ```txt
 pyserini>=0.22.0       # SPLADE-v3 wrapper with document-side expansion
-faiss-gpu>=1.7.4       # GPU-accelerated dense vector search
+faiss-cpu>=1.12.0      # FAISS dense vector search (CPU build)
 redis[hiredis]>=5.0.0  # Embedding cache backend
 ```
 

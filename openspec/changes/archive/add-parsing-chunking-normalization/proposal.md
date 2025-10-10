@@ -117,7 +117,7 @@ This proposal **replaces fragmented parsing/chunking with a unified, library-bas
 ```txt
 # Parsing & Chunking
 langchain-text-splitters>=0.2.0
-llama-index-core>=0.10.0
+llama-index-core>=0.12.0,<0.12.1
 transformers>=4.38.0  # Hugging Face tokenizers for segmentation and Qwen3 alignment
 syntok>=1.4.4  # Fast sentence splitter
 unstructured[local-inference]>=0.12.0

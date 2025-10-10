@@ -307,7 +307,7 @@ openspec validate add-parsing-chunking-normalization --strict
 
 ```txt
 langchain-text-splitters>=0.2.0
-llama-index-core>=0.10.0
+llama-index-core>=0.12.0,<0.12.1
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0

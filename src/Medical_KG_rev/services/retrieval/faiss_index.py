@@ -12,7 +12,7 @@ import numpy as np
 try:  # pragma: no cover - dependency guard
     import faiss  # type: ignore import-not-found
 except ModuleNotFoundError as exc:  # pragma: no cover - exercised in minimal envs
-    raise RuntimeError("faiss-gpu must be installed to use FAISSIndex") from exc
+    raise RuntimeError("faiss-cpu must be installed to use FAISSIndex") from exc
 
 from Medical_KG_rev.services import GpuNotAvailableError
 

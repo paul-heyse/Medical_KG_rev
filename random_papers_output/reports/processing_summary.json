@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-10-09 20:24:15",
+  "test_type": "end_to_end_mineru_vllm_docker",
+  "sample_size": 3,
+  "email": "paul@heyse.io",
+  "docker_integration": {
+    "vllm_server_url": "http://localhost:8000/",
+    "vllm_healthy": true,
+    "backend_type": "vllm-http-client"
+  },
+  "results": {
+    "papers_fetched": 3,
+    "papers_with_pdfs": 1,
+    "pdfs_downloaded": 1,
+    "pdfs_processed": 1,
+    "processing_errors": 0,
+    "total_processing_time": 5.036961793899536,
+    "average_processing_time": 5.036961793899536,
+    "total_blocks_extracted": 162,
+    "total_tables_extracted": 0
+  },
+  "success_rates": {
+    "pdf_availability_rate": 0.3333333333333333,
+    "processing_success_rate": 1.0
+  },
+  "processing_details": [
+    {
+      "paper_id": "https://openalex.org/W2162544110",
+      "title": "Developing and evaluating complex interventions: the new Medical Research Council guidance",
+      "doi": "10.1136/BMJ.A1655",
+      "pdf_size_mb": 0.9506988525390625,
+      "processing_time_seconds": 5.036961793899536,
+      "document_blocks": 162,
+      "tables_extracted": 0,
+      "figures_extracted": 0,
+      "document_id": "W2162544110",
+      "processing_metadata": {
+        "worker_id": "MainThread",
+        "processing_time_ms": 5036,
+        "gpu_utilization": null,
+        "vllm_backend": true,
+        "backend_url": "http://localhost:8000/"
+      },
+      "success": true,
+      "timestamp": "2025-10-09 20:24:15"
+    }
+  ]
+}

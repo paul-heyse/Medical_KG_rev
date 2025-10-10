@@ -1,19 +1,47 @@
 FROM python:3.12-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
 WORKDIR /app
 
-# Install only CPU dependencies
-RUN pip install --no-cache-dir \
-    mineru[cpu] \
-    httpx \
-    tenacity \
-    pydantic \
-    prometheus-client
+# Install system dependencies required for MinerU and other packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements files
+COPY requirements.txt requirements-dev.txt pyproject.toml ./
+
+# Install Python dependencies
+# Install only CPU-based MinerU to avoid GPU dependencies in worker
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir structlog prometheus-client
 
 # Copy application code
 COPY src/ /app/src/
 COPY config/ /app/config/
 
-ENV PYTHONPATH=/app
+# Install the package
+RUN pip install --no-cache-dir -e .
+
+# Health check to verify imports work
+RUN python -c "import Medical_KG_rev.services.mineru; print('MinerU service imported successfully')"
+
+# Run as non-root user for security
+RUN useradd -m -u 1000 mineru && \
+    chown -R mineru:mineru /app
+USER mineru
 
 CMD ["python", "-m", "Medical_KG_rev.services.mineru.worker"]

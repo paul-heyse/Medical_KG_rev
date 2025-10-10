@@ -13,8 +13,8 @@
 
 ### Critical Library Integration Requirements
 
-- [ ] 1.11 **Integrate `dagster>=1.11.13`**: Design orchestration client using Dagster's execution model
-- [ ] 1.12 **Integrate `pydantic>=2.11.10`**: Design typed orchestration result models with validation
+- [ ] 1.11 **Integrate `dagster>=1.11.14`**: Design orchestration client using Dagster's execution model
+- [ ] 1.12 **Integrate `pydantic>=2.7,<2.11`**: Design typed orchestration result models with validation
 - [ ] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic for Dagster submission failures
 - [ ] 1.14 **Integrate `structlog`**: Add structured logging for orchestration operations
 - [ ] 1.15 **Integrate `pybreaker>=1.4.1`**: Add circuit breaker patterns for Dagster resilience

@@ -301,7 +301,11 @@ class MineruPipeline:
                 ).warning("mineru.pipeline.output_without_request")
                 continue
             try:
-                parsed = self._parser.parse_path(output.path)
+                # Use json_content if available (MinerU v2.5.4+), otherwise fall back to path
+                if hasattr(output, 'json_content'):
+                    parsed = self._parser.parse_json(output.json_content)
+                else:
+                    parsed = self._parser.parse_path(output.path)
             except MineruOutputParserError as exc:
                 logger.bind(
                     document_id=output.document_id,

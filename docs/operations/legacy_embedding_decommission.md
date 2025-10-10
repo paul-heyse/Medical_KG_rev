@@ -39,7 +39,7 @@ modules during the deployment pivot.
 - `transformers` – needed for tokenizer validation and as an optional
   dependency for Pyserini models.  Version is pinned to `>=4.38.0` for Qwen3
   compatibility.
-- `faiss-gpu` – replaces bespoke vector search code.
+- `faiss-cpu` – replaces bespoke vector search code.
 - `pyserini` – replaces SPLADE Python wrapper.
 
 ## 2. Test Inventory (Task 1.1.3)

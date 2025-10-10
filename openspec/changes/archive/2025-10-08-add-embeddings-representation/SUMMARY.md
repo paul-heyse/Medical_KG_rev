@@ -595,7 +595,7 @@ kubectl rollout undo deployment/embedding-service
 # New libraries
 vllm>=0.3.0
 pyserini>=0.22.0
-faiss-gpu>=1.7.4
+faiss-cpu>=1.12.0
 
 # Updated libraries
 transformers>=4.38.0

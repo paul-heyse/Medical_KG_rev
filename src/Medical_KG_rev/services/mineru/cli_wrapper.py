@@ -128,27 +128,30 @@ class MineruCliInput:
 class MineruCliOutput:
     """Represents a parsed output artifact produced by the CLI.
 
-    Contains the document identifier and path to the generated
-    JSON output file from MinerU CLI processing.
+    Contains the document identifier, path, and JSON content from
+    MinerU CLI processing.
 
     Attributes:
         document_id: Unique identifier for the processed document
         path: Path to the generated JSON output file
+        json_content: The JSON content as a string (for temp file handling)
 
     Invariants:
         - document_id is never empty
-        - path points to an existing file
+        - json_content is valid JSON string
 
     Example:
         >>> output = MineruCliOutput(
         ...     document_id="doc_123",
-        ...     path=Path("/tmp/output/doc_123.json")
+        ...     path=Path("/tmp/output/doc_123.json"),
+        ...     json_content='{"key": "value"}'
         ... )
 
     """
 
     document_id: str
     path: Path
+    json_content: str
 
 
 @dataclass(slots=True)
@@ -335,23 +338,20 @@ class SubprocessMineruCli(MineruCliBase):
             Complete CLI command as list of strings
 
         Note:
-            Adds parse command, input/output paths, format,
-            backend, and vLLM URL to the base command.
+            Adds input/output paths, backend, and vLLM URL to the base command.
+            MinerU v2.5.4+ uses: mineru -p <path> -o <output> -b <backend> -u <url>
 
         """
         command = self._command.split()
         command.extend(
             [
-                "parse",
-                "--input",
+                "--path",
                 str(input_dir),
                 "--output",
                 str(output_dir),
-                "--format",
-                "json",
                 "--backend",
                 self._settings.workers.backend,
-                "--vllm-url",
+                "--url",
                 str(self._settings.vllm_server.base_url),
             ]
         )
@@ -414,12 +414,23 @@ class SubprocessMineruCli(MineruCliBase):
 
             outputs: list[MineruCliOutput] = []
             for item in inputs:
-                output_path = output_dir / f"{item.document_id}.json"
+                # MinerU v2.5.4 outputs to: {output_dir}/{document_id}/vlm/{document_id}_model.json
+                output_path = output_dir / item.document_id / "vlm" / f"{item.document_id}_model.json"
                 if not output_path.exists():
+                    logger.bind(
+                        output_path=str(output_path),
+                        output_dir_contents=list((output_dir / item.document_id).rglob("*")) if (output_dir / item.document_id).exists() else "dir_not_found"
+                    ).error("mineru.cli.output_not_found")
                     raise MineruCliError(
-                        f"MinerU CLI did not produce output for document '{item.document_id}'"
+                        f"MinerU CLI did not produce output for document '{item.document_id}' at {output_path}"
                     )
-                outputs.append(MineruCliOutput(document_id=item.document_id, path=output_path))
+                # Read the JSON content before the temp directory is deleted
+                json_content = output_path.read_text(encoding="utf-8")
+                outputs.append(MineruCliOutput(
+                    document_id=item.document_id,
+                    path=output_path,
+                    json_content=json_content
+                ))
             return MineruCliResult(
                 outputs=outputs,
                 stdout=proc.stdout,

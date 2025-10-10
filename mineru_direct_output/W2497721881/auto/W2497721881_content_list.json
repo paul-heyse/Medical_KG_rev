@@ -1,0 +1,446 @@
+[
+    {
+        "type": "text",
+        "text": "World Medical Association Declaration of Helsinki ",
+        "text_level": 1,
+        "bbox": [
+            99,
+            129,
+            902,
+            160
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "Ethical Principles for Medical Research Involving Human Subjects ",
+        "bbox": [
+            92,
+            169,
+            680,
+            188
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "Adopted by the 18th WMA General Assembly, Helsinki, Finland, June 1964; amended by the 29th WMA General Assembly, Tokyo, Japan, October 1975; 35th WMA General Assembly, Venice, Italy, October 1983; 41st WMA General Assembly, Hong Kong, September 1989; 48th WMA General Assembly, Somerset West, Republic of South Africa, October 1996, and the 52nd WMA General Assembly, Edinburgh, Scotland, October 2000 ",
+        "bbox": [
+            92,
+            194,
+            786,
+            248
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "A. Introduction ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            275,
+            231,
+            292
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "1. The World Medical Association has developed the Declaration of Helsinki as a statement of ethical principles to provide guidance to physicians and other participants in medical research involving human subjects. Medical research involving human subjects includes research on identifiable human material or identifiable data. ",
+        "bbox": [
+            92,
+            299,
+            426,
+            375
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "2. It is the duty of the physician to promote and safeguard the health of the people. The physician’s knowledge and conscience are dedicated to the fulfillment of this duty. ",
+        "bbox": [
+            92,
+            383,
+            426,
+            420
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "3. The Declaration of Geneva of the World Medical Association binds the physician with the words, ‘‘The health of my patient will be my first consideration,’’ and the International Code of Medical Ethics declares that, ‘‘A physician shall act only in the patient’s interest when providing medical care which might have the effect of weakening the physical and mental condition of the patient.’’ ",
+        "bbox": [
+            92,
+            428,
+            426,
+            517
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "4. Medical progress is based on research which ultimately must rest in part on experimentation involving human subjects. ",
+        "bbox": [
+            92,
+            524,
+            426,
+            562
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "5. In medical research on human subjects, considerations related to the well-being of the human subject should take precedence over the interests of science and society. ",
+        "bbox": [
+            92,
+            571,
+            426,
+            609
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "6. The primary purpose of medical research involving human subjects is to improve prophylactic, diagnostic and therapeutic procedures and the understanding of the aetiology and pathogenesis of disease. Even the best proven prophylactic, diagnostic, and therapeutic methods must continuously be challenged through research for their effectiveness, efficiency, accessibility and quality. ",
+        "bbox": [
+            92,
+            616,
+            426,
+            705
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "7. In current medical practice and in medical research, most prophylactic, diagnostic and therapeutic procedures involve risks and burdens. ",
+        "bbox": [
+            92,
+            713,
+            426,
+            750
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "8. Medical research is subject to ethical standards that promote respect for all human beings and protect their health and rights. Some research populations are vulnerable and need special protection. The particular needs of the economically and medically disadvantaged must be recognized. Special attention is also required for those who cannot give or refuse consent for themselves, for those who may be subject to giving consent under duress, for those who will not benefit personally from the research and for those for whom the research is combined with care. ",
+        "bbox": [
+            92,
+            758,
+            426,
+            885
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "9. Research Investigators should be aware of the ethical, legal and regulatory requirements for research on human subjects in their own countries as well as applicable international requirements. No national ethical, legal or regulatory requirement should be allowed to reduce or eliminate any of the protections for human subjects set forth in this Declaration. ",
+        "bbox": [
+            90,
+            893,
+            426,
+            919
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "",
+        "bbox": [
+            448,
+            276,
+            784,
+            339
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "B. Basic principles for all medical research ",
+        "text_level": 1,
+        "bbox": [
+            450,
+            368,
+            752,
+            402
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "10. It is the duty of the physician in medical research to protect the life, health, privacy, and dignity of the human subject. ",
+        "bbox": [
+            450,
+            408,
+            784,
+            446
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "11. Medical research involving human subjects must conform to generally accepted scientific principles, be based on a thorough knowledge of the scientific literature, other relevant sources of information, and on adequate laboratory and, where appropriate, animal experimentation. ",
+        "bbox": [
+            450,
+            454,
+            784,
+            517
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "12. Appropriate caution must be exercised in the conduct of research which may affect the environment, and the welfare of animals used for research must be respected. ",
+        "bbox": [
+            450,
+            526,
+            784,
+            564
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "13. The design and performance of each experimental procedure involving human subjects should be clearly formulated in an experimental protocol. This protocol should be submitted for consideration, comment, guidance, and where appropriate, approval to a specially appointed ethical review committee, which must be independent of the investigator, the sponsor or any other kind of undue influence. This independent committee should be in conformity with the laws and regulations of the country in which the research experiment is performed. The committee has the right to monitor ongoing trials. The researcher has the obligation to provide monitoring information to the committee, especially any serious adverse events. The researcher should also submit to the committee, for review, information regarding funding, sponsors, institutional affiliations, other potential conflicts of interest and incentives for subjects. ",
+        "bbox": [
+            450,
+            572,
+            784,
+            788
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "14. The research protocol should always contain a statement of the ethical considerations involved and should indicate that there is compliance with the principles enunciated in this Declaration. ",
+        "bbox": [
+            450,
+            795,
+            784,
+            846
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "15. Medical research involving human subjects should be conducted only by scientifically qualified persons and under the supervision of a clinically competent medical person. The responsibility for the human subject must always rest with a medically qualified person and never rest on the subject of the research, even though the subject has given consent. ",
+        "bbox": [
+            448,
+            855,
+            786,
+            918
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "",
+        "bbox": [
+            211,
+            81,
+            547,
+            106
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "16. Every medical research project involving human subjects should be preceded by careful assessment of predictable risks and burdens in comparison with foreseeable benefits to the subject or to others. This does not preclude the participation of healthy volunteers in medical research. The design of all studies should be publicly available. ",
+        "bbox": [
+            211,
+            114,
+            546,
+            203
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "17. Physicians should abstain from engaging in research projects involving human subjects unless they are confident that the risks involved have been adequately assessed and can be satisfactorily managed. Physicians should cease any investigation if the risks are found to outweigh the potential benefits or if there is conclusive proof of positive and beneficial results. ",
+        "bbox": [
+            211,
+            211,
+            546,
+            300
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "18. Medical research involving human subjects should only be conducted if the importance of the objective outweighs the inherent risks and burdens to the subject. This is especially important when the human subjects are healthy volunteers. ",
+        "bbox": [
+            211,
+            307,
+            546,
+            370
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "19. Medical research is only justified if there is a reasonable likelihood that the populations in which the research is carried out stand to benefit from the results of the research. ",
+        "bbox": [
+            211,
+            378,
+            546,
+            416
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "20. The subjects must be volunteers and informed participants in the research project. ",
+        "bbox": [
+            211,
+            425,
+            546,
+            450
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "21. The right of research subjects to safeguard their integrity must always be respected. Every precaution should be taken to respect the privacy of the subject, the confidentiality of the patient’s information and to minimize the impact of the study on the subject’s physical and mental integrity and on the personality of the subject. ",
+        "bbox": [
+            211,
+            457,
+            546,
+            533
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "22. In any research on human beings, each potential subject must be adequately informed of the aims, methods, sources of funding, any possible conflicts of interest, institutional affiliations of the researcher, the anticipated benefits and potential risks of the study and the discomfort it may entail. The subject should be informed of the right to abstain from participation in the study or to withdraw consent to participate at any time without reprisal. After ensuring that the subject has understood the information, the physician should then obtain the subject’s freely-given informed consent, preferably in writing. If the consent cannot be obtained in writing, the non-written consent must be formally documented and witnessed. ",
+        "bbox": [
+            211,
+            541,
+            546,
+            706
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "23. When obtaining informed consent for the research project the physician should be particularly cautious if the subject is in a dependent relationship with the physician or may consent under duress. In that case the informed consent should be obtained by a well-informed physician who is not engaged in the investigation and who is completely independent of this relationship. ",
+        "bbox": [
+            211,
+            714,
+            546,
+            804
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "24. For a research subject who is legally incompetent, physically or mentally incapable of giving consent or is a legally incompetent minor, the investigator must obtain informed consent from the legally authorized representative in accordance with applicable law. These groups should not be included in research unless the research is necessary to promote the health of the population represented and this research cannot instead be performed on legally competent persons. ",
+        "bbox": [
+            211,
+            811,
+            546,
+            926
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "25. When a subject deemed legally incompetent, such as a minor child, is able to give assent to decisions about participation in research, the investigator must obtain that assent in addition to the consent of the legally authorized representative. ",
+        "bbox": [
+            569,
+            81,
+            904,
+            144
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "26. Research on individuals from whom it is not possible to obtain consent, including proxy or advance consent, should be done only if the physical/mental condition that prevents obtaining informed consent is a necessary characteristic of the research population. The specific reasons for involving research subjects with a condition that renders them unable to give informed consent should be stated in the experimental protocol for consideration and approval of the review committee. The protocol should state that consent to remain in the research should be obtained as soon as possible from the individual or a legally authorized surrogate. ",
+        "bbox": [
+            569,
+            153,
+            904,
+            293
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "27. Both authors and publishers have ethical obligations. In publication of the results of research, the investigators are obliged to preserve the accuracy of the results. Negative as well as positive results should be published or otherwise publicly available. Sources of funding, institutional affiliations and any possible conflicts of interest should be declared in the publication. Reports of experimentation not in accordance with the principles laid down in this Declaration should not be accepted for publication. ",
+        "bbox": [
+            569,
+            300,
+            904,
+            415
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "C. Additional principles for medical research combined with medical care ",
+        "text_level": 1,
+        "bbox": [
+            569,
+            435,
+            900,
+            470
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "28. The physician may combine medical research with medical care, only to the extent that the research is justified by its potential prophylactic, diagnostic or therapeutic value. When medical research is combined with medical care, additional standards apply to protect the patients who are research subjects. ",
+        "bbox": [
+            569,
+            476,
+            904,
+            552
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "29. The benefits, risks, burdens and effectiveness of a new method should be tested against those of the best current prophylactic, diagnostic, and therapeutic methods. This does not exclude the use of placebo, or no treatment, in studies where no proven prophylactic, diagnostic or therapeutic method exists. ",
+        "bbox": [
+            569,
+            560,
+            904,
+            636
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "30. At the conclusion of the study, every patient entered into the study should be assured of access to the best proven prophylactic, diagnostic and therapeutic methods identified by the study. ",
+        "bbox": [
+            569,
+            644,
+            904,
+            694
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "31. The physician should fully inform the patient which aspects of the care are related to the research. The refusal of a patient to participate in a study must never interfere with the patient–physician relationship. ",
+        "bbox": [
+            569,
+            703,
+            904,
+            754
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "32. In the treatment of a patient, where proven prophylactic, diagnostic and therapeutic methods do not exist or have been ineffective, the physician, with informed consent from the patient, must be free to use unproven or new prophylactic, diagnostic and therapeutic measures, if in the physician’s judgement it offers hope of saving life, reestablishing health or alleviating suffering. Where possible, these measures should be made the object of research, designed to evaluate their safety and efficacy. In all cases, new information should be recorded and, where appropriate, published. The other relevant guidelines of this Declaration should be followed. ",
+        "bbox": [
+            569,
+            761,
+            904,
+            913
+        ],
+        "page_idx": 1
+    }
+]

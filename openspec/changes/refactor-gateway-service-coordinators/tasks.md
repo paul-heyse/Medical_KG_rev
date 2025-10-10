@@ -13,7 +13,7 @@
 
 ### Critical Library Integration Requirements
 
-- [ ] 1.11 **Integrate `pydantic>=2.11.10`**: Design typed coordinator interfaces and result models
+- [ ] 1.11 **Integrate `pydantic>=2.7,<2.11`**: Design typed coordinator interfaces and result models
 - [x] 1.12 **Integrate `structlog`**: Add structured logging for coordinator operations and debugging
 - [x] 1.13 **Integrate `tenacity>=9.1.2`**: Add retry logic for coordinator operations and external calls
 - [ ] 1.14 **Integrate `pluggy>=1.6.0`**: Ensure coordinator composition works with plugin system

@@ -37,7 +37,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
     version: '3.8'
     services:
       vllm-server:
-        image: vllm/vllm-openai:v0.8.4
+        image: vllm/vllm-openai:v0.11.0
         command: >
           python -m vllm.entrypoints.openai.api_server
             --model Qwen/Qwen2.5-VL-7B-Instruct
@@ -145,7 +145,7 @@ Tasks are organized into implementation phases for AI agents to execute. Each ta
             effect: NoSchedule
           containers:
           - name: vllm-server
-            image: vllm/vllm-openai:v0.8.4
+            image: vllm/vllm-openai:v0.11.0
             command:
             - python
             - -m

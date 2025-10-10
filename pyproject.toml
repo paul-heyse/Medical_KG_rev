@@ -31,35 +31,35 @@ classifiers = [
 
 dependencies = [
     # API Framework
-    "fastapi>=0.118.0",
+    "fastapi==0.118.0",
     "starlette>=0.48.0",
     "uvicorn[standard]>=0.37.0",
     "python-multipart>=0.0.20",
 
     # Data Validation & Models
-    "pydantic>=2.11.10",
+    "pydantic>=2.7",
     "pydantic-settings>=2.11.0",
     "pint>=0.25",
     "attrs>=25.4.0",
     "jsonschema>=4.25.1",
+    "jsonschema[format-nongpl]>=4.25.1",
     "pyshacl>=0.30.1",
     "rdflib>=7.2.1",
     "tiktoken>=0.11.0",
     "jsonpatch>=1.33",
     "jsonpointer>=3.0.0",
     "alembic>=1.16.5",
-    "tomli>=2.2.1",
+    "tomli>=2.3.0",
 
     # GraphQL
     "strawberry-graphql[fastapi]>=0.283.0",
     "graphql-core>=3.2.6",
 
     # gRPC & Protocol Buffers
-    "grpcio>=1.75.1",
-    "grpcio-tools>=1.62.3",
-    "grpcio-health-checking>=1.62.3",
-    "grpcio-status>=1.62.3",
-    "protobuf>=4.25.8",
+    "grpcio>=1.49.1,<2.0.0",
+    "grpcio-tools>=1.49.1,<2.0.0",
+    "grpcio-health-checking>=1.49.1,<2.0.0",
+    "grpcio-status>=1.49.1,<2.0.0",
 
     # SOAP (Legacy Support)
     "zeep>=4.3.2",
@@ -75,19 +75,19 @@ dependencies = [
     "charset-normalizer>=3.4.3",
     "idna>=3.10",
     "httptools>=0.6.4",
-    "tenacity>=9.1.2", #Retry logic
+    "tenacity>=8.2,<9", #Retry logic
     "pluggy>=1.6.0", #Adapter plugin framework
     "pybreaker>=1.4.1",
     "aiohappyeyeballs>=2.6.1",
     "aiolimiter>=1.2.1",
     "cloudevents>=1.12.0",
     "humanfriendly>=10.0",
-    "coloredlogs>=14.0",
-    "dagster>=1.11.13",
+    "coloredlogs>=14.0,<14.1",
+    "dagster>=1.11.14",
     "dagster-pipes>=1.11.13",
-    "dagster-postgres>=0.27.13",
+    "dagster-postgres>=0.27.14",
     "openlineage-python>=1.39.0",
-    "googleapis-common-protos>=1.59.1",
+    "googleapis-common-protos>=1.52,<1.60",
     "typing-extensions>=4.15.0",
 
     # Message Broker
@@ -103,15 +103,16 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.43",
 
     # Object Storage
-    "boto3>=1.40.45", #S3/MinIO
-    "botocore>=1.40.45",
+    "boto3>=1.40.49", #S3/MinIO
+        "google-api-core[grpc]==2.26.0",
+    "botocore>=1.40.49",
     "jmespath>=1.0.1",
     "s3transfer>=0.14.0",
     "minio>=7.2.18",
     "urllib3>=2.5.0",
 
     # Vector Search & Retrieval
-    "faiss-gpu>=1.7.4", #GPU-accelerated vector search
+    "faiss-cpu>=1.12.0", #FAISS vector search (CPU build)
     "qdrant-client>=1.15.1",
     "pyserini>=1.2.0",
     "rank-bm25>=0.2.2",
@@ -136,33 +137,21 @@ dependencies = [
     "anyio>=4.11.0",
     "deprecated>=1.2.18",
     "llama-cloud>=0.1.43",
-    "llama-cloud-services>=0.6.73",
-    "llama-index>=0.12.52", #Framework adapters
-    "llama-index-agent-openai>=0.4.12",
-    "llama-index-cli>=0.4.4",
-    "llama-index-core>=0.12.52.post1", #Core chunking utilities
-    "llama-index-embeddings-openai>=0.3.1", #OpenAI-style embedding bridge
-    "llama-index-indices-managed-llama-cloud>=0.6.11",
-    "llama-index-instrumentation>=0.4.1",
-    "llama-index-llms-openai>=0.4.7",
-    "llama-index-multi-modal-llms-openai>=0.5.3",
-    "llama-index-program-openai>=0.3.2",
-    "llama-index-question-gen-openai>=0.3.1",
-    "llama-index-readers-file>=0.4.11",
-    "llama-index-readers-llama-parse>=0.4.0",
-    "llama-index-workflows>=1.3.0",
     "llama-parse>=0.6.73",
     "beautifulsoup4>=4.14.2",
     "soupsieve>=2.8",
     "effdet>=0.4.1",
     "timm>=1.0.20",
+    "thop>=0.1.1",
     "omegaconf>=2.3.0",
     "matplotlib>=3.10.6",
+    "seaborn>=0.11.0",
     "contourpy>=1.3.3",
     "cycler>=0.12.1",
     "fonttools>=4.60.1",
     "kiwisolver>=1.4.9",
     "colbert-ai>=0.2.22", #ColBERT index utilities
+    "llama-index-core==0.12.0",
     "haystack-ai>=2.18.1", #Modern Haystack adapter support
     "openai>=1.109.1", #Client for OpenAI-compatible endpoints
 
@@ -195,15 +184,14 @@ dependencies = [
     "pypdfium2>=4.30.0",
     "xlrd>=2.0.2",
     "XlsxWriter>=3.2.9",
-    "google-api-core[grpc]>=2.25.2",
-    "google-auth>=2.41.1",
+        "google-auth>=2.41.1",
     "google-cloud-vision>=3.10.2",
     "cachetools>=6.2.0",
     "proto-plus>=1.26.1",
     "pyasn1>=0.6.1",
     "pyasn1-modules>=0.4.2",
     "pycocotools>=2.0.10",
-    "antlr4-python3-runtime>=4.9.3",
+    "antlr4-python3-runtime>=4.9",
     "lia_web>=0.2.3",
 
     # PDF Processing (MinerU dependencies)
@@ -212,8 +200,13 @@ dependencies = [
     # Note: OpenCV wheels from PyPI conflict with NumPy >=2.3. Use conda-forge's
     # `py-opencv` build when GPU PDF processing (MinerU) requires OpenCV.
     "pillow>=11.3.0",
+    "albumentations>=2.0.7",
+    "pyclipper>=1.3.0.post5",
+    "ftfy>=6.3.1",
+    "ultralytics>=8.0.0",
+    "doclayout-yolo>=0.0.4",
     # MinerU GPU CLI integration
-    "mineru",
+    "mineru>=2.5.4",
 
     # Biomedical API Clients
     "pyalex>=0.18", #OpenAlex
@@ -259,7 +252,7 @@ dependencies = [
     "sentry-sdk>=2.40.0",
 
     # Utilities
-    "click>=8.1.8", #CLI
+    "click>=8.3.0", #CLI
     "tqdm>=4.67.1", #Progress bars
     "python-dateutil>=2.9.0.post0",
     "requests>=2.32.5",
@@ -267,7 +260,7 @@ dependencies = [
     "distro>=1.9.0",
     "jiter>=0.11.0",
     "wrapt>=1.17.3",
-    "aiofiles>=24.1.0",
+    "aiofiles>=25.1.0",
     "aiosignal>=1.4.0",
     "aiosqlite>=0.21.0",
     "appdirs>=1.4.4",
@@ -280,21 +273,21 @@ dependencies = [
     "async-timeout>=5.0.1",
     "babel>=2.17.0",
     "backoff>=2.2.1",
-    "backrefs>=5.9",
+    "backrefs>=5.7.post1,<5.8",
     "banks>=2.2.0",
     "bcrypt>=5.0.0",
-    "bitarray>=3.7.1",
-    "black>=25.1.0",
+    "bitarray>=3.7.2",
+    "black>=25.9.0",
     "bleach>=6.2.0",
     "blinker>=1.9.0",
-    "blis>=1.2.1",
+    "blis>=1.3.0",
     "boilerpy3>=1.0.7",
     "botocore-stubs>=1.40.33",
     "build>=1.3.0",
     "catalogue>=2.0.10",
     "cattrs>=25.3.0",
     "cffi>=2.0.0",
-    "cfgv>=3.3.1",
+    "cfgv>=3.4.0",
     "cloudpathlib>=0.23.0",
     "colorama>=0.4.6",
     "colorlog>=6.9.0",
@@ -304,11 +297,11 @@ dependencies = [
     "coverage>=7.10.7",
     "cymem>=2.0.11",
     "cython>=3.1.4",
-    "dagster-shared>=1.11.13",
+    "dagster-shared>=1.11.14",
     "dash>=3.2.0",
     "dash-bootstrap-components>=2.0.4",
     "dataclasses-json>=0.6.7",
-    "datasets>=4.1.1",
+    "datasets>=4.2.0",
     "debugpy>=1.8.17",
     "decorator>=5.2.1",
     "defusedxml>=0.7.1",
@@ -317,25 +310,25 @@ dependencies = [
     "distlib>=0.4.0",
     "docopt>=0.6.2",
     "docstring-parser>=0.17.0",
-    "duckdb>=1.4.0",
+    "duckdb>=1.4.1",
     "ecdsa>=0.19.1",
     "et-xmlfile>=2.0.0",
     "events>=0.5",
     "exceptiongroup>=1.3.0",
     "executing>=2.2.1",
-    "faker>=37.8.0",
-    "fast-langdetect>=0.2.5",
+    "faker>=37.11.0",
+    "fast-langdetect>=0.2.3,<0.3.0",
     "fast-pytorch-kmeans>=0.2.2",
     "fastjsonschema>=2.21.2",
     "fasttext-predict>=0.9.2.4",
-    "filelock>=3.19.1",
+    "filelock>=3.20.0",
     "filetype>=1.2.0",
     "flask>=3.1.2",
     "flatbuffers>=25.9.23",
     "flexcache>=0.3",
     "flexparser>=0.4",
     "fqdn>=1.5.1",
-    "fsspec>=2025.9.0",
+    "fsspec[http]>=2025.9.0",
     "geopandas>=1.1.1",
     "gguf>=0.17.1",
     "ghp-import>=2.1.0",
@@ -357,9 +350,9 @@ dependencies = [
     "hypothesis-jsonschema>=0.23.1",
     "identify>=2.6.15",
     "imageio>=2.37.0",
-    "importlib-metadata>=6.11.0",
+    "importlib-metadata>=8.7.0",
     "inflect>=7.5.0",
-    "iniconfig>=2.0.0",
+    "iniconfig>=2.1.0",
     "ipykernel>=6.30.1",
     "ipython>=9.6.0",
     "ipython-pygments-lexers>=1.1.1",
@@ -388,10 +381,10 @@ dependencies = [
     "langcodes>=3.5.0",
     "language-data>=1.3.0",
     "lark>=1.3.0",
-    "lazy-imports>=0.3.1",
+    "lazy-imports>=1.0.1",
     "lazy-loader>=0.4",
     "loguru>=0.7.3",
-    "lxml>=6.0.2",
+    "lxml>=3.1.0",
     "magika>=0.6.2",
     "mako>=1.3.10",
     "marisa-trie>=1.3.1",
@@ -400,7 +393,7 @@ dependencies = [
     "markupsafe>=3.0.3",
     "marshmallow>=3.26.1",
     "matplotlib-inline>=0.1.7",
-    "mcp>=1.16.0",
+    "mcp>=1.12.4,<1.13",
     "mdurl>=0.1.2",
     "medical-kg-rev>=0.1.0",
     "mergedeep>=1.3.4",
@@ -460,7 +453,7 @@ dependencies = [
     "pexpect>=4.9.0",
     "pickleshare>=0.7.5",
     "pip>=25.2",
-    "platformdirs>=4.4.0",
+    "platformdirs>=4.5.0",
     "plotly>=6.3.0",
     "portalocker>=3.2.0",
     "posthog>=6.7.6",
@@ -476,7 +469,7 @@ dependencies = [
     "pybind11>=3.0.1",
     "pycparser>=2.22",
     "pycryptodome>=3.23.0",
-    "pydantic-core>=2.33.2",
+    "pydantic-core>=2.27.2",
     "pygments>=2.19.2",
     "pyjnius>=1.7.0",
     "pymdown-extensions>=10.16.1",
@@ -550,7 +543,7 @@ dependencies = [
     "typeguard>=4.4.4",
     "typer>=0.19.2",
     "types-awscrt>=0.27.6",
-    "types-boto3>=1.40.45",
+    "types-boto3>=1.40.49",
     "types-cffi>=1.17.0.20250915",
     "types-jsonschema>=4.25.1.20250822",
     "types-pyasn1>=0.6.0.20250914",
@@ -598,7 +591,7 @@ dev = [
     "pytest-mock>=3.12.0",
     "pytest-timeout>=2.2.0",
     "httpx>=0.28.1",  # Test client
-    "faker>=22.0.0",  # Test data generation
+    "faker>=37.11.0",  # Test data generation
 
     # Contract Testing
     "schemathesis>=3.19.0",  # OpenAPI contract tests
@@ -607,7 +600,7 @@ dev = [
     # k6 (install separately via system package manager)
 
     # Code Quality
-    "black>=24.1.0",
+    "black>=25.9.0",
     "ruff>=0.2.0",
     "mypy>=1.8.0",
     "pydocstyle>=6.3.0",
@@ -636,7 +629,7 @@ dev = [
 
 gpu = [
     # GPU-specific dependencies
-    "faiss-gpu>=1.7.4 ; platform_system != 'Windows'",  # GPU-accelerated vector search (Linux/macOS)
+    "faiss-cpu>=1.12.0",  # FAISS vector search (CPU build for cross-platform support)
     "torch>=2.8.0",  # PyTorch
 ]
 
@@ -649,7 +642,6 @@ docs = [
 
 chunking = [
     "langchain-text-splitters>=0.3.11",
-    "llama-index-core",
     "haystack-ai>=2.18.1",
     "unstructured>=0.11.8",
     "hdbscan>=0.8.40",

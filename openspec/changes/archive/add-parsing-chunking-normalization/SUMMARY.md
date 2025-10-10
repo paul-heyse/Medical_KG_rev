@@ -231,7 +231,7 @@ class Chunk:
 
 ```txt
 langchain-text-splitters>=0.2.0
-llama-index-core>=0.10.0
+llama-index-core>=0.12.0,<0.12.1
 syntok>=1.4.4
 unstructured[local-inference]>=0.12.0
 tiktoken>=0.6.0
@@ -345,7 +345,7 @@ kubectl rollout undo deployment/chunking-service
 
 ```txt
 langchain-text-splitters>=0.2.0
-llama-index-core>=0.10.0
+llama-index-core>=0.12.0,<0.12.1
 scispacy>=0.5.4
 en-core-sci-sm @ https://...
 syntok>=1.4.4

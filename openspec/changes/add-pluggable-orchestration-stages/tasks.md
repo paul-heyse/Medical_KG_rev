@@ -14,8 +14,8 @@
 ### Critical Library Integration Requirements
 
 - [x] 1.11 **Integrate `pluggy>=1.6.0`**: Design plugin hook system for stage discovery and registration
-- [x] 1.12 **Integrate `dagster>=1.11.13`**: Ensure plugin system works with Dagster's execution model
-- [x] 1.13 **Integrate `pydantic>=2.11.10`**: Design typed plugin interfaces and configuration validation
+- [x] 1.12 **Integrate `dagster>=1.11.14`**: Ensure plugin system works with Dagster's execution model
+- [x] 1.13 **Integrate `pydantic>=2.7,<2.11`**: Design typed plugin interfaces and configuration validation
 - [x] 1.14 **Integrate `tenacity>=9.1.2`**: Add retry logic for plugin loading and execution failures
 - [x] 1.15 **Integrate `structlog`**: Add structured logging for plugin lifecycle events
 

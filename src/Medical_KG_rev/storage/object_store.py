@@ -1,4 +1,4 @@
-"""Object store implementations and MinerU figure helpers."""
+"""Object store implementations and Docling artifact helpers."""
 
 from __future__ import annotations
 

@@ -1,5 +1,8 @@
 # Troubleshooting Guide: MinerU ↔ vLLM Connectivity
 
+> **Legacy Notice:** MinerU has been decommissioned in favour of the Docling Gemma3 VLM pipeline. This guide is retained solely
+> for emergency rollback scenarios triggered via `scripts/rollback_to_mineru.sh`.
+
 This guide catalogues common failure scenarios when MinerU workers communicate with the
 vLLM server.
 

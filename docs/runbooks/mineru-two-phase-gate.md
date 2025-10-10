@@ -1,5 +1,8 @@
 # MinerU Two-Phase Gate Runbook
 
+> **Legacy Notice:** This runbook documents the archived MinerU gating workflow. Follow `docs/guides/docling_migration_guide.md`
+> and the Docling VLM sections of the operational runbook for current procedures. Retain these steps only for MinerU rollback.
+
 The PDF ingestion pipeline is split into two phases to enforce GPU-backed
 MinerU parsing before chunking and embeddings resume. This runbook explains how
 operators can monitor, unblock, and validate the workflow.

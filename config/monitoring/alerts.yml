@@ -1,0 +1,52 @@
+# Alertmanager rules for Docling VLM processing pipeline
+---
+groups:
+  - name: docling-vlm
+    interval: 30s
+    rules:
+      - alert: DoclingVLMProcessingSlow
+        expr: |
+          histogram_quantile(0.95, sum(rate(docling_vlm_processing_time_seconds_bucket[5m])) by (le)) > 300
+        for: 10m
+        labels:
+          severity: critical
+          service: docling-vlm
+        annotations:
+          summary: "Docling VLM processing slower than 5 minutes at p95"
+          description: |
+            Docling VLM requests are exceeding the 5 minute latency SLO.
+            Investigate GPU saturation or Gemma3 degradation. Roll back to MinerU if sustained.
+      - alert: DoclingVLMSuccessRateDrop
+        expr: |
+          (sum(rate(docling_vlm_success_total[5m])) / (sum(rate(docling_vlm_success_total[5m])) + sum(rate(docling_vlm_failure_total[5m])))) < 0.95
+        for: 15m
+        labels:
+          severity: critical
+          service: docling-vlm
+        annotations:
+          summary: "Docling VLM success rate below 95%"
+          description: |
+            Success ratio fell under 95%% during the last 15 minutes. Check recent deployments,
+            GPU health, and Docling model status. Rollback script scripts/rollback_to_mineru.sh may be required.
+      - alert: DoclingVLMHighGpuMemory
+        expr: max(docling_vlm_gpu_memory_usage_mb) > 22000
+        for: 5m
+        labels:
+          severity: warning
+          service: docling-vlm
+        annotations:
+          summary: "Docling VLM GPU memory usage above 22GB"
+          description: |
+            GPU memory consumption exceeded 22GB for more than five minutes. Validate batch sizing,
+            verify no rogue processes are sharing the GPU, and consider draining the node.
+      - alert: DoclingModelUnavailable
+        expr: docling_vlm_model_load_time_seconds_count == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: docling-vlm
+        annotations:
+          summary: "Docling VLM model has not successfully loaded"
+          description: |
+            No model load events were observed. Ensure Gemma3 weights are present at /models/gemma3-12b
+            and confirm the feature flag PDF_PROCESSING_BACKEND=docling_vlm is active.

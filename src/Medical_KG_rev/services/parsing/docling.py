@@ -27,7 +27,7 @@ class DoclingParser:
         fmt_normalized = fmt.lower()
         if fmt_normalized == "pdf":
             raise ValueError(
-                "Docling cannot be used for PDF parsing in production. Use MinerU for PDF OCR (GPU-only policy)."
+                "Use DoclingVLMService for PDF parsing; this parser handles non-PDF Docling formats only."
             )
         if fmt_normalized not in self.SUPPORTED_FORMATS:
             raise ValueError(

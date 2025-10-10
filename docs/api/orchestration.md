@@ -18,7 +18,7 @@ connector-specific contact emails and user agents into outbound requests.
 - Applies connector-level rate limiting and timeout values derived from
   `ConnectorPdfSettings`.
 - Persists the manifest metadata alongside storage receipts so the gate stages
-  can confirm download success before releasing MinerU tasks.
+  can confirm download success before releasing Docling VLM tasks.
 
 ## Ledger updates
 

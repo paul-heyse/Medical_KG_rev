@@ -8,6 +8,25 @@ Rollback procedures are essential for maintaining system reliability and minimiz
 
 ## Rollback Strategies
 
+### Docling VLM Rollback (Failover to MinerU)
+
+Use this runbook when the Docling Gemma3 pipeline experiences a sustained outage or quality regression.
+
+1. **Validate Alert Context**
+   - Confirm alerts from `config/monitoring/alerts.yml` for `DoclingVLMProcessingSlow`, `DoclingVLMSuccessRateDrop`, or `DoclingModelUnavailable` are firing.
+   - Review Grafana dashboard `docling-vlm-performance` to verify the degradation is not due to downstream services.
+2. **Freeze Ingestion**
+   - Pause new PDF ingest jobs via the orchestration control plane (`/v1/orchestration/pause` API) to prevent backlog growth.
+3. **Execute Automated Rollback**
+   - Run `scripts/rollback_to_mineru.sh` (use `--dry-run` first). The script toggles the `PDF_PROCESSING_BACKEND` feature flag, reapplies archived MinerU manifests, and restarts the gateway plus orchestration workers.
+   - Confirm script output shows successful rollout status for `gateway`, `pdf-orchestrator`, and `mineru-parser` deployments.
+4. **Post-Rollback Validation**
+   - Hit `/health/docling` and expect `503` while Docling is disabled; `/health/mineru` should return `200`.
+   - Process two canary PDFs via the MinerU path and compare results with `tests/regression/test_mineru_vs_docling_comparison.py` to ensure quality parity.
+5. **Communicate & Track**
+   - Announce rollback in #doc-processing with PagerDuty incident link.
+   - Create a follow-up ticket referencing `docs/security/docling_security_assessment.md` to document the incident and remediation timeline.
+
 ### Application Rollback
 
 #### Kubernetes Rollback

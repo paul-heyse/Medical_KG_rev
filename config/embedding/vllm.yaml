@@ -1,8 +1,8 @@
+model_type: vllm
+
 service:
   host: 0.0.0.0
   port: 8001
-  gpu_memory_utilization: 0.8
-  max_model_len: 512
   dtype: float16
   tensor_parallel_size: 1
 model:
@@ -14,6 +14,10 @@ batching:
   max_batch_size: 64
   max_wait_time_ms: 50
   preferred_batch_size: 32
+gpu:
+  min_memory_mb: 12288
+  memory_fraction: 0.8
+  max_model_len: 512
 health_check:
   enabled: true
   gpu_check_interval_seconds: 30

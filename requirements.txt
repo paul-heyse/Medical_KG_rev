@@ -197,6 +197,8 @@ dnspython==2.8.0
     # via email-validator
 docopt==0.6.2
     # via -r requirements.in
+docling==2.0.0
+    # via -r requirements.in
 docstring-parser==0.17.0
     # via dagster
 email-validator==2.3.0
@@ -754,6 +756,8 @@ pypandoc==1.15
     # via -r requirements.in
 pyparsing==3.2.5
     # via rdflib
+pillow==10.4.0
+    # via -r requirements.in
 pypdf==6.1.1
     # via -r requirements.in
 pypdfium2==4.30.0

@@ -62,9 +62,10 @@ from Medical_KG_rev.chunking.exceptions import (
     TokenizerMismatchError,
 )
 
-from ..config.settings import get_settings
+from ..config.settings import PdfProcessingBackend, get_settings
 from ..observability import setup_observability
 from ..services.health import CheckResult, HealthService, success
+from ..services.parsing.docling_vlm_service import DoclingVLMService
 from ..utils.logging import get_correlation_id, get_logger
 from .graphql.schema import graphql_router
 from .middleware import CachePolicy, CachingMiddleware, TenantValidationMiddleware
@@ -200,6 +201,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory="docs"), name="static")
 
     gateway_service = get_gateway_service()
+    docling_service = DoclingVLMService(settings.docling_vlm)
 
     def kafka_check() -> CheckResult:
         health = gateway_service.orchestrator.kafka.health()
@@ -208,12 +210,18 @@ def create_app() -> FastAPI:
         detail = ", ".join(f"{key}={value}" for key, value in health.items())
         return CheckResult(status="error", detail=detail)
 
+    def docling_check() -> CheckResult:
+        if settings.pdf_processing_backend != PdfProcessingBackend.DOCLING_VLM:
+            return success("Docling backend disabled")
+        return docling_service.health()
+
     app.state.health = HealthService(
         checks={
             "neo4j": lambda: success("neo4j stub"),
             "opensearch": lambda: success("opensearch stub"),
             "kafka": kafka_check,
             "redis": lambda: success("redis stub"),
+            "docling_vlm": docling_check,
         },
         version=app.version,
     )

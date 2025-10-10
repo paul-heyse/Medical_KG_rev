@@ -13,6 +13,7 @@ def test_create_and_retrieve_entry() -> None:
     assert entry.current_stage == "pending"
     assert not entry.pdf_downloaded
     assert not entry.pdf_ir_ready
+    assert not entry.vlm_processing_ready
 
     retrieved = ledger.get("job-1")
     assert retrieved is not None
@@ -53,11 +54,12 @@ def test_update_metadata_and_attempts() -> None:
     assert attempts == 1
 
     ledger.set_pdf_downloaded("job-1")
-    ledger.set_pdf_ir_ready("job-1")
+    ledger.set_vlm_processing_ready("job-1")
     updated = ledger.get("job-1")
     assert updated is not None
     assert updated.pdf_downloaded is True
     assert updated.pdf_ir_ready is True
+    assert updated.vlm_processing_ready is True
 
 
 def test_mark_failed_records_history() -> None:

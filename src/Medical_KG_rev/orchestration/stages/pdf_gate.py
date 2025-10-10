@@ -57,7 +57,12 @@ class PdfGateStage(GateStage):
                     ledger_state = self._ledger.get_job_state(job_id)
                     if ledger_state:
                         pdf_downloaded = ledger_state.get("pdf_downloaded", False)
-                        pdf_ir_ready = ledger_state.get("pdf_ir_ready", False)
+                        vlm_ready = bool(
+                            ledger_state.get(
+                                "vlm_processing_ready",
+                                ledger_state.get("pdf_ir_ready", False),
+                            )
+                        )
 
                         if not pdf_downloaded:
                             logger.debug(
@@ -76,9 +81,9 @@ class PdfGateStage(GateStage):
                                 },
                             )
 
-                        if not pdf_ir_ready:
+                        if not vlm_ready:
                             logger.debug(
-                                "pdf_gate_stage.pdf_ir_not_ready",
+                                "pdf_gate_stage.vlm_not_ready",
                                 tenant_id=state.tenant_id,
                                 job_id=job_id,
                                 gate_name=self._gate_name,
@@ -87,7 +92,7 @@ class PdfGateStage(GateStage):
                                 name=self._gate_name,
                                 ready=False,
                                 metadata={
-                                    "reason": "pdf_ir_not_ready",
+                                    "reason": "vlm_not_ready",
                                     "job_id": job_id,
                                     "timestamp": time.time(),
                                 },
@@ -118,9 +123,9 @@ class PdfGateStage(GateStage):
                     },
                 )
 
-            if not state.pdf_gate.ir_ready:
+            if not state.pdf_gate.vlm_ready:
                 logger.debug(
-                    "pdf_gate_stage.state_ir_not_ready",
+                    "pdf_gate_stage.state_vlm_not_ready",
                     tenant_id=state.tenant_id,
                     gate_name=self._gate_name,
                 )
@@ -128,7 +133,7 @@ class PdfGateStage(GateStage):
                     name=self._gate_name,
                     ready=False,
                     metadata={
-                        "reason": "state_ir_not_ready",
+                        "reason": "state_vlm_not_ready",
                         "timestamp": time.time(),
                     },
                 )

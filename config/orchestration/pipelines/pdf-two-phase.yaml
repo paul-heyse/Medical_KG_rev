@@ -16,7 +16,7 @@ stages:
     policy: polite-api
     depends_on:
       - ingest
-  - name: gate_pdf_ir_ready
+  - name: gate_vlm_ready
     type: gate
     policy: default
     depends_on:
@@ -25,7 +25,7 @@ stages:
     type: chunk
     policy: gpu-bound
     depends_on:
-      - gate_pdf_ir_ready
+      - gate_vlm_ready
   - name: embed
     type: embed
     policy: gpu-bound
@@ -48,10 +48,10 @@ stages:
       - extract
       - index
 gates:
-  - name: pdf_ir_ready
+  - name: vlm_processing_ready
     resume_stage: chunk
     condition:
-      field: pdf_ir_ready
+      field: vlm_processing_ready
       equals: true
       timeout_seconds: 900
       poll_interval_seconds: 10.0

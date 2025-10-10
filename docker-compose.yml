@@ -114,6 +114,53 @@ services:
         networks:
             - medical-kg-net
 
+    docling-vlm:
+        build:
+            context: .
+        image: medical-kg/docling-vlm:latest
+        environment:
+            PDF_PROCESSING_BACKEND: docling_vlm
+            DOCLING_VLM_MODEL_PATH: /models/gemma3-12b
+            DOCLING_VLM_GPU_MEMORY_FRACTION: "0.95"
+            DOCLING_VLM_TIMEOUT_SECONDS: "300"
+            DOCLING_VLM_RETRY_ATTEMPTS: "3"
+            HUGGINGFACE_HUB_CACHE: /models/gemma3-12b/cache
+            TRANSFORMERS_CACHE: /models/gemma3-12b/cache
+            CUDA_VISIBLE_DEVICES: 0
+            GPU_ENABLED: "true"
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        volumes:
+            - docling-gemma3:/models/gemma3-12b
+        command:
+            - python3.12
+            - -m
+            - uvicorn
+            - Medical_KG_rev.gateway.app:create_app
+            - --factory
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8100"
+        ports:
+            - "8100:8100"
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "python3.12 - <<'PY'\nimport pathlib, sys\npath = pathlib.Path('/models/gemma3-12b')\ncache = path / 'cache'\nmissing = [p for p in (path, cache) if not p.exists()]\nif missing:\n    sys.exit(1)\nPY",
+                ]
+            interval: 60s
+            timeout: 15s
+            retries: 3
+        networks:
+            - medical-kg-net
+
     mineru-worker:
         build:
             context: .
@@ -161,6 +208,7 @@ services:
 
 volumes:
     neo4j-data:
+    docling-gemma3:
 
 networks:
     default:

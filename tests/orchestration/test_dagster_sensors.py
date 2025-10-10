@@ -36,8 +36,8 @@ def test_pdf_ir_sensor_emits_run_request() -> None:
             "payload": {"dataset": "pmc", "item": {"id": "doc-sensor"}},
         },
     )
-    ledger.mark_processing(job_id, stage="gate_pdf_ir_ready")
-    ledger.set_pdf_ir_ready(job_id)
+    ledger.mark_processing(job_id, stage="gate_vlm_ready")
+    ledger.set_vlm_processing_ready(job_id)
 
     context = build_asset_context(resources={"job_ledger": ledger})
     results = list(pdf_ir_ready_sensor(context))

@@ -686,16 +686,25 @@ class GateDecision:
 
 @dataclass(slots=True)
 class PdfGateState:
-    """Represents the progress of the PDF two-phase pipeline gate."""
+    """Represents the progress of the PDF VLM pipeline gate."""
 
     downloaded: bool = False
-    ir_ready: bool = False
+    vlm_ready: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def ir_ready(self) -> bool:  # pragma: no cover - backwards compatibility
+        return self.vlm_ready
+
+    @ir_ready.setter
+    def ir_ready(self, value: bool) -> None:  # pragma: no cover - backwards compatibility
+        self.vlm_ready = value
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "downloaded": self.downloaded,
-            "ir_ready": self.ir_ready,
+            "vlm_ready": self.vlm_ready,
+            "ir_ready": self.vlm_ready,
             "metadata": dict(self.metadata),
         }
 
@@ -1033,7 +1042,7 @@ class PipelineState:
         )
         clone.pdf_gate = PdfGateState(
             downloaded=self.pdf_gate.downloaded,
-            ir_ready=self.pdf_gate.ir_ready,
+            vlm_ready=self.pdf_gate.vlm_ready,
             metadata=copy.deepcopy(self.pdf_gate.metadata),
         )
         clone._dirty = self._dirty
@@ -1564,10 +1573,18 @@ class PipelineState:
         self._mark_dirty()
 
     def mark_pdf_ir_ready(self, *, metadata: Mapping[str, Any] | None = None) -> None:
-        """Flag the PDF gate as ready for IR stage and merge metadata."""
-        self.pdf_gate.ir_ready = True
+        """Flag the PDF gate as ready (backwards compatible helper)."""
+
+        self.mark_vlm_ready(metadata=metadata)
+
+    def mark_vlm_ready(self, *, metadata: Mapping[str, Any] | None = None) -> None:
+        """Flag the PDF gate as ready for Docling VLM processing."""
+
+        self.pdf_gate.vlm_ready = True
         self.pdf_gate.merge_metadata(metadata)
-        self.metadata.setdefault("pdf", {})["ir_ready"] = True
+        pdf_meta = self.metadata.setdefault("pdf", {})
+        pdf_meta["vlm_ready"] = True
+        pdf_meta["ir_ready"] = True
         self._mark_dirty()
 
     def reset_pdf_gate(self) -> None:
@@ -1608,7 +1625,7 @@ class PipelineState:
             pdf_tracker=copy.deepcopy(self.pdf_tracker),
             pdf_gate=PdfGateState(
                 downloaded=self.pdf_gate.downloaded,
-                ir_ready=self.pdf_gate.ir_ready,
+                vlm_ready=self.pdf_gate.vlm_ready,
                 metadata=copy.deepcopy(self.pdf_gate.metadata),
             ),
         )
@@ -1643,7 +1660,7 @@ class PipelineState:
         self.pdf_tracker = copy.deepcopy(snapshot.pdf_tracker)
         self.pdf_gate = PdfGateState(
             downloaded=snapshot.pdf_gate.downloaded,
-            ir_ready=snapshot.pdf_gate.ir_ready,
+            vlm_ready=snapshot.pdf_gate.vlm_ready,
             metadata=copy.deepcopy(snapshot.pdf_gate.metadata),
         )
         self._mark_dirty()
@@ -2059,7 +2076,9 @@ class PipelineState:
         if isinstance(pdf_payload, Mapping):
             self.pdf_gate = PdfGateState(
                 downloaded=bool(pdf_payload.get("downloaded", False)),
-                ir_ready=bool(pdf_payload.get("ir_ready", False)),
+                vlm_ready=bool(
+                    pdf_payload.get("vlm_ready", pdf_payload.get("ir_ready", False))
+                ),
                 metadata=dict(pdf_payload.get("metadata", {})),
             )
         else:

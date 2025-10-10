@@ -23,6 +23,7 @@ debugpy==1.8.17
 deptry==0.23.1
 dirtyjson==1.0.8
 docopt==0.6.2
+docling[vlm]>=2.0.0
 email-validator==2.3.0
 et_xmlfile==2.0.0
 Events==0.5
@@ -88,6 +89,7 @@ pyee==13.0.0
 pyjnius==1.7.0
 pylatexenc==2.10
 pypandoc==1.15
+pillow>=10.0.0
 pypdf==6.1.1
 pyshacl==0.30.1
 PySocks==1.7.1
@@ -120,7 +122,8 @@ tifffile==2025.10.4
 tiktoken==0.12.0
 tinycss2==1.4.0
 torchvision==0.23.0
-transformers==4.57.0
+torch>=2.1.0
+transformers>=4.57.0
 types-boto3==1.40.49
 types-jsonschema==4.25.1.20251009
 types-python-jose==3.5.0.20250531

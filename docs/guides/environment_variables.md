@@ -109,7 +109,47 @@ MINERU_MODEL_PATH=/models/mineru       # MinerU model path
 MINERU_BATCH_SIZE=1                    # MinerU batch size
 MINERU_MAX_LENGTH=4096                 # MinerU maximum length
 MINERU_DEVICE=cuda                     # MinerU device
+
+# Docling Gemma3 VLM Configuration
+DOCLING_VLM_MODEL_PATH=/models/gemma3-12b   # Location of the Gemma3 checkpoint
+DOCLING_VLM_BATCH_SIZE=8                    # Number of pages processed per batch
+DOCLING_VLM_TIMEOUT_SECONDS=300             # Processing timeout per PDF
+DOCLING_VLM_RETRY_ATTEMPTS=3                # Retry attempts for transient failures
+DOCLING_VLM_GPU_MEMORY_FRACTION=0.95        # Fraction of GPU memory reserved for Docling
+PDF_PROCESSING_BACKEND=docling_vlm          # Active PDF backend (mineru or docling_vlm)
 ```
+
+##### Example `.env` snippet
+
+```bash
+# Gemma3 checkpoint location and runtime behaviour
+DOCLING_VLM_MODEL_PATH=/models/gemma3-12b
+DOCLING_VLM_RETRY_ATTEMPTS=5
+DOCLING_VLM_TIMEOUT_SECONDS=420
+DOCLING_VLM_GPU_MEMORY_FRACTION=0.95
+PDF_PROCESSING_BACKEND=docling_vlm
+
+# Optional Hugging Face access token for model downloads
+HUGGINGFACE_HUB_TOKEN=hf_xxx
+```
+
+##### Validation tips
+
+1. Download the checkpoint once before bootstrapping services:
+
+   ```bash
+   python scripts/download_gemma3.py --target "$DOCLING_VLM_MODEL_PATH"
+   ```
+
+2. Confirm the readiness probe reports the Docling backend as healthy:
+
+   ```bash
+   curl -s localhost:8000/ready | jq '.checks.docling_vlm'
+   ```
+
+3. If the health check reports insufficient memory, lower
+   `DOCLING_VLM_BATCH_SIZE` or provision a 24GB+ GPU as described in
+   `config/gpu.yaml`.
 
 ### Orchestration Configuration
 

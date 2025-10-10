@@ -368,7 +368,7 @@ def _make_stage_op(
             if stage_type == "pdf-download":
                 ledger.set_pdf_downloaded(job_id)
             elif stage_type == "pdf-ir-gate":
-                ledger.set_pdf_ir_ready(job_id)
+                ledger.set_vlm_processing_ready(job_id)
         emitter.emit_completed(
             stage_ctx,
             stage_name,
@@ -677,7 +677,10 @@ def pdf_ir_ready_sensor(context: SensorEvaluationContext):
     for entry in ledger.all():
         if entry.pipeline_name != "pdf-two-phase":
             continue
-        if not entry.pdf_ir_ready or entry.status != "processing":
+        if (
+            not getattr(entry, "vlm_processing_ready", entry.pdf_ir_ready)
+            or entry.status != "processing"
+        ):
             continue
         run_key = f"{entry.job_id}-resume"
         context_payload = {

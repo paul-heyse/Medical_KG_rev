@@ -13,6 +13,8 @@ from typing import Any, Literal
 from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from Medical_KG_rev.config.docling_config import DoclingVLMConfig
+
 
 class Environment(str, Enum):
     """Deployment environments supported by the platform."""
@@ -335,6 +337,19 @@ class MineruSettings(BaseModel):
     def cli_timeout_seconds(self) -> int:
         """Expose worker timeout for CLI invocations."""
         return self.workers.timeout_seconds
+
+
+class DoclingVLMSettings(DoclingVLMConfig):
+    """Runtime configuration for the Docling Gemma3 VLM stack."""
+
+    model_config = SettingsConfigDict(env_prefix="DOCLING_VLM_", env_nested_delimiter="__")
+
+
+class PdfProcessingBackend(str, Enum):
+    """Supported PDF processing backends."""
+
+    MINERU = "mineru"
+    DOCLING_VLM = "docling_vlm"
 
 
 class VaultSettings(BaseModel):
@@ -712,8 +727,10 @@ class AppSettings(BaseSettings):
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
+    docling_vlm: DoclingVLMSettings = Field(default_factory=DoclingVLMSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
+    pdf_processing_backend: PdfProcessingBackend = PdfProcessingBackend.MINERU
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
     redis_cache: RedisCacheSettings = Field(default_factory=RedisCacheSettings)
     openalex: OpenAlexSettings = Field(default_factory=OpenAlexSettings)
@@ -817,14 +834,14 @@ class SecretResolver:
             return {"value": raw}
 
 
-def _deep_update(target: dict[str, Any], updates: Mapping[str, Any]) -> dict[str, Any]:
-    for key, value in updates.items():
-        current = target.get(key)
-        if isinstance(current, dict) and isinstance(value, Mapping):
-            target[key] = _deep_update(dict(current), value)
-        else:
-            target[key] = value
-    return target
+    def _deep_update(target: dict[str, Any], updates: Mapping[str, Any]) -> dict[str, Any]:
+        for key, value in updates.items():
+            current = target.get(key)
+            if isinstance(current, dict) and isinstance(value, Mapping):
+                target[key] = _deep_update(dict(current), value)
+            else:
+                target[key] = value
+        return target
 
 
 def load_settings(environment: str | None = None) -> AppSettings:

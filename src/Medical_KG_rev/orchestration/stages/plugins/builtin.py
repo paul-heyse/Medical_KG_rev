@@ -496,7 +496,13 @@ class _PdfGateStage:
         if not job_id:
             raise ValueError("PDF gate requires a job identifier for ledger lookup")
         entry = self._ledger.get(job_id)
-        ready = bool(entry and entry.pdf_ir_ready)
+        ready = bool(
+            entry
+            and (
+                getattr(entry, "vlm_processing_ready", False)
+                or getattr(entry, "pdf_ir_ready", False)
+            )
+        )
         decision = GateDecision(name=self._gate_name, ready=ready)
         if not ready:
             logger.info(
@@ -505,7 +511,7 @@ class _PdfGateStage:
                 gate=self._gate_name,
             )
             raise PipelineGateNotReady(
-                f"MinerU IR not ready for job {job_id}", gate=self._gate_name
+                f"Docling VLM not ready for job {job_id}", gate=self._gate_name
             )
         logger.info(
             "dagster.stage.pdf_gate.ready",

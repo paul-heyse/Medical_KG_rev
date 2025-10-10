@@ -348,7 +348,7 @@ class PdfGateStage(GateStage):
         self,
         *,
         job_ledger: JobLedger | None = None,
-        field: str = "pdf_ir_ready",
+        field: str = "vlm_processing_ready",
     ) -> None:
         self._job_ledger = job_ledger
         self._field = field
@@ -452,9 +452,9 @@ class CoreStagePlugin(StagePlugin):
         def build_gate(definition: StageDefinition, __: StagePluginResources) -> PdfGateStage:
             config = definition.config
             field_name = (
-                config.get("field", "pdf_ir_ready")
+                config.get("field", "vlm_processing_ready")
                 if isinstance(config, Mapping)
-                else "pdf_ir_ready"
+                else "vlm_processing_ready"
             )
             return PdfGateStage(job_ledger=job_ledger, field=str(field_name))
 

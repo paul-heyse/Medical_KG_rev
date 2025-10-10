@@ -37,6 +37,7 @@ class PdfGateModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     downloaded: bool = False
+    vlm_ready: bool = False
     ir_ready: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
 

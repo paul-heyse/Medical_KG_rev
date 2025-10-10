@@ -120,6 +120,39 @@ class GpuManager:
         allocated = lib.cuda.memory_allocated(device_index)
         return total - allocated, total
 
+    def memory_snapshot(self, device: GpuDevice | None = None) -> dict[str, int]:
+        """Return the current GPU memory metrics for the given device."""
+
+        lib = self._ensure_torch()
+        target = device or self.get_device()
+        with lib.cuda.device(target.index):
+            free_bytes, total_bytes = self._memory_info(lib)
+        allocated = int(lib.cuda.memory_allocated(target.index) / (1024 * 1024))
+        cached = int(getattr(lib.cuda, "memory_reserved", lambda *_: 0)(target.index) / (1024 * 1024))
+        return {
+            "total_mb": int(total_bytes / (1024 * 1024)),
+            "free_mb": int(free_bytes / (1024 * 1024)),
+            "allocated_mb": allocated,
+            "reserved_mb": cached,
+        }
+
+    def health_status(self, required_memory_mb: int) -> tuple[bool, dict[str, int], str | None]:
+        """Report whether the active GPU satisfies the memory requirement."""
+
+        try:
+            lib = self._ensure_torch()
+            device = self.get_device()
+        except GpuNotAvailableError as exc:
+            return False, {}, str(exc)
+        snapshot = self.memory_snapshot(device)
+        free_mb = snapshot.get("free_mb", 0)
+        if required_memory_mb > 0 and free_mb < required_memory_mb:
+            detail = (
+                f"Required {required_memory_mb} MB, available {free_mb} MB on cuda:{device.index}"
+            )
+            return False, snapshot, detail
+        return True, snapshot, None
+
     def _record_metrics(self, service_name: str, device: GpuDevice, lib) -> None:
         device_label = f"cuda:{device.index}"
         try:

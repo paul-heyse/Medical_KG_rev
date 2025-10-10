@@ -1,0 +1,25 @@
+# GPU configuration for VLM-backed document processing.
+#
+# This file is consumed by deployment tooling to size GPU resources for the
+# Docling Gemma3 12B model as well as legacy MinerU workloads. The values are
+# expressed in megabytes to avoid ambiguity across environments.
+---
+profiles:
+  docling_vlm:
+    min_memory_mb: 24576
+    gpu_memory_fraction: 0.95
+    max_model_len: 4096
+    warmup_timeout_seconds: 120
+    health_check:
+      enabled: true
+      min_available_memory_mb: 24576
+      require_device: true
+  mineru:
+    min_memory_mb: 12288
+    gpu_memory_fraction: 0.8
+    max_model_len: 8192
+    warmup_timeout_seconds: 60
+    health_check:
+      enabled: true
+      min_available_memory_mb: 11264
+      require_device: true

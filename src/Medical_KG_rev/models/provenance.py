@@ -40,3 +40,23 @@ class ExtractionActivity(ProvenanceBaseModel):
         if value.tzinfo is None:
             raise ValueError("performed_at must include timezone information")
         return value.astimezone(UTC)
+
+
+class DoclingVLMProcessingActivity(ProvenanceBaseModel):
+    """Provenance record describing Docling VLM PDF processing."""
+
+    id: str
+    document_id: str
+    model_name: str
+    model_version: str | None = None
+    processing_time_seconds: float | None = None
+    gpu_memory_fraction: float | None = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    performed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("performed_at")
+    @classmethod
+    def _ensure_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("performed_at must include timezone information")
+        return value.astimezone(UTC)

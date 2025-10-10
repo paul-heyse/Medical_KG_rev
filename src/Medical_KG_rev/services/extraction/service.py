@@ -37,6 +37,8 @@ class ExtractionInput:
     document_id: str
     text: str
     kind: str
+    metadata: dict[str, object] = field(default_factory=dict)
+    structured_context: list[str] = field(default_factory=list)
 
 
 PicoSchema = {
@@ -120,7 +122,11 @@ class ExtractionService:
             "pico": "Identify PICO elements with start/end offsets.",
             "adverse-event": "Extract adverse events and severities.",
         }.get(request.kind, "generic extraction")
-        raw = self.llm.generate(prompt=template, text=request.text)
+        context = "\n\n".join(request.structured_context)
+        augmented_prompt = template
+        if context:
+            augmented_prompt = f"{template}\n\nContext:\n{context}"
+        raw = self.llm.generate(prompt=augmented_prompt, text=request.text)
 
         spans: list[ExtractionSpan] = []
         for label, matches in raw.items():

@@ -125,6 +125,11 @@ services:
             MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: "10"
             MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: "5"
             MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: "3"
+            MK_DOCLING_VLM__MODEL_PATH: /models/gemma3-12b
+            MK_DOCLING_VLM__GPU_MEMORY_FRACTION: "0.95"
+            MK_DOCLING_VLM__MAX_MODEL_LEN: "4096"
+            MK_DOCLING_VLM__RETRY_ATTEMPTS: "3"
+            MK_FEATURE_FLAGS__PDF_PROCESSING_BACKEND: docling_vlm
             PYTHONPATH: /app
         depends_on:
             vllm-server:
@@ -137,6 +142,8 @@ services:
             interval: 30s
             timeout: 10s
             retries: 3
+        volumes:
+            - gemma3-cache:/models/gemma3-12b
 
     vllm-qwen3:
         build:
@@ -161,6 +168,7 @@ services:
 
 volumes:
     neo4j-data:
+    gemma3-cache:
 
 networks:
     default:

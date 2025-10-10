@@ -109,6 +109,16 @@ MINERU_MODEL_PATH=/models/mineru       # MinerU model path
 MINERU_BATCH_SIZE=1                    # MinerU batch size
 MINERU_MAX_LENGTH=4096                 # MinerU maximum length
 MINERU_DEVICE=cuda                     # MinerU device
+
+# Docling Gemma3 VLM Configuration
+DOCLING_VLM_MODEL_PATH=/models/gemma3-12b   # Gemma3 model cache directory
+DOCLING_VLM_MODEL_NAME=google/gemma-3-12b-it # Hugging Face repository name
+DOCLING_VLM_BATCH_SIZE=8                # Batch size for Docling inference
+DOCLING_VLM_TIMEOUT_SECONDS=300         # Timeout per processing job
+DOCLING_VLM_RETRY_ATTEMPTS=3            # Retry attempts for transient failures
+DOCLING_VLM_GPU_MEMORY_FRACTION=0.95    # Fraction of GPU memory reserved for Docling
+DOCLING_VLM_REQUIRED_TOTAL_MEMORY_MB=24576 # Minimum GPU memory required (24GB)
+PDF_PROCESSING_BACKEND=docling_vlm      # Select pdf backend (mineru or docling_vlm)
 ```
 
 ### Orchestration Configuration

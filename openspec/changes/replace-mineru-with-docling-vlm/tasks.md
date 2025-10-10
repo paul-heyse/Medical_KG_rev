@@ -1,31 +1,31 @@
 ## 1. Infrastructure Setup
 
-- [ ] 1.1 Add Docling[vlm] and Gemma3 12B dependencies to requirements.in
+- [x] 1.1 Add Docling[vlm] and Gemma3 12B dependencies to requirements.in
       - Add `docling[vlm]>=2.0.0` to requirements.in
       - Add `transformers>=4.36.0` for model loading
       - Add `torch>=2.1.0` with CUDA support
       - Add `pillow>=10.0.0` for image processing
       - Run `pip-compile requirements.in` to update requirements.txt
 
-- [ ] 1.2 Update Docker configuration for Gemma3 model support
+- [x] 1.2 Update Docker configuration for Gemma3 model support
       - Modify `Dockerfile` to install Docling dependencies
       - Add CUDA 12.1+ support for Gemma3 12B requirements
       - Configure model cache directory `/models/gemma3-12b`
       - Update `docker-compose.yml` with Docling service if needed
 
-- [ ] 1.3 Configure GPU memory allocation for Gemma3 12B (requires ~24GB VRAM)
+- [x] 1.3 Configure GPU memory allocation for Gemma3 12B (requires ~24GB VRAM)
       - Update `config/gpu.yaml` with Gemma3 memory requirements
       - Set `gpu_memory_fraction: 0.95` for Gemma3 12B
       - Configure `max_model_len: 4096` for document processing
       - Add GPU health check that verifies 24GB+ available memory
 
-- [ ] 1.4 Set up model download and caching for Gemma3 12B
+- [x] 1.4 Set up model download and caching for Gemma3 12B
       - Create `/models/gemma3-12b/` directory structure
       - Add model download script in `scripts/download_gemma3.py`
       - Configure huggingface_hub for authenticated model downloads
       - Set up model validation after download
 
-- [ ] 1.5 Update health checks to verify Gemma3 model availability
+- [x] 1.5 Update health checks to verify Gemma3 model availability
       - Modify `src/Medical_KG_rev/services/gpu/manager.py` health check
       - Add Gemma3 model loading verification in health endpoint
       - Update `/health` endpoint to check VLM model availability
@@ -33,31 +33,31 @@
 
 ## 2. Configuration Management
 
-- [ ] 2.1 Create Docling configuration class in `src/Medical_KG_rev/config/`
+- [x] 2.1 Create Docling configuration class in `src/Medical_KG_rev/config/`
       - Create `src/Medical_KG_rev/config/docling_config.py` with DoclingVLMConfig class
       - Include model_path, batch_size, timeout, retry_attempts, gpu_memory_fraction
       - Add validation for model availability and GPU requirements
       - Implement from_dict/from_yaml class methods for configuration loading
 
-- [ ] 2.2 Add Docling settings to main application configuration
+- [x] 2.2 Add Docling settings to main application configuration
       - Update `src/Medical_KG_rev/config/settings.py` to include DoclingVLMSettings
       - Add docling_vlm: DoclingVLMConfig section to main Settings class
       - Set sensible defaults: batch_size=8, timeout=300, retry_attempts=3
       - Add environment variable mapping (DOCLING_VLM_* prefix)
 
-- [ ] 2.3 Update environment variable documentation for Docling settings
+- [x] 2.3 Update environment variable documentation for Docling settings
       - Add Docling section to `docs/guides/environment_variables.md`
       - Document DOCLING_VLM_MODEL_PATH, DOCLING_VLM_BATCH_SIZE, etc.
       - Include example .env file with Docling configuration
       - Add validation examples for configuration values
 
-- [ ] 2.4 Migrate vLLM configuration to support Docling model switching
+- [x] 2.4 Migrate vLLM configuration to support Docling model switching
       - Update `src/Medical_KG_rev/config/vllm_config.py` to support multiple model types
       - Add model_type field ("vllm" | "docling_vlm") to configuration
       - Create unified GPUConfig that works for both vLLM and Docling
       - Update config loading to handle both model types
 
-- [ ] 2.5 Add feature flag for Docling vs MinerU processing modes
+- [x] 2.5 Add feature flag for Docling vs MinerU processing modes
       - Create feature flag in `src/Medical_KG_rev/config/settings.py`
       - Add `pdf_processing_backend: str = "minerv"  # "minerv" | "docling_vlm"`
       - Update environment variable: PDF_PROCESSING_BACKEND
@@ -65,7 +65,7 @@
 
 ## 3. Core Docling Integration
 
-- [ ] 3.1 Create DoclingVLMService class in `src/Medical_KG_rev/services/parsing/`
+- [x] 3.1 Create DoclingVLMService class in `src/Medical_KG_rev/services/parsing/`
       - Create `src/Medical_KG_rev/services/parsing/docling_vlm_service.py`
       - Implement DoclingVLMService class inheriting from same base as MineruProcessor
       - Add __init__(config: DoclingVLMConfig, gpu_manager: GPUServiceManager)
@@ -73,28 +73,28 @@
       - Add model loading with transformers.pipeline for vision-language model
       - Include GPU memory management and model warm-up logic
 
-- [ ] 3.2 Implement PDF processing interface compatible with existing pipeline
+- [x] 3.2 Implement PDF processing interface compatible with existing pipeline
       - Ensure DoclingVLMService implements same MineruProcessor interface
       - Return DoclingVLMResult with same structure as MineruResult
       - Include text, tables, figures, and metadata extraction
       - Maintain backward compatibility with existing document formats
       - Add provenance tracking for VLM processing (model_version, processing_time)
 
-- [ ] 3.3 Add error handling for VLM model failures and fallbacks
+- [x] 3.3 Add error handling for VLM model failures and fallbacks
       - Create custom exception classes in `src/Medical_KG_rev/services/parsing/exceptions.py`
       - Add DoclingVLMError, DoclingModelLoadError, DoclingProcessingError
       - Implement retry logic with exponential backoff for transient failures
       - Add circuit breaker pattern for persistent model failures
       - Include detailed error logging with model state and GPU memory info
 
-- [ ] 3.4 Implement batch processing for multiple PDFs
+- [x] 3.4 Implement batch processing for multiple PDFs
       - Add process_pdf_batch(pdf_paths: List[str]) -> List[DoclingVLMResult] method
       - Implement intelligent batching based on available GPU memory
       - Add progress tracking with estimated completion times
       - Handle partial batch failures gracefully (return successful results)
       - Optimize batch sizes based on document complexity and available memory
 
-- [ ] 3.5 Add performance monitoring and metrics for VLM processing
+- [x] 3.5 Add performance monitoring and metrics for VLM processing
       - Create VLM-specific metrics class in `src/Medical_KG_rev/services/parsing/metrics.py`
       - Track processing_time_seconds, gpu_memory_usage_mb, model_load_time
       - Add counters for successful/failed processing, retry attempts
@@ -103,35 +103,35 @@
 
 ## 4. Pipeline Stage Updates
 
-- [ ] 4.1 Update PDF download stage to work with Docling (remove MinerU dependency)
+- [x] 4.1 Update PDF download stage to work with Docling (remove MinerU dependency)
       - Modify `src/Medical_KG_rev/orchestration/stages/pdf_download.py`
       - Remove MinerU-specific metadata and processing flags
       - Update artifact creation to include Docling compatibility flags
       - Ensure download artifacts work with both MinerU and Docling processing
       - Update stage documentation to reflect Docling support
 
-- [ ] 4.2 Modify PDF gate stage to check Docling readiness instead of MinerU
+- [x] 4.2 Modify PDF gate stage to check Docling readiness instead of MinerU
       - Update `src/Medical_KG_rev/orchestration/stages/pdf_gate.py`
       - Change readiness check from `pdf_ir_ready` to `vlm_processing_ready`
       - Add DoclingVLMService health check integration
       - Update error messages to reference Docling instead of MinerU
       - Ensure backward compatibility with existing MinerU gates
 
-- [ ] 4.3 Update orchestration plugins to support Docling-based stages
+- [x] 4.3 Update orchestration plugins to support Docling-based stages
       - Modify `src/Medical_KG_rev/orchestration/stages/plugins/builtin.py`
       - Update CoreStagePlugin to support DoclingVLMService injection
       - Add Docling-specific stage creation logic
       - Update plugin health checks to include Docling service verification
       - Add feature flag awareness for plugin stage selection
 
-- [ ] 4.4 Remove MinerU-specific stage implementations
+- [x] 4.4 Remove MinerU-specific stage implementations
       - Archive `src/Medical_KG_rev/services/mineru/` directory
       - Remove MinerU imports from orchestration plugins
       - Update any remaining references to MineruProcessor
       - Move to `src/Medical_KG_rev/services/mineru/archive/` for historical reference
       - Update import statements in affected files
 
-- [ ] 4.5 Add Docling-specific pipeline stages for VLM processing
+- [x] 4.5 Add Docling-specific pipeline stages for VLM processing
       - Create `src/Medical_KG_rev/orchestration/stages/docling_vlm_stage.py`
       - Implement DoclingVLMProcessingStage class
       - Add VLM-specific configuration and error handling
@@ -140,35 +140,35 @@
 
 ## 5. Document Processing Integration
 
-- [ ] 5.1 Update document parser to handle Docling VLM output format
+- [x] 5.1 Update document parser to handle Docling VLM output format
       - Modify `src/Medical_KG_rev/services/parsing/docling.py` to support VLM output
       - Add DoclingVLMOutputParser class for processing VLM results
       - Handle structured content extraction (text, tables, figures, metadata)
       - Convert Docling VLM output to internal Document IR format
       - Add validation for VLM-extracted content quality
 
-- [ ] 5.2 Modify chunking pipeline to work with VLM-extracted content
+- [x] 5.2 Modify chunking pipeline to work with VLM-extracted content
       - Update `src/Medical_KG_rev/chunking/service.py` chunking strategies
       - Add VLM-aware chunking that preserves document structure from VLM
       - Modify chunking to work with enhanced table and figure recognition
       - Update chunking configuration for VLM-processed content
       - Add chunking quality metrics for VLM vs OCR content
 
-- [ ] 5.3 Update entity extraction to leverage VLM document understanding
+- [x] 5.3 Update entity extraction to leverage VLM document understanding
       - Enhance `src/Medical_KG_rev/services/extraction/service.py`
       - Update entity extraction templates to work with VLM-structured content
       - Improve entity recognition using VLM's document understanding
       - Add VLM-specific entity confidence scoring
       - Maintain existing entity extraction API compatibility
 
-- [ ] 5.4 Ensure provenance tracking works with Docling processing
+- [x] 5.4 Ensure provenance tracking works with Docling processing
       - Update `src/Medical_KG_rev/models/provenance.py` for VLM processing
       - Add DoclingVLMProcessingActivity with model_version, processing_config
       - Include GPU memory usage and processing time in provenance
       - Update provenance queries to handle both MinerU and Docling activities
       - Add provenance validation for VLM processing results
 
-- [ ] 5.5 Maintain backward compatibility with existing document formats
+- [x] 5.5 Maintain backward compatibility with existing document formats
       - Ensure VLM-processed documents use same Document IR structure
       - Maintain existing document storage and retrieval APIs
       - Update document validation to accept VLM-generated content

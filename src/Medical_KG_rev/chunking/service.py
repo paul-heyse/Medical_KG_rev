@@ -149,6 +149,7 @@ class ChunkingService:
         source: str | None = None,
         options: ChunkingOptions | None = None,
     ) -> list[Chunk]:
+        document = self._prepare_document_for_chunking(document)
         self._validate_document(document)
         profile = self.config.profile_for_source(source)
         expected_tokenizer = str(profile.primary.params.get("tokenizer", ""))
@@ -234,6 +235,35 @@ class ChunkingService:
             raise InvalidDocumentError("Document contains no sections to chunk")
         if not any(section.blocks for section in document.sections):
             raise InvalidDocumentError("Document contains no blocks to chunk")
+
+    def _prepare_document_for_chunking(self, document: Document) -> Document:
+        """Ensure blocks extracted from Docling contain chunkable text."""
+
+        mutated = False
+        prepared_sections: list[Section] = []
+        for section in document.sections:
+            new_blocks: list[Block] = []
+            for block in section.blocks:
+                updated = block
+                if block.type == BlockType.TABLE and block.table is not None:
+                    table_text = block.text or block.table.to_markdown()
+                    if table_text != block.text:
+                        updated = block.model_copy(update={"text": table_text})
+                        mutated = True
+                elif block.type == BlockType.FIGURE and block.figure is not None:
+                    caption = block.text or block.figure.caption or ""
+                    if caption != block.text:
+                        updated = block.model_copy(update={"text": caption})
+                        mutated = True
+                new_blocks.append(updated)
+            if mutated:
+                prepared_sections.append(section.model_copy(update={"blocks": new_blocks}))
+            else:
+                prepared_sections.append(section)
+
+        if not mutated:
+            return document
+        return document.model_copy(update={"sections": prepared_sections})
 
     @classmethod
     def _plan_key(

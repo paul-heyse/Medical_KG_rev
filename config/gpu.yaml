@@ -1,0 +1,11 @@
+# GPU configuration for Docling Gemma3 12B integration
+# This file is consumed by operational scripts to validate GPU resources.
+docling_vlm:
+  model_name: google/gemma-3-12b-it
+  min_memory_gb: 24
+  gpu_memory_fraction: 0.95
+  max_model_len: 4096
+  health_check:
+    ensure_min_free_mb: 24576
+    require_device: true
+    metrics_namespace: docling_vlm

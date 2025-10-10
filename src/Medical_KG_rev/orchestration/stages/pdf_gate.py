@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 import structlog
+from Medical_KG_rev.config.settings import get_settings
 from Medical_KG_rev.orchestration.stages.contracts import (
     GateDecision,
     GateStage,
@@ -23,6 +24,12 @@ class PdfGateStage(GateStage):
     def __init__(self, gate_name: str = "pdf-ir-gate") -> None:
         self._gate_name = gate_name
         self._ledger: Any = None
+        settings = get_settings()
+        self._backend = settings.feature_flags.pdf_processing_backend
+        self._ledger_ready_key = (
+            "pdf_vlm_ready" if self._backend == "docling_vlm" else "pdf_ir_ready"
+        )
+        self._state_ready_attr = "vlm_ready" if self._backend == "docling_vlm" else "ir_ready"
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize stage with ledger resources."""
@@ -57,7 +64,7 @@ class PdfGateStage(GateStage):
                     ledger_state = self._ledger.get_job_state(job_id)
                     if ledger_state:
                         pdf_downloaded = ledger_state.get("pdf_downloaded", False)
-                        pdf_ir_ready = ledger_state.get("pdf_ir_ready", False)
+                        backend_ready = ledger_state.get(self._ledger_ready_key, False)
 
                         if not pdf_downloaded:
                             logger.debug(
@@ -76,9 +83,11 @@ class PdfGateStage(GateStage):
                                 },
                             )
 
-                        if not pdf_ir_ready:
+                        if not backend_ready:
                             logger.debug(
-                                "pdf_gate_stage.pdf_ir_not_ready",
+                                "pdf_gate_stage.vlm_not_ready"
+                                if self._backend == "docling_vlm"
+                                else "pdf_gate_stage.pdf_ir_not_ready",
                                 tenant_id=state.tenant_id,
                                 job_id=job_id,
                                 gate_name=self._gate_name,
@@ -87,7 +96,9 @@ class PdfGateStage(GateStage):
                                 name=self._gate_name,
                                 ready=False,
                                 metadata={
-                                    "reason": "pdf_ir_not_ready",
+                                    "reason": "pdf_vlm_not_ready"
+                                    if self._backend == "docling_vlm"
+                                    else "pdf_ir_not_ready",
                                     "job_id": job_id,
                                     "timestamp": time.time(),
                                 },
@@ -118,9 +129,12 @@ class PdfGateStage(GateStage):
                     },
                 )
 
-            if not state.pdf_gate.ir_ready:
+            is_ready = getattr(state.pdf_gate, self._state_ready_attr, False)
+            if not is_ready:
                 logger.debug(
-                    "pdf_gate_stage.state_ir_not_ready",
+                    "pdf_gate_stage.state_vlm_not_ready"
+                    if self._backend == "docling_vlm"
+                    else "pdf_gate_stage.state_ir_not_ready",
                     tenant_id=state.tenant_id,
                     gate_name=self._gate_name,
                 )
@@ -128,7 +142,9 @@ class PdfGateStage(GateStage):
                     name=self._gate_name,
                     ready=False,
                     metadata={
-                        "reason": "state_ir_not_ready",
+                        "reason": "state_vlm_not_ready"
+                        if self._backend == "docling_vlm"
+                        else "state_ir_not_ready",
                         "timestamp": time.time(),
                     },
                 )

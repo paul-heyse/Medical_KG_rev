@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import httpx
 
 import structlog
+from Medical_KG_rev.config.settings import get_settings
 from Medical_KG_rev.orchestration.stages.contracts import (
     DownloadArtifact,
     DownloadStage,
@@ -85,6 +86,9 @@ class StorageAwarePdfDownloadStage(DownloadStage):
             successful_downloads=len(artifacts),
         )
 
+        if artifacts and get_settings().feature_flags.pdf_processing_backend == "docling_vlm":
+            state.mark_pdf_vlm_ready(metadata={"backend": "docling_vlm"})
+
         return artifacts
 
     async def _download_and_store_pdf(
@@ -136,12 +140,17 @@ class StorageAwarePdfDownloadStage(DownloadStage):
                 return DownloadArtifact(
                     document_id=document_id,
                     tenant_id=state.tenant_id,
-                    uri=asset.uri,
+                    uri=f"s3://{asset.s3_key}",
                     metadata={
                         "checksum": asset.checksum,
                         "size": len(pdf_data),
                         "content_type": content_type,
                         "pdf_url": pdf_url,
+                        "s3_key": asset.s3_key,
+                        "cache_key": asset.cache_key,
+                        "upload_timestamp": asset.upload_timestamp,
+                        "vlm_ready": True,
+                        "backends": ["docling_vlm"],
                     },
                 )
             except Exception as e:
@@ -157,7 +166,9 @@ class StorageAwarePdfDownloadStage(DownloadStage):
                 )
         else:
             # No storage available, use in-memory only
-            return self._create_in_memory_artifact(pdf_url, pdf_data, content_type)
+            return self._create_in_memory_artifact(
+                pdf_url, pdf_data, content_type, document_id, state.tenant_id
+            )
 
     def _download_with_retries(self, pdf_url: str) -> bytes | None:
         """Download PDF with retry logic."""
@@ -240,14 +251,21 @@ class StorageAwarePdfDownloadStage(DownloadStage):
         return "application/octet-stream"
 
     def _create_in_memory_artifact(
-        self, pdf_url: str, pdf_data: bytes, content_type: str, document_id: str, tenant_id: str
+        self,
+        pdf_url: str,
+        pdf_data: bytes,
+        content_type: str,
+        document_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> DownloadArtifact:
         """Create artifact for in-memory storage."""
         checksum = hashlib.sha256(pdf_data).hexdigest()
+        resolved_document = document_id or f"doc-{int(time.time())}"
+        resolved_tenant = tenant_id or "default"
 
         return DownloadArtifact(
-            document_id=document_id,
-            tenant_id=tenant_id,
+            document_id=resolved_document,
+            tenant_id=resolved_tenant,
             uri=f"in-memory://{checksum}",
             metadata={
                 "checksum": checksum,
@@ -255,6 +273,8 @@ class StorageAwarePdfDownloadStage(DownloadStage):
                 "content_type": content_type,
                 "pdf_url": pdf_url,
                 "in_memory": True,
+                "vlm_ready": True,
+                "backends": ["docling_vlm"],
             },
         )
 
@@ -296,6 +316,9 @@ class AsyncStorageAwarePdfDownloadStage(StorageAwarePdfDownloadStage):
             total_urls=len(pdf_urls),
             successful_downloads=len(artifacts),
         )
+
+        if artifacts and get_settings().feature_flags.pdf_processing_backend == "docling_vlm":
+            state.mark_pdf_vlm_ready(metadata={"backend": "docling_vlm"})
 
         return artifacts
 
@@ -348,7 +371,7 @@ class AsyncStorageAwarePdfDownloadStage(StorageAwarePdfDownloadStage):
                 return DownloadArtifact(
                     document_id=document_id,
                     tenant_id=state.tenant_id,
-                    uri=asset.uri,
+                    uri=f"s3://{asset.s3_key}",
                     metadata={
                         "checksum": asset.checksum,
                         "size": len(pdf_data),

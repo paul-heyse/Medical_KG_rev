@@ -1,0 +1,1405 @@
+{
+  "paper_id": "W3091220619",
+  "title": "Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats",
+  "doi": "10.23880/izab-16000180",
+  "pdf_size_mb": 0.6567630767822266,
+  "processing_time_seconds": 7.65683388710022,
+  "document_id": "W3091220619",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 7656,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "statistics": {
+    "total_blocks": 87,
+    "tables_extracted": 0,
+    "figures_extracted": 0
+  },
+  "blocks": [
+    {
+      "id": "720c5e0c-8e8f-4567-8afc-05fcc9163f05",
+      "text": "Biochemical and Pathological Features of Postmortem",
+      "page": 0,
+      "bbox": [
+        114.0,
+        127.0,
+        890.0,
+        154.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "ef9c40d1-4cdd-4b9b-9352-d2ec63ec4d6c",
+      "text": "Time Interval of Natural Brain Death Induced in Albino",
+      "page": 0,
+      "bbox": [
+        112.0,
+        170.0,
+        897.0,
+        194.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "9af71136-99dd-4104-8c5f-07a0d3ee73ab",
+      "text": "Rats",
+      "page": 0,
+      "bbox": [
+        470.0,
+        214.0,
+        537.0,
+        234.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "fc51f564-27fe-4548-a1ce-7d7eaefdf7b1",
+      "text": "Elalfy MM $^{1*}$ , Ragheb HR $^{1}$ , Hamed MF $^{2}$  and Sleem FR $^{1}$",
+      "page": 0,
+      "bbox": [
+        71.0,
+        282.0,
+        542.0,
+        301.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "5e679188-7653-4980-bf43-1e81bfcbfa4f",
+      "text": "$^{1}$ Department of Forensic Medicine and Toxicology, Mansoura University, Egypt",
+      "page": 0,
+      "bbox": [
+        71.0,
+        309.0,
+        625.0,
+        325.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "486d294e-5a3e-4d1b-a95f-ce67d04151c7",
+      "text": "$^{2}$ Department pathology, Mansoura University, Egypt",
+      "page": 0,
+      "bbox": [
+        73.0,
+        332.0,
+        441.0,
+        348.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9d50de50-8cf6-4de7-ab28-d956b87d3d4d",
+      "text": "*Corresponding author: Mahmoud Elalfy, Department of Forensic Medicine and",
+      "page": 0,
+      "bbox": [
+        71.0,
+        364.0,
+        671.0,
+        382.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3cd83852-a424-4322-811b-697eff823698",
+      "text": "Toxicology, faculty of veterinary medicine, Mansoura University, 60-Elgomhouria St.,",
+      "page": 0,
+      "bbox": [
+        73.0,
+        387.0,
+        673.0,
+        404.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "014df48f-10a9-4c63-824f-466cdabceea3",
+      "text": "Mansoura City, Egypt, Email: mahmoudelalfy@mans.edu",
+      "page": 0,
+      "bbox": [
+        73.0,
+        409.0,
+        470.0,
+        425.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "353b03c5-32b9-4138-b0a9-000479b521ef",
+      "text": "Research Article",
+      "page": 0,
+      "bbox": [
+        738.0,
+        292.0,
+        866.0,
+        306.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "13ae3d00-ecd5-4d33-9ced-cbb580e26ed9",
+      "text": "Volume 2 Issue 5",
+      "page": 0,
+      "bbox": [
+        751.0,
+        315.0,
+        851.0,
+        325.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d070429a-d8ab-45ee-b22d-8352c05a25aa",
+      "text": "Received Date: October 01, 2019",
+      "page": 0,
+      "bbox": [
+        697.0,
+        333.0,
+        888.0,
+        345.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5232d3d8-be4a-4c51-be8d-a4523391be85",
+      "text": "Published Date: October 16, 2019",
+      "page": 0,
+      "bbox": [
+        697.0,
+        349.0,
+        895.0,
+        362.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6e64ecef-2e19-4359-a368-6ac1d178819b",
+      "text": "DOI: 10.23880/izab-16000180",
+      "page": 0,
+      "bbox": [
+        709.0,
+        369.0,
+        885.0,
+        382.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7492bb21-9dc7-406c-b964-285318b0444d",
+      "text": "Abstract",
+      "page": 0,
+      "bbox": [
+        84.0,
+        472.0,
+        165.0,
+        488.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "bf0c76a9-1bee-4a18-be79-86f16c195f78",
+      "text": "Previously we studied certain biochemical markers of postmortem time interval (PMI) in brain stem induced death in albino rats in first 30 hours after death. PMI is very important in forensic medicine for both criminal and civil conditions. We investigate histopathology, biochemical markers of enzymology and trace minerals in brain stem death model in albino rats. In the current study, we found a time dependent reduction in cholesterol and calcium level while LDH, CPK, sodium, potassium, total protein, albumin and chloride were increased as a result of tissue degradation. Notably, triglycerides are only fluctuated chemicals in blood sera suffered postmortem changes even is the highest point near 72 hours. Histopathological changes in heart, lung and brain were also time dependent except that brain suffers sever hemorrhage at the time of death onset due to increase intracranial pressure after injection of hypotonic solution in the dura mater. On conclusions, level cholesterol and trace mineral could correlate to postmortem time interval on natural induced death.",
+      "page": 0,
+      "bbox": [
+        70.0,
+        501.0,
+        926.0,
+        717.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a2a5c415-b1e1-40ce-b89b-03fc1d0d40d1",
+      "text": "Keywords: PMI; Blood Chemistry; Trace Minerals; Natural Death; Albino Rats",
+      "page": 0,
+      "bbox": [
+        71.0,
+        736.0,
+        635.0,
+        753.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a72c6f16-20a5-4d78-93a8-7ba1283cccea",
+      "text": "Introduction",
+      "page": 0,
+      "bbox": [
+        83.0,
+        805.0,
+        204.0,
+        821.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "554d28f9-bb40-4978-8d50-ea47a517a265",
+      "text": "The postmortem time interval is very important significance in forensic medicine for criminal issue and",
+      "page": 0,
+      "bbox": [
+        71.0,
+        834.0,
+        483.0,
+        864.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "395d9bca-9360-4c8f-b62f-50469c8ac018",
+      "text": "civilization. The time of death can also have important implications for legal medicine such as inheritance and insurance, Even the cause of death is natural [1]. Time since death still not solved point and has interest of all",
+      "page": 0,
+      "bbox": [
+        511.0,
+        804.0,
+        924.0,
+        864.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ec65a50d-ee77-45be-86a0-ca3f24c96c54",
+      "text": "M",
+      "page": 0,
+      "bbox": [
+        148.0,
+        13.0,
+        199.0,
+        53.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9317367b-4593-4bb1-9258-1e0c033409bf",
+      "text": "MEDWIN PUBLISHERS",
+      "page": 0,
+      "bbox": [
+        81.0,
+        54.0,
+        267.0,
+        66.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "47452cf0-337c-4713-9110-cd8d12f0a23b",
+      "text": "Committed to create value for Researchers",
+      "page": 0,
+      "bbox": [
+        81.0,
+        68.0,
+        267.0,
+        75.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0e21f541-3765-46f4-89e6-09e2c889b657",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 0,
+      "bbox": [
+        328.0,
+        46.0,
+        911.0,
+        69.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "374f16df-c0b6-4185-83ee-679cc65e2638",
+      "text": "ISSN: 2639-216X",
+      "page": 0,
+      "bbox": [
+        790.0,
+        69.0,
+        911.0,
+        82.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0edcb2c9-0b6a-4b92-9ff5-98316d0565b6",
+      "text": "Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats",
+      "page": 0,
+      "bbox": [
+        83.0,
+        907.0,
+        485.0,
+        931.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f69f64f1-5016-4adc-a2ae-2bc5776544ee",
+      "text": "Int J Zoo Animal Biol",
+      "page": 0,
+      "bbox": [
+        794.0,
+        907.0,
+        911.0,
+        921.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c62b3e5c-6a22-401f-bbe2-d2850a276dd1",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 1,
+      "bbox": [
+        326.0,
+        46.0,
+        911.0,
+        70.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "de8bed5e-ec01-4cca-841a-dfd75b6382b5",
+      "text": "researchers all over the world in the field of forensic medicine.",
+      "page": 1,
+      "bbox": [
+        70.0,
+        90.0,
+        482.0,
+        119.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a9f8e259-4615-406c-9808-5e6552b0201b",
+      "text": "The detection of the postmortem interval (PMI) is still one of the most challenging elements to determine and the different approaches currently used in its determination to basically lead to large post mortem windows. The combined morphological and immunohistochemically analysis could provide detailed knowledge on tissue organization and degradation after death [2]. Previously, we reported that certain biochemical could be postmortem time dependent until 30 hours after natural death induced in albino rats as well as Donaldson and Lamont recorded the biochemistry alteration after Death in brain stem death induced in rats [3,4].",
+      "page": 1,
+      "bbox": [
+        70.0,
+        133.0,
+        482.0,
+        328.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4118b7c6-5834-417e-9324-f0a0273d9cd8",
+      "text": "The body after death affected by intrinsic and extrinsic factors that could modulate postmortem time interval based on the biochemistry of vitreous humor and made complicity to find a formula for measurement PMI except in one case of including different factors like age, temperature and body weight [5].",
+      "page": 1,
+      "bbox": [
+        70.0,
+        342.0,
+        482.0,
+        431.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "afa268fe-839d-402e-bdac-63601c1ebd49",
+      "text": "For the evaluation of changes due to postmortem intervals based on biochemistry, none of the biochemical markers except for triglyceride which showed significant changes up to three days after death [6]. Notably serum lactate dehydrogenase increased significantly and time dependent with postmortem time interval [3]. Groups of biochemical markers in blood, bone marrow, vitreous humor, and tissues can be helpful for determination of PMI of time dependent manner. Also, losses of DNA integrity and quality have a vital role in PMI determination except certain conditions which delay or replace the putrefaction [7].",
+      "page": 1,
+      "bbox": [
+        70.0,
+        446.0,
+        482.0,
+        625.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "47161f2a-ecb1-4a04-88e0-1d65465d4e9c",
+      "text": "Our aim was to investigate variable blood markers and their usefulness in the forensic Diagnosis of PMI. We evaluate how biochemical parameters of the blood, suffered postmortem changes could be helpful for detection of PMI in experimental models of natural death.",
+      "page": 1,
+      "bbox": [
+        70.0,
+        638.0,
+        482.0,
+        712.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3fe2b5ee-fa60-4d4e-86e4-350936d183aa",
+      "text": "Material and Methods",
+      "page": 1,
+      "bbox": [
+        83.0,
+        728.0,
+        287.0,
+        744.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "3df2384d-4666-45d1-81e6-9c741cfffb1c",
+      "text": "Animal procedures were conducted with the accordance of the animal care committee of the ethics Board of the faculty of veterinary medicine Mansoura University, Egypt.",
+      "page": 1,
+      "bbox": [
+        70.0,
+        757.0,
+        482.0,
+        818.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6eb1f96f-9603-4e9e-bfb7-34c9e53bfde8",
+      "text": "24 male Albino rats (weight, 150-200g) were purchased from faculty of pharmacy, Mansoura",
+      "page": 1,
+      "bbox": [
+        70.0,
+        832.0,
+        482.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "64095d5b-e6d9-410e-b6a9-0948f3bf6288",
+      "text": "University, Egypt). They were maintained on a 12-h light/dark cycle with free access to food and water. Brain stem death was induced according to Zhang, et al. [8]. Dead rat was kept in fixed supine position on research lab. Temperature for 72 hours after induction of death. The rest of dead animals were discarded according biosafety procedure.",
+      "page": 1,
+      "bbox": [
+        509.0,
+        90.0,
+        924.0,
+        195.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e59be60d-5ac8-4c5b-8f36-8e2e489a1b68",
+      "text": "Blood samples of each 4 rat for each time point were collected from the heart and great vessels at autopsy at different time points after induction of death and kept for suffering postmortem changes [6]. Samples were centrifuged immediately for  $20\\mathrm{min}$  at  $2000\\mathrm{RPM}$ . Serum samples were stored at  $-20\\mathrm{c}$  in deep freezer until measurement.",
+      "page": 1,
+      "bbox": [
+        509.0,
+        209.0,
+        924.0,
+        311.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ab8a0507-1e93-4e42-bcaa-c8bc6072c28a",
+      "text": "Biochemical Assessment",
+      "page": 1,
+      "bbox": [
+        524.0,
+        328.0,
+        733.0,
+        343.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "317e6b50-db74-45c2-85f4-bc8c002f4a48",
+      "text": "Sera suffered postmortem changes were tested for LDH, CPK, calcium, sodium, potassium, chloride, total protein, albumin, cholesterol and triglycerides [9-18].",
+      "page": 1,
+      "bbox": [
+        511.0,
+        349.0,
+        924.0,
+        395.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "75be1a7d-b276-40e3-8ed9-9fe89191421d",
+      "text": "Histopathology Examination",
+      "page": 1,
+      "bbox": [
+        524.0,
+        409.0,
+        764.0,
+        425.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "df347432-a39d-462c-b189-d240d858c286",
+      "text": "The male rats were anesthetized by thiopental and natural death was induced. Their tissues like heart, lung, and brain were separated at different time point after death and fixed in  $10\\%$  neutral buffered formalin. Fixed tissues were procedures were described previously before in details for eosin and hematoxylin staining [19].",
+      "page": 1,
+      "bbox": [
+        509.0,
+        431.0,
+        924.0,
+        521.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "819d76df-8ff4-409c-aea0-d8e378c09b4a",
+      "text": "Statistical Analysis",
+      "page": 1,
+      "bbox": [
+        524.0,
+        536.0,
+        684.0,
+        551.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "9ad97c7d-aca1-434f-88a9-cad39d2d25ec",
+      "text": "Statistical analysis was carried out using the one-way annova and student's t-test.  $\\mathrm{P} < 0.05$  was considered significant [20].",
+      "page": 1,
+      "bbox": [
+        511.0,
+        558.0,
+        924.0,
+        603.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "99e8f23c-eb04-4259-9901-1b6be36b9b59",
+      "text": "Results",
+      "page": 1,
+      "bbox": [
+        524.0,
+        618.0,
+        596.0,
+        633.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "14cb2c18-86a9-4b2f-ada2-218181942efa",
+      "text": "Biochemical Markers of Postmortem Time Interval",
+      "page": 1,
+      "bbox": [
+        524.0,
+        648.0,
+        923.0,
+        679.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "69dbe814-fc92-4f88-aa79-690fef63e468",
+      "text": "Notably, there was a significant increase in the level of LDH while CPK, albumin, total protein, sodium and chloride levels were increased with time dependent after death and correlate with cellular death. Also, cholesterol and calcium were reduced significantly at different times after death. Also, triglycerides had variable up and down levels with different time point since natural death was induced even was recorded at the highest level at 72 hours after death (Figure 1).",
+      "page": 1,
+      "bbox": [
+        509.0,
+        686.0,
+        924.0,
+        820.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4b9f6445-6b6e-4194-86c3-5c83585c599b",
+      "text": "2",
+      "page": 1,
+      "bbox": [
+        63.0,
+        37.0,
+        76.0,
+        50.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "25951cb1-4447-4d70-a29e-93d21ab81591",
+      "text": "Elalfy MM, et al. Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats. Int J Zoo Animal Biol 2019, 2(5): 000180.",
+      "page": 1,
+      "bbox": [
+        81.0,
+        895.0,
+        480.0,
+        933.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9bbc8fa8-3e42-449d-829a-b0a866ffc327",
+      "text": "Copyright \u00a9 Elalfy MM, et al.",
+      "page": 1,
+      "bbox": [
+        743.0,
+        895.0,
+        903.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "8a71bdf1-1c5a-4274-a2a4-2a0d9fca2f56",
+      "text": "Histopathology",
+      "page": 2,
+      "bbox": [
+        83.0,
+        516.0,
+        215.0,
+        532.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "eff503b3-50de-4c7a-9af6-2989e70a85b0",
+      "text": "In natural death induced by brain stem death show notable sever hemorrhage in the brain due to increased intracranial pressure after injection of hypotonic solution in diameter space, heart was showing the death of cardiomyocytes and slight increases in the interstitial spaces and lung displayed pulmonary atelectasis and over distended alveoli with air with death pneumocytes with the proliferation of interstitial tissue.",
+      "page": 2,
+      "bbox": [
+        70.0,
+        537.0,
+        483.0,
+        657.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7a260eb1-1f9f-4630-8046-9bb6779f3910",
+      "text": "At 6 hours after death, brain was showing postmortem changes represented by the death of neurons and hemorrhage in the brain parenchyma, heart is showing focal death of cardiomyocytes and slight increases in the interstitial spaces and lung displays pulmonary alveoli is slit like with proliferation and death of interstitial cells.",
+      "page": 2,
+      "bbox": [
+        70.0,
+        671.0,
+        483.0,
+        761.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "669f0fa8-7874-428d-b73a-570440c6c10a",
+      "text": "At 24 hours after death, brain was showing postmortem changes represented by the death of neurons and severe vacillation in the brain parenchyma, heart is",
+      "page": 2,
+      "bbox": [
+        70.0,
+        775.0,
+        483.0,
+        821.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6981cf64-5ff6-435b-b57f-5658ca231b9e",
+      "text": "showing the death of cardiomyocytes and severe increasing in the interstitial spaces and lung displayed death of pulmonary alveoli is slit like and hemorrhage with proliferation and death of interstitial cells",
+      "page": 2,
+      "bbox": [
+        511.0,
+        515.0,
+        924.0,
+        575.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0bfc9e67-efbd-4487-95a0-1d959ed1843d",
+      "text": "At 48 hours after death, Brain was showing postmortem changes represented by the death of neurons and death of endothelial cell of blood capillaries, Heart is showing the death of cardiomyocytes and increasing in the interstitial spaces and Lung displays death of pulmonary alveoli and hemorrhage with proliferation and death of interstitial cells",
+      "page": 2,
+      "bbox": [
+        511.0,
+        589.0,
+        926.0,
+        694.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c4361e08-e0d6-4087-8dcc-bd39cf2fe7a4",
+      "text": "At 72 hours after death, brain was showing postmortem changes represented by the death of neurons and vacuolation of brain parenchyma, heart is showing the death of cardiomyocytes and increasing in the interstitial spaces and lung displayed death of pulmonary alveoli and hemorrhage and death of interstitial cells (Figure 2).",
+      "page": 2,
+      "bbox": [
+        511.0,
+        708.0,
+        924.0,
+        813.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "255cf1da-52f8-4a17-bb22-b15991f3a152",
+      "text": "3",
+      "page": 2,
+      "bbox": [
+        63.0,
+        37.0,
+        76.0,
+        50.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fa545b0a-8ac7-4f34-be96-8b51c8ee6ec4",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 2,
+      "bbox": [
+        326.0,
+        45.0,
+        913.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5ab04bee-6d50-4dfa-b335-47f90a324aa6",
+      "text": "Elalfy MM, et al. Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats. Int J Zoo Animal Biol 2019, 2(5): 000180.",
+      "page": 2,
+      "bbox": [
+        81.0,
+        895.0,
+        480.0,
+        931.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b10d3674-344b-41e5-b55a-322a7e9c3eab",
+      "text": "Copyright \u00a9 Elalfy MM, et al.",
+      "page": 2,
+      "bbox": [
+        743.0,
+        895.0,
+        905.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "996be5df-7783-4e6a-8d6c-da03c75675ca",
+      "text": "Discussion",
+      "page": 3,
+      "bbox": [
+        83.0,
+        409.0,
+        186.0,
+        425.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 3,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "7f41fe5b-cf3b-41da-90bc-6cea331a52b9",
+      "text": "The study of PMI still interesting point of research in forensic medicine to discover a key solution in crime or in civil conditions. Previously [3], we found that a group of biomarkers could be a characteristic feature of a certain point of time after induction of death in experimental animals that mimic or quite like what happen in human corpse after deaths. The rationale of our study to investigate other markers of PMI in brain stem induced death in albino rats. The most prominent biochemical markers in blood suffer postmortem changes was a reduction in the level of cholesterol and calcium level.",
+      "page": 3,
+      "bbox": [
+        70.0,
+        438.0,
+        483.0,
+        602.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "81aa3a3c-900e-43f2-9a9e-aa3d89511f95",
+      "text": "The total cholesterol levels in postmortem serum samples were lower than those in ante-mortem specimens, whereas triglyceride levels in postmortem serum samples were higher than those in ante-mortem samples [21,22]. Similar studies found in human corpse of dead cases [6-23]. The other theory of microbes that have increased the population after death could have a role in lipid consuming for growth and decline in cholesterol level in the absence of immune defense of the body [24]. The fluctuations happen in the plasma triglyceride could be possible within  $24\\mathrm{h}$  after death [25].",
+      "page": 3,
+      "bbox": [
+        70.0,
+        616.0,
+        483.0,
+        780.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0521eef5-1cd7-45ff-9a81-ed6455374be2",
+      "text": "The classical morphology still a core procedure to investigate the cause of death and postmortem changes which described in detail the pathology [26,27]. Brain death could be understood as the ultimate clinical",
+      "page": 3,
+      "bbox": [
+        70.0,
+        794.0,
+        483.0,
+        853.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "61f21d0a-1d06-40da-960f-c8e8f9c67b02",
+      "text": "expression of irreversible neurological stoppage, identified by irreversible coma, ablation of brainstem reflexes, and apnea [28]. The pathological feature of PMI studied before in brain stem death and start with hemorrhage and different stages of analysis in the brain, ischemic neuronal changes and focal necrosis of the brainstem [29]. The other accepted theory of brain stem death could be explained as respiratory and cardiac stoppage evidence of changes and death of myocardiocytes, peumocytes and interstitial cells [29]. Only in one case of ischemia and anoxia were sustained enough to induce an irreversible destruction of the brain and brain death enhanced stoppage of heart and lung physiology and immediately start of postmortem changes in these organs",
+      "page": 3,
+      "bbox": [
+        509.0,
+        409.0,
+        924.0,
+        630.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9b1efa80-b487-41d1-8cd1-5ed52957e81d",
+      "text": "On conclusions, blood lipid profiles and trace mineral biochemistry could share in the PMI determination in a time dependent manner in natural induced model of death. Moreover, histopathology still occupies a key for detection of time elapsed since death.",
+      "page": 3,
+      "bbox": [
+        509.0,
+        645.0,
+        924.0,
+        719.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "dc0862dc-70c9-4f9a-b914-3b71390fe1c0",
+      "text": "Future Highlight",
+      "page": 3,
+      "bbox": [
+        524.0,
+        734.0,
+        679.0,
+        753.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 3,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "580f0faa-cb3b-4a81-aee7-e303747210cb",
+      "text": "Postmortem time interval will still not state of fact except in natural type of death as biochemical markers differ according many events occur at time of death, before and based on causes of death as we found earlier that biochemicals differ in freshwater or saltwater drowning [30].",
+      "page": 3,
+      "bbox": [
+        509.0,
+        763.0,
+        923.0,
+        853.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ea44681a-3e0c-4736-81da-505768461a5b",
+      "text": "4",
+      "page": 3,
+      "bbox": [
+        66.0,
+        37.0,
+        76.0,
+        49.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "25c88d9d-6c4a-414b-a1c8-c73bb49b1df1",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 3,
+      "bbox": [
+        328.0,
+        46.0,
+        911.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "8cf66a45-b607-4365-8eeb-8b730d0d2aea",
+      "text": "Elalfy MM, et al. Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats. Int J Zoo Animal Biol 2019, 2(5): 000180.",
+      "page": 3,
+      "bbox": [
+        81.0,
+        895.0,
+        480.0,
+        931.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1240cc74-2b49-4a51-9a04-6dda2e6fb516",
+      "text": "Copyright \u00a9 Elalfy MM, et al.",
+      "page": 3,
+      "bbox": [
+        743.0,
+        895.0,
+        903.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "99b50831-fc71-4b65-8d0e-77f4301c23e3",
+      "text": "All authors have no conflict of interest",
+      "page": 4,
+      "bbox": [
+        71.0,
+        104.0,
+        343.0,
+        119.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b3f71a83-bcee-495a-9b3c-aedf880c30de",
+      "text": "References",
+      "page": 4,
+      "bbox": [
+        84.0,
+        135.0,
+        189.0,
+        150.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 4,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "773b4be1-8d4e-4423-849f-9299b759a24c",
+      "text": null,
+      "page": 4,
+      "bbox": [
+        73.0,
+        164.0,
+        483.0,
+        844.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "8b85e053-c292-427c-b87a-8444497192b0",
+      "text": null,
+      "page": 4,
+      "bbox": [
+        516.0,
+        90.0,
+        924.0,
+        847.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ff95e80f-1a91-4cab-b9c3-5733f25f59cb",
+      "text": "5",
+      "page": 4,
+      "bbox": [
+        65.0,
+        37.0,
+        76.0,
+        49.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fbaf605a-97b3-42e8-b9f2-7b527382a92b",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 4,
+      "bbox": [
+        328.0,
+        46.0,
+        913.0,
+        69.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f1e21a4d-2cbe-43ed-8eb9-f71e45165e05",
+      "text": "Elalfy MM, et al. Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats. Int J Zoo Animal Biol 2019, 2(5): 000180.",
+      "page": 4,
+      "bbox": [
+        81.0,
+        895.0,
+        480.0,
+        931.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ea0adca4-d535-422c-b82c-f22f961a0a0d",
+      "text": "Copyright \u00a9 Elalfy MM, et al.",
+      "page": 4,
+      "bbox": [
+        743.0,
+        895.0,
+        903.0,
+        907.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a55cecd8-43f7-4102-91d4-3b170365e1ba",
+      "text": "International Journal of Zoology and Animal Biology",
+      "page": 5,
+      "bbox": [
+        328.0,
+        46.0,
+        913.0,
+        70.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 5,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "774e835e-48c2-4d23-824c-ab187dfd625f",
+      "text": null,
+      "page": 5,
+      "bbox": [
+        73.0,
+        89.0,
+        485.0,
+        378.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1b63d868-4e87-48c1-8c7c-c5948633034a",
+      "text": null,
+      "page": 5,
+      "bbox": [
+        514.0,
+        90.0,
+        924.0,
+        321.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "79a48ba2-92df-4565-af23-ecb6961bd171",
+      "text": "6",
+      "page": 5,
+      "bbox": [
+        63.0,
+        37.0,
+        76.0,
+        50.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "740012eb-bbe3-4342-a97a-9eb5caf28fa1",
+      "text": "Elalfy MM, et al. Biochemical and Pathological Features of Postmortem Time Interval of Natural Brain Death Induced in Albino Rats. Int J Zoo Animal Biol 2019, 2(5): 000180.",
+      "page": 5,
+      "bbox": [
+        83.0,
+        895.0,
+        478.0,
+        931.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "601c6bcd-31e0-41d2-996f-266b608f61cf",
+      "text": "Copyright \u00a9 Elalfy MM, et al.",
+      "page": 5,
+      "bbox": [
+        745.0,
+        895.0,
+        903.0,
+        907.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    }
+  ],
+  "success": true,
+  "timestamp": "2025-10-09 22:24:10"
+}

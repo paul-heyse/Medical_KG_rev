@@ -1,0 +1,445 @@
+{
+  "paper_id": "W4248494970",
+  "title": "Margaret Barr",
+  "doi": "10.1038/sj.bdj.2010.393",
+  "pdf_size_mb": 0.26172924041748047,
+  "processing_time_seconds": 3.9913477897644043,
+  "document_id": "W4248494970",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 3991,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "statistics": {
+    "total_blocks": 27,
+    "tables_extracted": 0,
+    "figures_extracted": 0
+  },
+  "blocks": [
+    {
+      "id": "cd543a36-a146-4e89-91b6-2ada41232813",
+      "text": "Obituaries",
+      "page": 0,
+      "bbox": [
+        108.0,
+        99.0,
+        334.0,
+        132.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "1135d21d-c5b1-4474-86bf-d706891ac698",
+      "text": "Obituaries should be submitted by email to Kate Maynard at k.maynard@nature.com. All submitted obituaries should be 350 words maximum in length (apart from obituaries for past presidents of the BDA where the length should be 700-800 words). Content of the obituary is down to the individual author, and the approval of the family should be given for the obituary prior to submission to the BDJ.",
+      "page": 0,
+      "bbox": [
+        656.0,
+        102.0,
+        883.0,
+        210.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1225ce50-c40a-4199-950f-57e008d4cbd3",
+      "text": "OBITUARIES",
+      "page": 0,
+      "bbox": [
+        903.0,
+        125.0,
+        924.0,
+        212.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "84f06dbf-c134-4d36-903c-8840cb0760f8",
+      "text": "MARGARET BARR",
+      "page": 0,
+      "bbox": [
+        107.0,
+        293.0,
+        242.0,
+        306.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "07f57296-ab56-451a-8d12-055a831df9d2",
+      "text": "Margaret Barr (nee Stirling), better known to her colleagues in the dental profession as Margaret Stirling, died on 22 December 2009 of incurable cancer, a disease",
+      "page": 0,
+      "bbox": [
+        229.0,
+        313.0,
+        357.0,
+        437.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "642603ba-6a46-41b7-ab87-8383a0959d7d",
+      "text": "she had been suffering from for many months, and which she faced with great courage and the unfailing support of her husband, Andrew.",
+      "page": 0,
+      "bbox": [
+        105.0,
+        438.0,
+        357.0,
+        493.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d6f8125a-b338-4e0b-bd3d-45abfad62dd1",
+      "text": "After attending Hutchesons Grammar School in Glasgow, Margaret entered the first dental course at the University of Glasgow, where she was an excellent student graduating BDS in 1952. After some early experience of dental practice in Glasgow and London, Margaret set up her own general dental practice in Barrhead, near Glasgow. It was unusual in the 1950s for a young lady to be a principal in general dental practice but Margaret achieved this most successfully, demonstrating her resolution and resourcefulness as well as her clinical and administrative skills.",
+      "page": 0,
+      "bbox": [
+        105.0,
+        495.0,
+        357.0,
+        704.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "147cb57a-edc4-426f-9cee-6001dd7cf158",
+      "text": "A naturally bright, friendly and kind person, Margaret enjoyed meeting with her professional colleagues. She joined the Paisley and District Section of the BDA and as a young dentist became the first lady to be its chairman. This in turn led to her involvement in the West of Scotland Branch Council of the BDA. There she was an excellent Council Member, well informed, articulate with a purposeful optimistic manner - a kind of polished 'yes, we can' approach always laced with good humour and accompanied by that lovely smile of hers, and the male councillors could only capitulate!",
+      "page": 0,
+      "bbox": [
+        105.0,
+        706.0,
+        358.0,
+        915.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3dd9f22b-7626-4462-a692-1f89dc2b0222",
+      "text": "In 1972, at the young age of 43, she was elected President of the West of Scotland Branch - the first lady to be honoured in this way.",
+      "page": 0,
+      "bbox": [
+        371.0,
+        299.0,
+        622.0,
+        354.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2e1db253-93c1-4887-8bf9-2752c011bb34",
+      "text": "Margaret married husband Andrew in 1978 and they were blessed with 31 years of happy marriage. Andrew had been a ship's doctor and he introduced her to cruising. They became dedicated cruisers for 24 years and were booked to be on the last voyage of the QE2 to Dubai a few months ago, their 65th voyage, but had to cancel because of Margaret's health.",
+      "page": 0,
+      "bbox": [
+        371.0,
+        355.0,
+        622.0,
+        493.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "52f85b41-0bdc-40d7-b1ca-8d86fce5e52c",
+      "text": "During her life and work, Margaret contributed greatly to her profession. Practically, modestly and graciously she achieved so much and paved the way for others to follow. Her shining example will remain with all of us who were privileged to know her.",
+      "page": 0,
+      "bbox": [
+        371.0,
+        495.0,
+        622.0,
+        592.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7c374941-7f2f-4fc3-aac1-d234f54e1062",
+      "text": "David Mason",
+      "page": 0,
+      "bbox": [
+        546.0,
+        594.0,
+        621.0,
+        605.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a695471d-5181-4968-bb36-7edceb0b7b30",
+      "text": "RICHARD BROCKBANK WARD",
+      "page": 0,
+      "bbox": [
+        372.0,
+        616.0,
+        598.0,
+        630.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "7296cddc-6c8a-4835-90ef-f5d9a585db48",
+      "text": "Dick Ward passed away peacefully on 19 March 2010 aged 88 and I lost a colleague, a partner and a friend. Dick was held in high esteem by all who knew him, both as",
+      "page": 0,
+      "bbox": [
+        496.0,
+        635.0,
+        622.0,
+        760.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "47b43b82-e2d5-4fcf-a0fe-3fb44a7663fa",
+      "text": "a dentist and as a man. His skills, his humour and his wonderful personality will be sorely missed.",
+      "page": 0,
+      "bbox": [
+        371.0,
+        762.0,
+        622.0,
+        801.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ca1708fc-7c74-42f9-a905-cfc9c28cbec7",
+      "text": "Dick was born on 1 July 1921 and studied dentistry at Birmingham where he qualified in 1944. It was whilst an undergraduate that he met fellow dental student, Kathleen, whom he married in 1945.",
+      "page": 0,
+      "bbox": [
+        371.0,
+        804.0,
+        622.0,
+        885.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "704ac298-8fde-4f6c-a953-0d6f6cfff7c5",
+      "text": "After qualification Dick served in the Royal Navy. On his discharge in 1948",
+      "page": 0,
+      "bbox": [
+        372.0,
+        888.0,
+        622.0,
+        915.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0a6ca50e-b3c2-4fe4-9778-84b7b7a835d7",
+      "text": "he joined John Threlfall in practice at George Street in Huntingdon at the inception of the Health Service and remained the leading figure in the practice for 34 years until his retirement. For 30 years he also ran a clinic at Fulbourn Hospital, Cambridge. He was loved and respected by his patients, his partners, his staff and his colleagues alike. A practitioner can have no better epitaph.",
+      "page": 0,
+      "bbox": [
+        638.0,
+        299.0,
+        889.0,
+        438.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2293a8c8-f282-4d3f-8aad-ad090c6d0f8a",
+      "text": "Throughout his career Dick was a great champion of the BDA and he encouraged all his partners and colleagues to play an active roll in the Association. He recognised that only by unity could we provide mutual support and maintain the status of the profession. He was in turn Section Chairman, Branch Secretary and then in 1975 Eastern Counties Branch President. In 1986 he was made a Life Member of the Association in recognition of his exceptional contribution.",
+      "page": 0,
+      "bbox": [
+        638.0,
+        438.0,
+        889.0,
+        606.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2c2313dd-f7f1-45ad-a43d-3154032848dd",
+      "text": "After his retirement from practice in 1982 Dick found a second career as a cabinet maker. The dexterity, patience and care which had marked his years in the surgery found expression in the most wonderful craftsmanship in wood.",
+      "page": 0,
+      "bbox": [
+        638.0,
+        607.0,
+        889.0,
+        690.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2d3c0a2b-3879-4de6-8f51-1a4c3e795fdb",
+      "text": "Always the family man, Dick is survived by Kathleen, his wife of over 64 years, two daughters, Catherine and Elizabeth, five grandchildren and four great-grandchildren.",
+      "page": 0,
+      "bbox": [
+        638.0,
+        691.0,
+        889.0,
+        760.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "23074201-e8f4-402d-8c2c-263e74b65ea4",
+      "text": "GKD",
+      "page": 0,
+      "bbox": [
+        861.0,
+        762.0,
+        889.0,
+        773.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7e758046-6a3a-4b63-8028-52fcfe4fd492",
+      "text": "BRITISH DENTAL JOURNAL VOLUME 208 NO.8 APR 24 2010",
+      "page": 0,
+      "bbox": [
+        107.0,
+        931.0,
+        369.0,
+        941.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a58d36d6-7588-48c8-a01e-b1650b914bbf",
+      "text": "375",
+      "page": 0,
+      "bbox": [
+        868.0,
+        932.0,
+        889.0,
+        941.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "48ddfea5-79a2-4dbc-afae-8f187109ddcf",
+      "text": "sj.bdj.2010.393-394.indd 375",
+      "page": 0,
+      "bbox": [
+        63.0,
+        977.0,
+        188.0,
+        986.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e18882af-5244-4e62-98bb-13d5b1bc55d8",
+      "text": "\u00a9 2010 Macmillan Publishers Limited. All rights reserved.",
+      "page": 0,
+      "bbox": [
+        389.0,
+        977.0,
+        684.0,
+        990.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "683d43aa-f15c-4172-ba71-46be07d75677",
+      "text": "19/4/10 11:30:59",
+      "page": 0,
+      "bbox": [
+        865.0,
+        977.0,
+        941.0,
+        986.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    }
+  ],
+  "success": true,
+  "timestamp": "2025-10-09 22:24:49"
+}

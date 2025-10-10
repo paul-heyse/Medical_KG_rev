@@ -1,0 +1,1737 @@
+{
+  "paper_id": "W3164059474",
+  "title": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+  "doi": "10.32434/0321-4095-2021-136-3-73-82",
+  "pdf_size_mb": 0.610931396484375,
+  "processing_time_seconds": 11.390656471252441,
+  "document_id": "W3164059474",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 11390,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "statistics": {
+    "total_blocks": 111,
+    "tables_extracted": 0,
+    "figures_extracted": 0
+  },
+  "blocks": [
+    {
+      "id": "2399999d-cea0-4cf4-9514-1955d3b2a2f3",
+      "text": "UDC 544.65+661.43",
+      "page": 0,
+      "bbox": [
+        102.0,
+        93.0,
+        264.0,
+        107.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a1f13511-7bed-4825-9d03-c5773ec7b968",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 0,
+      "bbox": [
+        324.0,
+        122.0,
+        680.0,
+        137.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "531de2ce-bd3e-4440-85e1-4398748e45d3",
+      "text": "LOW CONCENTRATED GREEN NaClO: INFLUENCE OF CATHODE MATERIAL ON KINETIC REGULARITIES OF ELECTROLYSIS",
+      "page": 0,
+      "bbox": [
+        117.0,
+        164.0,
+        885.0,
+        196.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "13645a40-72fd-4caf-91b0-e623e70b3ce6",
+      "text": "Ukrainian State University of Chemical Technology, Dnipro, Ukraine",
+      "page": 0,
+      "bbox": [
+        242.0,
+        208.0,
+        762.0,
+        223.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "224f5b5a-24d3-4a9f-bb82-465f0118726c",
+      "text": "Kinetic regularities of cathode processes during electrolysis of low concentrated NaCl solutions have been investigated in this work. It was shown that the reduction of hypochlorite ion on platinum in the concentration range up to  $0.015\\mathrm{M}$  is limited by the diffusion stage as evidenced by linear dependence of the reciprocal limiting current density versus reciprocal square root of the electrode rotation rate. The diffusion coefficient of  $\\mathrm{ClO^{-}}$  ions to the Pt-RDE surface was calculated from the Koutecki-Levich equation and it was  $6.6\\cdot 10^{-6}\\mathrm{cm}^2\\mathrm{s}^{-1}$ . It was stated that the cathode material has a significant effect on the overvoltage of hypochlorite ion reduction. For example, on platinum, the beginning of the current increase corresponding to the reduction of  $\\mathrm{ClO^{-}}$  is observed at  $+0.3\\mathrm{V}$ , whereas it is  $-0.25\\mathrm{V}$  on steel and nickel and  $-0.8\\mathrm{V}$  on titanium. The preparation of a platinum electrode, which affects the texture and condition of the surface, also affects the reduction potential of the hypochlorite ion. Thus, the current increase is observed at  $+0.1\\mathrm{V}$  on a molded and machined Pt-RDE, while the growth of the current is observed at  $+0.3\\mathrm{V}$  on a flat Pt electrode etched in aqua regia. The potentials of the beginning of hydrogen evolution are practically indistinguishable. It was shown that the electrolysis of NaCl solutions in an undivided cell should be performed at the maximum possible cathode current densities in order to minimize sodium hypochlorite losses due to its reduction at the cathode and reduce the rate of chlorate accumulation.",
+      "page": 0,
+      "bbox": [
+        196.0,
+        237.0,
+        804.0,
+        478.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "59e9c96f-a171-4e21-9a77-8699559e3a12",
+      "text": "Keywords: platinum, platinized titanium, cathode, sodium hypochlorite, chlorate.",
+      "page": 0,
+      "bbox": [
+        198.0,
+        495.0,
+        755.0,
+        508.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "84b66160-bb4a-42cd-a897-e3324c0d8b54",
+      "text": "DOI: 10.32434/0321-4095-2021-136-3-73-82",
+      "page": 0,
+      "bbox": [
+        198.0,
+        523.0,
+        511.0,
+        536.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1ba1b796-0b81-42b9-8784-279461f0a858",
+      "text": "Introduction",
+      "page": 0,
+      "bbox": [
+        143.0,
+        554.0,
+        235.0,
+        565.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "7e482748-2558-4b95-9181-dd57a294d44d",
+      "text": "The synthesis of sodium hypochlorite solutions can be organized in flow and non-flow cells. Nonflow systems are quite simple in terms of design and have a low cost. Such constructions are in demand when locally obtaining small quantities of sodium hypochlorite solutions for disinfection, for example, small farms, veterinary clinics, at home. The use of flow-type electrochemical reactors allows one to organize the continuous production of sodium hypochlorite solutions with specified parameters. The cell can be built on the basis of flowing electrochemical cells with separated or undivided interelectrode space [1,2]. Both methods of implementing the electrolysis process have their advantages and disadvantages. The presence of the diaphragm complicates and makes the design more expensive, increases the cost of electricity, however, allows one to obtain solutions with the maximum possible concentration of sodium hypochlorite [3]. The absence of a diaphragm simplifies and reduces",
+      "page": 0,
+      "bbox": [
+        102.0,
+        567.0,
+        491.0,
+        851.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "73fbb5f8-fbc5-4d4f-abac-3abc7317d91f",
+      "text": "the cost of construction, reduces energy consumption, allows one to synthesize sodium hypochlorite solutions with a pH of 8.5-9.5, however, such process leads to a partial loss of sodium hypochlorite by restoring it at the cathode [4,5].",
+      "page": 0,
+      "bbox": [
+        510.0,
+        552.0,
+        898.0,
+        624.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0dc164eb-d134-42b8-a38c-bf692943e973",
+      "text": "Optimization of electrolysis parameters (choice of electrode materials, magnitude and ratio of electrode current densities, cell design, etc.) can significantly increase the efficiency of synthesis of sodium hypochlorite solutions as well as their purity.",
+      "page": 0,
+      "bbox": [
+        510.0,
+        625.0,
+        898.0,
+        695.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3f971d2b-1cdf-4c2f-b640-dac801d7a77e",
+      "text": "The cathode material, along with the required electrocatalytic activity and selectivity for the processes of cathodic reduction of oxygen-containing chlorine compounds, must meet a number of additional requirements: i) have high corrosion resistance in environments containing chloride and hypochlorite; ii) be safe for humans and animals; iii) be suitable for the manufacture of electrochemical modules, both coaxially and with plane-parallel electrodes; and iv) have a low cost.",
+      "page": 0,
+      "bbox": [
+        510.0,
+        696.0,
+        898.0,
+        837.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7bd3045e-b49a-43e8-b786-43d7d0f7dd0a",
+      "text": "Materials with the following requirements are",
+      "page": 0,
+      "bbox": [
+        552.0,
+        838.0,
+        898.0,
+        852.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "294f84c7-ccc5-43c4-887f-ac2bd29bfe84",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 0,
+      "bbox": [
+        102.0,
+        58.0,
+        730.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "48fde0aa-1b16-49c9-8f2c-6dc6a1cc4bcc",
+      "text": "73",
+      "page": 0,
+      "bbox": [
+        880.0,
+        58.0,
+        900.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "eea42020-9924-4688-bec2-0c5ba53f3279",
+      "text": "\u00a9 D. Girenko, O. Shmychkova, A. Velichenko, 2021",
+      "page": 0,
+      "bbox": [
+        102.0,
+        873.0,
+        427.0,
+        885.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a5499ac1-64cf-4bb8-92cf-6096e095346c",
+      "text": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+      "page": 0,
+      "bbox": [
+        181.0,
+        895.0,
+        900.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ff02141f-d965-4774-a06d-9d7e296f3c00",
+      "text": "as follows: titanium, platinized titanium, stainless steel [1,6,7].",
+      "page": 1,
+      "bbox": [
+        95.0,
+        95.0,
+        488.0,
+        123.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "60bb7942-c9e0-42ad-83a8-6565d1e4acfe",
+      "text": "In this paper, we consider the regularities of cathodic reduction of hypochlorite and chlorate ions at different electrodes. The choice of cathode material is also considered in order to optimize the process for obtaining of sodium hypochlorite solutions with high purity.",
+      "page": 1,
+      "bbox": [
+        95.0,
+        124.0,
+        488.0,
+        208.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "204895a3-eeaa-42b1-8b8d-ae7af545167c",
+      "text": "Material and methods",
+      "page": 1,
+      "bbox": [
+        139.0,
+        210.0,
+        303.0,
+        222.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "d61acc27-0cba-4308-b823-9b05bba3cb5c",
+      "text": "All chemicals were reagent grade. Electrochemical measurements were carried out in  $1\\mathrm{M}$ $\\mathrm{HClO_4}$  with computer controlled MTech PGP-550 M potentiostat (Ukraine) in a standard temperature-controlled three-electrode cell. The electrochemical kinetics was studied on a Pt rotating disk electrode (Pt-RDE) with a surface area of  $0.19~\\mathrm{cm^2}$ , mounted in a fluoroplastic. The Pt-DE surface was treated, before use, by the procedure described elsewhere [8]. Such preliminary treatment permits achieving a reproducible surface. All potentials were recorded and reported vs.  $\\mathrm{Ag / AgCl / KCl}(\\mathrm{sat.})$ . The reference electrode was brought to the working electrode through the Luggin capillary. The temperature was  $25\\pm 1^{\\circ}\\mathrm{C}$ .",
+      "page": 1,
+      "bbox": [
+        95.0,
+        223.0,
+        488.0,
+        436.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "364175fa-e5e4-4990-9a8d-9cb5811aa08d",
+      "text": "Platinized Ti anode was obtained by platinum deposition from a nitrite electrolyte on a prepared titanium surface at  $10\\mathrm{mAcm}^{-2}$  and  $80^{\\circ}\\mathrm{C}$  [8]. The surface content of platinum was  $2.0\\mathrm{mgcm}^{-2}$ .",
+      "page": 1,
+      "bbox": [
+        95.0,
+        437.0,
+        488.0,
+        494.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4b1d5fb5-a667-4ea0-b97c-3756f3fc8a79",
+      "text": "The concentration of  $\\mathrm{NaClO}$  and  $\\mathrm{NaClO}_3$  in solutions was determined by iodometric titration [9]. The standard deviation in determining of the concentration does not exceed  $\\pm 3\\mathrm{mgL}^{-1}$  and  $\\pm 2\\mathrm{mgL}^{-1}$  for sodium hypochlorite and sodium chlorate, respectively. Moreover, standard deviations for current efficiencies are  $\\pm 1.0\\%$  and  $\\pm 0.5\\%$  for hypochlorite and chlorate, respectively.",
+      "page": 1,
+      "bbox": [
+        95.0,
+        494.0,
+        488.0,
+        608.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "315a1b3d-5b5f-45e8-ac48-97ff67dead22",
+      "text": "Results and discussion",
+      "page": 1,
+      "bbox": [
+        139.0,
+        609.0,
+        301.0,
+        621.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "01313885-e39f-43db-982c-c1a7c3a07e00",
+      "text": "There are several characteristic areas on voltammograms obtained on Pt-RDE in a solution containing  $1.0\\mathrm{MNaClO}_4 + 0.15\\mathrm{MNaCl} + 0.015\\mathrm{M}$  NaClO (Fig. 1): the limit current wave at potentials  $-0.2\\dots -0.8\\mathrm{V}$ , because of the reduction reaction of the hypochlorite ion (area I) and the exponential increase in current due to the reaction of hydrogen evolution (area II). As one can see from Fig. 1, the dependence of the reciprocal limiting current density  $1 / j_{\\mathrm{D}}$  is directly proportional to the reciprocal square root of the electrode rotation rate. This line passes through the origin, which indicates the diffusion nature of the process. Thus, the reduction of hypochlorite ion on platinum in the concentration range up to  $0.015\\mathrm{M}$  is limited by the diffusion stage. The diffusion coefficient of  $\\mathrm{ClO^{-}}$  ions to the PtRDE surface was calculated from the Koutecki-",
+      "page": 1,
+      "bbox": [
+        95.0,
+        621.0,
+        488.0,
+        864.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "460d8d85-096a-4c82-b979-0ba6f5e64711",
+      "text": "Levich equation [10-12] and it is  $\\mathrm{D} = 6.6 \\cdot 10^{-6} \\, \\mathrm{cm}^2 \\, \\mathrm{s}^{-1}$ .",
+      "page": 1,
+      "bbox": [
+        506.0,
+        95.0,
+        893.0,
+        109.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "44423c41-2396-4556-af26-8456a3d14aef",
+      "text": "Voltammetric measurements on fixed electrodes made of different materials (Pt, Ni, Ti, and stainless steel) were performed under forced convection of the electrolyte. The rate of electrolyte agitation in relation to the surface of the electrodes  $(6\\times 5\\mathrm{mm})$  was varied by changing the velocity of the stirrer located in the center of the cell. The velocity of the stirrer was varied by changing the supply voltage of the DC motor and was controlled by ROs. For maximum correctness of the experiment, all conditions were reproduced, including the shape and size of the electrodes, as well as their position in the relation to the stirrer and cell boundaries. As it turns out from Fig. 2, on a fixed Pt electrode, the shape of the curves at different mixing intensities does not differ from the voltammograms on the Pt-RDE (Fig. 1). There is a linear dependence of the value of the limiting current density  $\\left(\\mathrm{j_D}\\right)$  on the speed of the stirrer, which indicates the diffusion control of the process. A similar dependence is observed on other electrode materials, which also indicates the reduction of  $\\mathrm{ClO^{-}}$  at cathode current densities above  $15 - 20\\mathrm{mAcm}^{-2}$  in the diffusion region.",
+      "page": 1,
+      "bbox": [
+        505.0,
+        109.0,
+        895.0,
+        436.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a1c23c15-75cd-46cb-993d-f617210ece3e",
+      "text": "The cathode material has a significant effect on the overvoltage of hypochlorite ion reduction (Fig. 3). For example, on platinum, the beginning of the current increase corresponding to the reduction of  $\\mathrm{ClO^{-}}$  is observed at  $+0.3\\mathrm{V}$ , on steel and nickel at  $-0.25\\mathrm{V}$ , and on titanium at  $-0.8\\mathrm{V}$ . The preparation of a platinum electrode, which affects the texture and condition of the surface, also affects the reduction potential of the hypochlorite ion. Thus, on a molded and machined Pt-RDE current increase is observed at  $+0.1\\mathrm{V}$  (Fig. 1), while on a flat Pt electrode etched",
+      "page": 1,
+      "bbox": [
+        505.0,
+        437.0,
+        895.0,
+        594.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e2e1d912-abe1-4774-900a-aba2b883ec12",
+      "text": "74",
+      "page": 1,
+      "bbox": [
+        97.0,
+        58.0,
+        117.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f04730c4-895b-4891-9544-61b352b25eb3",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 1,
+      "bbox": [
+        269.0,
+        57.0,
+        898.0,
+        72.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "56325816-3b32-435b-88c3-b7bda2926312",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 1,
+      "bbox": [
+        97.0,
+        895.0,
+        420.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "cb22b997-980e-4c91-9dd8-8a7559d323db",
+      "text": "in aqua regia, the growth of the current is observed at  $+0.3\\mathrm{V}$  (Fig. 3). The potentials of the beginning of hydrogen evolution are practically indistinguishable.",
+      "page": 2,
+      "bbox": [
+        97.0,
+        644.0,
+        494.0,
+        700.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ff97718f-7ecf-4ed9-8179-20db97dab277",
+      "text": "Another series of cathode curves in  $0.5\\mathrm{M}$ $\\mathrm{NaCl} + 0.015\\mathrm{MNaClO}$ , obtained on titanium (plate thickness is  $0.5\\mathrm{mm}$ ; two samples of Ti/Pt (2.0) with a surface content of platinum  $2.0\\mathrm{mgcm}^{-2}$  (one of the samples was heat-treated at  $500 - 530^{\\circ}\\mathrm{C}$  during 3 hours)) and palladium-plated Ti/Pt (2.0)-Pd (2.0) are shown in Fig. 4. The nature of the curves in Fig. 4 does not differ from the curves shown in Fig. 3. The limiting current of hypochlorite ion reduction is approximately the same for four electrodes; however, slightly lower than in the previous experiment: this is due to the size of the electrode",
+      "page": 2,
+      "bbox": [
+        97.0,
+        701.0,
+        494.0,
+        873.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3c86a568-109b-4b10-b071-1c70c1596c52",
+      "text": "and the intensity of mixing of the electrolyte. The curves on heat-treated and non-heat-treated Ti/Pt (2.0) practically coincide with each other (Fig. 4, curves 2, 3). The first curve obtained on Ti/Pt (2.0)-Pd (2.0) is similar in nature to the curves on Ti/Pt (2.0), with the difference that the current limit is observed at  $-0.15\\mathrm{V}$ . Hydrogen release potentials almost coincide. The second and third sequentially recorded curves on Ti/Pt (2.0)-Pd (2.0) start at  $-0.25\\mathrm{V}$ , with the potential imposed by the palladium absorbed hydrogen. Here immediately begins a noticeable gas evolution. Reduction of NaClO proceeds together with hydrogen evolution reaction without limiting current. In this sample of titanium, the reduction of the hypochlorite ion begins at almost  $900 - 1000\\mathrm{mV}$ , and the hydrogen evolution reaction is  $420\\mathrm{mV}$  more cathodic than at Ti/Pt (2.0).",
+      "page": 2,
+      "bbox": [
+        505.0,
+        93.0,
+        904.0,
+        336.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b0f34fef-ef9a-4d6e-af65-b906ea7e7915",
+      "text": "It should be noted that nickel in the presence of NaClO solution in concentrations greater than  $4\\cdot 10^{-3}\\mathrm{M}$  is exposed to intense corrosion (Fig. 5),",
+      "page": 2,
+      "bbox": [
+        505.0,
+        337.0,
+        904.0,
+        381.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7440728e-4816-4e78-8fe5-e0234882b6c2",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 2,
+      "bbox": [
+        101.0,
+        57.0,
+        734.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "87571e00-5c6c-481a-ad2c-d3f713e2b45c",
+      "text": "75",
+      "page": 2,
+      "bbox": [
+        880.0,
+        58.0,
+        902.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0874db2b-205c-45ec-b59a-9a1382038abd",
+      "text": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+      "page": 2,
+      "bbox": [
+        176.0,
+        894.0,
+        902.0,
+        910.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7e71fab0-52f4-4716-add8-07396d08e53f",
+      "text": "which makes nickel unsuitable as a cathode material for non-diaphragm electrolysis of NaCl solutions.",
+      "page": 3,
+      "bbox": [
+        97.0,
+        95.0,
+        486.0,
+        122.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e4057dc0-ddfe-40c1-bd5a-19ce2f418803",
+      "text": "One hour of cumulative electrolysis on heat-treated at  $500^{\\mathrm{o}}\\mathrm{C}$  Ti/Pt (2.0)-Pd (0.5)-anode allows one to obtain sodium hypochlorite with a concentration of approximately  $500\\mathrm{mgL^{-1}}$ $(7\\cdot 10^{-3}\\mathrm{M})$ . The current density of the anode and cathode in this case was  $20\\mathrm{mAcm}^{-2}$ . Chlorates were not detected in the resulting solutions under such conditions of electrolysis. As follows from Table 1, the cathode material does not affect the concentration of resulting solution during cumulative electrolysis under these conditions because the reduction of sodium hypochlorite at all cathodes occurred at a limit current and with equal current efficiency. These results are consistent with data depicted in Fig. 4.",
+      "page": 3,
+      "bbox": [
+        97.0,
+        124.0,
+        486.0,
+        322.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f7938061-5816-472e-899d-f0cd0fc8db55",
+      "text": "The rate of hydrogen evolution increases with increasing current density, whereas hypochlorite ion reduction rate, which is determined by the limit current, increases almost constantly, as follows from the partial curves of hydrogen evolution and  $\\mathrm{ClO^{-}}$  reduction obtained at Pt electrode (Fig. 6). Therefore, an increase in the cathodic current density will lead to a decrease in the current efficiency of  $\\mathrm{ClO^{-}}$  reduction and, accordingly, reduce its loss at the cathode. An increase in current is observed because of additional mixing of the electrode space by the released gas at potentials corresponding to the beginning of hydrogen evolution on the partial curve of  $\\mathrm{ClO^{-}}$  reduction. The current efficiencies of the hypochlorite ion reduction, calculated from the values of the total and partial currents, are shown in Fig. 6. During the cumulative electrolysis, the current efficiency of the hypochlorite reduction gradually increases as the concentration of NaClO in the solution grows.",
+      "page": 3,
+      "bbox": [
+        97.0,
+        508.0,
+        486.0,
+        791.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4d5abacd-85f6-4519-a593-34a0e728b34a",
+      "text": "It should be noted that the real surface area of the electrode is recognized to play a significant role, along with the hydrodynamic conditions. Thus, the losses of sodium hypochlorite will be more significant at the cathode with a developed surface, than at the",
+      "page": 3,
+      "bbox": [
+        97.0,
+        794.0,
+        486.0,
+        864.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7d729fb6-1168-41cc-bec7-2959e9fc81a0",
+      "text": "smooth electrode. The cathode current density in the experiment was varied by changing the geometric area of the cathode under other constant conditions of electrolysis. Analysis of experimental data shows (Table 2) that the cathode material does not have a significant effect on the concentration of sodium hypochlorite in solution starting from  $\\mathrm{j_c} = 10\\mathrm{mAcm^{-2}}$ . In this case, an increase in the current density leads to a decrease in the current efficiency of  $\\mathrm{ClO^{-}}$  reduction. The current efficiency of reduction of NaClO was more than  $85\\%$  at a cathode current density of  $10\\mathrm{mA cm^{-2}}$  for  $30\\mathrm{min}$  of electrolysis and less than  $30\\%$  at  $40\\mathrm{mA cm^{-2}}$ . Some difference in the values of the sodium hypochlorite concentration at a given overall current density for different materials is probably due to differences in the real surface of the cathodes. As demonstrated by the example of electrolysis with a titanium cathode (Table 2), reducing the degree of surface roughness (because of the electrode polishing) leads to a decrease in the sodium hypochlorite reduction by increasing the true current density.",
+      "page": 3,
+      "bbox": [
+        506.0,
+        363.0,
+        895.0,
+        677.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "63087a7a-0863-45fc-8e6e-f6a691814d8d",
+      "text": "The energy consumption for the synthesis of  $1\\mathrm{kg}$  of  $\\mathrm{NaClO}$  are 3.1 in the case of titanium cathode; 2.95 for the cathode made of stainless steel, and 2.7 kilowatt-hours in the case of Ti/Pt. These values were calculated after cumulative electrolysis in undivided cell at anode and cathode current densities of  $60\\mathrm{mAcm}^{-2}$  at the anode  $\\mathrm{Ti / SnO_2 - Pt}$  (8)-Pd (12). The maximum difference in energy consumption between Ti and Ti/Pt cathodes in terms of obtaining 1 liter of sodium hypochlorite solution with  $1\\mathrm{gL}^{-1}$  concentration is only 0.3 watt-hours, which makes the use of Ti/Pt not appropriate. The use of Ti/Pt as a cathode material may occur if the synthesis of",
+      "page": 3,
+      "bbox": [
+        506.0,
+        678.0,
+        895.0,
+        863.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "15ea6c7f-a8ff-43c0-8bd9-e48bbc298184",
+      "text": "76",
+      "page": 3,
+      "bbox": [
+        97.0,
+        58.0,
+        117.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2a2c82c0-4375-416d-b3c2-55cc8b74878b",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 3,
+      "bbox": [
+        269.0,
+        57.0,
+        898.0,
+        72.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "464722f7-f545-4a08-9e1d-211a2baa2e40",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 3,
+      "bbox": [
+        99.0,
+        895.0,
+        420.0,
+        908.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "51c3bc9d-1442-45fa-89d5-66b01c6dcbfb",
+      "text": "sodium hypochlorite is carried out on anodes with a high current efficiency of  $\\mathrm{NaClO}_3$ . In this case, partial reduction of chloride will occur on Ti/Pt, which will lead to some integral decrease in concentration.",
+      "page": 4,
+      "bbox": [
+        97.0,
+        299.0,
+        494.0,
+        356.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7622dbb0-ee1f-4666-8dc7-224babcd3439",
+      "text": "It should be noted that current efficiencies given in Table are integrated for 40 minutes of electrolysis. There is a gradual decrease in the concentration of sodium hypochlorite in the cathode space of the cell with the diaphragm during the electrolysis, and, as a consequence, a decrease in the partial current of  $\\mathrm{ClO}^-$  reduction and, accordingly, the instantaneous current efficiency. The integrated current efficiency will also decrease over time. For example, at the titanium cathode, the average current efficiency for  $15\\mathrm{min}$  of electrolysis  $(\\mathrm{j_c = 20mAcm^{-2}})$  is 58; 50 for  $30\\mathrm{min}$ , and  $39\\%$  for  $60\\mathrm{min}$ , accordingly.",
+      "page": 4,
+      "bbox": [
+        97.0,
+        357.0,
+        494.0,
+        527.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "14d05f87-a60e-4a05-a1a5-0473839ebbca",
+      "text": "A series of electrolyses with one anode and different cathodes was performed in order to investigate the influence of cathode material on the NaClO concentration after  $1000\\mathrm{mgL}^{-1}$  during the electrolysis in a cell without a diaphragm (Table 3). The anode was  $\\mathrm{Ti / TiO_2 - RuO_2 - IrO_2}$ , at which the current efficiency of NaClO under these conditions is  $60 - 70\\%$ . This anode was used to synthesize the initial solution of sodium hypochlorite. Thus, we tried to simulate a situation where the concentration",
+      "page": 4,
+      "bbox": [
+        97.0,
+        527.0,
+        494.0,
+        670.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e4d2289f-49cb-4503-9300-c5ad877a3a7d",
+      "text": "of  $\\mathrm{NaClO}$  has already reached  $1\\mathrm{gL}^{-1}$  in the process of cumulative electrolysis, and then the cathode material was replaced or the cathode current density was changed.",
+      "page": 4,
+      "bbox": [
+        505.0,
+        300.0,
+        902.0,
+        356.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6a3b6be8-e2cb-42d9-89ca-1b1f2a5d8de3",
+      "text": "A solution with  $1053\\mathrm{mgL}^{-1}$  NaClO and  $10\\mathrm{mgL}^{-1}\\mathrm{NaClO}_3$  was taken as the initial electrolyte. The experiment was performed at cathode current densities of 10 and  $20\\mathrm{mAcm}^{-2}$  with three cathodes: Ti, Ti/Pt (2.0) and Ti/Pt (2.0)-Pd (2.0). There is a negative integral CE of NaClO  $(20 - 25\\%)$  at a cathode current density of  $10\\mathrm{mAcm}^{-2}$  at all cathodes, as one can see from the obtained results. This indicates that the rate of reduction of hypochlorite at the cathode exceeds the rate of its formation at the anode. When the current load was doubled (the anode, cathode, and bulk current densities were doubled), the integral CE of NaClO became positive within  $30 - 31\\%$ .",
+      "page": 4,
+      "bbox": [
+        505.0,
+        357.0,
+        904.0,
+        556.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "887c7a7c-a41b-41d1-a637-70d5d405d398",
+      "text": "Another series of investigations (Table 4) was conducted on purpose to confirm the above assumption concerning the need to apply a high cathode current density in undivided cells in order to increase the efficiency of electrolysis of low concentrated NaCl solutions. All the electrolysis parameters were fixed here, except for the cathode current density in contrast to the previous experiment",
+      "page": 4,
+      "bbox": [
+        505.0,
+        557.0,
+        902.0,
+        671.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "85e238b5-964b-4d7a-b2c4-d068d4455c8c",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 4,
+      "bbox": [
+        101.0,
+        57.0,
+        730.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b24d4692-b0dd-41c0-85f2-92a1d83da690",
+      "text": "77",
+      "page": 4,
+      "bbox": [
+        880.0,
+        58.0,
+        900.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4809a052-caf3-4c67-acc9-4238e90471d6",
+      "text": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+      "page": 4,
+      "bbox": [
+        176.0,
+        894.0,
+        902.0,
+        910.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "57e1001c-7693-4acb-9fbb-8a02c781572c",
+      "text": "(Table 3).",
+      "page": 5,
+      "bbox": [
+        97.0,
+        360.0,
+        171.0,
+        373.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 5,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "b9c1411a-1d28-4ee1-9274-1e2a95e75feb",
+      "text": "Chlorate is not formed at the anode at an anode current density of  $10\\mathrm{mAcm}^{-2}$  and its current efficiency is less than  $0.1\\%$  thus the additional accumulation of chlorates does not occur during the electrolysis. Since the anode and bulk current densities in all experiments of this series remained fixed, the rate of formation at the anode of NaClO and its current efficiency can be taken as a constant value. The integral current efficiency of hypochlorite accumulation is the difference between the current efficiency of sodium hypochlorite formation at the anode and the current efficiency of its reduction at the cathode.",
+      "page": 5,
+      "bbox": [
+        97.0,
+        374.0,
+        486.0,
+        557.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ef6c1e8f-8c01-4656-9914-8e0ab124590c",
+      "text": "The current efficiency of NaClO reduction on the cathode should depend on the cathode current density and the cathode material. The cathode current density was changed by changing the area  $(4\\rightarrow 2\\rightarrow 1$ $\\mathrm{cm}^2$  ,masking part of the surface) of the cathode. As one can see from obtained results, the integral current efficiency of NaClO accumulation is practically independent of the cathode material and significantly depends on the cathode current density. The  $\\mathrm{ClO^{-}}$  reduction rate significantly exceeds the formation rate at  $\\mathrm{j_c = 10~mA~cm^{-2}}$  ,and the integral CE is negative: from  $-17\\%$  on Ti cathode to  $-22\\%$  with the Ti/Pt-Pd cathode.At  $\\mathrm{j_c = 20mA cm^{-2}}$  ,the integral CE of NaClO accumulation is close to zero, and at  $\\mathrm{j_c = 40mA cm^{-2}}$  it is close to  $+8\\%$  .Thus, an increase in the cathode current density from 10 to  $40\\mathrm{mAcm}^{-2}$  leads to a decrease in the reduction of  $\\mathrm{ClO^{-}}$  by  $25-$ $30\\%$",
+      "page": 5,
+      "bbox": [
+        97.0,
+        558.0,
+        486.0,
+        813.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5bbe6fa7-c000-4386-995a-cccb98627ee6",
+      "text": "The integral CE of  $\\mathrm{NaClO}_3$  accumulation, taking into account the error of analytical determination, is close to zero when using both cathodes Ti or Ti/Pt (2.0)-Pd(0.5). Current efficiency",
+      "page": 5,
+      "bbox": [
+        97.0,
+        815.0,
+        486.0,
+        871.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4bf3dd54-07dd-4fa0-b806-54f4f836e5b5",
+      "text": "of chlorate formation is in the range from  $-8\\%$  to  $-13\\%$  in the case of a Ti/Pt cathode at the current density of 20 and  $40~\\mathrm{mA~cm}^{-2}$ . Negative values of CE indicate the reduction of chlorate at the cathode on Ti/Pt.",
+      "page": 5,
+      "bbox": [
+        506.0,
+        360.0,
+        895.0,
+        430.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "54e80f90-8387-49fb-9cac-4f02e94885c4",
+      "text": "This experiment once again demonstrates the importance of choosing such a cathode size that the cathode current density in the electrolysis process was not less than  $40\\mathrm{mAcm}^{-2}$ . The cathode material, however, does not significantly affect the rate of reduction of  $\\mathrm{NaClO}$ . If an electrode with a sufficiently high chlorate CE, for example, Ti/Pt, is used as the anode, it is advisable to use Ti/Pt as the cathode, on which the reduction of chlorates with a noticeable CE is observed.",
+      "page": 5,
+      "bbox": [
+        506.0,
+        431.0,
+        895.0,
+        571.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0278e605-8732-418a-8728-2a716d087ebb",
+      "text": "If, other conditions being equal, replacing the anode Ti/Pt(2.0) with an equal heat treated Ti/Pt(2.0)-Pd(0.5)-anode, which implements the synthesis of NaClO with a current efficiency greater than  $90\\%$ , then on Ti-cathode at  $\\mathrm{j_c = j_a = 20mAcm^{-2}}$  current efficiency of sodium hypochlorite formation is  $+57\\%$ .",
+      "page": 5,
+      "bbox": [
+        506.0,
+        573.0,
+        895.0,
+        671.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "40ea2e51-4ecd-466d-8d98-93c5bdc86313",
+      "text": "All the considered cathode materials are characterized by a close rate of reduction of hypochlorite ion under galvanostatic conditions of electrolysis. The cathode material will mainly affect the polarization and, accordingly, the voltage on the cell. When creating diaphragmless electrolyzers for the synthesis of sodium hypochlorite solutions, it is also necessary to take into account the possibility of dissolved oxygen reduction in the electrolyte at the cathode [13,14]. The occurring products of reduction can react with oxygen-containing chlorine compounds, affecting both the content of hypochlorite and chlorate in the resulting solutions.",
+      "page": 5,
+      "bbox": [
+        506.0,
+        673.0,
+        895.0,
+        857.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1ece8944-b60f-498f-8309-d9536ae07738",
+      "text": "The reduction of  $\\mathrm{ClO^{-}}$  is preceded by a wave",
+      "page": 5,
+      "bbox": [
+        547.0,
+        858.0,
+        893.0,
+        872.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "03304c77-49e5-4f23-a2f6-4d8c6abbd0d2",
+      "text": "78",
+      "page": 5,
+      "bbox": [
+        97.0,
+        58.0,
+        117.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b76bac9f-30a9-4ef8-aa73-79360008bfd8",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 5,
+      "bbox": [
+        269.0,
+        58.0,
+        897.0,
+        72.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fcfafc54-d329-4210-b36c-f26cccf4f90d",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 5,
+      "bbox": [
+        99.0,
+        896.0,
+        420.0,
+        908.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "43fbd0b3-c0dd-4924-8b54-1160aaa5bc65",
+      "text": "of dissolved oxygen reduction current in solutions containing sodium hypochlorite, on electrodes made of Pt, Ni, Ti and stainless steel. On Pt-ODE, it is observed in the potential range  $-0.5\\ldots -0.1\\mathrm{V}$  (Fig. 1), and the wave current is directly proportional to  $\\omega^{1 / 2}$ , which indicates its diffusion nature. The limiting current of the wave involved increases on all cathode materials at artificial saturation of a solution with oxygen.",
+      "page": 6,
+      "bbox": [
+        99.0,
+        93.0,
+        494.0,
+        223.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "dc637b9a-1d64-4f13-a837-5cc93846dad1",
+      "text": "The relative position of the electrodes has a slight effect on the concentration of hypochlorite and chlorate formed during the electrolysis of NaCl solution in undivided cell. If the cathode is placed directly behind the anode so that under stirring conditions it is washed by an oxygen gas loop formed at the anode, there will be a slight decrease in the rate of accumulation of hypochlorite and an increase in chlorate concentration compared to the mutual arrangement of electrodes diametrically opposite. The increase in the rate of chlorate accumulation is probably due to the formation during the reduction of  $\\mathrm{O}_2$  particles that are able to oxidize hypochlorite, at least to  $\\mathrm{ClO}_2^-$ . Such particles can be, for example, hydroperoxyl radical  $\\mathrm{HO}_2^-$  or superoxide anion-radical  $\\mathrm{O}_2^-$  [14]. Next, the chlorite ion reacts rapidly with hypochlorite to form chlorate [15]:",
+      "page": 6,
+      "bbox": [
+        97.0,
+        223.0,
+        496.0,
+        467.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e6fe0ee0-c58a-4598-ae99-5393a14db74b",
+      "text": "\n$$\n\\mathrm {C l O} ^ {-} + \\mathrm {H O} _ {2} \\rightarrow \\mathrm {C l O} _ {2} ^ {-} + \\mathrm {O H} ^ {-}; \\tag {1}\n$$\n",
+      "page": 6,
+      "bbox": [
+        99.0,
+        479.0,
+        494.0,
+        495.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "78cc9a8e-1021-49fd-93af-87d395983cfb",
+      "text": "\n$$\n\\mathrm {C l O} _ {2} ^ {-} + \\mathrm {C l O} ^ {-} \\rightarrow \\mathrm {C l} ^ {-} + \\mathrm {C l O} _ {3} ^ {-}. \\tag {2}\n$$\n",
+      "page": 6,
+      "bbox": [
+        99.0,
+        507.0,
+        494.0,
+        524.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "05af377d-c590-4e49-8e17-a8a5ce894d42",
+      "text": "The electrolysis was performed in cells with separated and undivided electrode spaces in order to confirm this assumption. Electrolysis was performed with a titanium cathode  $(\\mathrm{j_c} = 20\\mathrm{mAcm}^{-2})$  blown with oxygen from an electrochemical generator. In order to take into account the possibility of reducing the concentration of sodium hypochlorite because of the desorption of hydrochloric acid from the solution by purging with oxygen, the electrolyte without electrodes was purged with oxygen with stirring for 30 minutes. At the same time, no",
+      "page": 6,
+      "bbox": [
+        97.0,
+        536.0,
+        496.0,
+        694.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f15d2b46-37cf-4f8a-896a-cbd5e2087a66",
+      "text": "significant change in the concentration was recorded (Table 5). As one can be from the table, blowing oxygen to the cathode leads to a decrease in the rate of accumulation of hypochlorite and an increase in the concentration of chlorate in solution. Analysis of the results shows that only part of the hypochlorite ions is oxidized by oxygen reduction products with the formation of chlorate. Another number of  $\\mathrm{ClO^{-}}$  ions can be reduced to chloride ions formed during the reduction of oxygen by hydrogen peroxide by the reaction [15]:",
+      "page": 6,
+      "bbox": [
+        505.0,
+        93.0,
+        904.0,
+        252.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9bd0cb25-d089-41db-b6ed-fe5efbafa479",
+      "text": "\n$$\n\\mathrm {C l O} ^ {-} + \\mathrm {H} _ {2} \\mathrm {O} _ {2} \\rightarrow \\mathrm {C l} ^ {-} + \\mathrm {H} _ {2} \\mathrm {O} + \\mathrm {O} _ {2}. \\tag {3}\n$$\n",
+      "page": 6,
+      "bbox": [
+        506.0,
+        265.0,
+        900.0,
+        282.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6c95a96e-0251-4f3c-9f3c-8f5fc5044b99",
+      "text": "Another experiment was performed in a circular undivided cell with a stirrer in the center in order to demonstrate the effect of cathodic oxygen reduction on the concentration of sodium hypochlorite and chlorate. Pt was taken as the anode, on which CE of NaCl is  $30 - 40\\%$ , CE of  $\\mathrm{NaClO_3}$  is  $20 - 30\\%$ , CE of  $\\mathrm{O}_2$  is  $30 - 40\\%$ . The electrodes were placed parallel to the cell walls and oriented along the bulk flow. During the experiment, the relative positions of the anode and cathode were changed. In the first experiment, the cathode was placed directly behind the anode so that the oxygen gas loop formed at the anode washes the cathode (Fig. 7). Such conditions are most favorable for the cathodic reduction of oxygen with the formation of hydrogen peroxide. In the second experiment, the cathode and anode were diametrically opposed to each other. The location of the cathode in the immediate vicinity of the anode leads to a decrease in the concentration of sodium hypochlorite and an increase in the concentration of chloride in the electrolyte bulk (Fig. 7). The decrease in the concentration of sodium hypochlorite can be associated both with an increase in the rate of electrochemical reduction at the cathode, and with the interaction of the hypochlorite ion with hydrogen peroxide by reaction (3). The increase in chlorate concentration can be explained by the possibility of reactions (1)-(2).",
+      "page": 6,
+      "bbox": [
+        505.0,
+        294.0,
+        904.0,
+        694.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "04f12fba-f46e-4b6d-a14e-a5ac2bf5f769",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 6,
+      "bbox": [
+        101.0,
+        57.0,
+        730.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "554fa411-59a0-44e0-a87f-3ae9e6f60560",
+      "text": "79",
+      "page": 6,
+      "bbox": [
+        880.0,
+        58.0,
+        900.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1f93385e-5de3-49db-a827-a8c5a4c0cc88",
+      "text": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+      "page": 6,
+      "bbox": [
+        176.0,
+        894.0,
+        900.0,
+        910.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ca06012c-a38e-4909-bddd-1b653f210825",
+      "text": "Reduction of oxygen at the cathode can be completely avoided if electrolysis is performed in an electrochemical cell with a diaphragm. However, the use of defined anode materials can minimize the amount of oxygen released. When using electrocatalysts, for example, based on palladium oxides, the current efficiency of sodium hypochlorite can reach  $95\\%$ . If even the current efficiency of oxygen is  $20\\%$  and hydrogen  $90\\%$ , the concentration of oxygen in the gas mixture released, excluding water vapor and hydrochloric acid, will not exceed  $10 \\, \\text{mol.}\\%$ . The electrolyte in the cathode space will be maximally enriched with hydrogen due to the intense release of the latter. As one can see from Table 5, even blowing the cathode with pure oxygen does not lead to a significant increase in the concentration of chlorate and a corresponding decrease in the content of hypochlorite.",
+      "page": 7,
+      "bbox": [
+        92.0,
+        379.0,
+        491.0,
+        634.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c1b1efa3-a258-4da8-a61e-435f052d7ff0",
+      "text": "The negative effect of oxygen reduction at the cathode in undivided cells may occur, however, it is not significant. The use of a diaphragm in the design of the cell to prevent the oxygen reduction at the cathode in this case is not appropriate.",
+      "page": 7,
+      "bbox": [
+        92.0,
+        636.0,
+        489.0,
+        708.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7f40f0ba-3227-4dc6-bab2-25aaab616632",
+      "text": "Conclusions",
+      "page": 7,
+      "bbox": [
+        136.0,
+        709.0,
+        227.0,
+        720.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 7,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "8219d8d0-3d07-4466-b7ae-131cae318bd2",
+      "text": "The cathode material has a significant effect on the reduction rate of NaClO because of the reduction process proceed at the current limit. Electrolysis of NaCl solutions must be performed at the maximum possible cathode current densities in an electrolyzer without a diaphragm to minimize sodium hypochlorite losses due to its reduction at the cathode and reduce the rate of chlorate accumulation. Cathodes must have a surface with a",
+      "page": 7,
+      "bbox": [
+        92.0,
+        721.0,
+        489.0,
+        850.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b9a89b78-68e4-48f2-809a-270d0ee7aca0",
+      "text": "minimum coefficient of roughness. It is desirable to polish their surface.",
+      "page": 7,
+      "bbox": [
+        501.0,
+        93.0,
+        895.0,
+        122.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c82f5b5a-034f-4868-9e2a-9ebab1f74842",
+      "text": "If the anode is an electrode with enough high current efficiency of chlorates, Ti/Pt, for example, it is advisable to use a cathode made of Ti/Pt, at which the current efficiency of chlorates reduction is noticeable. The use of Ti/Pt also reduces the energy consumption for NaClO synthesis from 3.1 (Ti) to 2.7 kilowatt-hours per kg (Ti/Pt). If oxygen is formed at the anode, the possibility of it getting on the cathode should be eliminated as much as possible.",
+      "page": 7,
+      "bbox": [
+        501.0,
+        123.0,
+        895.0,
+        252.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7f54773e-34d7-4313-8490-a8351a3f28a7",
+      "text": "REFERENCES",
+      "page": 7,
+      "bbox": [
+        543.0,
+        278.0,
+        666.0,
+        291.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 7,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "5d2969c4-046d-4db3-ae0b-3360f00446f4",
+      "text": null,
+      "page": 7,
+      "bbox": [
+        503.0,
+        309.0,
+        895.0,
+        835.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "88dd9390-ab75-4cc7-a8ad-489e90ce6e06",
+      "text": "80",
+      "page": 7,
+      "bbox": [
+        97.0,
+        58.0,
+        117.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ff322f51-047f-4752-8b53-1b63aab102db",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 7,
+      "bbox": [
+        269.0,
+        57.0,
+        898.0,
+        72.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e7954116-7726-4138-b25c-39d519d0d34c",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 7,
+      "bbox": [
+        95.0,
+        894.0,
+        422.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a90d8e99-8c9e-4d57-827f-480831d21225",
+      "text": null,
+      "page": 8,
+      "bbox": [
+        99.0,
+        95.0,
+        494.0,
+        365.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9a8e8864-6a9f-409d-84a8-cfe64b4b7574",
+      "text": "Received 19.02.2021",
+      "page": 8,
+      "bbox": [
+        365.0,
+        381.0,
+        491.0,
+        393.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d3b4c307-affa-484c-a999-ad3b1449ada5",
+      "text": "HIN3bKOKOHIEHTPOBAHNI EKOJIOTIHO  \nBE3IIEUYN NaCIO: BIIJINB KATOIHORO MATEPIAJY  \nHA KIHETNUHI 3AKOHOMIPHOCTI EJEKTPOJI3V",
+      "page": 8,
+      "bbox": [
+        99.0,
+        422.0,
+        494.0,
+        456.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 8,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "e0f08079-778c-4406-ba40-661db20642f4",
+      "text": "II. Tipehko, O. IIImuKo8a, O. Beliuehko",
+      "page": 8,
+      "bbox": [
+        99.0,
+        464.0,
+        356.0,
+        476.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 8,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "386d93d1-f7a7-4eb2-b905-185c6a2d23fa",
+      "text": "Ypo6oTI OocIJIxKeHO KHeTNUH3aKOHOMipHocTi KaTOJHnx npOuecIB npEeKTPoJIi3i Hn3bKOKOHUeHTPOBaHIN pO3uHInB NaCl. Ioka3aHO, 1IO IIuNkICtB BIDHOJIeHHIOHy rINOxIoPHTy Ha IlaTNIH B diana30Hi KOHeHTpaIIIO 0,015 M Bn3Ha aetbce StadieIO nnFyii, npo IO CBiUnHb LiHINHA 3aJeXHcIb o6epHeoi IpaHUNHOI rCyTHIN cTpyM bID o6epHeoro KBAIpaTHORO KopeH NBIuNKoCTi o6epTaHHN eEeKTPoJa. KoefiIeHTIooKa3aHO,IO MAtepiAIA KAToDA cyTTeBO BILNAe HA nepeHAnpyeHHN BiHOBJeHHN IOHBINB 6,6-10-6 cm\u00b2 C-1. ByIO NOka3aHO, IO MAtepiAIA KAToDA cyTTeBO BILNAe HA peHApnyKeHHN BIDHOBJeHHN IOHBINB 6,6-10-6 cm\u00b2 C-1. HanpIKaIAD, HA IlaTNIH NoaTOK 3PoCTAHNc TcPMy, IO BIIOBIAE BIDHOJIeHHIO ClO-C, cNoctepiraAeTbc npn +0,3 B, h a taIra hi KeJIi - npn -0,25 B, a h taTaN-HI - npn -0,8 B. IIOrTOBka IlaTauHO BO eJEKTPoIA, IO BILNAe HA TeKCTpy TcTah NOBEXHI KAoK BILNAe HA NotoHuaia IBIHOBJeHHN IOHA RINOxLOHpy. TaK, H a BIIuLIi\u03a6oBAHOMy tMeXaHlHo 6Obo6eHOMy Pt-RDE 36IbWeHHN CTpyM cNoctepiraAeTbc npn +0,1 B, ToDI JAK ha IlaackOMy Pt-eJEKTPoI, BNTpaBLeHOMy B uapcbkiRopiIi, 3OcSTAHN cTpyM cNoctepiraAeTbc npn +0,3 B. ItoEHuaIIN OouATKY BIIuJIeHHN BOHNIO pAKTNUHO He BIpI3HIOHTbc. IIOKA3aHO, IO eJEKTPoJI3 PO3uHINIB NaCl y hepo3dJIeHHI KOMIPi IIOBHeH IPOBOITNC3a MAKCImaJIbHO MOJINBHX rCTTN KAToDHorO CTpyM, IO6 MIHIM3yBaTn BTPATn HATpiI rINOxLOHPTy uepe3 IYO BIDHOBJeHHN Ha KAtOJI ta 3MeHHTTN IIuDKICTb HAKONuHEHH Xlopaty.",
+      "page": 8,
+      "bbox": [
+        99.0,
+        479.0,
+        494.0,
+        777.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "cde97f49-0a1c-4e05-9e14-455fa103147a",
+      "text": "KJIOUObi cIOBa: IJIaTHHa, IIaTHHOBAHn THTaH, KaTOI, HATpiO rINOxIoPHT, XIOpaT.",
+      "page": 8,
+      "bbox": [
+        99.0,
+        778.0,
+        494.0,
+        803.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "15a77721-58a2-4e33-b952-03a1eb59d22d",
+      "text": "LOW CONCENTRATED GREEN NaCIO: INFLUENCE OF CATHODE MATERIAL ON KINETIC REGULARITIES OF ELECTROLYSIS",
+      "page": 8,
+      "bbox": [
+        506.0,
+        93.0,
+        890.0,
+        129.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 8,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "d69bd01a-93c1-401a-af59-a09a5c0db38b",
+      "text": "D. Girenko*, O. Shmychkova, A. Velichenko",
+      "page": 8,
+      "bbox": [
+        506.0,
+        137.0,
+        782.0,
+        149.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c2375475-6ad6-436e-b5a0-ae457b197fc1",
+      "text": "Ukrainian State University of Chemical Technology, Dnipro, Ukraine",
+      "page": 8,
+      "bbox": [
+        506.0,
+        151.0,
+        873.0,
+        174.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "76dcf19a-5dfe-441d-b9c0-8c1b57ed6de8",
+      "text": "* e-mail: dvgir1970@gmail.com",
+      "page": 8,
+      "bbox": [
+        506.0,
+        180.0,
+        696.0,
+        192.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "12bcd322-a6d2-4adc-83c3-750d6b8f256d",
+      "text": "Kinetic regularities of cathode processes during electrolysis of low concentrated NaCl solutions have been investigated in this work. It was shown that the reduction of hypochlorite ion on platinum in the concentration range up to  $0.015\\mathrm{M}$  is limited by the diffusion stage as evidenced by linear dependence of the reciprocal limiting current density versus reciprocal square root of the electrode rotation rate. The diffusion coefficient of  $\\mathrm{ClO^{-}}$  ions to the Pt-RDE surface was calculated from the Koutecki-Levich equation and it was  $6.6\\cdot 10^{-6}\\mathrm{cm}^2\\mathrm{s}^{-1}$ . It was stated that the cathode material has a significant effect on the overvoltage of hypochlorite ion reduction. For example, on platinum, the beginning of the current increase corresponding to the reduction of  $\\mathrm{ClO^{-}}$  is observed at  $+0.3\\mathrm{V}$ , whereas it is  $-0.25\\mathrm{V}$  on steel and nickel and  $-0.8\\mathrm{V}$  on titanium. The preparation of a platinum electrode, which affects the texture and condition of the surface, also affects the reduction potential of the hypochlorite ion. Thus, the current increase is observed at  $+0.1\\mathrm{V}$  on a molded and machined Pt-RDE, while the growth of the current is observed at  $+0.3\\mathrm{V}$  on a flat Pt electrode etched in aqua regia. The potentials of the beginning of hydrogen evolution are practically indistinguishable. It was shown that the electrolysis of NaCl solutions in an undivided cell should be performed at the maximum possible cathode current densities in order to minimize sodium hypochlorite losses due to its reduction at the cathode and reduce the rate of chlorate accumulation.",
+      "page": 8,
+      "bbox": [
+        505.0,
+        193.0,
+        902.0,
+        479.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "81bfcee9-ba8d-4beb-ad7d-1d73f48b1990",
+      "text": "Keywords: platinum; platinized titanium; cathode; sodium hypochlorite; chlorate.",
+      "page": 8,
+      "bbox": [
+        506.0,
+        480.0,
+        900.0,
+        502.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a0dbdff6-802b-4fc7-8d86-39c5ad322bdc",
+      "text": "REFERENCES",
+      "page": 8,
+      "bbox": [
+        548.0,
+        508.0,
+        648.0,
+        519.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 8,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "a09035e5-3677-49e7-80fd-f4d9b6e5db35",
+      "text": null,
+      "page": 8,
+      "bbox": [
+        506.0,
+        523.0,
+        900.0,
+        797.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7390359a-5ef7-45a4-b5d0-24b92387b460",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 8,
+      "bbox": [
+        101.0,
+        57.0,
+        730.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "650649e7-c519-4603-a280-e69c54f36153",
+      "text": "81",
+      "page": 8,
+      "bbox": [
+        880.0,
+        58.0,
+        900.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "502986a1-36a0-47c4-8d3d-06d7fcc5a484",
+      "text": "Low concentrated green NaClO: influence of cathode material on kinetic regularities of electrolysis",
+      "page": 8,
+      "bbox": [
+        178.0,
+        895.0,
+        900.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "8ab06eb8-ff0a-4d96-8b13-0cb97fdcf516",
+      "text": null,
+      "page": 9,
+      "bbox": [
+        95.0,
+        93.0,
+        489.0,
+        601.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c3abd54b-029b-4053-87a0-a6aee7f67a9b",
+      "text": "82",
+      "page": 9,
+      "bbox": [
+        97.0,
+        58.0,
+        117.0,
+        70.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3ee61c49-0eec-48e5-83e1-ef75ed12fac2",
+      "text": "ISSN 0321-4095, Voprosy khimii i khimicheskoi tekhnologii, 2021, No. 3, pp. 73-82",
+      "page": 9,
+      "bbox": [
+        269.0,
+        57.0,
+        898.0,
+        72.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "77b94912-a3f6-4c9f-b451-53cdefd0b081",
+      "text": "D. Girenko, O. Shmychkova, A. Velichenko",
+      "page": 9,
+      "bbox": [
+        97.0,
+        894.0,
+        422.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    }
+  ],
+  "success": true,
+  "timestamp": "2025-10-09 22:24:31"
+}

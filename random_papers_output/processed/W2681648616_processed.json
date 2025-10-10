@@ -1,0 +1,1847 @@
+{
+  "paper_id": "W2681648616",
+  "title": "Examination and prognostic implications of the unique microenvironment of breast cancer brain metastases.",
+  "doi": "10.1200/jco.2017.35.15_suppl.2072",
+  "pdf_size_mb": 1.0743274688720703,
+  "processing_time_seconds": 9.389617919921875,
+  "document_id": "W2681648616",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 9389,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "statistics": {
+    "total_blocks": 117,
+    "tables_extracted": 0,
+    "figures_extracted": 0
+  },
+  "blocks": [
+    {
+      "id": "989bcd3c-3b92-4ed1-aa5f-8571809e5bf4",
+      "text": "HHS Public Access",
+      "page": 0,
+      "bbox": [
+        210.0,
+        25.0,
+        542.0,
+        49.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "692b2017-89f0-4fe6-bb2e-da9768ce153f",
+      "text": "Author manuscript",
+      "page": 0,
+      "bbox": [
+        210.0,
+        55.0,
+        387.0,
+        73.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b3bc3ca0-00f1-42f1-9014-5422f34d6249",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 0,
+      "bbox": [
+        210.0,
+        73.0,
+        790.0,
+        89.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ce3999ea-515e-411e-8d00-ac521454dbff",
+      "text": "Published in final edited form as:",
+      "page": 0,
+      "bbox": [
+        142.0,
+        97.0,
+        362.0,
+        111.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c4cc4a95-0d65-48df-b47c-22e7502a047f",
+      "text": "Breast Cancer Res Treat. 2019 July; 176(2): 321-328. doi:10.1007/s10549-019-05211-1.",
+      "page": 0,
+      "bbox": [
+        151.0,
+        112.0,
+        741.0,
+        127.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "aa1e234c-86bb-417f-9ffb-0f2f758bef1a",
+      "text": "Examination and prognostic implications of the unique microenvironment of breast cancer brain metastases",
+      "page": 0,
+      "bbox": [
+        142.0,
+        161.0,
+        743.0,
+        205.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "649c89db-9422-44e8-9609-2b61c385130f",
+      "text": "Maria J. Sambade<sup>1</sup>, Grace Prince<sup>2</sup>, Allison M. Deal<sup>1</sup>, Dimitri Trembath<sup>3</sup>, Megan McKee<sup>4</sup>, Amy Garrett<sup>1</sup>, Kevin Keith<sup>5</sup>, Juanita Ramirez<sup>6</sup>, Bentley Midkiff<sup>3</sup>, Kimberly Blackwell<sup>7</sup>, Sarah Sammons<sup>8</sup>, Jose Pablo Leone<sup>9</sup>, Adam Brufsky<sup>10</sup>, Aki Morikawa<sup>11</sup>, Edi Brogi<sup>12</sup>, Andrew Seidman<sup>13</sup>, Matthew Ewend<sup>1,14</sup>, Lisa A. Carey<sup>1,2</sup>, Stergios J. Moschos<sup>1,2</sup>, Ronald L. Hamilton<sup>15</sup>, Benjamin Vincent<sup>1,2</sup>, Carey Anders<sup>1,2</sup>",
+      "page": 0,
+      "bbox": [
+        140.0,
+        223.0,
+        846.0,
+        311.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b64994d2-0daf-4bd3-ae00-75555dc3af7d",
+      "text": null,
+      "page": 0,
+      "bbox": [
+        142.0,
+        315.0,
+        844.0,
+        652.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "72b0e9ee-17c2-4f3a-919b-33d17be9f438",
+      "text": "Author Manuscript Author Manuscript Author Manuscript Author Manuscript",
+      "page": 0,
+      "bbox": [
+        27.0,
+        80.0,
+        50.0,
+        849.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7c08a204-f7eb-47b2-9ef3-77b67c9d9230",
+      "text": "Carey Anders, carey.anders@duke.edu.",
+      "page": 0,
+      "bbox": [
+        140.0,
+        684.0,
+        352.0,
+        695.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c3ed2978-5c6d-43a8-9c00-032227858839",
+      "text": "Maria J. Sambade and Grace Prince shared co-first authorship.",
+      "page": 0,
+      "bbox": [
+        142.0,
+        695.0,
+        472.0,
+        707.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "09e2f737-10e9-4161-a854-e72555e653fb",
+      "text": "Conflict of interest Adam Brufsky is a consultant for Lilly, Amgen, Hexal, Novartis, Roche, Pfizer, Immunomedics, Eisai, and Celgene, and owns stock in Bioarray Technologies. Kimberly Blackwell is employed by Lilly. Jose Pablo Leone receives research funding from Merck. Aki Morikawa receives research funding from Lilly, Genentech, Novartis, Merrimack, and Bayer. Matthew Ewend owns stock in Falcon Therapeutics. Carey Anders is an uncompensated consultant/advisory board member for Novartis, Merrimack, Lily, Nektar, Cascadian, Seattle Genetics, and Genentech, a compensated consultant/advisory board member for Merck, PUMA, and Eisai, receives unrelated research funding from Novartis, Merrimack, PUMA, Lily, Merck, Cascadian, Seattle Genetics, Nektar, Tesaro, and G1-Therapeutics, and receives honoraria from UptoDate and Jones and Bartlett Publishing. The other authors declare that they have no conflicts of interest.",
+      "page": 0,
+      "bbox": [
+        140.0,
+        710.0,
+        839.0,
+        808.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "83570de0-d790-4f5b-a125-41f52dc212ce",
+      "text": "Ethical approval All procedures performed in studies involving human participants were in accordance with the ethical standards of the institutional and/or national research committee and with the 1964 Helsinki declaration and its later amendments or comparable ethical standards.",
+      "page": 0,
+      "bbox": [
+        140.0,
+        811.0,
+        843.0,
+        847.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c49617dc-34c7-4642-8faf-d136d76739e9",
+      "text": "Ethical standard This article does not contain any studies with animals performed by any of the authors.",
+      "page": 0,
+      "bbox": [
+        142.0,
+        851.0,
+        697.0,
+        864.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "849ba2e0-4323-4a3c-a2ea-9e9e4df69694",
+      "text": "Informed consent Informed consent or waiver of consent granted by local IRB was obtained from all individual participants included in the study.",
+      "page": 0,
+      "bbox": [
+        140.0,
+        867.0,
+        846.0,
+        893.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c33b1fac-59a0-4c93-a7ee-f6386219627b",
+      "text": "Publisher's Note Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.",
+      "page": 0,
+      "bbox": [
+        140.0,
+        895.0,
+        844.0,
+        909.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4802ee18-f2ff-47b8-98ec-ad4dcfe0c8f7",
+      "text": null,
+      "page": 1,
+      "bbox": [
+        142.0,
+        75.0,
+        740.0,
+        117.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3723910c-da8a-49ad-8263-eba3086f3fab",
+      "text": "Abstract",
+      "page": 1,
+      "bbox": [
+        142.0,
+        133.0,
+        227.0,
+        150.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "f7549ba5-f436-46f7-ac45-5a0f6c793099",
+      "text": "Purpose\u2014Brain metastases (BM) are a complication of advanced breast cancer (BC). Histology of melanoma BM offers prognostic value; however, understanding the microenvironment of breast cancer brain metastases (BCBM) is less characterized. This study reports on four histological biomarkers, gliosis, immune infiltrate, hemorrhage, necrosis, and their prognostic significance in BCBM.",
+      "page": 1,
+      "bbox": [
+        169.0,
+        162.0,
+        820.0,
+        247.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3785a4ee-ebee-4954-81d3-1a3c58a907e4",
+      "text": "Methods\u2014A biobank of 203 human tissues from patients who underwent craniotomy for BCBM was created across four academic institutions. Degree of gliosis, immune infiltrate, hemorrhage, and necrosis were identified and scored via representative H&E stain  $(0 - 3 + )$ . Overall survival (OS) was estimated using the Kaplan-Meier method. Cox proportional hazards regression evaluated prognostic value of the biomarkers in the context of standard clinical characteristics.",
+      "page": 1,
+      "bbox": [
+        169.0,
+        258.0,
+        821.0,
+        345.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d0138bea-0434-49be-8472-31601f090265",
+      "text": "Results\u2014BCBM subtype (available for  $n = 158$ ) was  $36\\%$  Her2+,  $26\\%$  hormone receptor (HR)+/Her2-  $38\\%$  HR-/Her2- (triple negative, TN). Gliosis was observed in  $82\\%$  (116/141) of BCBM, with immune infiltrate  $44\\%$  (90/201), hemorrhage  $82\\%$  (166/141), and necrosis  $87\\%$  (176/201). Necrosis was significantly higher in TNBC ( $p < 0.01$ ). Presence of gliosis, immune infiltrate, and hemorrhage correlated with improved OS ( $p = 0.03$ ,  $p = 0.03$ ,  $p = 0.1$ ), while necrosis correlated with inferior OS ( $p = 0.01$ ). Improved OS was associated with gliosis in TN ( $p = 0.02$ ), and immune infiltrate ( $p = 0.001$ ) and hemorrhage ( $p = 0.07$ ) in HER2+. In a multivariable model for OS, incorporating these biomarkers with traditional clinical variables improved the model fit ( $p < 0.001$ ).",
+      "page": 1,
+      "bbox": [
+        169.0,
+        354.0,
+        825.0,
+        512.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d2a66446-424a-49d3-8213-6ec2a096d168",
+      "text": "Conclusion\u2014Gliosis confers superior prognosis in TNBC BM; immune infiltrate and hemorrhage correlate with superior prognosis in  $\\mathrm{HER2 + }$  BCBM. Understanding the metastatic microenvironment of BCBM refines prognostic considerations and may unveil novel therapeutic strategies.",
+      "page": 1,
+      "bbox": [
+        169.0,
+        521.0,
+        807.0,
+        590.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4482e2ae-120b-48bc-bc7e-e722123817ff",
+      "text": "Keywords",
+      "page": 1,
+      "bbox": [
+        142.0,
+        607.0,
+        225.0,
+        623.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "03b6afab-20c7-41e4-968e-85e5a97689d9",
+      "text": "Breast cancer brain metastases; Immune infiltrate; Microenvironment; Prognosis",
+      "page": 1,
+      "bbox": [
+        171.0,
+        628.0,
+        702.0,
+        645.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4365c03b-4d18-4d1b-9858-c987205fa5ee",
+      "text": "Introduction",
+      "page": 1,
+      "bbox": [
+        142.0,
+        674.0,
+        261.0,
+        691.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "c48a3079-2e58-40bf-8a12-96ce8539fd37",
+      "text": "As systemic treatments prolong survival and, therefore, patients are living longer with metastatic disease, brain metastases are an increasingly common consequence of cancer [1]. A better understanding of the role of the microenvironment in primary breast cancer and its impact on prognosis is evolving. Tumor subtype has been shown to impact survival parameters, both in terms of time from primary diagnosis to the development of brain metastases  $(p < 0.01)$ , as well as overall survival following a diagnosis of brain metastases  $(p < 0.01)$  [2]. Graded prognostic assessments (GPAs) that incorporate breast cancer subtype, as well as clinical variables, such as age and performance status, have been found to hold prognostic value, thereby providing a valuable guide for clinical decision making in the management of patients with brain metastases [2].",
+      "page": 1,
+      "bbox": [
+        238.0,
+        702.0,
+        856.0,
+        878.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "724c6e47-5cd7-4583-b8db-272e6addaed4",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 1,
+      "bbox": [
+        27.0,
+        92.0,
+        52.0,
+        859.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d1c8a982-443d-4c9d-909b-2dd2107c99af",
+      "text": "Sambade et al.",
+      "page": 1,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "722e998b-12ab-40be-b4e0-0caf2ef84579",
+      "text": "Page 2",
+      "page": 1,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "082e7d12-e2e1-4037-96bf-d7107a681397",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 1,
+      "bbox": [
+        241.0,
+        898.0,
+        663.0,
+        912.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2b1e4cf4-c2e5-486a-a1af-7d8d4d385270",
+      "text": "Knowledge surrounding the microenvironment of metastases arising from breast cancer is less understood, particularly for brain metastases where unique immune regulation governs stromal composition. Features of this stromal landscape, i.e., high immune infiltrate and low or absent hemorrhage, offer prognostic value in brain metastases arising from melanoma [3]. Therefore, a more detailed understanding of the stroma surrounding breast cancer brain metastases may provide similar prognostic guidance, and perhaps reveal molecular underpinnings of this disease process yielding novel molecular targets for future therapeutic investigation.",
+      "page": 2,
+      "bbox": [
+        240.0,
+        75.0,
+        848.0,
+        218.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ba090bfd-e09f-4e21-a4b6-b44c5e927b55",
+      "text": "In this analysis, we report on four principle histopathologic biomarkers found within the breast cancer brain metastases microenvironment, namely gliosis, immune infiltrate, hemorrhage, and necrosis, and assess their associations with breast cancer subtype and their prognostic significance. In addition to providing a deeper understanding of the complex microenvironment of breast cancer brain metastases, we formulated a prognostic index that includes both clinical and histopathologic features, to help further guide clinical decision making for this patient population.",
+      "page": 2,
+      "bbox": [
+        240.0,
+        229.0,
+        848.0,
+        354.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "97028f0f-5827-4e08-be6b-4741155e4bc9",
+      "text": "Methods",
+      "page": 2,
+      "bbox": [
+        142.0,
+        372.0,
+        228.0,
+        388.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "b3156480-8341-4893-a01a-6c4c1ff73820",
+      "text": "Biobank description",
+      "page": 2,
+      "bbox": [
+        142.0,
+        398.0,
+        305.0,
+        415.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "cbebe092-d507-4035-b184-91d7fb034dbb",
+      "text": "Under IRB approval, a biobank of tissues from 203 patients with breast cancer brain metastases who underwent craniotomy between 1989 and 2013 from four institutions (Duke University, Memorial Sloan Kettering Cancer Center, University of North Carolina at Chapel Hill, and University of Pittsburgh Medical Center) was created. Both primary breast and brain metastases tumor samples were classified by subtype, either as hormone receptor positive  $(\\mathrm{HR}+)$ , estrogen and/or progesterone receptor positive/ $\\mathrm{Her}2-)$ ,  $\\mathrm{Her}2+$  (including both  $\\mathrm{HR}+/\\mathrm{Her}2+$  and  $\\mathrm{HR}-/\\mathrm{Her}2+$ ), or  $\\mathrm{HR}-/\\mathrm{Her}2-$  (triple-negative breast cancer, TNBC). Subtype classification was based on the primary breast sample biomarkers only when the brain metastases sample subtype was not available. When subtype for the brain sample differed from that of the primary breast sample, classification was made based on the subtype of the brain metastases sample. This study was approved, and waivers of consent were granted by Institutional Review Boards at each of the four institutions (Duke University, Memorial Sloan Kettering Cancer Center, University of North Carolina at Chapel Hill, and University of Pittsburgh Medical Center).",
+      "page": 2,
+      "bbox": [
+        240.0,
+        421.0,
+        854.0,
+        670.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "62bb3e25-dc1b-4f9a-a074-ae9be52b8c00",
+      "text": "Histological assessment of biobank",
+      "page": 2,
+      "bbox": [
+        142.0,
+        684.0,
+        426.0,
+        700.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "c7c14844-f546-48d9-a6fe-7aeefe62330f",
+      "text": "5-\u03bcM thick, representative hemotoxylin and eosin (H&E)-stained tissue section slides from all craniotomy samples were semi-quantitatively evaluated for the presence of four biomarkers: gliosis, immune infiltrate, hemorrhage, and necrosis by a neuropathologist blinded to patients' records. Each sample received a numerical score (0\u20133), as previously described [3].",
+      "page": 2,
+      "bbox": [
+        240.0,
+        707.0,
+        841.0,
+        795.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ae563426-e859-4618-bf6a-7c1686b54fe5",
+      "text": "Statistical analysis",
+      "page": 2,
+      "bbox": [
+        142.0,
+        811.0,
+        294.0,
+        828.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "13174e42-e403-4c6b-a801-54390b4aa9fa",
+      "text": "For statistical analysis, all 4 biomarkers, gliosis, immune infiltrate, hemorrhage, and necrosis, were described as present or absent (0 vs.  $1 - 3+$ ). Necrosis was also evaluated by",
+      "page": 2,
+      "bbox": [
+        240.0,
+        833.0,
+        834.0,
+        868.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "36bc3b94-2ded-400e-a41a-48ede2d8fa80",
+      "text": "Sambade et al.",
+      "page": 2,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7858f938-328f-4196-8cc7-ddb3114ec48d",
+      "text": "Page 3",
+      "page": 2,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d41a6ae1-0fca-4cb6-9c37-7ea713b322fb",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 2,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fa3f81a5-4a30-4af0-99b0-c642d23ece5c",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 2,
+      "bbox": [
+        240.0,
+        898.0,
+        663.0,
+        914.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "292e5b55-9853-4621-9d53-bcb2f92145dd",
+      "text": "highest degree vs. other  $(3+ \\text{vs. } 0-2+)$ . Differences in biomarkers between subtypes were evaluated using chi-squared tests. The primary endpoint was overall survival (OS) from time of craniotomy. The Kaplan-Meier method and log-rank tests were used to determine OS, both for all samples and in a subtype-specific manner. Unadjusted p values are reported. Cox Regression Models were used to evaluate the prognostic value of clinical variables and the four biomarkers, limited to cases with complete data. A likelihood ratio test was used to compare the model fit with only clinical variables vs. the addition of the biomarkers. All statistical analyses were conducted using SAS software.",
+      "page": 3,
+      "bbox": [
+        240.0,
+        75.0,
+        852.0,
+        217.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c37abe16-a2a8-45e7-b5d6-3468e8953987",
+      "text": "Results",
+      "page": 3,
+      "bbox": [
+        142.0,
+        234.0,
+        218.0,
+        253.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 3,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "686f2682-3ff9-47c1-9cac-cfbc3eab4430",
+      "text": "Patient demographics and treatment history",
+      "page": 3,
+      "bbox": [
+        142.0,
+        262.0,
+        491.0,
+        280.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 3,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "f533d18f-30ff-4f66-8bae-20a32ad9d679",
+      "text": "Characteristics of the study population are detailed in Table 1. The study included 203 patients from Duke University (Duke), Memorial Sloan Kettering Cancer Center (MSK), the University of North Carolina (UNC) at Chapel Hill, and the University of Pittsburgh Medical Center (Pitt). Mean age at diagnosis of breast cancer was 48 (range 26-77).  $87\\%$  of patients were aged 40 or older, while  $16\\%$  of patients were aged 65 or older at the time of brain metastases diagnosis. Across all patients,  $14\\%$  were African American,  $2\\%$  American Indian or Alaska Native,  $2\\%$ , Asian,  $78\\%$  Caucasian, and  $4\\%$  other races.",
+      "page": 3,
+      "bbox": [
+        240.0,
+        285.0,
+        851.0,
+        407.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "70ca06f6-7839-47a3-8f8d-71bcf70830c8",
+      "text": "This was a heavily pre-treated patient population. Of the patients with systemic treatment records  $(n = 148)$ , most received systemic treatment in the metastatic setting, with  $85\\%$  (125/148) receiving systemic therapy prior to craniotomy, and  $75\\%$  (106/148) receiving systemic therapy after craniotomy. From available data, only  $4\\%$  (6/148) did not receive any systemic therapy in the metastatic setting. Of the patients with records of radiation treatment  $(n = 115)$ ,  $85\\%$  (98/115) received radiation therapy for brain metastases:  $79\\%$  (91/115) received whole brain radiation therapy (WBRT) and  $36\\%$  (41/115) received stereotactic radiosurgery (SRS). All 203 patients underwent a craniotomy for brain metastases.",
+      "page": 3,
+      "bbox": [
+        240.0,
+        421.0,
+        851.0,
+        561.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3d6750cf-bfd9-469c-a30c-174bd14543ec",
+      "text": "Expression of histologic markers in breast cancer brain metastases overall and by subtype",
+      "page": 3,
+      "bbox": [
+        140.0,
+        578.0,
+        789.0,
+        613.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 3,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "65484973-7f7c-4272-b5ce-78a90d92a4df",
+      "text": "Subtype classification of the craniotomy samples was available for 158 cases:  $36\\%$ $\\mathrm{Her2+}$ ,  $26\\%$ $\\mathrm{HR+/Her2-}$ ,  $38\\%$ $\\mathrm{HR-/Her2-}$  (TN), Table 1. Figure 1 summarizes the histological analysis for each biomarker for available samples. Across available samples for each marker, gliosis was present in  $82\\%$  (116/141), hemorrhage in  $82\\%$  (166/203), and necrosis in  $87\\%$  (176/201) of brain metastases samples. Immune infiltrate was found in fewer samples,  $44\\%$ , (90/201), as compared to the other biomarkers. Representative images of these samples and their expression of the four biomarkers are displayed in Fig. 2a-d. The presence of each biomarker by histologic score across all samples and in a subtype-specific manner is summarized in Fig. 3a-d. Interestingly, there were no significant differences in gliosis across subtypes ( $p = 0.9764$ ):  $\\mathrm{HR+/Her2-}$  ( $78\\%$ ), TN ( $80\\%$ ), and  $\\mathrm{Her2+}$  ( $81\\%$ ) cases. Immune infiltrate was numerically lower ( $28\\%$ ) in  $\\mathrm{HR+/Her2-}$  brain metastases, compared to TN ( $50\\%$ ) and  $\\mathrm{Her2+}$  ( $42\\%$ ) cases ( $p = 0.081$ ). The presence of hemorrhage in brain metastases was statistically different across subtypes ( $p = 0.048$ ):  $\\mathrm{Her2+}$  ( $72\\%$ ), TN ( $85\\%$ ) and  $\\mathrm{HR+/Her2-}$  ( $90\\%$ ). Necrosis (scored as  $1 - 3 +$  by IHC) within brain metastases was not",
+      "page": 3,
+      "bbox": [
+        240.0,
+        618.0,
+        851.0,
+        866.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ffc830e4-25a8-42c1-862a-1b2f63a768a0",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 3,
+      "bbox": [
+        27.0,
+        92.0,
+        50.0,
+        859.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "03d4f975-bc4a-4762-b298-36b7d596ecd0",
+      "text": "Sambade et al.",
+      "page": 3,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "08868f2d-ce06-4128-b360-adf08d29fb5e",
+      "text": "Page 4",
+      "page": 3,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "720329b7-cef6-40f2-a104-62bdc2c665ba",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 3,
+      "bbox": [
+        241.0,
+        898.0,
+        663.0,
+        912.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "769d26c0-643e-4457-9a7a-79f48bba950b",
+      "text": "significantly different across subtypes ( $p = 0.4632$ ). Necrosis was more common in the TN brain metastases (92%), as compared to 87% of  $\\mathrm{HR} + / \\mathrm{Her}2-$  and 84% of  $\\mathrm{Her}2+$  brain metastases. When considering the highest degree of necrosis (3 + only by IHC), necrosis was significantly higher in TN brain metastases (22%) as compared to 3% of  $\\mathrm{HR} + / \\mathrm{Her}2-$  and 5% of  $\\mathrm{Her}2+$  brain metastases ( $p = 0.003$ ).",
+      "page": 4,
+      "bbox": [
+        238.0,
+        75.0,
+        841.0,
+        164.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4cf710cd-91bd-488d-a5c3-7b4b6e26c87d",
+      "text": "Impact of biomarker expression in BCBM on overall survival following craniotomy",
+      "page": 4,
+      "bbox": [
+        142.0,
+        179.0,
+        782.0,
+        196.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 4,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "bfc6f400-e536-4ffe-a888-172311780866",
+      "text": "Overall survival following craniotomy differed by subtype  $(p = 0.02)$ :  $\\mathrm{HR} + / \\mathrm{Her}2 - 1.15$  years (95% CI 0.74-1.97), TN (0.82 years, 95% CI 0.44-1.03), and  $\\mathrm{Her}2 + 1.78$  years (95% CI 1.08-1.92 years). Survival by academic institution did not differ  $(p = 0.53)$ . The impact of biomarker expression on survival following craniotomy for brain metastases was analyzed. As seen in Fig. 4a, the presence of gliosis (score 1-3) was associated with superior overall survival (1.08 vs. 0.62 years,  $p = 0.027$ ). Similarly, Fig. 4b demonstrates that the presence of immune infiltrate (score 1-3) was associated with superior survival from craniotomy (1.31 vs. 0.93 years,  $p = 0.033$ ). The presence of hemorrhage (score 1-3) was not associated with a significant survival difference following craniotomy (1.07 vs. 0.92 years,  $p = 0.095$ ), demonstrated in Fig. 4c. While presence of necrosis (score 1-3 vs. 0) did not reveal differences in survival following craniotomy  $(p = 0.98)$ , Fig. 4d shows that the highest level of necrosis (score 3 vs. 0-2) was associated with inferior survival from craniotomy (0.38 vs. 1.12 years,  $p = 0.014$ ). The effect of each biomarker on survival from craniotomy was then examined across subtype. The prognostic impact of each biomarker and survival from craniotomy was maintained only for gliosis in patients with TN brain metastases (0.37 vs. 0.94 years,  $p = 0.02$ ), immune infiltrate in patients with  $\\mathrm{Her}2+$  brain metastases (1.12 vs. 2.06 years,  $p = 0.002$ ), and hemorrhage, though the trend for hemorrhage was not statistically significant (1.29 vs. 1.82 years,  $p = 0.07$ ), Fig. 5a-c.",
+      "page": 4,
+      "bbox": [
+        238.0,
+        200.0,
+        852.0,
+        518.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ef3c2c06-7009-4e5a-a45a-539047e2eb19",
+      "text": "Prognostic effect of histopathologic biomarker on OS following craniotomy",
+      "page": 4,
+      "bbox": [
+        142.0,
+        535.0,
+        732.0,
+        553.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 4,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "9dff7a17-5477-47ad-a17b-11a2dd6a79b1",
+      "text": "Univariable and multivariable analysis, shown in Table 2, was used to evaluate the association of patient and tumor characteristics with OS. In multivariable analysis, an integrated model including both clinical and tumor characteristics significantly improved model fit  $(p < 0.001)$  as compared to a model with only clinical variables. This integrated model shown in Table 2 illustrated that the presence of gliosis (HR 0.43,  $p = 0.002$ ) was associated with improved survival post craniotomy, while age  $\\geq 50$  years (HR 1.62,  $p = 0.022$ ) and highest degree of necrosis (3 vs. 0-2, HR 2.13,  $p = 0.006$ ) were both associated with inferior survival post craniotomy.",
+      "page": 4,
+      "bbox": [
+        238.0,
+        558.0,
+        839.0,
+        699.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "042f84f3-50f8-41be-b856-793969ac9ceb",
+      "text": "Discussion",
+      "page": 4,
+      "bbox": [
+        142.0,
+        718.0,
+        253.0,
+        734.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 4,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "9978054a-cf98-4805-b04c-3c5193b20d66",
+      "text": "Across all subtypes of over 200 breast cancer brain metastases tissues\u2014the largest histopathologic analysis to date\u2014we found gliosis and immune infiltrate correlated with superior prognosis, while the highest level of necrosis was a poor prognostic finding. Hemorrhage was not associated with improved prognosis following craniotomy across all subtypes of breast cancer. When examining survival following craniotomy in a subtype-specific manner, gliosis conferred superior prognosis in the TN subtype, while immune infiltrate correlated with superior prognosis in the  $\\mathrm{Her2 + }$  subtype. Lastly, integrating the four",
+      "page": 4,
+      "bbox": [
+        238.0,
+        744.0,
+        852.0,
+        869.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c4513fd5-c918-45ca-8c81-7489139dd31d",
+      "text": "Sambade et al.",
+      "page": 4,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a606ede8-adf6-4f93-bb4d-f5a7f25f26b1",
+      "text": "Page 5",
+      "page": 4,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "95714ebb-11ba-43e4-8a85-def646664070",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 4,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "27e853bf-84fe-47e6-8e76-24c718882833",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 4,
+      "bbox": [
+        241.0,
+        898.0,
+        668.0,
+        914.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "92347f2c-b604-4d8d-b6dc-4dd8af8b4935",
+      "text": "histopathologic biomarkers with traditional clinical variables (i.e., age, race, subtype) resulted in a significantly improved prognostic model when compared to a model that used clinical variables alone. While these findings would require validation, one could propose including these histopathologic features in pathology reports of breast cancer brain metastases cases as they could yield important prognostic information.",
+      "page": 5,
+      "bbox": [
+        240.0,
+        75.0,
+        841.0,
+        164.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4eb88718-d821-4cce-9a21-8955d3031dcd",
+      "text": "Previous studies have examined the prognostic value of clinical features in guiding treatment decisions for patients with breast cancer, for example in determining duration of treatment with trastuzumab [4]. However, in contrast to the histologically based biomarkers examined by this study, the variables used in the trastuzumab model were clinically based (i.e., age, sites of distant metastasis) and illustrated low predictive value. A deeper investigation of the brain microenvironment's influence on other solid tumor brain metastases, such as melanoma, has informed prognostic capability [3]. For example, in the setting of brain metastases arising from melanoma, the presence of peritumoral immune infiltrate  $(\\mathrm{CD3+}$  and  $\\mathrm{CD8 + })$  and a low degree of hemorrhage is associated with favorable prognosis as defined by overall survival [3]. As this study shows that microenvironment features of breast cancer brain metastases also impact survival, harnessing this information may not only guide prognosis, but also reveal novel therapeutic strategies may be of benefit in breast cancer as well.",
+      "page": 5,
+      "bbox": [
+        238.0,
+        176.0,
+        854.0,
+        404.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6127a7de-6f32-43a0-ba16-2065854a0eae",
+      "text": "Specific to the immune composition of breast cancer brain metastases, tumor-infiltrating lymphocytes, macrophages, programmed cell death protein  $-1$  and  $-2$  receptors (PDL-1 and  $-2$ ), and glial fibrillary acid protein were assessed in over 80 breast cancer brain metastases tissues acquired during craniotomy [5]. Results from this study were complimentary to our findings in that overall survival following craniotomy correlated positively with expression of PDL-1 on tumor-infiltrating lymphocytes (TILS, hazard ratio  $(\\mathrm{HR}) = 0.3$ ,  $p = 0.003$ ) in multivariable analysis that included clinical variables such as prior radiation therapy and HER2 expression. Taken together, these data illustrate a beneficial effect of anti-tumor immunity and rationale to examine immunotherapy strategies in breast cancer brain metastases. Favorable response to immune checkpoint inhibitors have been observed in the setting of brain metastases arising from non-small cell lung cancer and melanoma illustrating feasibility of this approach [6].",
+      "page": 5,
+      "bbox": [
+        238.0,
+        419.0,
+        851.0,
+        631.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d0349399-cba9-4665-be88-3e27ca50956a",
+      "text": "While we are encouraged by the results of this study, particularly with regard to the prognostic associations between histopathologic biomarkers and overall survival, we recognize that there are several limitations that must be considered. First, this is a retrospective study with inherent bias and with clinical outcomes influenced by outdated therapeutic strategies. To more accurately incorporate these data into current practice, this would require validation of these four histopathologic biomarkers in the context of prospective studies. The findings from such a study could result in an enhanced GPA that would aid clinical decision making for patients. Additionally, the focus of this study was solely on a limited number of histopathologic biomarkers found within the tumor stroma. A deeper look into the cellular communication within the brain microenvironment of breast cancer brain metastases, including interactions with microglia, neurons, astrocytes, and pericytes, is ongoing and remains an area of continued interest. The sheer size of brain metastases may impact these biomarkers and is worthy of examination; however, we were",
+      "page": 5,
+      "bbox": [
+        238.0,
+        643.0,
+        846.0,
+        872.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4ccff12b-2ae3-4623-b9c7-09c005a60973",
+      "text": "Sambade et al.",
+      "page": 5,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bf794a86-2cfc-4abd-9f3c-db494cb2478f",
+      "text": "Page 6",
+      "page": 5,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5e3a6c8d-5968-4c4e-af0a-c1c30baa5760",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 5,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5ec7c026-b141-4a27-8b17-594f14fc07ed",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 5,
+      "bbox": [
+        240.0,
+        898.0,
+        663.0,
+        912.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3f4e3c96-68e4-4a36-b3fe-6fe87879a9d5",
+      "text": "limited in our ability to acquire this data point as pre-craniotomy MRIs are not currently available for this cohort. Current and future results will undoubtedly yield both a better understanding of prognostic implications as well as promising, novel therapeutic, and prevention strategies [7-9].",
+      "page": 6,
+      "bbox": [
+        238.0,
+        75.0,
+        823.0,
+        147.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "76594053-7387-4225-bd6d-cae9f1cc7dd2",
+      "text": "In conclusion, careful integration of histopathologic, as well as clinical and treatment, variables will allow us to refine our discussions about prognosis with our patients diagnosed with breast cancer brain metastases. Finally, this knowledge will also help optimize shared decision making when selecting biologically sound treatment options that incorporate both tumor and microenvironment features of brain metastases, including options that augment anti-tumor immunity in a safe and tolerable manner.",
+      "page": 6,
+      "bbox": [
+        238.0,
+        159.0,
+        849.0,
+        265.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9f93eb03-eb1d-4c25-a3cd-7029301239c4",
+      "text": "Acknowledgments",
+      "page": 6,
+      "bbox": [
+        142.0,
+        284.0,
+        320.0,
+        303.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 6,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "188dca0f-09a0-4c3f-a433-02d9a03f27ed",
+      "text": "Funding This study was funded by the NIH/NCI K23 (CKA) and NIH 5K23CA157728-05.",
+      "page": 6,
+      "bbox": [
+        240.0,
+        311.0,
+        725.0,
+        325.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "69031a24-dde3-496d-8642-3be34d17e351",
+      "text": "References",
+      "page": 6,
+      "bbox": [
+        142.0,
+        343.0,
+        254.0,
+        359.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 6,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "f1978f56-3350-4689-bedc-08b2232650d1",
+      "text": null,
+      "page": 6,
+      "bbox": [
+        240.0,
+        369.0,
+        854.0,
+        806.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "60844d1b-e2c6-4afe-acec-8d652f54263a",
+      "text": "Sambade et al.",
+      "page": 6,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3241929e-7717-4ebd-b285-1fcb355a0383",
+      "text": "Page 7",
+      "page": 6,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b772f012-880d-49d0-90ac-1b5482e90555",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 6,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9dfcaa80-d0b1-48ae-856b-7d9f174ea53f",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 6,
+      "bbox": [
+        241.0,
+        898.0,
+        666.0,
+        914.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5bf7b056-4646-42d6-b566-e41f38137025",
+      "text": "Sambade et al.",
+      "page": 7,
+      "bbox": [
+        122.0,
+        45.0,
+        204.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bf275338-b026-4bfe-a454-5ad610f19b6f",
+      "text": "Page 8",
+      "page": 7,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4f8c9360-3ab9-4992-8062-9c2c30ee1fc6",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 7,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9ae1f5b9-7c1c-4c59-8719-77edf877f573",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 7,
+      "bbox": [
+        241.0,
+        898.0,
+        668.0,
+        916.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a2a55c9c-2b96-45ad-b8be-35fe690c5a9d",
+      "text": "Sambade et al.",
+      "page": 8,
+      "bbox": [
+        122.0,
+        45.0,
+        204.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "76a5b194-1060-45b2-9ab9-b6a956397fd9",
+      "text": "Page 9",
+      "page": 8,
+      "bbox": [
+        813.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "909ea337-ed1b-4095-a93b-d25cdfc379d3",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 8,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ef87bbe3-4979-4b61-a6f3-c8718cfaba40",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 8,
+      "bbox": [
+        241.0,
+        898.0,
+        668.0,
+        916.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fff5c1da-9489-4627-a26b-ad215cc179dc",
+      "text": "Sambade et al.",
+      "page": 9,
+      "bbox": [
+        122.0,
+        45.0,
+        204.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2845de35-af2d-46d8-9694-131f520d9a95",
+      "text": "Page 10",
+      "page": 9,
+      "bbox": [
+        807.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "32ce45ce-a355-4f62-828d-510a8aadfcd6",
+      "text": "Author Manuscript Author Manuscript Author Manuscript",
+      "page": 9,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7e7d6067-71f4-49b4-9800-db62ab0ca6de",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 9,
+      "bbox": [
+        241.0,
+        898.0,
+        665.0,
+        912.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9d8b229e-9530-4053-b25a-e8911502f855",
+      "text": "Sambade et al.",
+      "page": 10,
+      "bbox": [
+        122.0,
+        45.0,
+        204.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6912ae2f-b4dc-4311-b26a-06d21de71259",
+      "text": "Page 11",
+      "page": 10,
+      "bbox": [
+        807.0,
+        45.0,
+        852.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fd27bcbc-26af-4895-823d-a207be7db509",
+      "text": "Author Manuscript Author Manuscript Author Manuscript Author Manuscript",
+      "page": 10,
+      "bbox": [
+        26.0,
+        90.0,
+        52.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9e7d0be0-92c5-41a1-b6fc-c13abd33c906",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 10,
+      "bbox": [
+        241.0,
+        898.0,
+        668.0,
+        914.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3ecab2b5-24fb-4a5f-998b-bf5a670fee5a",
+      "text": "Sambade et al.",
+      "page": 11,
+      "bbox": [
+        122.0,
+        45.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "cba765bc-c609-4cfb-8bdc-1c7ee902db25",
+      "text": "Page 12",
+      "page": 11,
+      "bbox": [
+        807.0,
+        45.0,
+        854.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9a905ec2-3739-4955-af03-dfaec9beee6d",
+      "text": "Author Manuscript Author Manuscript Author Manuscript Author Manuscript",
+      "page": 11,
+      "bbox": [
+        26.0,
+        90.0,
+        50.0,
+        862.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "aadb3ecf-cb94-4950-b3cc-b4e4459e1e96",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 11,
+      "bbox": [
+        241.0,
+        898.0,
+        668.0,
+        916.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bcbbf3d6-c87a-454f-a8fb-74d844d56e3b",
+      "text": "Sambade et al.",
+      "page": 12,
+      "bbox": [
+        122.0,
+        45.0,
+        204.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e0ccc623-80b1-47b7-814a-ca270d9a6d6d",
+      "text": "Page 13",
+      "page": 12,
+      "bbox": [
+        807.0,
+        45.0,
+        852.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "94ebbf0f-0104-411a-8736-f9b0ddc45d72",
+      "text": "Author Manuscript",
+      "page": 12,
+      "bbox": [
+        29.0,
+        132.0,
+        53.0,
+        260.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "da395ae7-76b9-476a-bdca-922bb7bb9b8c",
+      "text": "Author Manuscript",
+      "page": 12,
+      "bbox": [
+        29.0,
+        345.0,
+        52.0,
+        474.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2679eef0-4860-4230-8b9f-76119a030618",
+      "text": "Author Manuscript",
+      "page": 12,
+      "bbox": [
+        29.0,
+        559.0,
+        52.0,
+        686.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d8e4b6cf-05f0-4d10-9b4e-1cec13790390",
+      "text": "Author Manuscript",
+      "page": 12,
+      "bbox": [
+        29.0,
+        772.0,
+        52.0,
+        901.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f8736798-876c-4dca-9324-0cc7761c7373",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 12,
+      "bbox": [
+        243.0,
+        898.0,
+        665.0,
+        914.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "666e310e-29cd-4de0-9080-f865e9d17243",
+      "text": "Sambade et al.",
+      "page": 13,
+      "bbox": [
+        125.0,
+        47.0,
+        202.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f0feab53-ee33-4aa9-b60e-bc0a40197b3e",
+      "text": "Page 14",
+      "page": 13,
+      "bbox": [
+        808.0,
+        47.0,
+        852.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "57a196e6-5cc5-4e67-b72d-30c2288bb722",
+      "text": "Author Manuscript",
+      "page": 13,
+      "bbox": [
+        29.0,
+        133.0,
+        50.0,
+        258.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "158238d7-5bfd-4ca8-8ba8-e6452593e0cc",
+      "text": "Author Manuscript",
+      "page": 13,
+      "bbox": [
+        29.0,
+        348.0,
+        50.0,
+        472.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "25f756f7-e8ef-463d-bc39-18729b94b0a0",
+      "text": "Author Manuscript",
+      "page": 13,
+      "bbox": [
+        29.0,
+        561.0,
+        50.0,
+        684.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "78d5fd45-3be6-4c9b-b186-601d0ec075ef",
+      "text": "Author Manuscript",
+      "page": 13,
+      "bbox": [
+        29.0,
+        773.0,
+        50.0,
+        898.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c77bf44e-1165-4869-beca-08b3c69e33aa",
+      "text": "Breast Cancer Res Treat. Author manuscript; available in PMC 2020 August 11.",
+      "page": 13,
+      "bbox": [
+        243.0,
+        902.0,
+        663.0,
+        912.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    }
+  ],
+  "success": true,
+  "timestamp": "2025-10-09 22:24:19"
+}

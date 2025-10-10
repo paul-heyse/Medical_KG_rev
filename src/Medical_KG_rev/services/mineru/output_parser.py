@@ -289,9 +289,15 @@ class MineruOutputParser:
             >>> assert document.document_id == "doc-1"
 
         """
-        # Handle MinerU v2.5.4+ format (list of pages)
+        # Handle MinerU v2.5.4+ formats (list)
         if isinstance(payload, list):
-            return self._parse_pages_format(payload)
+            # Check if it's the new content_list format (flat list) or old pages format (nested list)
+            if payload and isinstance(payload[0], dict):
+                # Flat list with dicts - content_list.json format
+                return self._parse_content_list_format(payload)
+            else:
+                # Nested list - old _model.json format (list of pages)
+                return self._parse_pages_format(payload)
 
         # Handle old format (dict)
         document_id = str(payload.get("document_id", ""))
@@ -319,6 +325,113 @@ class MineruOutputParser:
             tables=len(tables),
             figures=len(figures),
             equations=len(equations),
+        )
+        return parsed
+
+    def _parse_content_list_format(self, content_list: list[dict[str, Any]]) -> ParsedDocument:
+        """Parse MinerU _content_list.json format with hierarchy.
+
+        Args:
+            content_list: Flat list of content blocks with hierarchy metadata
+
+        Returns:
+            Parsed document with all extracted content and hierarchy preserved
+
+        Note:
+            content_list.json format includes:
+            - text_level: heading hierarchy (1=H1, 2=H2, etc.)
+            - page_idx: page number
+            - bbox: bounding box
+            - type: block type (text, image, table)
+            - text: content
+            - img_path, image_caption: for images
+
+        """
+        all_blocks: list[ContentBlock] = []
+        all_tables: list[Table] = []
+        all_figures: list[Figure] = []
+
+        import uuid
+
+        for block_data in content_list:
+            block_type = block_data.get("type", "text")
+            content = block_data.get("text", "")
+            bbox = block_data.get("bbox", [])
+            page_num = block_data.get("page_idx", 0)
+            text_level = block_data.get("text_level")  # Hierarchy info!
+
+            # Generate UUID-based unique IDs
+            block_id = str(uuid.uuid4())
+
+            # Build metadata dict with hierarchy info
+            metadata = {}
+            if text_level is not None:
+                metadata["text_level"] = text_level  # Preserve heading level
+                metadata["is_heading"] = True
+
+            # Map content_list types to internal types
+            if block_type == "image":
+                # Images/figures
+                figure = self._parse_figure({
+                    "id": block_id,
+                    "content": content,
+                    "bbox": bbox,
+                    "page_number": page_num,
+                    "metadata": {
+                        **metadata,
+                        "mineru_type": block_type,
+                        "img_path": block_data.get("img_path"),
+                        "image_caption": block_data.get("image_caption", []),
+                        "image_footnote": block_data.get("image_footnote", []),
+                    }
+                })
+                all_figures.append(figure)
+            elif block_type == "table":
+                # Tables
+                table = self._parse_table({
+                    "id": block_id,
+                    "content": content,
+                    "bbox": bbox,
+                    "page_number": page_num,
+                    "metadata": {**metadata, "mineru_type": block_type}
+                })
+                all_tables.append(table)
+            else:
+                # Text blocks (with or without heading level)
+                block = self._parse_block({
+                    "id": block_id,
+                    "block_type": "header" if text_level else "text",
+                    "text": content,
+                    "bbox": bbox,
+                    "page": page_num,
+                    "metadata": metadata,
+                })
+                all_blocks.append(block)
+
+        # Generate document_id from content hash
+        content_str = "".join(b.text or "" for b in all_blocks[:10] if b.text)
+        if not content_str and all_blocks:
+            content_str = str(len(all_blocks))
+
+        import hashlib
+        document_id = f"mineru_{hashlib.md5(content_str.encode()).hexdigest()[:12]}"
+
+        parsed = ParsedDocument(
+            document_id=document_id,
+            blocks=all_blocks,
+            tables=all_tables,
+            figures=all_figures,
+            equations=[],
+            metadata={"format": "content_list", "total_blocks": len(content_list)},
+        )
+
+        logger.debug(
+            "mineru.output.parsed_content_list",
+            document_id=document_id,
+            blocks=len(all_blocks),
+            tables=len(all_tables),
+            figures=len(all_figures),
+            headings=sum(1 for b in all_blocks if b.metadata.get("is_heading")),
         )
         return parsed
 

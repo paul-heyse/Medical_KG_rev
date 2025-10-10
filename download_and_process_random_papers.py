@@ -133,40 +133,88 @@ class RandomPaperProcessor:
         print(f"🔍 Fetching {self.sample_size} random papers from OpenAlex...")
 
         try:
-            # Use OpenAlex adapter to fetch random papers
-            context = AdapterContext(
-                tenant_id="random-papers",
-                domain="research",
-                correlation_id="random-fetch-1",
-                parameters={"query": "random"}  # This will be handled by the adapter
-            )
+            # Use pyalex directly to fetch more papers
+            import pyalex
+            from pyalex import Works
 
-            # For random papers, we'll use a different approach since OpenAlex adapter
-            # doesn't have a direct random search. We'll fetch papers with a broad query
-            # and then randomly sample from them.
-            context.parameters = {"query": "medical research"}
-            result = self.adapter.run(context)
-            documents = result.documents
+            # Set email for polite pool
+            pyalex.config.email = self.email
+
+            # Fetch papers with PDFs
+            # Note: OpenAlex .sample() is limited to 25 papers max per call
+            # For larger requests, we call sample() multiple times with different seeds
+            print(f"   Requesting {self.sample_size} papers with open access PDFs...")
+
+            all_works = []
+            samples_per_batch = 25  # OpenAlex limit
+            batches_needed = (self.sample_size + samples_per_batch - 1) // samples_per_batch
+
+            for batch_num in range(batches_needed):
+                remaining = self.sample_size - len(all_works)
+                if remaining <= 0:
+                    break
+
+                batch_size = min(samples_per_batch, remaining)
+                seed = 42 + batch_num  # Different seed for each batch
+
+                print(f"   Fetching batch {batch_num + 1}/{batches_needed} ({batch_size} papers, seed={seed})...")
+
+                try:
+                    batch_works = (Works()
+                        .filter(open_access={"is_oa": True})
+                        .sample(batch_size, seed=seed)
+                        .get())
+
+                    if batch_works:
+                        works_list = batch_works if isinstance(batch_works, list) else [batch_works]
+                        all_works.extend(works_list)
+                        print(f"      ✅ Got {len(works_list)} papers")
+                    else:
+                        print(f"      ⚠️  No papers in this batch")
+
+                except Exception as e:
+                    print(f"      ⚠️  Error fetching batch: {e}")
+                    # Continue to next batch
+
+                # Add small delay to avoid rate limiting
+                if batch_num < batches_needed - 1:
+                    import time
+                    time.sleep(0.5)
+
+            documents = all_works[:self.sample_size]  # Ensure exact count
+
+            if not documents:
+                print("❌ No works returned from OpenAlex")
+                return []
+
+            print(f"   ✅ Total received: {len(documents)} papers from OpenAlex")
 
             if documents:
-                # Randomly sample from the results
-                import random
-                random.shuffle(documents)
-                selected_docs = documents[:self.sample_size]
-
-                # Convert documents back to paper format for processing
+                # Convert pyalex Work objects to paper format for processing
                 papers = []
-                for doc in selected_docs:
+                for work in documents[:self.sample_size]:
+                    # Get PDF URL from primary_location or open_access
+                    pdf_url = None
+                    if work.get("primary_location") and work["primary_location"].get("pdf_url"):
+                        pdf_url = work["primary_location"]["pdf_url"]
+                    elif work.get("open_access") and work["open_access"].get("oa_url"):
+                        pdf_url = work["open_access"]["oa_url"]
+                    elif work.get("best_oa_location") and work["best_oa_location"].get("pdf_url"):
+                        pdf_url = work["best_oa_location"]["pdf_url"]
+
+                    work_id = work.get("id", "")
+                    if "/" in work_id:
+                        work_id = work_id.split("/")[-1]
+
                     paper = {
-                        "id": doc.metadata.get("openalex_id", doc.id),
-                        "title": doc.title,
-                        "doi": doc.metadata.get("doi"),
-                        "pdf_urls": doc.metadata.get("pdf_urls", []),
-                        "pdf_manifest": doc.metadata.get("pdf_manifest"),
-                        "authorships": doc.metadata.get("authorships", []),
-                        "publication_year": doc.metadata.get("publication_year"),
-                        "is_open_access": doc.metadata.get("is_open_access", False),
-                        "document": doc  # Keep reference to original document
+                        "id": work_id,
+                        "title": work.get("title", "Unknown"),
+                        "doi": work.get("doi", "").replace("https://doi.org/", "") if work.get("doi") else None,
+                        "pdf_urls": [pdf_url] if pdf_url else [],
+                        "pdf_manifest": {"url": pdf_url} if pdf_url else None,
+                        "authorships": work.get("authorships", []),
+                        "publication_year": work.get("publication_year"),
+                        "is_open_access": work.get("open_access", {}).get("is_oa", False),
                     }
                     papers.append(paper)
 
@@ -202,14 +250,46 @@ class RandomPaperProcessor:
                 "From": self.email
             }
 
-            response = requests.get(pdf_url, headers=headers, timeout=30)
+            response = requests.get(pdf_url, headers=headers, timeout=30, allow_redirects=True)
             response.raise_for_status()
+
+            # Validate that we actually got a PDF, not an HTML page
+            content_type = response.headers.get('Content-Type', '').lower()
+            content = response.content
+
+            # Check if it's actually a PDF
+            is_pdf = False
+            if content_type and 'application/pdf' in content_type:
+                is_pdf = True
+            elif content.startswith(b'%PDF'):
+                # Check PDF magic number
+                is_pdf = True
+
+            if not is_pdf:
+                # Check if it's HTML (with or without leading whitespace)
+                content_start = content[:2000].decode('utf-8', errors='ignore').strip()
+                if (content_start.startswith('<!DOCTYPE') or
+                    content_start.startswith('<html') or
+                    content_start.startswith('<HTML') or
+                    '<html' in content_start[:500].lower()):
+                    print(f"⚠️  Skipping: {pdf_filename} - Downloaded HTML page instead of PDF")
+                    print(f"   Content-Type: {content_type}")
+                    print(f"   URL: {pdf_url}")
+                    return None
+                # If not clearly HTML, might still be PDF with wrong header
+                elif len(content) > 1000 and not content_start.startswith('<'):
+                    # Treat as binary/potential PDF
+                    is_pdf = True
+
+            if not is_pdf:
+                print(f"⚠️  Skipping: {pdf_filename} - Not a valid PDF file")
+                return None
 
             # Save the PDF
             with open(pdf_path, "wb") as f:
-                f.write(response.content)
+                f.write(content)
 
-            print(f"✅ Downloaded: {pdf_filename} ({len(response.content)} bytes)")
+            print(f"✅ Downloaded: {pdf_filename} ({len(content)} bytes)")
             return pdf_path
 
         except Exception as e:
@@ -272,24 +352,59 @@ class RandomPaperProcessor:
             paper_id = paper["id"].split("/")[-1] if "/" in paper["id"] else paper["id"]
             output_file = self.processed_dir / f"{paper_id}_processed.json"
 
-            # Convert response to serializable format
+            # Convert response to serializable format with FULL document content + hierarchy
+            def serialize_block(block):
+                """Convert a block to JSON-serializable format with hierarchy metadata"""
+                # Handle different block types and their attributes
+                block_data = {
+                    "id": getattr(block, 'id', None),
+                    "text": getattr(block, 'text', None) or getattr(block, 'content', None),
+                }
+
+                # Add optional attributes if they exist
+                for attr in ['page', 'bbox', 'confidence', 'reading_order', 'metadata',
+                             'table_id', 'figure_id', 'equation_id', 'block_type']:
+                    if hasattr(block, attr):
+                        value = getattr(block, attr)
+                        if value is not None:
+                            # Extract hierarchy info from metadata for top-level access
+                            if attr == 'metadata' and isinstance(value, dict):
+                                block_data[attr] = value
+                                # Promote hierarchy metadata to top level for easier access
+                                if 'text_level' in value:
+                                    block_data['heading_level'] = value['text_level']
+                                if 'is_heading' in value:
+                                    block_data['is_heading'] = value['is_heading']
+                            else:
+                                block_data[attr] = value
+
+                return block_data
+
+            # Extract all blocks with UUID IDs
+            blocks_data = []
+            if response.document and response.document.blocks:
+                blocks_data = [serialize_block(block) for block in response.document.blocks]
+
             processed_data = {
                 "paper_id": paper["id"],
                 "title": paper["title"],
                 "doi": paper.get("doi"),
                 "pdf_size_mb": pdf_size_mb,
                 "processing_time_seconds": processing_time,
-                "document_blocks": num_blocks,
-                "tables_extracted": num_tables,
-                "figures_extracted": num_figures,
                 "document_id": response.document.document_id if response.document else None,
                 "processing_metadata": {
                     "worker_id": response.metadata.worker_id if response.metadata else None,
-                    "processing_time_ms": int(processing_time * 1000),  # Convert to ms
-                    "gpu_utilization": None,  # Not available in current metadata
+                    "processing_time_ms": int(processing_time * 1000),
+                    "gpu_utilization": None,
                     "vllm_backend": True,
                     "backend_url": self.results["vllm_url"],
                 },
+                "statistics": {
+                    "total_blocks": num_blocks,
+                    "tables_extracted": num_tables,
+                    "figures_extracted": num_figures,
+                },
+                "blocks": blocks_data,  # ✅ FULL CONTENT WITH UUID IDs
                 "success": True,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             }

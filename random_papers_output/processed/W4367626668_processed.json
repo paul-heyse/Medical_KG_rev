@@ -1,0 +1,2135 @@
+{
+  "paper_id": "W4367626668",
+  "title": "Testigos sociales y rendici\u00f3n de cuentas. An\u00e1lisis de la experiencia en el Estado de M\u00e9xico.",
+  "doi": "10.46377/dilemas.v10i3.3669",
+  "pdf_size_mb": 0.25977039337158203,
+  "processing_time_seconds": 14.601983785629272,
+  "document_id": "W4367626668",
+  "processing_metadata": {
+    "worker_id": "MainThread",
+    "processing_time_ms": 14601,
+    "gpu_utilization": null,
+    "vllm_backend": true,
+    "backend_url": "http://localhost:8000/"
+  },
+  "statistics": {
+    "total_blocks": 137,
+    "tables_extracted": 0,
+    "figures_extracted": 0
+  },
+  "blocks": [
+    {
+      "id": "6d4b9bd7-5b9a-4110-b670-c6081e0ad5ac",
+      "text": "A\u00f1o: X N\u00famero: 3. Articulo no.:83 Per\u00edodo: 1ro de mayo al 31 de(agosto del 2023",
+      "page": 0,
+      "bbox": [
+        99.0,
+        195.0,
+        900.0,
+        212.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7ec10f96-eef3-4ff3-9500-942a909ba0a5",
+      "text": "TITULO: Testigos sociales y rendicion deCNTas. Analisis de la experiencia en el Estado de Mexico.",
+      "page": 0,
+      "bbox": [
+        98.0,
+        227.0,
+        901.0,
+        244.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c28bfb68-079d-4a8b-a1b1-77a67e216ff7",
+      "text": "AUTORES:",
+      "page": 0,
+      "bbox": [
+        99.0,
+        263.0,
+        205.0,
+        279.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "6ecaaf16-9bf5-44f3-a572-0c8071b2475e",
+      "text": null,
+      "page": 0,
+      "bbox": [
+        98.0,
+        297.0,
+        375.0,
+        349.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f57b00d0-f60b-4808-abe4-32ee8f1f34e5",
+      "text": "RESUMEN: En la agenda P\u00fablica, la figura de los testigos sociales parece perdcer presencia, es un tema del que poco se conoce y se habla, por lo que bajo es el grado de participacion e interes de las personas por involucrarse, aunado a que existe poca credibilidad en las instituciones mexicanas, con lo que el panorama de la figura de testigos sociales es poco alentador; por lo que, a partir de esta investigacion se pretende identificar las principales deficiencies en el dise\u00f1o institucional yDOTARLa traversalde la elaboracion de una politica publicaficaz que permita que la soci\u00e9t\u00e9 participe deforma activa, organizada y con el proposto de contribuir a melhorar el quehacer institucional desde el ambito social.",
+      "page": 0,
+      "bbox": [
+        96.0,
+        368.0,
+        906.0,
+        628.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5cc7aacf-9233-4609-82ff-0039598846d9",
+      "text": "PALABRAS CLAVES: administraci\u00f3n P\u00fablica, rendici\u00f3n de;cuentas, participaci\u00f3n ciudadana,   \ntransparentcia.",
+      "page": 0,
+      "bbox": [
+        96.0,
+        646.0,
+        903.0,
+        700.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d8653976-13b1-4101-831c-ee2f50c4b1e1",
+      "text": "TITLE: Social Witnesses and Accountability. Analysis of the experience in the State of Mexico.",
+      "page": 0,
+      "bbox": [
+        98.0,
+        731.0,
+        866.0,
+        750.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "878c76b6-1de8-4509-afa4-4601e4c214c8",
+      "text": "AUTHORS:",
+      "page": 0,
+      "bbox": [
+        99.0,
+        766.0,
+        207.0,
+        782.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 0,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "2568a563-0e12-4deb-9c3f-b53aea70e790",
+      "text": null,
+      "page": 0,
+      "bbox": [
+        98.0,
+        801.0,
+        390.0,
+        853.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "21cea534-0ea2-4f1b-a659-948b48ab04db",
+      "text": "1",
+      "page": 0,
+      "bbox": [
+        496.0,
+        45.0,
+        509.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9046c97f-0baf-4ced-94f7-ab1d23e94667",
+      "text": "PUGNALABARBA S.C",
+      "page": 0,
+      "bbox": [
+        101.0,
+        61.0,
+        228.0,
+        154.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fb46ac07-c7cd-41e3-9916-bf5c837d7743",
+      "text": "Aesorias y Tutorias para la Inestigacion Cientifica en la Educacion Puig-Salabarrria S.G. Jose Maria Pino Suarez 400-2 esq a Lerdo de Tejada. Tokura, Estado de Mexico. 7223898475",
+      "page": 0,
+      "bbox": [
+        225.0,
+        71.0,
+        903.0,
+        116.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "5fc5adfd-4d55-471d-9d9c-7a233cbe4783",
+      "text": "RFC:ATI120618V12",
+      "page": 0,
+      "bbox": [
+        488.0,
+        125.0,
+        643.0,
+        141.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3cd37b8e-1cec-4c31-95e4-b4b576e6f4c3",
+      "text": "Revista Dilemas Contempor\u00e1neos: Educaci\u00f3n, Polit\u00e9 y Valores.",
+      "page": 0,
+      "bbox": [
+        225.0,
+        157.0,
+        776.0,
+        174.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0900c15b-6082-4b79-ac77-b6c43c7c3791",
+      "text": "http://www.dilemascontemporaneoseducacionpoliticayvalores.com/",
+      "page": 0,
+      "bbox": [
+        217.0,
+        176.0,
+        785.0,
+        193.0
+      ],
+      "metadata": {
+        "page": 0,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "361ee438-5951-48d6-a327-2fa9f0293f85",
+      "text": "ABSTRACT: On the public agenda, the figure of social witnesses seems to lose presence, it is an issue about which little is known and talked about, so the degree of participation and interest of people to get involved is low, coupled with the fact that there is little credibility in Mexican institutions, with which the panorama of the figure of social witnesses is not very encouraging; Therefore, based on this research, it is intended to identify the main deficiencies in the institutional design and provide it through the elaboration of an effective public policy that allows society to participate in an active, organized manner and with the purpose of contributing to improve institutional work from the social sphere.",
+      "page": 1,
+      "bbox": [
+        99.0,
+        59.0,
+        906.0,
+        290.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d49dc61f-e530-4047-ad54-c421e47a20c2",
+      "text": "KEY WORDS: public administration, accountability, citizen participation, transparency.",
+      "page": 1,
+      "bbox": [
+        99.0,
+        318.0,
+        805.0,
+        338.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "dffc36ce-5fb4-4623-a176-68eaf14863a4",
+      "text": "INTRODUCCION.",
+      "page": 1,
+      "bbox": [
+        99.0,
+        369.0,
+        267.0,
+        388.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 1,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "cebb2b70-d248-486b-aade-5f8a5365f7c0",
+      "text": "El presente trabajo de Investigaci\u00f3n tiene como objetivo principal analizar la figura del Testigo Social, mediante su Dise\u00f1o institucional y su implementaci\u00f3n en la Administraci\u00f3n P\u00fablica Estatal, para determinar su eficiencia en los procedimientos deestrataction P\u00fablica; a\u5de5\u7a0b\u6280\u672f del m\u00e9todo comparado se pretende saber si los testigos sociales son un mecanismo de participacion ciudadana que realistically contribuye a la transparencia y a la rendicion deCNTas, adem\u00e1s de si aquellos ciudadanos que han participado o que participantan en\u8fd9\u4e9b\u4e1c\u897f ejercicios contribuyn a la consolidacion de un Estado Democr\u00e1tico.",
+      "page": 1,
+      "bbox": [
+        98.0,
+        406.0,
+        906.0,
+        632.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "56d7b3f9-abd5-41f5-a3d7-b7e6208a03e9",
+      "text": "Ante la necessities del Estado de contribuir a la transparencia y fomentar una participacion Ciudadana activa que coadyuve al ejercicio democratico y al debate informado, es que se create e implementan figuras de testigos sociales que se posicionan como los ojos y oidos de la soci\u00e9t\u00e9 en los asuntos del gobern; en este caso, dentro de las contratazonnes publicas, el testigo social observa de los procedimientos de contratazonnes publicas y contribuye a que su realizacion se realice con apego a la normatividad, contribuyendo a la transparencia y la rendicacion deCNTAs; a trov\u00e9s de la implementacion",
+      "page": 1,
+      "bbox": [
+        98.0,
+        650.0,
+        906.0,
+        844.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "83d7637c-50c0-4806-9745-6ccfbbf02f0b",
+      "text": "2",
+      "page": 1,
+      "bbox": [
+        496.0,
+        45.0,
+        509.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 1,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "191d6b16-bbe6-4bff-8efd-d5c9571e267f",
+      "text": "de este mecanismo de participacion ciudadana, el Estado busca involucrar a la soci\u00e9t\u00e9 e impulsar una cultura de exigencia ciudadana y compromiso gubernamental.",
+      "page": 2,
+      "bbox": [
+        99.0,
+        60.0,
+        903.0,
+        114.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "15aabe86-36ba-4faa-a263-904d53ebbca2",
+      "text": "En la agenda P\u00fablica, la figura de los testigos sociales parece perdier presencia, seoulda decir que es un tema del que poco se conoce y se habla, por lo que bajo es el grado de participacion einteresting de las personas por involucrarse, aunado a que existe poca credibilidad en las instituciones mexicanas, con lo que el panorama de la figura de testigos sociales es poco alentador; es asi, que a partir de esta investigacion se pretende identificar las principales deficiencies en el dise\u00f1o institucional yDOTARla atraves de la elaboracion de una politica publica eficaz de mayores elementos que permitan que la soci\u00e9t\u00e9 participe de forma activa, organizada y con el proposto de contribuir a melhorar el quehacer institucional pero desde el ambito social.",
+      "page": 2,
+      "bbox": [
+        98.0,
+        128.0,
+        906.0,
+        392.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "fc0abfda-6930-4f2d-ac1a-eea258e7047b",
+      "text": "DESARROLLO.",
+      "page": 2,
+      "bbox": [
+        99.0,
+        417.0,
+        246.0,
+        435.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "d91aed4d-6076-4af0-8954-2c6f3b8f97f1",
+      "text": "Marco de an\u00e1lisis de los testigos sociales en la Administraci\u00f3n P\u00fablica.",
+      "page": 2,
+      "bbox": [
+        99.0,
+        454.0,
+        692.0,
+        472.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 2,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "049e84c2-ef32-4f9f-9721-73a552bb4c72",
+      "text": "ElTERMODO participacion ciudadana es uno de los temas que frequentlymente es abordado bajo de las agendas publicas en la Politica Nacional, Local y Municipal, ademas de que es uno de los pilaresfundamentales del gobernno abierto y un componente esencial en la rendicion deCNTAs;principalmente cuando se habla de democracia y se hace referencia al poder que tiene el pueblo en lasdecisiones de eleccion y control de sus gobrantes y las decisiones que toman los mismos a\u5de5\u7a0b\u6280\u672f de differentes instrumentos de participacion ciudadana y mecanismos de democracia directa e indirecta.En Mexico, en el ano 1995 surgi\u00f3 uno de los primeros mecanismos de participacion ciudadana,aprobandose la prima Ley de Participacion Ciudadana de la Ciudad de Mexico (Asamblea Legislativadel Distrito Federal, VI Legislatura, 2004), en la que se estableci\u00f3 la eleccion de jefes de manzana, asi como la figura de consejeros ciudadanos, en el Estado de Mexico, entre los mecanismos de",
+      "page": 2,
+      "bbox": [
+        98.0,
+        488.0,
+        906.0,
+        823.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7612be42-c672-4d55-9a8f-e7c8046440dc",
+      "text": "3",
+      "page": 2,
+      "bbox": [
+        496.0,
+        45.0,
+        508.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 2,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "48a01df6-33cf-4201-aa53-22748d11f98e",
+      "text": "participation Ciudadana m\u00e1s\u5e74\u4e2d\u56fd se encuentran los Comit\u00e9s Ciudadanos de Control y Vigilancia del Estado de M\u00e9xico.",
+      "page": 3,
+      "bbox": [
+        99.0,
+        59.0,
+        903.0,
+        113.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "777431a5-f52f-48f7-bb2c-575a1df32b89",
+      "text": "El Modelo de contra\u00edria social aplicado en M\u00e9xico, desde la perspectiva de Cunill,es \"caracterizado como un Modelo de formalizaci\u00f3n media, en donde la ausencia de respaldo jur\u00eddico,y por ende, detributiones expresas, se contrapone a una suerte de delegaci\u00f3n a la soci\u00e9t\u00e9, tambi\u00e9n agrav\u00e9s de orgenes expresos, de functions de parte de instanciais estatales de control\" (Gayt\u00e1n, M. 2005).",
+      "page": 3,
+      "bbox": [
+        98.0,
+        128.0,
+        906.0,
+        255.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0ee4cd9b-96f3-44fe-855d-d6f3105f681a",
+      "text": "El modelo de control social propuesto desde el Estado, en forma de participacion y organizacion social, refleja diversas inconsistencies que van desde la conformacion de capacidades (empowerment) reales de los ciudadanos que participan como contralores sociales para ejercer un adeudo control y vigilancia, hasta la habilidad, voluntar y disposicion de las administraciones P\u00fablicas para suministrar informacion oportuna, confiable y valida para el ejercicio efectivo del control social",
+      "page": 3,
+      "bbox": [
+        98.0,
+        268.0,
+        906.0,
+        429.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "58be8246-0077-441a-b72f-eb235f0acda2",
+      "text": "A loLarge de los ultimos a\u00f1os han surgido initiativas yprojectos que permiten la participacion sustantiva de la ciudadan\u00eda en los asuntos P\u00fablicos, que transparenten y rindanCNTas sobre suquehacer, elo en la construccion de un gobernob abierto; el Estado es el responsable de realizaraxoniones concretas por medio de las cuales de aconcer a la ciudadan\u00eda su compromiso deresponsabilidad con la transparencia, la rendicn deCNTas y la participacion ciudadana.",
+      "page": 3,
+      "bbox": [
+        98.0,
+        443.0,
+        906.0,
+        604.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "21f46794-f098-426c-909f-6dd12a731789",
+      "text": "Los testigos sociales se conceptualizan, de conformidad con lo establishido en el ar\u00e1bigo 1.42 del C\u00f3dico Administrativo del Estado de M\u00e9xico (H. \u201cLIV\u201d Legislature del Estado de M\u00e9xico, 2001), como un mecanismo de participaci\u00f3n Ciudadana, es menester analizar que es la participation Ciudadana paraDSLerquqelos testigos socialessonunmecanismo de participacion Ciudadana?",
+      "page": 3,
+      "bbox": [
+        98.0,
+        617.0,
+        906.0,
+        742.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "537ad69d-be5a-4cf2-a5fb-e3eb6886ca09",
+      "text": "Mauricio Merino refiere que, a pesar delTERMino participacion\u201cEsta tampoco est\u00e1 a salvo de los defectos humanos: del egoismo, del cinismo, de la enajenacion de los individuos; es por ello, que surge un dilema que plantea el termino: no todos quieren participar, excepte,puedan, y no todos peuvent hacerlo,excepte quieran\" (1997); es decir, que nos encontrarlos con una voluntad de interferir en un",
+      "page": 3,
+      "bbox": [
+        98.0,
+        757.0,
+        906.0,
+        882.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7df0d1b7-0238-4508-a0cc-83a9736543d5",
+      "text": "4",
+      "page": 3,
+      "bbox": [
+        495.0,
+        45.0,
+        509.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 3,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a4fb19b0-fa15-429c-be85-6819c5e1b3d2",
+      "text": "asunto de interes sino(publico si general desde algo tan simple como lo es un cabildo abierto como lo es la hoy consulta Ciudadana en lacular se le permite su intervenci\u00f3n, sin objeci\u00f3nunga.",
+      "page": 4,
+      "bbox": [
+        99.0,
+        59.0,
+        903.0,
+        114.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e53a31a7-e37d-4002-9576-693ec9e9180f",
+      "text": "La participaci\u00f3n Ciudadana tiene como finalidad principal la inclusi\u00f3n activa de la soci\u00e9t\u00e9 en los asuntos P\u00fablicos con el prop\u00f3sito de melhorar la gesti\u00f3n gubernamental, es asi que el testigo social es unaforma b\u00e1scala de ejercer la participacion Ciudadana;frrente a esta figura de participacion Ciudadana esta la rendicion deCNTas,mismas que deben coexistir para que ambas poderanlograrlosobjectivos que se plantean que son:verbigracia,generar transparencia,generar confianza entre las instituciones y los ciudadanos; existen varias categorias o temas de rendicion deCNTas;sin embargo, en este trabajo unicamente abordaremos 3 que son la horizontal, vertical y diagonal:",
+      "page": 4,
+      "bbox": [
+        98.0,
+        128.0,
+        906.0,
+        359.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "af850fa3-7ef3-4b39-8575-ab50e23ad62a",
+      "text": null,
+      "page": 4,
+      "bbox": [
+        99.0,
+        375.0,
+        906.0,
+        710.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "518b0249-5943-4791-a8fe-b5b557255a9b",
+      "text": "En la rendici\u00f3n deCNTas diagonal tiene cabida la participaci\u00f3n de los testigos sociales, como un reclamo de la soci\u00e9t\u00e9 por espacios de incidencia, verbigracia en la supervisi\u00f3n de las contratazonnes publicas y en el control del ejercicio del gasto publicity.",
+      "page": 4,
+      "bbox": [
+        98.0,
+        726.0,
+        906.0,
+        814.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bdc3ffe5-21ed-4527-9f81-d4ae7922a5c1",
+      "text": "A loLarge de esta investigacionencramamos como pilarres de la rendicion de cuentas los seguides:",
+      "page": 4,
+      "bbox": [
+        99.0,
+        830.0,
+        888.0,
+        849.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0496d8b2-258a-4c34-9217-eb0f3179ffd6",
+      "text": "5",
+      "page": 4,
+      "bbox": [
+        496.0,
+        45.0,
+        509.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 4,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e62b931f-7666-4b88-9f62-8c08678aa80e",
+      "text": null,
+      "page": 5,
+      "bbox": [
+        98.0,
+        61.0,
+        903.0,
+        292.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "e7a45fa5-16b6-4d9a-9f2e-ece2e3281eaf",
+      "text": "La rendiccion de guestas se peut entender como un \"proceso dinamico y proactivo, donde los servadores P\u00fablicos salen a lacke a dialogar con la soci\u00e9t\u00e9 y con otheras instituciones. Supone tambi\u00e9n,&ender que esos servidos estan sujetos a sanciones tanto negativas (castigo) como positivas (recompensas)\" (Lopez y Merino, 2009, pag. 4).",
+      "page": 5,
+      "bbox": [
+        98.0,
+        308.0,
+        906.0,
+        434.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2c34b44f-906b-4cac-a88e-3a4a438d663e",
+      "text": "La rendici\u00f3n deCNTas es entendida como un proceso \"dinamico que redefine las relations entre el Estado y la soci\u00e9t\u00e9, reconfigurando la naturaleza misma, de la democracia y la participacion ciudadana\" (L\u00f3pez y Merino, 2009, p\u00e1g.5).",
+      "page": 5,
+      "bbox": [
+        98.0,
+        448.0,
+        906.0,
+        537.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "da4d5d92-9adc-48ff-969f-99239b8e3eb9",
+      "text": "Para L\u00f3pez y Merino, \u201cla rendici\u00f3n deCNTas no es lo mismo que el Derecho de acces a la informaci\u00f3n P\u00fablica ni es sin\u00f3nimo de transparencia; es m\u00e1s bien un elemento que contribuye a la transparencia, es una tarea obligada y permanente, con actores claramente identificados que\u642c\u8fc1an a cabo la vigilancia, el control y la sanci\u00f3n sobre los contentsos sustantivos del ejercicio gubernamental, en todas sus facetas, en un entorno legal y democr\u00e1tico explicito y abierto, que identifica con claridad las obligaciones que cada servidor P\u00fablicaDebe cumplir\u201d (2009).",
+      "page": 5,
+      "bbox": [
+        96.0,
+        551.0,
+        906.0,
+        746.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d44f4def-e01d-4b71-8903-eed1b4719391",
+      "text": "Los testigos sociales no son servadores P\u00fablicos, son ciudadanos que prestan un service a la comunidad, un instrumento que permite a\u5de5\u7a0b\u6280\u672f de su participation contribuir a la transparencia y en consecuencia a la rendicion deCNTas. Deaeste componente, se debe voltear a ver a los testigos",
+      "page": 5,
+      "bbox": [
+        96.0,
+        762.0,
+        906.0,
+        851.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f695312e-b5f8-44af-80e0-36d57d11c36d",
+      "text": "6",
+      "page": 5,
+      "bbox": [
+        495.0,
+        45.0,
+        509.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 5,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "81f4bc3b-30cc-4727-b644-425575fcdcd5",
+      "text": "sociales y desdeaquireconfigurar suestructura y dise\u00f1o, como una participacion ciudadana cuyo proposto esrearircuentesa la sociedadde la optica de la ciudadan\u00eda, no de losentes de fiscalizacion, no desdelosservadorespublicosqueparticipan enlosprocesodecontrataction publica, sino desdeaquellosaquienelesbeneficiaoperjudica lasdecisionesque tomanlosencargadosde la administracion publica.",
+      "page": 6,
+      "bbox": [
+        98.0,
+        59.0,
+        903.0,
+        218.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9999171e-d768-49f9-ac12-c08e242c40a6",
+      "text": "La concepci\u00f3n de la rendici\u00f3n deCNTas diagonal advierte que los ciudadanos son quienes acufen alas Instituciones Gubernamentales para demandar un control eficaz de las actiones del Estado, y m\u00e1saquellas en las que se ve involucrado el recurso publico, la necessities de conocer en qu\u00e9 se gasta cada peso que se destina a las entidades P\u00fablas en los ultimos a\u00f1os es un atractivo para la soci\u00e9t\u00e9.",
+      "page": 6,
+      "bbox": [
+        98.0,
+        234.0,
+        903.0,
+        359.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c6765bcd-6141-4539-8b52-05777163e342",
+      "text": "Con la evoluci\u00f3n de la administraci\u00f3n P\u00fablica, se da pauta a\u65b0\u54c1as teor\u00edas o teor\u00edas mejoradas como la Accountability social o rendici\u00f3n deCNTas social, y por exemple dearlo, esta se encarga de enmarcar la defensa de los derechos humanos, y es propuesta como un mecanismo de control vertical, no electoral, de las autoridades pol\u00edticas.",
+      "page": 6,
+      "bbox": [
+        98.0,
+        373.0,
+        903.0,
+        497.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d092c35e-9e5a-45af-acb0-c405767161b1",
+      "text": "De(acuerdo a lo citado en el cuaderno de divulgacion de la cultura democr\u00e1tica del Instituto Federal Electoral \u201cLa participacion ciudadana en la democracia\u201d, La Organizacion para la Cooperacion y el Desarrollo Economicos (OCDE) refiere que el accountability es la obligacion y responsabilidad de quienes tienen el poder, sea un actor estatal o un privado con functions sociales, de informar y explicar susaxoniones,programas, politicas y desempe\u00f1os aothers actores estates, o sociales, con faculties legales y/oarethos para exigir rendicion deCNTas e imponer sanciones en caso de violacion de la ley (Citado en Merino,M.,1997).\u201cElaccountabilityhacereferenciaa lasrelationsde poderque se dan en un marco dearethos y obligaciones\u201d(Schedler 2004).",
+      "page": 6,
+      "bbox": [
+        98.0,
+        512.0,
+        903.0,
+        777.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9233c672-0446-413f-a3c0-d5416f717641",
+      "text": "ElTERMoinaccountabilitysepuedasociarconelconceptoderendiciondecuentes;sinembargo,comosea\u00f1alaschedleresprecisohacerdosaclaraciones:\u201claprimera,lanociondeaccountabilityadiferenciade la rendidi\u00f3ndecuentes conllevaun sentidoclaro deobligaci\u00f3ndegovernantes,funcionarios y",
+      "page": 6,
+      "bbox": [
+        98.0,
+        792.0,
+        903.0,
+        881.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "72beb105-9067-4b14-a000-ff90fa8184e3",
+      "text": "7",
+      "page": 6,
+      "bbox": [
+        495.0,
+        45.0,
+        509.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 6,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b25e3fbe-f4f3-4610-9f22-b7d2c62e4583",
+      "text": "empresas de informar y justificar sus actions y pol\u00edticas, no se tratate de un acto voluntario de these actores dearethirargentas porvirtud y voluntad propia; y la segunda, elconcepto deaccountability incluye tambi\u00e9n la exigencia deargentas por Derecho, enfatiza el derecho a exigirargentas\" (2004).",
+      "page": 7,
+      "bbox": [
+        98.0,
+        60.0,
+        903.0,
+        148.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "95d87d51-ba78-449d-9d45-fc7f1dee3613",
+      "text": "El accountability incorpora tresomanasdifferentedescontroller poder:laprimera,laobligaciony responsabilitaddeinformar,dar datos,narrar enpublicolasdecisiones;lasegunda,laobligacionde justificar,explicar,dialogar,escuchar yeldeoche deexigircuentas,y la tercera,lacapacidad (del Estado yde la soci\u00e9t\u00e9)de sancionar cuando se incumple la ley o seienen malosdesempe\u00f1os.Como signaledSchedler,los tres aspectos en suconjunto:\"information,justificacionycastigoconvertenalarendici\u00f3ndecuentesanumaEmpresamultifac\u00e9tica.Laconvertenenuna casaconceptual ampliaque hospedaunamuchedumbre de t\u00e9rminosafines,comola vigilancia,laauditoria,lafiscalizacionopenalizacion,y todoscompartenlapretensiondedomesticarlejercicio del poder\"(Schedler,2004, pag.13).",
+      "page": 7,
+      "bbox": [
+        98.0,
+        164.0,
+        906.0,
+        463.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4417be07-8953-43b6-91e9-da5d819a2d44",
+      "text": "Los testigos sociales son unamania en la que los ciudadanos peuvent participar deforma activa, democr\u00e1tica, y organizada, y su participation, lo which conlleva a un ejercicio de rendicion deCNTas en el que la soci\u00e9t\u00e9 pueda\ufffd\ufffdcer de primary mano de qu\u00e9 manera las instituciones estan realizando sufuncion,que se est\u00e1 haciando en beneficio de la colectividad,y si se est\u00e1 haciando un uso adecuado de los recursos.",
+      "page": 7,
+      "bbox": [
+        99.0,
+        478.0,
+        906.0,
+        635.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "853dbbb5-7eb7-4934-ba2e-a9dc3451c002",
+      "text": "Marco Normativo.",
+      "page": 7,
+      "bbox": [
+        99.0,
+        667.0,
+        259.0,
+        684.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 7,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "c976d806-6785-4fcf-94be-520b8f4c93de",
+      "text": "La Constituci\u00f3n Pol\u00edtica del Estado Libre y Soberano de M\u00e9xico H. (LII Legislatura del Estado de M\u00e9xico, 1995)SEO en su articulo 129, entre otheras cosas, que los recursos economicos del Estado, de los@municipios, y de los organismos autonomos, se administraran con eficiencia, eficacia y honradez para cumplir con los objetivos y programas a los que est\u00e9n destinados y para asegurar al Estado las\u826f\u597des conditiones en cuando a precincto, calidad, financiamiento, OPPUNDIDAD y demas requisitos.",
+      "page": 7,
+      "bbox": [
+        99.0,
+        702.0,
+        906.0,
+        863.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9332646c-f3e0-4d32-a443-fca618599fc8",
+      "text": "8",
+      "page": 7,
+      "bbox": [
+        495.0,
+        45.0,
+        509.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 7,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1f6ff441-4317-4d94-a189-301dc8da1552",
+      "text": "Mauricio Merino refiere que: \u201csi los procedimientos establishados para tal efecto no son idoneos para asegurar estas conditiones, las leyes establecer\u00e1n las bases, procedimientos, reglas, requisitos yDSL aspectos para cumplir con los principios de econom\u00eda, eficiencia, eficacidia, imparcialidad y honradez que aseguiren las mejoras conditiones para el Estado, los municipios y los organos aut\u00f3nomos\u201d (1997). En este sentido, los Estados, Municipios y \u00d3rganos Aut\u00f3nomos determinan las actiones que aseguiren tales conditiones; en el Estado de M\u00e9xico se establish\u00f3 como un aspecto prioritario en el Plan de Desarrollo del Estado de M\u00e9xico 2005-2011 (Gobierno del Estado de M\u00e9xico, 2005), una reforma administrativa para un@gobieno transparente y eficiente, cui proposto era construir una administraci\u00f3n P\u00fablica moderna que impulsar\u00e1 el desarrollo y garantizar\u00e1 la realizad institucional aGMT. Travis de un marco juridico innovador, eficiente y transparente, que promoviera la evaluacion y el control del desempo del@gobieno y la participacion ciudadana en procesospecificos de contrataction P\u00fablica; es asi, que se propuso la puesta en marcha del testigo social, un mecanismo que permitiera ir construyendo el andamiaje juridico que propiciara la transparencia en las contratazonnes publicas.",
+      "page": 8,
+      "bbox": [
+        96.0,
+        59.0,
+        906.0,
+        532.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "20272de2-e6f1-44c1-af62-0cb734577d4c",
+      "text": "En la b\u00fasqueada de procedimientos que contribuyen a transparentar la actuaci\u00f3n de las instituciones del gobern, que involucren a la soci\u00e9t\u00e9 e impulsen la cultura\u7684\u653f\u6cbba de exigencia Ciudadana y de compromiso gubernamental, de rendici\u00f3n deCNTas, se contribuir\u00e1 a mejorar la credibiliad en el gobern y optimizar los recursos P\u00fablicos con los objetivos planteados, y atendeando a las necessities de la entidad se expidio el Acuerdo del Ejecutivo del Estado que estabilece la participation de los Testigos Sociales en las contratazonnes que realicen las dependencias y organismos auxiliares de la Administracion Publica Estatal, publicado el 21 de april de 2008 en el Peri\u00f3dico Oficial, Gaceta de GOberno Nmero 75, Tercera Seccion, en el qual se prev\u00e9 la participation de los testigos sociales en las contratazonnes publicas que realicen las dependencias y organismos auxiliares relaciones del Poder Ejecutivo del Estado de Mexico, pero es hasta septiembre de 2010, que se adiciona un Titulo",
+      "page": 8,
+      "bbox": [
+        96.0,
+        547.0,
+        908.0,
+        883.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "4a519800-b8f1-4999-8dd4-d61074b7506a",
+      "text": "9",
+      "page": 8,
+      "bbox": [
+        495.0,
+        45.0,
+        509.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 8,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "a6c39299-db3b-4b48-9056-e3c5a506d63b",
+      "text": "D\u00e9cimo al Libro Primero del C\u00f3digo Administrativo del Estado de M\u00e9xico (H. LIV Legislatura del Estado de M\u00e9xico, 2001), creando la figura del Testigo Social; sin embargo, el Comit\u00e9 de Registrar de Testigos Sociales del Estado de M\u00e9xico se instal\u00f3 formalmente en noviembre del 2010.",
+      "page": 9,
+      "bbox": [
+        99.0,
+        59.0,
+        906.0,
+        148.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "44dc6dd3-0f72-4070-b4ee-909286e81c79",
+      "text": "Se cre\u00f3 una p\u00e1ginaweb en el que se pueda consultar los requisitos para Obtener el registrar como testigo social, el padr\u00f3nactualizzato de testigos sociales, el calendario oficial, las cuotas que las unidades contrastantes habr\u00e1n de pagar por su participationa a los testigos sociales, las actas del Comit\u00e9, y los informes anuales deactividades.",
+      "page": 9,
+      "bbox": [
+        98.0,
+        164.0,
+        906.0,
+        287.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "44fea956-7080-4e3e-9bad-34d05f401b26",
+      "text": "Metodolog\u00eda y resultados.",
+      "page": 9,
+      "bbox": [
+        99.0,
+        319.0,
+        320.0,
+        337.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 9,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "4cf66f30-88f8-428a-8a84-ed489666ce09",
+      "text": "a. Participantes.",
+      "page": 9,
+      "bbox": [
+        99.0,
+        354.0,
+        238.0,
+        372.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 9,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "4721860c-962b-450f-a874-793f48b711c0",
+      "text": "Una vez vista la teor\u00eda y la parte normativa que gira en torno a la figura de los testigos sociales, esopportuno conocer el punto de vista de los testigos sociales, y paraarlo, se envio unuestionario a lapellaci\u00f3n muestra de los testigos sociales que han participado en el Instituto de Seguidad Social del Estado de M\u00e9xico y Municipios, y el Instituto Electoral del Estado de M\u00e9xico, y para que dieran contestaci\u00f3n a los mismos, veintis\u00e9s personas integraron estapellaci\u00f3n muestra; cabezaernalar, queactualmente algunos de ellos ya no forman parte del padr\u00f3n de testigos sociales de la entity mexiquense; sin embargo,actualmente en el Instituto de Transparencycia, Acceso a la Informacion P\u00fablica y Proteccion de Daten Personales del Estado de Mexico y Municipios seg\u00fan sus registros secuenta con un padr\u00f3n de 36 personas f\u00edsicas y 3 personas juridico-colectivas, lo que se traduce en un total de 42 ciudadanos con capacit\u00e9 para desempenarse como testigos sociales en el Estado.",
+      "page": 9,
+      "bbox": [
+        98.0,
+        388.0,
+        906.0,
+        722.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "890a648f-b9f6-4fc3-8cb3-6f8f2c95d82b",
+      "text": "De los 26 participantes que fueron seleccionados paraellar a cabo la aplicacion de los cuestionarios, 4 han participado en procedimientos con ambas entidades y 22 unicolemente con el Organo Electoral. El instrumento utilized se integro por un apartado de datos sobre el encuestado, asi como por 18 preguntas sobre las experiencias de los testigos sociales en los procedimientos de contratacion publica",
+      "page": 9,
+      "bbox": [
+        98.0,
+        736.0,
+        906.0,
+        863.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "958153e5-1fc1-40a1-922a-ae5580ca1deb",
+      "text": "10",
+      "page": 9,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 9,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "873feb84-bf25-4455-b2ef-28ab899ae44b",
+      "text": "en el IEEM y en el ISSEMYM, las cuales est\u00e1n agrupadas en tres bloques: Bloque 1: Experiencia en materia de contrataction P\u00fablica, Bloque 2: Evaluativas, y Bloque 3: Actitudinales.",
+      "page": 10,
+      "bbox": [
+        98.0,
+        60.0,
+        903.0,
+        114.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "277f1b65-e899-431d-8d4d-4b887ba32ad7",
+      "text": "b. Procedimiento.",
+      "page": 10,
+      "bbox": [
+        98.0,
+        130.0,
+        250.0,
+        147.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 10,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "4721eae7-2e45-4f4d-97e0-5e0d033b55d1",
+      "text": "Fueron elegidos como povlaci\u00f3n muestra con base en su registrar en la plataforma digital del Instituto de Transparency, Acceso a la Informaci\u00f3n P\u00fablica y Protecci\u00f3n de Datos Personales del Estado de M\u00e9xico y Municipios 26 testigos sociales del Estado de M\u00e9xico, con el prop\u00f3sito deocular su experiencia dentro de los procedimientos de contratacci\u00f3n P\u00fablica; se especified que la participation era voluntaria, garantiz\u00e1ndose la confidencialidad de la informaci\u00f3n. Se inform\u00f3 a los participantes el prop\u00f3sito del estudio. El proceso de evaluaci\u00f3n se realiz\u00f3 en una sesi\u00f3n dividida en siete secciones, cada secci\u00f3n tendr\u00eda una duraci\u00f3n de aproximadamente 10 Minutes; mediante una aplicaci\u00f3n individual, por elrial el modo de aplicaci\u00f3n fue elegido de forma virtual, dicha forma de aplicaci\u00f3n tendr\u00eda la virtud de estar disponible las 24 horas del d\u00eda.",
+      "page": 10,
+      "bbox": [
+        96.0,
+        164.0,
+        906.0,
+        462.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c9a49ce4-4f4f-481f-a6cb-2ca59387307e",
+      "text": "c. Resultados.",
+      "page": 10,
+      "bbox": [
+        99.0,
+        479.0,
+        215.0,
+        494.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 10,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "a9bd132d-b2db-4b9a-8bb5-5fc0bcfce94d",
+      "text": "Se aplican los siguientes\u4e00\u56de\u4e8bientos a la povlaci\u00f3n muestra y se obtiene los siguientes datos: Conforme a la pregunta De sde su experiencia C como evalua la figura del testigo Social en el Estado de Mexico? Tomando en cuenta que 1 es equivalente a muy mala y 10 a muy buena, se obtuvieron las respuestosSIGUIENTES: 4 ponderaron con un 10; 1 ponder\u00f3 con 9; 4 ponderaron con 8; 3 ponderaron con 7; 1 ponder\u00f3 con 1; 2 ponderaron con 2, y 2 ponderaron con 1. De las calificaciones expresadas se Tiene un promedio de 7.4, en el qual desde la experiencia se eval\u00faa la figura del testigo social.",
+      "page": 10,
+      "bbox": [
+        99.0,
+        513.0,
+        906.0,
+        708.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7c886421-63a9-41f2-b245-9e6cbf9dc414",
+      "text": "Gr\u00e1fica 1: Evaluaci\u00f3n de la figura del Testigo Social en el Estado de M\u00e9xico.",
+      "page": 10,
+      "bbox": [
+        192.0,
+        722.0,
+        808.0,
+        739.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d8ba255a-8a4e-4be0-97b7-2de3e3309bdb",
+      "text": "11",
+      "page": 10,
+      "bbox": [
+        491.0,
+        45.0,
+        511.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 10,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "481d9fed-7ed2-41d5-a012-a4deebf4b5f5",
+      "text": "Fuente: Elaboracion propia a trov\u00e9s de resultados obtenidos de los@cuestionarios realizados a los",
+      "page": 11,
+      "bbox": [
+        122.0,
+        59.0,
+        879.0,
+        77.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6935edff-e20a-4115-b39f-aefe612b6235",
+      "text": "Testigos Sociales del Estado de Mexico.",
+      "page": 11,
+      "bbox": [
+        341.0,
+        94.0,
+        660.0,
+        112.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "7d4702ce-cc28-4cc6-aadd-6027d54d91b4",
+      "text": "Con esta evaluaci\u00f3n se advierte, que desdela perspectiva de los testigos sociales, hayuna posici\u00f3n cr\u00f3nica con relacion a la valoraci\u00f3n que hace de su desempo y experiencia de participar como los ojos y oidos de la soci\u00e9t\u00e9 en los procedimientos de contratacci\u00f3n P\u00fablica que no han sido del todo grata,ysepuedinferlalexistenciadefallasde tipoinstitutional,administrativoou juridico,no estan convencidosplenamenteque suexperienceha sidoexcelementoque seestecumpliendoconelobjectivo planteado,locualreflejaquelosobjectivosseestancumpliendode manera parcial.",
+      "page": 11,
+      "bbox": [
+        99.0,
+        128.0,
+        906.0,
+        323.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ad7d944e-c9ec-469e-b520-4392b2b32d36",
+      "text": "A\u00fanado a lo anterior se destaca un commentario realizado por uno de los encuentados en el queSEA: \"porque aun cuando es obligatorio emplear la figura del Testigo Social en las licitaciones, varias independencias no adoptan esta practica como es el caso de la UEMEX y el Poder Judicial del Estado de Mexico\" (sic), lo que advierte una falta de presencia de esta figura en otheras unidades contratantes, y podria considerarse un reclamo ciudadano para que su participation trascienda o se incluya en otheras independencias gubernamentales, en los organismos autonomos, en los ayuntamins, bajo a que existe poca o nula presencia en\u8fd9\u4e9b\u4e1c\u897f sectores de la administracion publica.",
+      "page": 11,
+      "bbox": [
+        99.0,
+        338.0,
+        906.0,
+        568.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "80c7c371-37bc-4fce-b07a-1e0a2431493e",
+      "text": "Respecto a los intereses por participar como testigo social de nuestra povlacion muestra, se hallo que: el  $25\\%$  se interesa por abonar a la transparencia; el  $62\\%$  tiene elinteresting de coadyuvar al combate a la corrupccion, y el  $13\\%$  se intersea por ser parte de un mecanismo de rendicion deCNTas.",
+      "page": 11,
+      "bbox": [
+        99.0,
+        582.0,
+        903.0,
+        671.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "227d20bb-2dd5-4778-a1c1-3748c87e0537",
+      "text": "No\u773c\u770b for desapercibido, que se carece de una\u7684\u56de\u7b54a en la que la intencion sea participar de forma activa en los asuntos deinteresting para la soci\u00e9t\u00e9 o brindar una autre\u7684\u56de\u7b54a.",
+      "page": 11,
+      "bbox": [
+        99.0,
+        686.0,
+        903.0,
+        741.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6e2b3ad4-28f8-44d0-b652-7ab1cb05bfd9",
+      "text": "12",
+      "page": 11,
+      "bbox": [
+        491.0,
+        44.0,
+        513.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 11,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0d6834ff-463f-41c1-abc9-e52dd5363445",
+      "text": "GR\u00c1FICA 2: INTER\u00c9S POR PARTICIPAR COMO TESTIGO SOCIAL",
+      "page": 12,
+      "bbox": [
+        250.0,
+        66.0,
+        750.0,
+        106.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 12,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "3c7af287-0765-47eb-8ba6-db026dc6cdf3",
+      "text": null,
+      "page": 12,
+      "bbox": [
+        254.0,
+        118.0,
+        750.0,
+        223.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "23a0edcf-aa7b-49f6-87c7-70c133d19ecb",
+      "text": "Esta pregunta encierra una gran importancia, a lo largo de este trabajo de Investigaci\u00f3n se ha defendido que la participation de los testigos sociales debe considerarse una forma de rendiciones deCNTas que contribuye y pueda fortalecer la participation de la soci\u00e9t\u00e9 en los asuntos de interes colectivo, pero acaso m\u00e1s es una garant\u00eda de derechosfundamentales como el de conocer; sin embargo, teoricamente es un texto rom\u00e1ntico que cuando eslingtona a la realizadnos\u6253\u67b6auna circunstanciadistinctam\u00e1s de la mitadde losencuentadosse adhierealtexto legal, alconsiderarquecon participacioncoadyuva al combatea la corrupci\u00f3n, sinvermasallade lo que+puede hacer o contribuir;apenas un  $13\\%$  refiere que es un mecanismo de rendicionde cuentas y nadie consideraqueesunaforma de participar en los asuntos publicos, cuando desdemi perspectivaesidea basiae inicial eneste tipo de intervencciones",
+      "page": 12,
+      "bbox": [
+        96.0,
+        585.0,
+        906.0,
+        883.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "55f1f866-2286-450a-80e5-f0007c287bee",
+      "text": "13",
+      "page": 12,
+      "bbox": [
+        491.0,
+        44.0,
+        511.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 12,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d68b1221-1263-4172-bc94-ff7441990b90",
+      "text": "sociales, m\u00e1s all\u00e1 de abonar a combatir un problema tan a\u00f1ejo y que a todas luces estas los lejos de extinguir.",
+      "page": 13,
+      "bbox": [
+        98.0,
+        60.0,
+        903.0,
+        113.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "83025ff6-3421-4bae-9ade-ba65603627d4",
+      "text": "NoENA. No problema, no problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema. No problema.\nNo para desapercibido que el prop\u00f3sito de la rendici\u00f3n deCNTas es contribuir al fortalecimiento de la transparencia, a la toma de las decisiones en la administracion publica, lo que se traduce en obligacion y el derecho a informar, justificar y explicar el porque de las decisiones de los responsables dearlo.La preocupacion estriba en la manners limitada y \"legalista\" en la que conciben su actuar, tal parece que como en manyos otheros caseos, solo se limitan a cumplir y ya, el resultado, el alcance o el beneficio social quodo de lado",
+      "page": 13,
+      "bbox": [
+        98.0,
+        128.0,
+        906.0,
+        323.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ef2a8941-5a1c-494a-9e7f-b3a156d9c6f9",
+      "text": "En el camino de las preguntas realizadas a los encuentados, se apprecia una contradicci\u00f3n entre estaULTa que acabamos de analizar y la?sigenque,  $\\zeta_{\\mathrm{Que}}$  tan importante ha sido su participacion como testigo social para abonar a la rendicion deCNTas?, se encontraron las seguicientrespuestos: 9 respondieron que es muy importante, 4 respondieron que es importante, 2 respondieron que es medianamente importante,onde finalmente 1 respondio que es nada importante.",
+      "page": 13,
+      "bbox": [
+        98.0,
+        339.0,
+        906.0,
+        498.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "01ba493c-137c-42e2-adfa-a7e9cd541780",
+      "text": "14",
+      "page": 13,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 13,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3b40d6c0-cf70-4787-8af5-e46ec127570a",
+      "text": "En la pregunta anterior, solo 2 consideraron que su participation podra contribuir a la rendicion deCNTas, empero resulta, que en other pregunta, mas de la mitad refiere que su participation es muy importante para la rendacion de cuentas, con lo que entendemos que los testigos sociales no tienen una idea clara de la importancia de su participation, porque en el supuesto de que existan fallas bajo del procedimiento en el que participan, que su participation sea limitada o bien que no haya reglas claras que les permitan desempe\u00f1arse de mejor forma, ellos no han hecho nada para melhorar su participation, pero no se han dato a la tarea de difundir sus resultados o a encontrar mecanismos que permitan favorecer su participation, ni siquiera han levantan la voz para signalar algo irregularidad; asi mesmo, encontraramos relacionada con el cuestionamento anterior la asignante pregunta:  $\\text{\u5ff5}$  tan eficaz son los testimonios sociales como instrumento de rendacion de cuentas de los testigos sociales?, los resultados fueron: 7 consideran a los testimonios como un instrumento muy eficaz, 7 como suficientes, 2 como medianamente suficientes.",
+      "page": 14,
+      "bbox": [
+        96.0,
+        59.0,
+        906.0,
+        462.0
+      ],
+      "metadata": {
+        "page": 14,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9e2a6e36-3a28-4fc4-ada7-74e0c22d3cfa",
+      "text": "Testigos Sociales del Estado de Mexico.",
+      "page": 14,
+      "bbox": [
+        339.0,
+        779.0,
+        660.0,
+        797.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 14,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "0e835c02-d58f-4707-90fe-d165c0e17eed",
+      "text": "Es interesante darse cuenta, que los testigos sociales no valoran su participation, se olvidan que el",
+      "page": 14,
+      "bbox": [
+        98.0,
+        813.0,
+        906.0,
+        832.0
+      ],
+      "metadata": {
+        "page": 14,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6dc38550-40cd-464d-a76c-8d959053c950",
+      "text": "resultado material de su participation es el testimonio que runden ante la unidad contratante, y ante la",
+      "page": 14,
+      "bbox": [
+        98.0,
+        848.0,
+        906.0,
+        867.0
+      ],
+      "metadata": {
+        "page": 14,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b9c3ac6e-a16d-4f12-b9b8-b6437b9b7045",
+      "text": "15",
+      "page": 14,
+      "bbox": [
+        491.0,
+        44.0,
+        511.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 14,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ba1d1ab5-56f5-4aac-a66b-30fbdf0e45e9",
+      "text": "Secretar\u00eda de la Contralaria, es la forma en la que est\u00e1 rindiendoCNTas de lo observado durante el procedimiento de contratacion le estan restando importancia; lo anterior se possible affirmar, en que no solo es con base en el resultado de esta pregunta, sino tambi\u00e9n en el analisis de los testimonios presentados en los que en sustancia refieren, en un parrafo de tres lineas en su mayoria, que no hay observaciones, que todo est\u00e1 conforme a derecho, bajo entones por querefieren en un analisis a su experiencia que no ha sido buena.",
+      "page": 15,
+      "bbox": [
+        96.0,
+        60.0,
+        906.0,
+        255.0
+      ],
+      "metadata": {
+        "page": 15,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ec4c2854-c1c7-498c-add1-8b040879401a",
+      "text": "El testimonio puede considerarse de acuerdo a lo visto en el marco te\u00f3rico, como un instrumento que garantiza el ejercimiento de derechosfundamentales, como el accesoa la informacion, el derecho a conocer, el derecho a participar, a expresarse libremente, es unaforma de vigilar que los gobervantes y servidores P\u00fablicosutilicencorrectamentelos recursos+puestosa su disposicion por parte delos gobernados.",
+      "page": 15,
+      "bbox": [
+        96.0,
+        268.0,
+        906.0,
+        428.0
+      ],
+      "metadata": {
+        "page": 15,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1d4c4653-4452-4133-b8fc-8c66ae52123f",
+      "text": "Respecto de la pregunta n\u00famero 9 \u00bfQu\u00e9 tan de acuerdo est\u00e1 usted en que en un procedimiento de contrataction P\u00fablica haya dos o m\u00e1s testigos sociales?, se obtuvieron las respuestas sugentes: 8 nada, 2 poco, 5 suficiente, y 1 mucho.",
+      "page": 15,
+      "bbox": [
+        96.0,
+        443.0,
+        906.0,
+        532.0
+      ],
+      "metadata": {
+        "page": 15,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "f6cf4d48-2cd0-46a1-91fd-49268286e55d",
+      "text": "16",
+      "page": 15,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 15,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "63b61b18-a176-4463-9baf-95f38b434383",
+      "text": "La postura es tajante no est\u00e1 de acuerdo en que existan dos o m\u00e1s testigos sociales dentro de un@mismo procedimiento, considero que-Newamente se est\u00e1 dejando de lado el esp\u00edritu de la figura, la participaci\u00f3n informada, el debate cr\u00edtico e informado que fortalezala democracia participativa, desde la optica de la transparencia y la rendicci\u00f3n deCNTas, se podr\u00eda pensar que elinteresting estriba en una cuestion economica; se advierte una visi\u00f3n egoista alejada del compromiso social de informar, de transparentar, de fortalecer y contribuir la rendicci\u00f3n deCNTas, se est\u00e1 dejando de lado-Newamente la idea para laequal se creo esta figura.",
+      "page": 16,
+      "bbox": [
+        96.0,
+        60.0,
+        906.0,
+        287.0
+      ],
+      "metadata": {
+        "page": 16,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "586e6056-7a99-4ed4-95c9-5e16abf0ec68",
+      "text": "Conluck a que si considera que el marco legal en la materia vigente es suficiente para el Dise\u00f1o e implementacion de la figura de los testigos sociales en el Estado de Mexico, se enccrto que 7 consideraron suficientes, 4consideraron medianamente suficientes y finalmente 5consideraron insufficientes.",
+      "page": 16,
+      "bbox": [
+        96.0,
+        303.0,
+        906.0,
+        426.0
+      ],
+      "metadata": {
+        "page": 16,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2f3d0ef4-d63d-44b8-9685-f25adb7f97a5",
+      "text": "17",
+      "page": 16,
+      "bbox": [
+        491.0,
+        44.0,
+        513.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 16,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3053c106-e810-4cba-9286-8160ae108971",
+      "text": "Testigos Sociales del Estado de Mexico.",
+      "page": 16,
+      "bbox": [
+        339.0,
+        848.0,
+        663.0,
+        867.0
+      ],
+      "metadata": {
+        "page": 16,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "144eee59-5c7c-4910-a8cd-3540f5aa7476",
+      "text": "M\u00e1s de la mitad de los encuestados refiere un marco jur\u00eddico insufiente, lo que hace patente que se requires redirsear la figura para lograr que las personas se intersen en ese mecanismo participativo y de rendici\u00f3n deCNTAs;se refirma con thiso,que con el dise\u00f1o queactuallyten los objetivos solo se est\u00e1\u88f1pliendo deforma parcial,que falta y que es necessario que despues de 10 a\u00f1os de operaci\u00f3n se analice con detenimiento si se quiere seguir por la mesma ruta o bien se requiresuna reingener\u00eda a los procesos para Obtener mejorasresultados.",
+      "page": 17,
+      "bbox": [
+        96.0,
+        60.0,
+        906.0,
+        255.0
+      ],
+      "metadata": {
+        "page": 17,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bae84b13-2baf-4f10-ad1c-3eb6250f0fe7",
+      "text": "Es Neededo reformar las leyes secundarias en las que se pueda incluir la obligatoriedad de la presencia de los testigos sociales en los procedimientos de restratacion P\u00fablica, verbigracia la Ley de Contratazonas Publicas del Estado de Mexico (H. LVIII Legislature del Estado de Mexico, 2013) y la Ley Organica Municipal de la mesma entidad (H. \"LI\" Legislature del Estado de Mexico, 1993).",
+      "page": 17,
+      "bbox": [
+        96.0,
+        268.0,
+        906.0,
+        395.0
+      ],
+      "metadata": {
+        "page": 17,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "9c0ea00d-0061-46d3-8583-5051b96fa5bb",
+      "text": "En laagna Usted tiene evidencia de que las unidades contratantes han dise\u00f1ado lineamientos que promuevan la participation de los testigos sociales. En caso affirmative,SEOALEcules,el  $100\\%$  (16) de\u8fd9\u5176\u4e2da population muestra respondido affirmative.",
+      "page": 17,
+      "bbox": [
+        96.0,
+        407.0,
+        906.0,
+        498.0
+      ],
+      "metadata": {
+        "page": 17,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "d8fd543d-06c1-40bc-b2ee-68ebdaa905fc",
+      "text": "18",
+      "page": 17,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 17,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "66437314-067d-438c-934b-047e89351689",
+      "text": "La postura es clara, las unidades contrastantes que han requerido de la presencia de un testigo social, no informan a los testigos sociales de los lineamientos internos con los que@cuentan en su caso; se considero tambi\u00e9n las experiencias exitosas como testigo social, con relacion al Comite de Registrar de Testigos Sociales del Estado de Mexico en el que se planteo la?sagaine pregunta Ccomo ha sido el desempo del Comite de Registrar de Testigos Sociales en el Estado de Mexico? Se encontr\u00f3 que 6 de elloscantan con experiencias muy eficaces, 6 de elloscantan con experiencias eficaces, 1 de elloscanta con experiencias medianamente eficaces, y finalmente, 3 de elloscantan con experiencias nada eficaces.",
+      "page": 18,
+      "bbox": [
+        96.0,
+        59.0,
+        906.0,
+        324.0
+      ],
+      "metadata": {
+        "page": 18,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "82bfed6f-6307-48c5-8268-9249bf79f047",
+      "text": "Testigos Sociales del Estado de Mexico.",
+      "page": 18,
+      "bbox": [
+        339.0,
+        709.0,
+        660.0,
+        727.0
+      ],
+      "metadata": {
+        "page": 18,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "df8ffb11-cc80-446d-a8c2-ecc9ca9eff52",
+      "text": "Se observa que los encuestados advierten fallas en la operation del Comit\u00e9 de Registrar de Testigos Sociales del Estado de M\u00e9xico (CRTSEM), y es una observaci\u00f3n valiosa que reviste importante, toda vez que el Comit\u00e9 de Registrar no cuenta con una naturaleza jur\u00eddica propia; est\u00e1 conformado por dos organismos juridically aut\u00f3nomos, el CRTSEM carece de personalidad juridica y patrimonio",
+      "page": 18,
+      "bbox": [
+        98.0,
+        744.0,
+        906.0,
+        869.0
+      ],
+      "metadata": {
+        "page": 18,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "aafe6cdd-fa41-4a7b-9f44-5be6938ec84f",
+      "text": "19",
+      "page": 18,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 18,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "37a9f897-8b1b-4f4e-a9ea-96a8c0e44983",
+      "text": "propios, su labor solo se centra en el otorgamento o no con base en los requisitos se\u00f1alados en el numeral 1.50 del C\u00f3digo Administrativo del Estado de M\u00e9xico (H. LIV Legislatura del Estado de M\u00e9xico, 2001), de los registros y de las ampliaciones, quiz\u00e1 es tiempo de valorar la posibiliidad de otorgar mayores instrumentos en su gesti\u00f3n en el animo de otorgar las certezas\u4f60\u9700\u8981as que permitan hacer crecer y ver evoluci\u00f3nar la figura del testigo social.",
+      "page": 19,
+      "bbox": [
+        96.0,
+        60.0,
+        906.0,
+        219.0
+      ],
+      "metadata": {
+        "page": 19,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3fd753f8-c824-4a3e-9c55-9d7ee49e0348",
+      "text": "Referente al n\u00famero de procedimientos en los que han participado los testigos sociales encuestados, se obtuvo que 3 personas han participado de 1 a 3 procedimientos; 7 personas han participado de 4 a 7 procedimientos, y finalmente, se encontrartran 6 personas, las cuales llevan 8 o m\u00e1s procedimientos de participaci\u00f3n como testigo social.",
+      "page": 19,
+      "bbox": [
+        96.0,
+        234.0,
+        905.0,
+        358.0
+      ],
+      "metadata": {
+        "page": 19,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "046ce01d-a3d2-46e1-8b11-bb018b130aeb",
+      "text": "En cuando al n\u00famero deDependencies en las que han participado los encuestados, se encontr\u00f3 que hay 9 personas que han participado entre 1 a 3 dependencies; 5 personas han participado entre 4 a 7 dependencies, y finalmente, se encontrartran 2 personas las cuales han estado 8 o m\u00e1sOLLasOLL.   \nparticipation como Testigo Social.",
+      "page": 19,
+      "bbox": [
+        96.0,
+        746.0,
+        906.0,
+        869.0
+      ],
+      "metadata": {
+        "page": 19,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "674de7fc-0db1-49a2-8ece-4d34767481f9",
+      "text": "20",
+      "page": 19,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 19,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "353f059a-300f-4f5c-84cd-1c250787b997",
+      "text": "La participaci\u00f3n de los encuentados ha sido favorable,:tienen en poco m\u00e1s del  $80\\%$  presencia en m\u00e1s de 4 dependencies; sin embargo, en los dos casos destudios se observa a muyfewos participando en muchos procedimientos, el temor fundado es que se est\u00e1 creando una consecuencia negativa, se est\u00e1 hacer una esp\u00e9cie de favoritismo por los testigos sociales favorecidos con el mayor n\u00famero de contratos en una sola dependencia,resultando aquinuevamente un sentido ego\u00edsta y alegado de un defer social.",
+      "page": 20,
+      "bbox": [
+        96.0,
+        60.0,
+        906.0,
+        252.0
+      ],
+      "metadata": {
+        "page": 20,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "35165b88-80ba-4651-b14a-4f6294ed8a85",
+      "text": "En consideraci\u00f3n aqu\u00e9 tan de acuerdo est\u00e1 con los requisitos para Obtener el registrar como testigo social, en el que se incluya el.tomar un diploma en contrataction P\u00fablica, 11 de ellos est\u00e1 totalmente de acuerdo; 2 de ellos est\u00e1 poco de acuerdo; nuevomente 2 de ellos est\u00e1 ni de acuerdo ni en desacuerdo, y 1 de ellos est\u00e1 totalmente en desacuerdo.",
+      "page": 20,
+      "bbox": [
+        98.0,
+        720.0,
+        906.0,
+        844.0
+      ],
+      "metadata": {
+        "page": 20,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "c063722d-98a3-4cba-a159-fa7ce56f2611",
+      "text": "21",
+      "page": 20,
+      "bbox": [
+        491.0,
+        45.0,
+        511.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 20,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ca3e7a3f-d599-42af-8ef6-1e0a7ba5eca9",
+      "text": "Testigos Sociales del Estado de Mexico.",
+      "page": 21,
+      "bbox": [
+        339.0,
+        383.0,
+        661.0,
+        402.0
+      ],
+      "metadata": {
+        "page": 21,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "ebdee374-40e7-4770-86c6-aa610923cf63",
+      "text": "Lo que respects a los a\u00f1os de participaci\u00f3n como Testigo Social, se incluye que hay 3 personas las cualesledgean entre 1a 3 a\u00f1os de participacion;8 personneslvean de 4a 7 a\u00f1os de participacion,y finalmente,seencuentran5 personas,las cualeslveanentre 80 m\u00e1s a\u00f1osde participacion como Testigo Social,onde finally,sepuedocantarcon un promedio de a\u00f1osde participacionde 5.3.",
+      "page": 21,
+      "bbox": [
+        96.0,
+        417.0,
+        906.0,
+        542.0
+      ],
+      "metadata": {
+        "page": 21,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "aed2917f-f7ca-4d77-b808-d187221601e2",
+      "text": "22",
+      "page": 21,
+      "bbox": [
+        491.0,
+        44.0,
+        514.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 21,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "b6528439-0bb0-41f5-bc8e-e5d07616af5f",
+      "text": "M\u00e1s del 50 %leneck de cinco a 8 a\u00f1os, y la experiencia que han adquirido es tan>basta que les permite en un sentido positivo identificar las areas de OPPUNITY que tiene la figura, pero encontrario sensu, tambi\u00e9noulda reflejar ese sentido ego\u00edsta que ve al testigo social no como un mecanismo de rendimiento deCNTas sino acaso m\u00e1s con una forma de vida.",
+      "page": 22,
+      "bbox": [
+        98.0,
+        60.0,
+        903.0,
+        181.0
+      ],
+      "metadata": {
+        "page": 22,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3355a8b9-096c-49a8-a133-843d56c05e78",
+      "text": "CONCLUSIONES.",
+      "page": 22,
+      "bbox": [
+        99.0,
+        214.0,
+        267.0,
+        231.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 22,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "f0e57609-8c4e-46b3-b026-907815ee8391",
+      "text": "En conclusi\u00f3n, del an\u00e1lisis realizado a esta\u00edstica de Investigaci\u00f3n, se rescatan los siguientes resultados:",
+      "page": 22,
+      "bbox": [
+        98.0,
+        250.0,
+        903.0,
+        301.0
+      ],
+      "metadata": {
+        "page": 22,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "6e676741-0795-4c4a-bbca-0cd4a2dcb320",
+      "text": null,
+      "page": 22,
+      "bbox": [
+        98.0,
+        318.0,
+        903.0,
+        861.0
+      ],
+      "metadata": {
+        "page": 22,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "37f458ab-d24e-474b-b2cb-a220eb9f0b16",
+      "text": "23",
+      "page": 22,
+      "bbox": [
+        491.0,
+        45.0,
+        511.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 22,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "52ff38f3-d32f-4c0c-8b7d-257cb21c78b1",
+      "text": null,
+      "page": 23,
+      "bbox": [
+        98.0,
+        93.0,
+        906.0,
+        882.0
+      ],
+      "metadata": {
+        "page": 23,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "02e15e0d-be39-4bc5-8de9-1b3873d82c22",
+      "text": "24",
+      "page": 23,
+      "bbox": [
+        491.0,
+        44.0,
+        514.0,
+        59.0
+      ],
+      "metadata": {
+        "page": 23,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "abc874dd-71e0-471b-b951-4ac5965f3431",
+      "text": "REFERENCIAS BIBLIOGR\u00c1FICAS.",
+      "page": 23,
+      "bbox": [
+        99.0,
+        58.0,
+        426.0,
+        75.0
+      ],
+      "metadata": {
+        "page": 23,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "1516dd32-8e29-4bb2-b0a6-ba40faa36b65",
+      "text": null,
+      "page": 24,
+      "bbox": [
+        98.0,
+        59.0,
+        903.0,
+        637.0
+      ],
+      "metadata": {
+        "page": 24,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "490e5816-7681-4564-9b2c-cec05d79b6fd",
+      "text": "DATOS DE LOS AUTORES.",
+      "page": 24,
+      "bbox": [
+        99.0,
+        662.0,
+        354.0,
+        679.0
+      ],
+      "metadata": {
+        "text_level": 1,
+        "is_heading": true,
+        "page": 24,
+        "reading_order": null
+      },
+      "heading_level": 1,
+      "is_heading": true
+    },
+    {
+      "id": "1348cdda-b39f-4357-befe-a2cfb6112147",
+      "text": "1. F\u00e1tima Armeaga Garc\u00eda. Licenciada en Derecho (Estudiante de la Maestr\u00eda en Administraci\u00f3n P\u00fablica y Governor de la Universidad Aut\u00f3noma del Estado de M\u00e9xico). Actualmente jefa del d\u00e9partement de informaci\u00f3n en la Direcci\u00f3n de Transparencycia Universitaria de la Universidad Aut\u00f3noma del Estado de M\u00e9xico. M\u00e9xico. Correo electr\u00f3nico: pharmeagag@uaemex.mx",
+      "page": 24,
+      "bbox": [
+        99.0,
+        696.0,
+        906.0,
+        821.0
+      ],
+      "metadata": {
+        "page": 24,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "0267d7b5-986a-4286-a938-e4d1601b9623",
+      "text": "25",
+      "page": 24,
+      "bbox": [
+        491.0,
+        44.0,
+        513.0,
+        56.0
+      ],
+      "metadata": {
+        "page": 24,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "105e8ecc-e119-4997-b2a6-a17e079f1d1b",
+      "text": "2. Ramiro Medrano Gonz\u00e1lez. Doctor en Ciencias Sociales y Pol\u00edticas. Profesor de Tiempo Completo de la Facultad de Ciencias Pol\u00edticas y Sociales de la Universidad Aut\u00f3noma del Estado de M\u00e9xico. M\u00e9xico. Correo electr\u00f3nico: rmedranog@uaemex.mx",
+      "page": 25,
+      "bbox": [
+        99.0,
+        59.0,
+        906.0,
+        148.0
+      ],
+      "metadata": {
+        "page": 25,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "2c02c75d-4ea3-4316-804f-6030b8b55835",
+      "text": "RECIBIDO: 20 de febrero del 2023.",
+      "page": 25,
+      "bbox": [
+        99.0,
+        174.0,
+        397.0,
+        193.0
+      ],
+      "metadata": {
+        "page": 25,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "3ca3c31a-5f8e-4bf7-b631-05b8ad583f68",
+      "text": "APROBADO: 29 de marzo del 2023.",
+      "page": 25,
+      "bbox": [
+        599.0,
+        174.0,
+        901.0,
+        191.0
+      ],
+      "metadata": {
+        "page": 25,
+        "reading_order": null
+      }
+    },
+    {
+      "id": "bd69e995-1ccf-4e1a-935f-0fb319e899d8",
+      "text": "26",
+      "page": 25,
+      "bbox": [
+        491.0,
+        45.0,
+        513.0,
+        58.0
+      ],
+      "metadata": {
+        "page": 25,
+        "reading_order": null
+      }
+    }
+  ],
+  "success": true,
+  "timestamp": "2025-10-09 22:25:04"
+}

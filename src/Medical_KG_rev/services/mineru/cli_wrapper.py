@@ -382,43 +382,61 @@ class SubprocessMineruCli(MineruCliBase):
         inputs = list(batch)
         if not inputs:
             return MineruCliResult(outputs=[], stdout="", stderr="", duration_seconds=0.0)
-        with tempfile.TemporaryDirectory(prefix="mineru-cli-") as workdir:
-            input_dir = Path(workdir, "input")
-            output_dir = Path(workdir, "output")
-            input_dir.mkdir(parents=True, exist_ok=True)
-            output_dir.mkdir(parents=True, exist_ok=True)
-            for item in inputs:
-                path = input_dir / f"{item.document_id}.pdf"
-                path.write_bytes(item.content)
 
-            command = self._build_command(input_dir, output_dir)
-            logger.bind(command=command).info("mineru.cli.invoke")
-            start = time.monotonic()
-            proc = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=self._timeout,
-                env=dict(os.environ),
-            )
-            duration = time.monotonic() - start
-            if proc.returncode != 0:
-                logger.bind(
-                    returncode=proc.returncode,
-                    stdout=proc.stdout,
-                    stderr=proc.stderr,
-                ).error("mineru.cli.failed")
-                raise MineruCliError(
-                    f"MinerU CLI exited with code {proc.returncode}: {proc.stderr.strip()}"
+        # Process PDFs one at a time - MinerU CLI doesn't batch well
+        outputs: list[MineruCliOutput] = []
+        all_stdout: list[str] = []
+        all_stderr: list[str] = []
+        total_duration = 0.0
+
+        for item in inputs:
+            with tempfile.TemporaryDirectory(prefix=f"mineru-cli-{item.document_id}-") as workdir:
+                input_dir = Path(workdir, "input")
+                output_dir = Path(workdir, "output")
+                input_dir.mkdir(parents=True, exist_ok=True)
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                # Write single PDF
+                pdf_path = input_dir / f"{item.document_id}.pdf"
+                pdf_path.write_bytes(item.content)
+
+                command = self._build_command(input_dir, output_dir)
+                logger.bind(command=command, document_id=item.document_id).info("mineru.cli.invoke")
+                start = time.monotonic()
+                proc = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=self._timeout,
+                    env=dict(os.environ),
                 )
+                duration = time.monotonic() - start
+                total_duration += duration
 
-            outputs: list[MineruCliOutput] = []
-            for item in inputs:
-                # MinerU v2.5.4 outputs to: {output_dir}/{document_id}/vlm/{document_id}_model.json
-                output_path = output_dir / item.document_id / "vlm" / f"{item.document_id}_model.json"
+                if proc.returncode != 0:
+                    logger.bind(
+                        returncode=proc.returncode,
+                        stdout=proc.stdout,
+                        stderr=proc.stderr,
+                        document_id=item.document_id,
+                    ).error("mineru.cli.failed")
+                    raise MineruCliError(
+                        f"MinerU CLI exited with code {proc.returncode} for {item.document_id}: {proc.stderr.strip()}"
+                    )
+
+                all_stdout.append(proc.stdout)
+                all_stderr.append(proc.stderr)
+
+                # MinerU v2.5.4 outputs to: {output_dir}/{document_id}/vlm/{document_id}_content_list.json
+                # We use _content_list.json instead of _model.json because it includes:
+                # - text_level: heading hierarchy (1=H1, 2=H2, etc.)
+                # - Cleaner, flattened structure
+                # - Better section clustering information
+                output_path = output_dir / item.document_id / "vlm" / f"{item.document_id}_content_list.json"
                 if not output_path.exists():
                     logger.bind(
                         output_path=str(output_path),
+                        document_id=item.document_id,
                         output_dir_contents=list((output_dir / item.document_id).rglob("*")) if (output_dir / item.document_id).exists() else "dir_not_found"
                     ).error("mineru.cli.output_not_found")
                     raise MineruCliError(
@@ -431,12 +449,13 @@ class SubprocessMineruCli(MineruCliBase):
                     path=output_path,
                     json_content=json_content
                 ))
-            return MineruCliResult(
-                outputs=outputs,
-                stdout=proc.stdout,
-                stderr=proc.stderr,
-                duration_seconds=duration,
-            )
+
+        return MineruCliResult(
+            outputs=outputs,
+            stdout="\n".join(all_stdout),
+            stderr="\n".join(all_stderr),
+            duration_seconds=total_duration,
+        )
 
 
 class SimulatedMineruCli(MineruCliBase):
@@ -560,7 +579,15 @@ class SimulatedMineruCli(MineruCliBase):
             os.close(fd)
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(payload, handle)
-            outputs.append(MineruCliOutput(document_id=item.document_id, path=Path(path)))
+
+            # Read JSON content for new MineruCliOutput format
+            json_content = json.dumps(payload)
+
+            outputs.append(MineruCliOutput(
+                document_id=item.document_id,
+                path=Path(path),
+                json_content=json_content
+            ))
             stdout_lines.append(f"simulated:{item.document_id}")
 
         duration = time.monotonic() - start

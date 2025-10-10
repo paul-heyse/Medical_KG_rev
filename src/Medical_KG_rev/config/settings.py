@@ -14,6 +14,7 @@ from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, ValidationError, m
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .docling_config import DoclingVLMConfig
+from .retrieval_config import BM25Config, FusionConfig, Qwen3Config, RetrievalConfig, SPLADEConfig
 
 class Environment(str, Enum):
     """Deployment environments supported by the platform."""
@@ -309,6 +310,165 @@ class DoclingVLMSettings(BaseModel):
         )
 
 
+class BM25Settings(BaseModel):
+    """Structured BM25 retrieval configuration."""
+
+    index_path: Path = Field(default=Path("indexes/bm25"))
+    field_boosts: dict[str, float] = Field(
+        default_factory=lambda: {
+            "title": 3.5,
+            "section_headers": 2.5,
+            "paragraph": 1.0,
+            "caption": 1.5,
+            "table_text": 1.2,
+            "footnote": 0.5,
+            "refs_text": 0.1,
+        }
+    )
+    analyzer: str = Field(default="medical_standard")
+    synonyms_path: Path | None = Field(default=None)
+    enable_synonyms: bool = Field(default=True)
+    query_timeout_ms: int = Field(default=250, ge=1)
+    cache_ttl_seconds: int = Field(default=300, ge=0)
+
+    @model_validator(mode="after")
+    def _validate_boosts(self) -> BM25Settings:
+        if not self.field_boosts:
+            raise ValueError("field_boosts cannot be empty")
+        for name, boost in self.field_boosts.items():
+            if boost <= 0:
+                raise ValueError(f"field boost for '{name}' must be positive")
+        return self
+
+    def as_config(self) -> BM25Config:
+        return BM25Config(
+            index_path=self.index_path,
+            field_boosts=dict(self.field_boosts),
+            analyzer=self.analyzer,
+            synonyms_path=self.synonyms_path,
+            enable_synonyms=self.enable_synonyms,
+            query_timeout_ms=self.query_timeout_ms,
+            cache_ttl_seconds=self.cache_ttl_seconds,
+        )
+
+
+class SPLADESettings(BaseModel):
+    """SPLADE sparse retrieval configuration."""
+
+    index_path: Path = Field(default=Path("indexes/splade_v3"))
+    model_name: str = Field(default="naver/splade-v3")
+    tokenizer_name: str = Field(default="naver/splade-v3")
+    max_tokens: int = Field(default=512, ge=1, le=512)
+    sparsity_threshold: float = Field(default=0.01, ge=0.0, le=1.0)
+    max_terms: int = Field(default=4096, ge=1)
+    quantization_bits: int = Field(default=8)
+    batch_size: int = Field(default=16, ge=1)
+    cache_ttl_seconds: int = Field(default=300, ge=0)
+    query_timeout_ms: int = Field(default=400, ge=1)
+
+    @model_validator(mode="after")
+    def _validate_quantisation(self) -> SPLADESettings:
+        if self.quantization_bits not in {4, 8, 16}:
+            raise ValueError("quantization_bits must be one of {4, 8, 16}")
+        if self.tokenizer_name != self.model_name:
+            raise ValueError("tokenizer_name must match model_name for alignment")
+        return self
+
+    def as_config(self) -> SPLADEConfig:
+        return SPLADEConfig(
+            index_path=self.index_path,
+            model_name=self.model_name,
+            tokenizer_name=self.tokenizer_name,
+            max_tokens=self.max_tokens,
+            sparsity_threshold=self.sparsity_threshold,
+            max_terms=self.max_terms,
+            quantization_bits=self.quantization_bits,
+            batch_size=self.batch_size,
+            cache_ttl_seconds=self.cache_ttl_seconds,
+            query_timeout_ms=self.query_timeout_ms,
+        )
+
+
+class Qwen3Settings(BaseModel):
+    """Qwen3 dense embedding retrieval configuration."""
+
+    index_path: Path = Field(default=Path("vectors/qwen3.faiss"))
+    model_name: str = Field(default="Qwen/Qwen2.5-7B-Instruct")
+    tokenizer_name: str = Field(default="Qwen/Qwen2.5-7B-Instruct")
+    embedding_dimension: int = Field(default=4096, ge=1)
+    batch_size: int = Field(default=32, ge=1)
+    backend: Literal["faiss", "qdrant"] = Field(default="faiss")
+    ann_search_k: int = Field(default=100, ge=1)
+    normalize_embeddings: bool = Field(default=True)
+    cache_ttl_seconds: int = Field(default=300, ge=0)
+    query_timeout_ms: int = Field(default=400, ge=1)
+
+    @model_validator(mode="after")
+    def _validate_alignment(self) -> Qwen3Settings:
+        if self.tokenizer_name != self.model_name:
+            raise ValueError("tokenizer_name must match model_name for alignment")
+        return self
+
+    def as_config(self) -> Qwen3Config:
+        return Qwen3Config(
+            index_path=self.index_path,
+            model_name=self.model_name,
+            tokenizer_name=self.tokenizer_name,
+            embedding_dimension=self.embedding_dimension,
+            batch_size=self.batch_size,
+            backend=self.backend,
+            ann_search_k=self.ann_search_k,
+            normalize_embeddings=self.normalize_embeddings,
+            cache_ttl_seconds=self.cache_ttl_seconds,
+            query_timeout_ms=self.query_timeout_ms,
+        )
+
+
+class RetrievalFusionSettings(BaseModel):
+    """Fusion configuration for joining component results."""
+
+    strategy: Literal["rrf", "weighted_rrf", "priority"] = Field(default="rrf")
+    rrf_k: int = Field(default=60, ge=1)
+    weights: dict[str, float] = Field(default_factory=dict)
+    cache_ttl_seconds: int = Field(default=300, ge=0)
+    query_timeout_ms: int = Field(default=500, ge=1)
+
+    @model_validator(mode="after")
+    def _validate_weights(self) -> RetrievalFusionSettings:
+        for component, weight in self.weights.items():
+            if weight < 0:
+                raise ValueError(f"weight for '{component}' cannot be negative")
+        return self
+
+    def as_config(self) -> FusionConfig:
+        return FusionConfig(
+            strategy=self.strategy,
+            rrf_k=self.rrf_k,
+            weights=dict(self.weights),
+            cache_ttl_seconds=self.cache_ttl_seconds,
+            query_timeout_ms=self.query_timeout_ms,
+        )
+
+
+class RetrievalSettings(BaseModel):
+    """Top-level hybrid retrieval configuration exposed via settings."""
+
+    default_backend: Literal["bm25", "splade", "qwen3", "hybrid"] = Field(default="hybrid")
+    bm25: BM25Settings = Field(default_factory=BM25Settings)
+    splade: SPLADESettings = Field(default_factory=SPLADESettings)
+    qwen3: Qwen3Settings = Field(default_factory=Qwen3Settings)
+    fusion: RetrievalFusionSettings = Field(default_factory=RetrievalFusionSettings)
+
+    def as_config(self) -> RetrievalConfig:
+        return RetrievalConfig(
+            default_backend=self.default_backend,
+            bm25=self.bm25.as_config(),
+            splade=self.splade.as_config(),
+            qwen3=self.qwen3.as_config(),
+            fusion=self.fusion.as_config(),
+        )
+
+
 class MineruCircuitBreakerSettings(BaseModel):
     """Circuit breaker thresholds for the MinerU vLLM client."""
 
@@ -380,12 +540,25 @@ class FeatureFlagSettings(BaseModel):
     """Dynamic feature flag configuration."""
 
     pdf_processing_backend: Literal["mineru", "docling_vlm"] = "mineru"
+    docling_rollout_percentage: int = Field(default=0, ge=0, le=100)
+    retrieval_backend: Literal["bm25", "splade", "qwen3", "hybrid"] = "hybrid"
+    retrieval_rollout_percentage: int = Field(default=100, ge=0, le=100)
     flags: dict[str, bool] = Field(default_factory=dict)
+
+    def selected_pdf_backend(self) -> str:
+        return self.pdf_processing_backend
+
+    def selected_retrieval_backend(self) -> str:
+        return self.retrieval_backend
 
     def is_enabled(self, name: str) -> bool:
         lowered = name.lower()
-        if lowered == "pdf_processing_backend:docling_vlm":
-            return self.pdf_processing_backend == "docling_vlm"
+        if lowered.startswith("pdf_processing_backend:"):
+            backend = lowered.split(":", 1)[1]
+            return backend == self.pdf_processing_backend
+        if lowered.startswith("retrieval_backend:"):
+            backend = lowered.split(":", 1)[1]
+            return backend == self.retrieval_backend
         return self.flags.get(lowered, False)
 
 
@@ -747,6 +920,7 @@ class AppSettings(BaseSettings):
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
     docling_vlm: DoclingVLMSettings = Field(default_factory=DoclingVLMSettings)
+    retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)

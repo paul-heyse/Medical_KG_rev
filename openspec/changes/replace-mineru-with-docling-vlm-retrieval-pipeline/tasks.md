@@ -47,14 +47,14 @@
       - Implement from_dict/from_yaml class methods for configuration loading
       - Add validation for model availability and GPU requirements
 
-- [ ] 2.2 Create retrieval configuration classes
+- [x] 2.2 Create retrieval configuration classes
       - Create `src/Medical_KG_rev/config/retrieval_config.py` with retrieval settings
       - Add BM25Config, SPLADEConfig, Qwen3Config dataclasses
       - Include field boosts, tokenizers, thresholds, and storage backends
       - Add validation for tokenizer alignment and model compatibility
       - Implement configuration loading from YAML files
 
-- [ ] 2.3 Add Docling and retrieval settings to main application configuration
+- [x] 2.3 Add Docling and retrieval settings to main application configuration
       - Update `src/Medical_KG_rev/config/settings.py` to include DoclingVLMSettings
       - Add docling_vlm: DoclingVLMConfig section to main Settings class
       - Add retrieval: RetrievalConfig section with BM25, SPLADE, Qwen3 configs
@@ -68,7 +68,7 @@
       - Update config loading to handle both model types
       - Add feature flag for Docling vs vLLM processing modes
 
-- [ ] 2.5 Add feature flag for Docling vs MinerU processing modes
+- [x] 2.5 Add feature flag for Docling vs MinerU processing modes
       - Create feature flag in `src/Medical_KG_rev/config/settings.py`
       - Add `pdf_processing_backend: str = "minerv"  # "minerv" | "docling_vlm"`
       - Add `retrieval_backend: str = "hybrid"  # "bm25" | "splade" | "qwen3" | "hybrid"`

@@ -5,10 +5,7 @@
 #    pip-compile --output-file=requirements.txt requirements.in
 #
 accelerate==1.10.1
-    # via
-    #   docling
-    #   docling-ibm-models
-    #   unstructured-inference
+    # via unstructured-inference
 aiofiles==25.1.0
     # via unstructured-client
 aiohappyeyeballs==2.6.1
@@ -20,7 +17,6 @@ aiohttp==3.13.0
     #   llama-index-core
     #   oxylabs
     #   spider-client
-    #   vllm
 aiokafka==0.12.0
     # via -r requirements.in
 aiolimiter==1.2.1
@@ -32,7 +28,7 @@ aiosqlite==0.21.0
 albucore==0.0.24
     # via albumentations
 albumentations==2.0.8
-    # via doclayout-yolo
+    # via -r requirements.in
 alembic==1.16.5
     # via dagster
 annotated-types==0.7.0
@@ -63,7 +59,7 @@ arrow==1.3.0
 asgiref==3.10.0
     # via opentelemetry-instrumentation-asgi
 astor==0.8.1
-    # via depyf
+    # via -r requirements.in
 asttokens==3.0.0
     # via stack-data
 async-lru==2.0.5
@@ -77,7 +73,6 @@ attrs==25.4.0
     #   aiohttp
     #   cattrs
     #   hypothesis
-    #   jsonlines
     #   jsonschema
     #   openlineage-python
     #   outcome
@@ -104,7 +99,6 @@ bcrypt==5.0.0
     # via -r requirements.in
 beautifulsoup4==4.14.2
     # via
-    #   docling
     #   feedfinder2
     #   markdownify
     #   nbconvert
@@ -115,8 +109,6 @@ bitarray==3.7.2
     # via colbert-ai
 black==25.9.0
     # via -r requirements.in
-blake3==1.0.7
-    # via vllm
 bleach[css]==6.2.0
     # via nbconvert
 blinker==1.9.0
@@ -136,11 +128,11 @@ botocore-stubs==1.40.33
 brotli==1.1.0
     # via -r requirements.in
 build==1.3.0
-    # via openlineage-python
-cachetools==6.2.0
     # via
-    #   google-auth
-    #   vllm
+    #   openlineage-python
+    #   pip-tools
+cachetools==6.2.0
+    # via google-auth
 catalogue==2.0.10
     # via
     #   spacy
@@ -148,11 +140,8 @@ catalogue==2.0.10
     #   thinc
 cattrs==25.3.0
     # via requests-cache
-cbor2==5.7.0
-    # via vllm
 certifi==2025.10.5
     # via
-    #   docling
     #   httpcore
     #   httpx
     #   minio
@@ -166,7 +155,6 @@ cffi==2.0.0
     # via
     #   argon2-cffi-bindings
     #   cryptography
-    #   soundfile
     #   ukkonen
 cfgv==3.4.0
     # via pre-commit
@@ -187,8 +175,8 @@ click==8.3.0
     #   mkdocs
     #   nltk
     #   pdftext
+    #   pip-tools
     #   python-oxmsg
-    #   ray
     #   rich-toolkit
     #   schemathesis
     #   typer
@@ -197,8 +185,6 @@ cloudevents==1.12.0
     # via -r requirements.in
 cloudpathlib==0.23.0
     # via weasel
-cloudpickle==3.1.1
-    # via vllm
 colbert-ai==0.2.22
     # via -r requirements.in
 colorama==0.4.6
@@ -218,8 +204,6 @@ comm==0.2.3
     # via
     #   ipykernel
     #   ipywidgets
-compressed-tensors==0.11.0
-    # via vllm
 confection==0.1.5
     # via
     #   thinc
@@ -240,9 +224,7 @@ cryptography==46.0.2
 cssselect==1.3.0
     # via -r requirements.in
 cupy-cuda12x==13.6.0
-    # via
-    #   -r requirements.in
-    #   ray
+    # via -r requirements.in
 cycler==0.12.1
     # via matplotlib
 cymem==2.0.11
@@ -284,36 +266,22 @@ deprecated==1.2.18
     #   pikepdf
 deprecation==2.1.0
     # via cloudevents
-depyf==0.19.0
-    # via vllm
 dill==0.4.0
     # via
     #   datasets
-    #   depyf
     #   multiprocess
 dirtyjson==1.0.8
     # via llama-index-core
-diskcache==5.6.3
-    # via vllm
 distlib==0.4.0
     # via virtualenv
 distro==1.9.0
     # via openai
 dnspython==2.8.0
     # via email-validator
-doclayout-yolo==0.0.4
-    # via -r requirements.in
-docling==2.55.1
-    # via -r requirements.in
-docling-core[chunking]==2.48.4
-    # via
-    #   docling
-    #   docling-ibm-models
-    #   docling-parse
-docling-ibm-models==3.9.1
-    # via docling
+docling-core==2.48.4
+    # via docling-parse
 docling-parse==4.5.0
-    # via docling
+    # via -r requirements.in
 docopt==0.6.2
     # via num2words
 docstring-parser==0.17.0
@@ -321,17 +289,14 @@ docstring-parser==0.17.0
 duckdb==1.4.1
     # via -r requirements.in
 easyocr==1.7.2
-    # via docling
+    # via -r requirements.in
 ecdsa==0.19.1
     # via python-jose
 effdet==0.4.1
     # via -r requirements.in
-einops==0.8.1
-    # via vllm
 email-validator==2.3.0
     # via
     #   -r requirements.in
-    #   fastapi
     #   pydantic
 emoji==2.15.0
     # via unstructured
@@ -349,18 +314,12 @@ faker==37.11.0
     # via polyfactory
 fast-pytorch-kmeans==0.2.2
     # via -r requirements.in
-fastapi[standard]==0.118.3
-    # via
-    #   pyserini
-    #   vllm
-fastapi-cli[standard]==0.0.13
-    # via
-    #   -r requirements.in
-    #   fastapi
+fastapi==0.118.3
+    # via pyserini
+fastapi-cli==0.0.13
+    # via -r requirements.in
 fastapi-cloud-cli==0.3.1
-    # via
-    #   -r requirements.in
-    #   fastapi-cli
+    # via -r requirements.in
 fastjsonschema==2.21.2
     # via nbformat
 fastrlock==0.8.3
@@ -377,15 +336,12 @@ filelock==3.20.0
     #   datasets
     #   huggingface-hub
     #   modelscope
-    #   ray
     #   tldextract
     #   torch
     #   transformers
     #   virtualenv
-    #   vllm
 filetype==1.2.0
     # via
-    #   docling
     #   llama-index-core
     #   unstructured
 firecrawl-py==4.3.7
@@ -408,7 +364,7 @@ fqdn==1.5.1
     #   -r requirements.in
     #   jsonschema
 frozendict==2.4.6
-    # via compressed-tensors
+    # via -r requirements.in
 frozenlist==1.8.0
     # via
     #   aiohttp
@@ -424,8 +380,6 @@ ftfy==6.3.1
     # via -r requirements.in
 geopandas==1.1.1
     # via -r requirements.in
-gguf==0.17.1
-    # via vllm
 ghp-import==2.1.0
     # via mkdocs
 gitdb==4.0.12
@@ -513,7 +467,6 @@ httptools==0.7.1
 httpx[http2]==0.28.1
     # via
     #   datasets
-    #   fastapi
     #   fastapi-cloud-cli
     #   firecrawl-py
     #   jupyterlab
@@ -532,8 +485,6 @@ huggingface-hub==0.35.3
     # via
     #   accelerate
     #   datasets
-    #   docling
-    #   docling-ibm-models
     #   sentence-transformers
     #   timm
     #   tokenizers
@@ -580,7 +531,7 @@ inflect==7.5.0
 iniconfig==2.1.0
     # via pytest
 interegular==0.3.3
-    # via lm-format-enforcer
+    # via -r requirements.in
 ipykernel==6.30.1
     # via
     #   jupyter
@@ -611,7 +562,6 @@ jinja2==3.1.6
     # via
     #   banks
     #   dagster
-    #   fastapi
     #   flask
     #   jupyter-server
     #   jupyterlab
@@ -637,8 +587,6 @@ json-repair==0.52.0
     # via -r requirements.in
 json5==0.12.1
     # via jupyterlab-server
-jsonlines==3.1.0
-    # via docling-ibm-models
 jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
@@ -654,9 +602,7 @@ jsonschema[format,format-nongpl]==4.25.1
     #   jupyter-events
     #   jupyterlab-server
     #   mcp
-    #   mistral-common
     #   nbformat
-    #   ray
     #   schemathesis
 jsonschema-specifications==2025.9.1
     # via jsonschema
@@ -729,33 +675,24 @@ langsmith==0.4.34
     #   langchain-core
 language-data==1.3.0
     # via langcodes
-lark==1.2.2
-    # via
-    #   rfc3987-syntax
-    #   vllm
+lark==1.3.0
+    # via rfc3987-syntax
 latex2mathml==3.78.1
     # via docling-core
 lazy-loader==0.4
     # via scikit-image
 lia-web==0.2.3
     # via strawberry-graphql
-llama-index-core==0.12.42
+llama-index-core==0.14.4
     # via -r requirements.in
 llama-index-instrumentation==0.4.1
     # via llama-index-workflows
-llama-index-workflows==1.3.0
-    # via -r requirements.in
-llguidance==0.7.30
-    # via vllm
-llvmlite==0.44.0
-    # via numba
-lm-format-enforcer==0.11.3
-    # via vllm
+llama-index-workflows==2.7.1
+    # via llama-index-core
 loguru==0.7.3
     # via -r requirements.in
-lxml==5.4.0
+lxml==6.0.2
     # via
-    #   docling
     #   lxml-html-clean
     #   pikepdf
     #   python-docx
@@ -782,7 +719,7 @@ markdown-it-py==4.0.0
 markdownify==1.2.0
     # via -r requirements.in
 marko==2.2.0
-    # via docling
+    # via -r requirements.in
 markupsafe==3.0.3
     # via
     #   flask
@@ -797,8 +734,6 @@ marshmallow==3.26.1
     # via dataclasses-json
 matplotlib==3.10.7
     # via
-    #   doclayout-yolo
-    #   seaborn
     #   ultralytics
     #   unstructured-inference
 matplotlib-inline==0.1.7
@@ -815,10 +750,6 @@ mergedeep==1.3.4
     #   mkdocs-get-deps
 minio==7.2.18
     # via -r requirements.in
-mistral-common[audio,image,opencv,soundfile,soxr]==1.8.5
-    # via
-    #   mistral-common
-    #   vllm
 mistune==3.1.4
     # via nbconvert
 mkdocs==1.6.1
@@ -851,9 +782,7 @@ mpire[dill]==2.10.2
 mpmath==1.3.0
     # via sympy
 msgpack==1.1.2
-    # via ray
-msgspec==0.19.0
-    # via vllm
+    # via -r requirements.in
 msoffcrypto-tool==5.4.2
     # via -r requirements.in
 multidict==6.7.0
@@ -906,8 +835,6 @@ ninja==1.13.0
     # via
     #   colbert-ai
     #   easyocr
-    #   vllm
-    #   xgrammar
 nltk==3.9.2
     # via
     #   llama-index-core
@@ -924,8 +851,6 @@ notebook-shim==0.2.4
     #   notebook
 num2words==0.5.14
     # via quantulum3
-numba==0.61.2
-    # via vllm
 numpy==2.2.6
     # via
     #   accelerate
@@ -936,21 +861,17 @@ numpy==2.2.6
     #   contourpy
     #   cupy-cuda12x
     #   datasets
-    #   docling-ibm-models
     #   easyocr
     #   faiss-cpu
     #   fast-pytorch-kmeans
     #   geopandas
-    #   gguf
     #   hdbscan
     #   imageio
     #   llama-index-core
     #   magika
     #   matplotlib
-    #   mistral-common
     #   ml-dtypes
     #   nmslib-metabrainz
-    #   numba
     #   numpy-financial
     #   onnx
     #   onnxruntime
@@ -963,14 +884,10 @@ numpy==2.2.6
     #   qdrant-client
     #   rank-bm25
     #   rapid-table
-    #   safetensors
     #   scikit-image
     #   scikit-learn
     #   scipy
-    #   seaborn
     #   shapely
-    #   soundfile
-    #   soxr
     #   spacy
     #   thinc
     #   tifffile
@@ -980,11 +897,8 @@ numpy==2.2.6
     #   ultralytics-thop
     #   unstructured
     #   unstructured-inference
-    #   vllm
     #   voyager
-    #   xformers
     #   xgboost
-    #   xgrammar
 numpy-financial==1.0.0
     # via -r requirements.in
 nvidia-cublas-cu12==12.8.4.1
@@ -1043,14 +957,9 @@ onnxruntime==1.23.1
     #   rapid-table
     #   unstructured-inference
 openai==2.3.0
-    # via
-    #   pyserini
-    #   vllm
-openai-harmony==0.0.4
-    # via vllm
+    # via pyserini
 opencv-python==4.12.0.88
     # via
-    #   doclayout-yolo
     #   rapid-table
     #   ultralytics
     #   unstructured-inference
@@ -1058,14 +967,11 @@ opencv-python-headless==4.12.0.88
     # via
     #   albucore
     #   albumentations
-    #   docling-ibm-models
     #   easyocr
-    #   mistral-common
-    #   vllm
 openlineage-python==1.39.0
     # via -r requirements.in
 openpyxl==3.1.5
-    # via docling
+    # via -r requirements.in
 opensearch-py==3.0.0
     # via -r requirements.in
 opentelemetry-api==1.37.0
@@ -1112,8 +1018,6 @@ outcome==1.3.0.post0
     # via
     #   trio
     #   trio-websocket
-outlines-core==0.2.11
-    # via vllm
 owlrl==7.1.4
     # via pyshacl
 oxylabs==2.0.0
@@ -1139,7 +1043,6 @@ packaging==25.0
     #   langchain-core
     #   langsmith
     #   lazy-loader
-    #   lm-format-enforcer
     #   marshmallow
     #   matplotlib
     #   mkdocs
@@ -1154,7 +1057,6 @@ packaging==25.0
     #   pyshacl
     #   pytest
     #   qwen-vl-utils
-    #   ray
     #   scikit-image
     #   spacy
     #   strawberry-graphql
@@ -1167,12 +1069,9 @@ paginate==0.5.7
 pandas==2.3.3
     # via
     #   datasets
-    #   doclayout-yolo
-    #   docling
     #   docling-core
     #   geopandas
     #   pyserini
-    #   seaborn
     #   unstructured-inference
 pandera==0.26.1
     # via -r requirements.in
@@ -1180,8 +1079,6 @@ pandocfilters==1.5.1
     # via nbconvert
 parso==0.8.5
     # via jedi
-partial-json-parser==0.2.1.1.post6
-    # via vllm
 passlib==1.7.4
     # via -r requirements.in
 pathlib-abc==0.5.1
@@ -1211,16 +1108,12 @@ pikepdf==9.11.0
     # via -r requirements.in
 pillow==11.3.0
     # via
-    #   doclayout-yolo
-    #   docling
     #   docling-core
-    #   docling-ibm-models
     #   docling-parse
     #   easyocr
     #   imageio
     #   llama-index-core
     #   matplotlib
-    #   mistral-common
     #   pdf2image
     #   pdfplumber
     #   pi-heif
@@ -1235,14 +1128,16 @@ pillow==11.3.0
     #   torchvision
     #   ultralytics
     #   unstructured-pytesseract
-    #   vllm
 pint==0.25
+    # via -r requirements.in
+pip-tools==7.5.1
     # via -r requirements.in
 platformdirs==4.5.0
     # via
     #   banks
     #   black
     #   jupyter-core
+    #   llama-index-core
     #   mkdocs-get-deps
     #   pint
     #   requests-cache
@@ -1254,7 +1149,6 @@ plotly==6.3.1
     # via dash
 pluggy==1.6.0
     # via
-    #   docling
     #   pytest
     #   pytest-cov
 polars==1.34.0
@@ -1262,7 +1156,7 @@ polars==1.34.0
 polars-runtime-32==1.34.0
     # via polars
 polyfactory==2.22.2
-    # via docling
+    # via -r requirements.in
 portalocker==3.2.0
     # via qdrant-client
 pre-commit==4.3.0
@@ -1274,12 +1168,7 @@ preshed==3.0.10
 prettytable==3.16.0
     # via pyshacl
 prometheus-client==0.23.1
-    # via
-    #   jupyter-server
-    #   prometheus-fastapi-instrumentator
-    #   vllm
-prometheus-fastapi-instrumentator==7.1.0
-    # via vllm
+    # via jupyter-server
 prompt-toolkit==3.0.52
     # via
     #   ipython
@@ -1307,17 +1196,13 @@ protobuf==6.32.1
     #   onnxruntime
     #   proto-plus
     #   qdrant-client
-    #   ray
-    #   vllm
 psutil==7.1.0
     # via
     #   accelerate
-    #   doclayout-yolo
     #   ipykernel
     #   nmslib-metabrainz
     #   ultralytics
     #   unstructured
-    #   vllm
 psycopg2-binary==2.9.11
     # via dagster-postgres
 ptyprocess==0.7.0
@@ -1326,10 +1211,6 @@ ptyprocess==0.7.0
     #   terminado
 pure-eval==0.2.3
     # via stack-data
-py-cpuinfo==9.0.0
-    # via
-    #   doclayout-yolo
-    #   vllm
 pyalex==0.18
     # via -r requirements.in
 pyarrow==21.0.0
@@ -1341,8 +1222,6 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pybase64==1.4.2
-    # via vllm
 pybind11==3.0.1
     # via nmslib-metabrainz
 pybreaker==1.4.1
@@ -1352,9 +1231,7 @@ pyclipper==1.3.0.post6
 pycocotools==2.0.10
     # via effdet
 pycountry==24.6.1
-    # via
-    #   -r requirements.in
-    #   pydantic-extra-types
+    # via -r requirements.in
 pycparser==2.23
     # via cffi
 pycryptodome==3.23.0
@@ -1363,12 +1240,9 @@ pydantic[email]==2.12.0
     # via
     #   albumentations
     #   banks
-    #   compressed-tensors
     #   confection
     #   dagster-shared
-    #   docling
     #   docling-core
-    #   docling-ibm-models
     #   docling-parse
     #   fastapi
     #   fastapi-cloud-cli
@@ -1379,29 +1253,20 @@ pydantic[email]==2.12.0
     #   llama-index-core
     #   llama-index-instrumentation
     #   llama-index-workflows
-    #   lm-format-enforcer
     #   mcp
-    #   mistral-common
     #   openai
-    #   openai-harmony
     #   pandera
     #   pdftext
-    #   pydantic-extra-types
     #   pydantic-settings
     #   qdrant-client
     #   spacy
     #   thinc
     #   unstructured-client
-    #   vllm
     #   weasel
-    #   xgrammar
 pydantic-core==2.41.1
     # via pydantic
-pydantic-extra-types[pycountry]==2.10.6
-    # via mistral-common
 pydantic-settings==2.11.0
     # via
-    #   docling
     #   mcp
     #   pdftext
 pydocstyle==6.3.0
@@ -1421,7 +1286,7 @@ pygments==2.19.2
 pyjnius==1.7.0
     # via pyserini
 pylatexenc==2.10
-    # via docling
+    # via -r requirements.in
 pymdown-extensions==10.16.1
     # via
     #   mkdocs-material
@@ -1438,14 +1303,15 @@ pypdf==6.1.1
     # via unstructured-client
 pypdfium2==4.30.0
     # via
-    #   docling
     #   pdfplumber
     #   pdftext
     #   unstructured-inference
 pyproj==3.7.2
     # via geopandas
 pyproject-hooks==1.2.0
-    # via build
+    # via
+    #   build
+    #   pip-tools
 pyrate-limiter==3.9.0
     # via schemathesis
 pysbd==0.3.4
@@ -1490,7 +1356,7 @@ python-dateutil==2.9.0.post0
     #   pandas
     #   strawberry-graphql
 python-docx==1.2.0
-    # via docling
+    # via -r requirements.in
 python-dotenv==1.1.1
     # via
     #   colbert-ai
@@ -1504,20 +1370,17 @@ python-iso639==2025.2.18
 python-jose==3.5.0
     # via -r requirements.in
 python-json-logger==4.0.0
-    # via
-    #   jupyter-events
-    #   vllm
+    # via jupyter-events
 python-magic==0.4.27
     # via unstructured
 python-multipart==0.0.20
     # via
-    #   fastapi
     #   mcp
     #   unstructured-inference
 python-oxmsg==0.0.2
     # via unstructured
 python-pptx==1.0.2
-    # via docling
+    # via -r requirements.in
 pytokens==0.1.10
     # via black
 pytz==2025.2
@@ -1532,16 +1395,13 @@ pyyaml==6.0.3
     #   albumentations
     #   dagster-shared
     #   datasets
-    #   doclayout-yolo
     #   docling-core
     #   easyocr
-    #   gguf
     #   huggingface-hub
     #   jupyter-events
     #   langchain
     #   langchain-core
     #   llama-index-core
-    #   lm-format-enforcer
     #   mkdocs
     #   mkdocs-get-deps
     #   omegaconf
@@ -1551,13 +1411,11 @@ pyyaml==6.0.3
     #   pymdown-extensions
     #   pyserini
     #   pyyaml-env-tag
-    #   ray
     #   schemathesis
     #   timm
     #   transformers
     #   ultralytics
     #   uvicorn
-    #   vllm
 pyyaml-env-tag==1.1
     # via mkdocs
 pyzmq==27.1.0
@@ -1566,7 +1424,6 @@ pyzmq==27.1.0
     #   jupyter-client
     #   jupyter-console
     #   jupyter-server
-    #   vllm
 qdrant-client==1.15.1
     # via -r requirements.in
 quantulum3==0.9.2
@@ -1581,8 +1438,6 @@ rapidfuzz==3.14.1
     # via
     #   unstructured
     #   unstructured-inference
-ray[cgraph]==2.49.2
-    # via vllm
 rdflib[html]==7.2.1
     # via
     #   owlrl
@@ -1601,7 +1456,6 @@ regex==2025.9.18
     #   syntok
     #   tiktoken
     #   transformers
-    #   vllm
 reportlab==4.4.4
     # via -r requirements.in
 requests==2.32.5
@@ -1609,8 +1463,6 @@ requests==2.32.5
     #   dagster
     #   dash
     #   datasets
-    #   doclayout-yolo
-    #   docling
     #   feedfinder2
     #   firecrawl-py
     #   google-api-core
@@ -1620,7 +1472,6 @@ requests==2.32.5
     #   langchain
     #   langsmith
     #   llama-index-core
-    #   mistral-common
     #   mkdocs-material
     #   modelscope
     #   openlineage-python
@@ -1631,7 +1482,6 @@ requests==2.32.5
     #   pyserini
     #   qwen-vl-utils
     #   rapid-table
-    #   ray
     #   requests-cache
     #   requests-file
     #   requests-toolbelt
@@ -1645,7 +1495,6 @@ requests==2.32.5
     #   transformers
     #   ultralytics
     #   unstructured
-    #   vllm
     #   weasel
     #   zeep
 requests-cache==1.2.1
@@ -1701,18 +1550,13 @@ rsa==4.9.1
     # via
     #   google-auth
     #   python-jose
-rtree==1.4.1
-    # via
-    #   docling
-    #   docling-ibm-models
 ruff==0.14.0
     # via -r requirements.in
 s3transfer==0.14.0
     # via boto3
-safetensors[numpy,torch]==0.6.2
+safetensors==0.6.2
     # via
     #   accelerate
-    #   docling-ibm-models
     #   timm
     #   transformers
 schemathesis==4.2.1
@@ -1728,8 +1572,6 @@ scipy==1.16.2
     # via
     #   albumentations
     #   colbert-ai
-    #   doclayout-yolo
-    #   docling
     #   easyocr
     #   hdbscan
     #   pyserini
@@ -1738,28 +1580,19 @@ scipy==1.16.2
     #   sentence-transformers
     #   ultralytics
     #   unstructured-inference
-    #   vllm
     #   xgboost
-seaborn==0.13.2
-    # via doclayout-yolo
 selenium==4.36.0
     # via -r requirements.in
 semchunk==2.2.2
-    # via
-    #   -r requirements.in
-    #   docling-core
+    # via -r requirements.in
 send2trash==1.8.3
     # via jupyter-server
 sentence-transformers==5.1.1
     # via -r requirements.in
 sentencepiece==0.2.1
-    # via
-    #   pyserini
-    #   vllm
+    # via pyserini
 sentry-sdk==2.41.0
     # via fastapi-cloud-cli
-setproctitle==1.3.7
-    # via vllm
 sgmllib3k==1.0.0
     # via feedparser
 shapely==2.1.2
@@ -1781,7 +1614,6 @@ six==1.17.0
     #   markdownify
     #   python-dateutil
     #   rfc3339-validator
-    #   vllm
 smart-open==7.3.1
     # via weasel
 smmap==5.0.2
@@ -1797,16 +1629,8 @@ sortedcontainers==2.4.0
     # via
     #   hypothesis
     #   trio
-soundfile==0.13.1
-    # via
-    #   -r requirements.in
-    #   mistral-common
 soupsieve==2.8
     # via beautifulsoup4
-soxr==1.0.0
-    # via
-    #   -r requirements.in
-    #   mistral-common
 spacy==3.8.7
     # via -r requirements.in
 spacy-legacy==3.0.12
@@ -1837,7 +1661,6 @@ starlette==0.48.0
     # via
     #   fastapi
     #   mcp
-    #   prometheus-fastapi-instrumentator
     #   starlette-testclient
 starlette-testclient==0.4.1
     # via schemathesis
@@ -1872,7 +1695,7 @@ terminado==0.18.1
 thinc==8.3.6
     # via spacy
 thop==0.1.1.post2209072238
-    # via doclayout-yolo
+    # via -r requirements.in
 threadpoolctl==3.6.0
     # via scikit-learn
 thrift==0.22.0
@@ -1882,9 +1705,7 @@ tifffile==2025.10.4
 tiktoken==0.12.0
     # via
     #   llama-index-core
-    #   mistral-common
     #   pyserini
-    #   vllm
 timm==1.0.20
     # via
     #   effdet
@@ -1896,9 +1717,7 @@ tinycss2==1.4.0
 tldextract==5.3.0
     # via -r requirements.in
 tokenizers==0.22.1
-    # via
-    #   transformers
-    #   vllm
+    # via transformers
 tomli==2.3.0
     # via
     #   dagster
@@ -1910,36 +1729,23 @@ toposort==1.10
 torch==2.8.0
     # via
     #   accelerate
-    #   compressed-tensors
-    #   doclayout-yolo
-    #   docling-ibm-models
     #   easyocr
     #   effdet
     #   fast-pytorch-kmeans
     #   pyserini
-    #   safetensors
     #   sentence-transformers
     #   thop
     #   timm
-    #   torchaudio
     #   torchvision
     #   ultralytics
     #   ultralytics-thop
     #   unstructured-inference
-    #   vllm
-    #   xformers
-    #   xgrammar
-torchaudio==2.8.0
-    # via vllm
 torchvision==0.23.0
     # via
-    #   doclayout-yolo
-    #   docling-ibm-models
     #   easyocr
     #   effdet
     #   timm
     #   ultralytics
-    #   vllm
 tornado==6.5.2
     # via
     #   ipykernel
@@ -1953,10 +1759,6 @@ tqdm==4.67.1
     #   colbert-ai
     #   dagster
     #   datasets
-    #   doclayout-yolo
-    #   docling
-    #   docling-ibm-models
-    #   gguf
     #   huggingface-hub
     #   llama-index-core
     #   modelscope
@@ -1970,7 +1772,6 @@ tqdm==4.67.1
     #   spacy
     #   transformers
     #   unstructured
-    #   vllm
 traitlets==5.14.3
     # via
     #   ipykernel
@@ -1989,14 +1790,9 @@ traitlets==5.14.3
 transformers==4.57.0
     # via
     #   colbert-ai
-    #   compressed-tensors
-    #   docling-core
-    #   docling-ibm-models
     #   pyserini
     #   sentence-transformers
     #   unstructured-inference
-    #   vllm
-    #   xgrammar
 trio==0.31.0
     # via
     #   selenium
@@ -2004,16 +1800,13 @@ trio==0.31.0
 trio-websocket==0.12.2
     # via selenium
 triton==3.4.0
-    # via
-    #   torch
-    #   xgrammar
+    # via torch
 typeguard==4.4.4
     # via
     #   inflect
     #   pandera
 typer==0.19.2
     # via
-    #   docling
     #   docling-core
     #   fastapi-cli
     #   fastapi-cloud-cli
@@ -2066,7 +1859,6 @@ typing-extensions==4.15.0
     #   llama-index-core
     #   llama-index-workflows
     #   minio
-    #   mistral-common
     #   mypy
     #   onnx
     #   openai
@@ -2078,7 +1870,6 @@ typing-extensions==4.15.0
     #   polyfactory
     #   pydantic
     #   pydantic-core
-    #   pydantic-extra-types
     #   pyee
     #   pytest-asyncio
     #   python-docx
@@ -2098,8 +1889,6 @@ typing-extensions==4.15.0
     #   typing-inspect
     #   typing-inspection
     #   unstructured
-    #   vllm
-    #   xgrammar
 typing-inspect==0.9.0
     # via
     #   dataclasses-json
@@ -2152,7 +1941,6 @@ urllib3[socks]==2.5.0
     #   sentry-sdk
 uvicorn[standard]==0.37.0
     # via
-    #   fastapi
     #   fastapi-cli
     #   fastapi-cloud-cli
     #   mcp
@@ -2161,10 +1949,8 @@ uvloop==0.21.0
     # via
     #   -r requirements.in
     #   uvicorn
-virtualenv==20.35.1
+virtualenv==20.35.2
     # via pre-commit
-vllm==0.11.0
-    # via -r requirements.in
 voyager==2.1.0
     # via -r requirements.in
 wasabi==1.1.3
@@ -2178,8 +1964,8 @@ watchdog==6.0.0
     #   mkdocs
 watchfiles==1.1.0
     # via
+    #   -r requirements.in
     #   uvicorn
-    #   vllm
 wcwidth==0.2.14
     # via
     #   ftfy
@@ -2210,7 +1996,7 @@ werkzeug==3.1.3
     #   flask
     #   schemathesis
 wheel==0.45.1
-    # via -r requirements.in
+    # via pip-tools
 widgetsnbextension==4.0.14
     # via ipywidgets
 wrapt==1.17.3
@@ -2224,12 +2010,8 @@ wrapt==1.17.3
     #   unstructured
 wsproto==1.2.0
     # via trio-websocket
-xformers==0.0.32.post1
-    # via vllm
 xgboost==3.0.5
     # via -r requirements.in
-xgrammar==0.1.25
-    # via vllm
 xlrd==2.0.2
     # via -r requirements.in
 xlsxwriter==3.2.9

@@ -655,6 +655,8 @@ pillow==11.3.0
     #   unstructured-pytesseract
 docling[vlm]==2.0.0
     # via -r requirements.in
+docling-core==2.0.0
+    # via -r requirements.in
 pint==0.25
     # via -r requirements.in
 pip-check-reqs==2.5.5
@@ -704,7 +706,7 @@ ptyprocess==0.7.0
     # via terminado
 pure-eval==0.2.3
     # via -r requirements.in
-pyarrow==21.0.0
+pyarrow==16.1.0
     # via datasets
 pyasn1==0.6.1
     # via pyasn1-modules
@@ -1041,7 +1043,7 @@ triton==3.4.0
     # via torch
 typeguard==4.4.4
     # via pandera
-typer==0.19.2
+typer==0.12.5
     # via weasel
 types-awscrt==0.27.6
     # via botocore-stubs

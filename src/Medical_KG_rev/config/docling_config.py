@@ -12,7 +12,7 @@ except Exception:  # pragma: no cover - fall back when PyYAML missing
     yaml = None  # type: ignore[assignment]
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "docling_vlm.yaml"
-DEFAULT_MODEL_PATH = Path("/models/gemma3-12b")
+DEFAULT_MODEL_PATH = Path("/models/docling-vlm")
 DEFAULT_MODEL_NAME = "google/gemma-3-12b-it"
 
 

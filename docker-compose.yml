@@ -72,24 +72,18 @@ services:
             timeout: 10s
             retries: 5
 
-    vllm-server:
-        image: vllm/vllm-openai:v0.11.0
-        command:
-            - --model
-            - opendatalab/MinerU2.5-2509-1.2B
-            - --host
-            - "0.0.0.0"
-            - --port
-            - "8000"
-            - --gpu-memory-utilization
-            - "0.75"
-            - --max-model-len
-            - "8192"
-            - --tensor-parallel-size
-            - "1"
-            - --dtype
-            - auto
-            - --trust-remote-code
+    docling-vlm:
+        build:
+            context: .
+            dockerfile: ops/docker/Dockerfile.docling-vlm
+        image: medical-kg/docling-vlm:latest
+        environment:
+            MK_DOCLING_VLM__MODEL_PATH: /models/docling-vlm
+            MK_DOCLING_VLM__GPU_MEMORY_FRACTION: "0.95"
+            MK_DOCLING_VLM__MAX_MODEL_LEN: "4096"
+            MK_DOCLING_VLM__RETRY_ATTEMPTS: "3"
+            MK_FEATURE_FLAGS__PDF_PROCESSING_BACKEND: docling_vlm
+            CUDA_VISIBLE_DEVICES: "0"
         deploy:
             resources:
                 reservations:
@@ -97,53 +91,20 @@ services:
                         - driver: nvidia
                           count: 1
                           capabilities: [gpu]
+                          options:
+                              memory: 24000M
+        networks:
+            - medical-kg-net
         ports:
             - "8000:8000"
         volumes:
-            - ~/.cache/huggingface:/root/.cache/huggingface:ro
+            - docling-vlm-cache:/models/docling-vlm
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
             interval: 30s
             timeout: 10s
             retries: 3
             start_period: 120s
-        ipc: host
-        ulimits:
-            memlock: -1
-            stack: 67108864
-        networks:
-            - medical-kg-net
-
-    mineru-worker:
-        build:
-            context: .
-            dockerfile: ops/docker/Dockerfile.mineru-worker
-        image: medical-kg/mineru-worker:latest
-        environment:
-            MK_MINERU__VLLM_SERVER__BASE_URL: http://vllm-server:8000
-            MK_MINERU__WORKERS__BACKEND: vlm-http-client
-            MK_MINERU__HTTP_CLIENT__CONNECTION_POOL_SIZE: "10"
-            MK_MINERU__HTTP_CLIENT__KEEPALIVE_CONNECTIONS: "5"
-            MK_MINERU__HTTP_CLIENT__RETRY_ATTEMPTS: "3"
-            MK_DOCLING_VLM__MODEL_PATH: /models/gemma3-12b
-            MK_DOCLING_VLM__GPU_MEMORY_FRACTION: "0.95"
-            MK_DOCLING_VLM__MAX_MODEL_LEN: "4096"
-            MK_DOCLING_VLM__RETRY_ATTEMPTS: "3"
-            MK_FEATURE_FLAGS__PDF_PROCESSING_BACKEND: docling_vlm
-            PYTHONPATH: /app
-        depends_on:
-            vllm-server:
-                condition: service_healthy
-        networks:
-            - medical-kg-net
-        healthcheck:
-            test:
-                ["CMD", "python", "-c", "import Medical_KG_rev.services.mineru"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-        volumes:
-            - gemma3-cache:/models/gemma3-12b
 
     vllm-qwen3:
         build:
@@ -168,7 +129,7 @@ services:
 
 volumes:
     neo4j-data:
-    gemma3-cache:
+    docling-vlm-cache:
 
 networks:
     default:

@@ -7,8 +7,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential curl && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        ffmpeg \
+        git \
+        libgl1 \
+        libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
+
+ENV HUGGINGFACE_HUB_CACHE=/models/gemma3-12b \
+    TRANSFORMERS_CACHE=/models/gemma3-12b \
+    DOCLING_VLM_MODEL_DIR=/models/gemma3-12b
+
+RUN mkdir -p /models/gemma3-12b
 
 COPY pyproject.toml poetry.lock* requirements.txt requirements-dev.txt ./
 

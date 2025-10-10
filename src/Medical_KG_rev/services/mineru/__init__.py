@@ -1,104 +1,36 @@
-"""MinerU GPU microservice implementation.
+"""Legacy MinerU implementation (archived)."""
 
-This module provides the MinerU GPU microservice implementation for
-processing PDF documents using GPU-accelerated layout analysis and
-text extraction. It includes the main service classes, request/response
-models, and custom exceptions.
+from __future__ import annotations
 
-Key Components:
-    - MineruGrpcService: gRPC service implementation
-    - MineruProcessor: Core PDF processing engine
-    - MineruRequest/Response: Request and response models
-    - Custom exceptions for error handling
+import importlib
+import warnings
+from types import ModuleType
+from typing import Any
 
-Responsibilities:
-    - Provide gRPC interface for PDF processing
-    - Coordinate GPU-accelerated document analysis
-    - Handle request/response serialization
-    - Manage GPU resource allocation and cleanup
-    - Provide error handling and recovery
+warnings.warn(
+    "The MinerU service package is archived and will be removed in a future release. "
+    "Switch to Docling VLM services.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-Collaborators:
-    - gRPC framework for service interface
-    - GPU drivers for hardware acceleration
-    - MinerU CLI for document processing
-    - Object storage for asset management
+_archive_module: ModuleType | None = None
 
-Side Effects:
-    - Allocates GPU memory for processing
-    - Creates temporary files during processing
-    - May raise exceptions for GPU/resource issues
 
-Thread Safety:
-    - Thread-safe: Service instances handle concurrent requests
-    - GPU operations are serialized per instance
+def _load_archive() -> ModuleType:
+    global _archive_module
+    if _archive_module is None:
+        _archive_module = importlib.import_module("Medical_KG_rev.services.mineru.archive")
+    return _archive_module
 
-Performance Characteristics:
-    - GPU-accelerated processing for large documents
-    - Batch processing support for efficiency
-    - Memory usage scales with document size
-    - Supports concurrent request handling
 
-Example:
-    >>> from Medical_KG_rev.services.mineru import MineruGrpcService
-    >>> service = MineruGrpcService()
-    >>> response = service.ProcessPdf(request)
-    >>> assert response.documents is not None
+def __getattr__(name: str) -> Any:  # pragma: no cover - compatibility shim
+    module = _load_archive()
+    return getattr(module, name)
 
-"""
-
-# ==============================================================================
-# EXPORTS
-# ==============================================================================
 
 __all__ = [
-    "MineruGpuUnavailableError",
-    "MineruGrpcService",
-    "MineruOutOfMemoryError",
-    "MineruProcessor",
-    "MineruRequest",
-    "MineruResponse",
+    name
+    for name in dir(_load_archive())
+    if not name.startswith("_")
 ]
-
-
-# ==============================================================================
-# LAZY IMPORT HELPER
-# ==============================================================================
-
-
-def __getattr__(name: str):  # pragma: no cover - simple lazy import helper
-    """Lazy import helper for module attributes.
-
-    Args:
-        name: Attribute name to import
-
-    Returns:
-        Imported attribute
-
-    Raises:
-        AttributeError: If attribute is not in __all__
-
-    Example:
-        >>> service = __getattr__("MineruGrpcService")
-        >>> assert service is not None
-
-    """
-    if name in __all__:
-        from .service import (
-            MineruGpuUnavailableError,
-            MineruGrpcService,
-            MineruOutOfMemoryError,
-            MineruProcessor,
-            MineruRequest,
-            MineruResponse,
-        )
-
-        return {
-            "MineruGrpcService": MineruGrpcService,
-            "MineruProcessor": MineruProcessor,
-            "MineruRequest": MineruRequest,
-            "MineruResponse": MineruResponse,
-            "MineruOutOfMemoryError": MineruOutOfMemoryError,
-            "MineruGpuUnavailableError": MineruGpuUnavailableError,
-        }[name]
-    raise AttributeError(name)

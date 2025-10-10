@@ -137,6 +137,7 @@ dependencies = [
     "filetype>=1.2.0",
     "magika>=0.6.2",
     "pillow>=11.3.0",
+    "docling[vlm]>=2.0.0",
     "lxml>=6.0.2",
     "beautifulsoup4>=4.14.2",
     "soupsieve>=2.8",

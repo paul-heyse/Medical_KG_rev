@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .docling_config import (
+    DEFAULT_CONFIG_PATH as DEFAULT_DOCLING_CONFIG_PATH,
+    DEFAULT_MODEL_NAME as DEFAULT_DOCLING_MODEL_NAME,
+    DEFAULT_MODEL_PATH as DEFAULT_DOCLING_MODEL_PATH,
+    DoclingVLMConfig,
+)
 from .domains import DomainConfig, DomainRegistry
 from .pyserini_config import (
     DEFAULT_PYSERINI_CONFIG,
@@ -27,6 +33,10 @@ from .vllm_config import (
 __all__ = [
     "DEFAULT_PYSERINI_CONFIG",
     "DEFAULT_VLLM_CONFIG",
+    "DEFAULT_DOCLING_CONFIG_PATH",
+    "DEFAULT_DOCLING_MODEL_NAME",
+    "DEFAULT_DOCLING_MODEL_PATH",
+    "DoclingVLMConfig",
     "DomainConfig",
     "DomainRegistry",
     "PyseriniConfig",

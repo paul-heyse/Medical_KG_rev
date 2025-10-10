@@ -653,6 +653,8 @@ pillow==11.3.0
     #   pi-heif
     #   torchvision
     #   unstructured-pytesseract
+docling[vlm]==2.0.0
+    # via -r requirements.in
 pint==0.25
     # via -r requirements.in
 pip-check-reqs==2.5.5

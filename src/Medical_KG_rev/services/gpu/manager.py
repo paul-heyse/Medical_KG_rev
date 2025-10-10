@@ -97,6 +97,16 @@ class GpuManager:
     def get_device(self) -> GpuDevice:
         return self._select_device()
 
+    def assert_total_memory(self, required_mb: int) -> GpuDevice:
+        """Ensure the cached GPU satisfies the requested total memory budget."""
+        device = self.get_device()
+        if required_mb > 0 and device.total_memory_mb < required_mb:
+            raise GpuNotAvailableError(
+                f"Selected GPU has insufficient total memory: "
+                f"required {required_mb} MB, found {device.total_memory_mb} MB"
+            )
+        return device
+
     # ------------------------------------------------------------------
     # Memory and utilization helpers
     # ------------------------------------------------------------------
@@ -154,11 +164,15 @@ class GpuManager:
         service_name: str,
         *,
         required_memory_mb: int = 0,
+        required_total_memory_mb: int | None = None,
         warmup: bool = False,
     ) -> Iterator[GpuDevice]:
         """Context manager that reserves the GPU for a microservice call."""
         lib = self._ensure_torch()
-        device = self.get_device()
+        if required_total_memory_mb is not None:
+            device = self.assert_total_memory(required_total_memory_mb)
+        else:
+            device = self.get_device()
         self._require_memory(lib, device, required_memory_mb)
         previous = lib.cuda.current_device() if lib.cuda.is_initialized() else None
         try:

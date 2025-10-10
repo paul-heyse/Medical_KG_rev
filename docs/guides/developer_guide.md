@@ -58,6 +58,15 @@ graph TD
 - **Storage**: Multi-database storage strategy
 - **Indexing**: Search index creation and maintenance
 
+##### Docling Vision-Language Stage
+
+- **Service**: `DoclingVLMService` wraps Gemma3 12B for PDF understanding and replaces MinerU.
+- **Configuration**: Set `DOCLING_VLM_MODEL_PATH`, `DOCLING_VLM_MODEL_NAME`, and `DOCLING_VLM_GPU_MEMORY_FRACTION` in `.env`.
+- **GPU Health**: `/health/docling` reports cache availability and GPU readiness.
+- **APIs**: REST (`POST /v1/pdf/docling/process`) and gRPC (`ProcessPdf`) expose synchronous processing for tools.
+- **Observability**: Metrics `docling_vlm_processing_seconds`, `docling_vlm_gpu_memory_mb`, and new tracing spans
+  (`docling_vlm.process_pdf`) feed dashboards and alerts.
+
 #### Knowledge Graph Engine
 
 - **Graph database**: Neo4j for relationship storage
@@ -790,6 +799,22 @@ message Document {
 }
 ```
 
+#### Regenerating gRPC Stubs
+
+After editing `src/Medical_KG_rev/proto/mineru.proto` (Docling PDF processing RPCs live here while we complete renaming), regenerate Python stubs and the FastAPI gateway bindings:
+
+```bash
+buf generate
+python -m grpc_tools.protoc \
+  --proto_path=src/Medical_KG_rev/proto \
+  --python_out=src/Medical_KG_rev/proto \
+  --grpc_python_out=src/Medical_KG_rev/proto \
+  src/Medical_KG_rev/proto/mineru.proto
+python scripts/update_graphql_schema.py  # keeps API docs in sync
+```
+
+Commit generated files (`*_pb2.py`, `*_pb2_grpc.py`) alongside the proto change. CI runs `buf lint` and `buf breaking` to guard against incompatible changes, so run `scripts/run_buf_checks.sh` locally before opening a PR.
+
 #### gRPC Server Implementation
 
 ```python
@@ -1166,6 +1191,10 @@ class GraphDatabase:
 ```
 
 ## Testing Strategy
+
+Docling introduces dedicated unit, integration, performance, and contract tests. New suites live under
+`tests/services/parsing/test_docling_vlm_service.py`, `tests/integration/test_docling_vlm_pipeline.py`,
+`tests/performance/test_vlm_vs_ocr_benchmark.py`, and `tests/contract/test_pdf_processing_api.py`.
 
 ### Test Structure
 

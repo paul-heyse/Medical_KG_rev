@@ -690,12 +690,14 @@ class PdfGateState:
 
     downloaded: bool = False
     ir_ready: bool = False
+    vlm_ready: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "downloaded": self.downloaded,
             "ir_ready": self.ir_ready,
+            "vlm_ready": self.vlm_ready,
             "metadata": dict(self.metadata),
         }
 
@@ -928,6 +930,7 @@ class PipelineState:
         "ir-validation": ("parse",),
         "pdf-download": ("ingest",),
         "pdf-gate": ("pdf-download",),
+        "pdf-vlm-process": ("pdf-download",),
     }
     _SERIALISATION_CACHE: ClassVar[PipelineStateCache] = PipelineStateCache(ttl_seconds=120.0)
 
@@ -1034,6 +1037,7 @@ class PipelineState:
         clone.pdf_gate = PdfGateState(
             downloaded=self.pdf_gate.downloaded,
             ir_ready=self.pdf_gate.ir_ready,
+            vlm_ready=self.pdf_gate.vlm_ready,
             metadata=copy.deepcopy(self.pdf_gate.metadata),
         )
         clone._dirty = self._dirty
@@ -1570,6 +1574,13 @@ class PipelineState:
         self.metadata.setdefault("pdf", {})["ir_ready"] = True
         self._mark_dirty()
 
+    def mark_pdf_vlm_ready(self, *, metadata: Mapping[str, Any] | None = None) -> None:
+        """Flag the PDF gate as ready for Docling VLM processing."""
+        self.pdf_gate.vlm_ready = True
+        self.pdf_gate.merge_metadata(metadata)
+        self.metadata.setdefault("pdf", {})["vlm_ready"] = True
+        self._mark_dirty()
+
     def reset_pdf_gate(self) -> None:
         """Reset the PDF gate state."""
         self.pdf_gate = PdfGateState()
@@ -1609,6 +1620,7 @@ class PipelineState:
             pdf_gate=PdfGateState(
                 downloaded=self.pdf_gate.downloaded,
                 ir_ready=self.pdf_gate.ir_ready,
+                vlm_ready=self.pdf_gate.vlm_ready,
                 metadata=copy.deepcopy(self.pdf_gate.metadata),
             ),
         )
@@ -1644,6 +1656,7 @@ class PipelineState:
         self.pdf_gate = PdfGateState(
             downloaded=snapshot.pdf_gate.downloaded,
             ir_ready=snapshot.pdf_gate.ir_ready,
+            vlm_ready=snapshot.pdf_gate.vlm_ready,
             metadata=copy.deepcopy(snapshot.pdf_gate.metadata),
         )
         self._mark_dirty()
@@ -2060,6 +2073,7 @@ class PipelineState:
             self.pdf_gate = PdfGateState(
                 downloaded=bool(pdf_payload.get("downloaded", False)),
                 ir_ready=bool(pdf_payload.get("ir_ready", False)),
+                vlm_ready=bool(pdf_payload.get("vlm_ready", False)),
                 metadata=dict(pdf_payload.get("metadata", {})),
             )
         else:
@@ -2260,6 +2274,13 @@ class GateStage(Protocol):
     def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision: ...
 
 
+@runtime_checkable
+class VlmProcessingStage(Protocol):
+    """Process downloaded PDFs into the Document IR using a VLM backend."""
+
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document | None: ...
+
+
 __all__ = [
     "ChunkStage",
     "DownloadArtifact",
@@ -2283,4 +2304,5 @@ __all__ = [
     "RawPayload",
     "StageContext",
     "StageResultSnapshot",
+    "VlmProcessingStage",
 ]

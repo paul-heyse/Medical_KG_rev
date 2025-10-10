@@ -13,6 +13,7 @@ from typing import Any, Literal
 from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .docling_config import DoclingVLMConfig
 
 class Environment(str, Enum):
     """Deployment environments supported by the platform."""
@@ -279,6 +280,35 @@ class PMCSettings(BaseModel):
         return self.pdf.polite_headers()
 
 
+class DoclingVLMSettings(BaseModel):
+    """Pydantic wrapper exposing Docling VLM configuration via settings."""
+
+    model_path: Path = Field(default=Path("/models/gemma3-12b"))
+    model_name: str = Field(default="google/gemma-3-12b-it")
+    batch_size: int = Field(default=8, ge=1)
+    timeout_seconds: int = Field(default=300, ge=1)
+    retry_attempts: int = Field(default=3, ge=0)
+    gpu_memory_fraction: float = Field(default=0.95, gt=0.0, le=1.0)
+    max_model_len: int = Field(default=4096, ge=1)
+    device: str = Field(default="cuda")
+    warmup_prompts: int = Field(default=1, ge=0)
+    required_total_memory_mb: int = Field(default=24 * 1024, ge=1)
+
+    def as_config(self) -> DoclingVLMConfig:
+        return DoclingVLMConfig(
+            model_path=self.model_path,
+            model_name=self.model_name,
+            batch_size=self.batch_size,
+            timeout_seconds=self.timeout_seconds,
+            retry_attempts=self.retry_attempts,
+            gpu_memory_fraction=self.gpu_memory_fraction,
+            max_model_len=self.max_model_len,
+            device=self.device,
+            warmup_prompts=self.warmup_prompts,
+            required_total_memory_mb=self.required_total_memory_mb,
+        )
+
+
 class MineruCircuitBreakerSettings(BaseModel):
     """Circuit breaker thresholds for the MinerU vLLM client."""
 
@@ -349,10 +379,14 @@ class VaultSettings(BaseModel):
 class FeatureFlagSettings(BaseModel):
     """Dynamic feature flag configuration."""
 
+    pdf_processing_backend: Literal["mineru", "docling_vlm"] = "mineru"
     flags: dict[str, bool] = Field(default_factory=dict)
 
     def is_enabled(self, name: str) -> bool:
-        return self.flags.get(name.lower(), False)
+        lowered = name.lower()
+        if lowered == "pdf_processing_backend:docling_vlm":
+            return self.pdf_processing_backend == "docling_vlm"
+        return self.flags.get(lowered, False)
 
 
 class OAuthProvider(str, Enum):
@@ -712,6 +746,7 @@ class AppSettings(BaseSettings):
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
+    docling_vlm: DoclingVLMSettings = Field(default_factory=DoclingVLMSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)
     feature_flags: FeatureFlagSettings = Field(default_factory=FeatureFlagSettings)
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)

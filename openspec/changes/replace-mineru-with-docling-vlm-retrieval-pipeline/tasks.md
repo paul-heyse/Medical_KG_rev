@@ -1,6 +1,6 @@
 ## 1. Infrastructure and Dependencies
 
-- [ ] 1.1 Add core Docling and retrieval dependencies to requirements.in
+- [x] 1.1 Add core Docling and retrieval dependencies to requirements.in
       - Add `docling-core>=2.0.0` for core Docling functionality (repo)
       - Add `transformers>=4.36.0` for model loading and inference
       - Add `faiss-cpu>=1.12.0` for vector similarity search
@@ -8,7 +8,7 @@
       - Add `duckdb>=1.4.1` for chunk store database
       - Run `pip-compile requirements.in` to update requirements.txt
 
-- [ ] 1.2 Update Docker configuration for Docling VLM service
+- [x] 1.2 Update Docker configuration for Docling VLM service
       - Modify `Dockerfile` to install docling[vlm]>=2.0.0 and vllm>=0.11.0
       - Add CUDA 12.1+ support for Gemma3 12B requirements
       - Configure model cache directory `/models/docling-vlm`
@@ -17,21 +17,21 @@
       - Include torch>=2.1.0 with CUDA support in Docker
       - Create `ops/docker/docling_vlm_dockerfile.py` for Docker setup
 
-- [ ] 1.3 Configure GPU memory allocation for Docling VLM (requires ~24GB VRAM)
+- [x] 1.3 Configure GPU memory allocation for Docling VLM (requires ~24GB VRAM)
       - Update `config/gpu.yaml` with Docling VLM memory requirements
       - Set `gpu_memory_fraction: 0.95` for Docling VLM processing
       - Configure `max_model_len: 4096` for document processing
       - Add GPU health check that verifies 24GB+ available memory
       - Update GPU manager to handle Docling VLM resource requirements
 
-- [ ] 1.4 Set up model download and caching for Docling VLM
+- [x] 1.4 Set up model download and caching for Docling VLM
       - Create `/models/docling-vlm/` directory structure
       - Add model download script in `ops/docker/docling_vlm_setup.py`
       - Configure huggingface_hub for authenticated model downloads
       - Set up model validation after download
       - Add model warm-up procedures for consistent performance
 
-- [ ] 1.5 Update health checks to verify Docling VLM availability
+- [x] 1.5 Update health checks to verify Docling VLM availability
       - Modify `src/Medical_KG_rev/services/gpu/manager.py` health check
       - Add Docling VLM model loading verification in health endpoint
       - Update `/health` endpoint to check VLM model availability
@@ -40,7 +40,7 @@
 
 ## 2. Configuration Management
 
-- [ ] 2.1 Create Docling VLM configuration class in `src/Medical_KG_rev/config/`
+- [x] 2.1 Create Docling VLM configuration class in `src/Medical_KG_rev/config/`
       - Create `src/Medical_KG_rev/config/docling_vlm_config.py` with DoclingVLMConfig class
       - Include model_name, model_cache_dir, batch_size, timeout, retry_attempts
       - Add GPU memory allocation and model warm-up settings

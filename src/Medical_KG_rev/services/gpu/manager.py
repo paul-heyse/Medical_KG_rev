@@ -113,9 +113,7 @@ class GpuManager:
     def _require_memory(self, lib, device: GpuDevice, required_mb: int) -> None:
         if required_mb <= 0:
             return
-        with lib.cuda.device(device.index):
-            free_bytes, total_bytes = self._memory_info(lib)
-        free_mb = int(free_bytes / (1024 * 1024))
+        free_mb = self.available_memory_mb(device=device, lib=lib)
         if free_mb < required_mb:
             raise GpuNotAvailableError(
                 f"Insufficient GPU memory: required {required_mb} MB, available {free_mb} MB"
@@ -129,6 +127,27 @@ class GpuManager:
         total = lib.cuda.get_device_properties(device_index).total_memory
         allocated = lib.cuda.memory_allocated(device_index)
         return total - allocated, total
+
+    def available_memory_mb(self, device: GpuDevice | None = None, lib=None) -> int:
+        """Return the currently available free memory in megabytes."""
+        cuda_lib = lib or self._ensure_torch()
+        target = device or self.get_device()
+        with cuda_lib.cuda.device(target.index):
+            free_bytes, _ = self._memory_info(cuda_lib)
+        return int(free_bytes / (1024 * 1024))
+
+    def assert_available_memory(
+        self, required_free_mb: int, *, device: GpuDevice | None = None
+    ) -> int:
+        """Ensure the GPU has at least the requested free memory available."""
+        if required_free_mb <= 0:
+            return self.available_memory_mb(device)
+        free_mb = self.available_memory_mb(device)
+        if free_mb < required_free_mb:
+            raise GpuNotAvailableError(
+                f"Insufficient free GPU memory: required {required_free_mb} MB, available {free_mb} MB"
+            )
+        return free_mb
 
     def _record_metrics(self, service_name: str, device: GpuDevice, lib) -> None:
         device_label = f"cuda:{device.index}"

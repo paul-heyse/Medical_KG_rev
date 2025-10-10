@@ -111,7 +111,7 @@ MINERU_MAX_LENGTH=4096                 # MinerU maximum length
 MINERU_DEVICE=cuda                     # MinerU device
 
 # Docling Gemma3 VLM Configuration
-DOCLING_VLM_MODEL_PATH=/models/gemma3-12b   # Gemma3 model cache directory
+DOCLING_VLM_MODEL_PATH=/models/docling-vlm   # Gemma3 model cache directory
 DOCLING_VLM_MODEL_NAME=google/gemma-3-12b-it # Hugging Face repository name
 DOCLING_VLM_BATCH_SIZE=8                # Batch size for Docling inference
 DOCLING_VLM_TIMEOUT_SECONDS=300         # Timeout per processing job

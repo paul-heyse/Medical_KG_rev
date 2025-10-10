@@ -219,6 +219,12 @@ def create_app() -> FastAPI:
         health_state = docling_service.health()
         if health_state.get("status") != "ok":
             return failure(str(health_state))
+        available = int(health_state.get("available_memory_mb", 0))
+        required_free = int(docling_config.gpu_memory_fraction * docling_config.required_total_memory_mb)
+        if available < required_free:
+            return failure(
+                f"Docling GPU free memory below threshold: required {required_free} MB, have {available} MB"
+            )
         return success("Docling VLM ready")
 
     app.state.health = HealthService(

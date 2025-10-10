@@ -284,7 +284,7 @@ class PMCSettings(BaseModel):
 class DoclingVLMSettings(BaseModel):
     """Pydantic wrapper exposing Docling VLM configuration via settings."""
 
-    model_path: Path = Field(default=Path("/models/gemma3-12b"))
+    model_path: Path = Field(default=Path("/models/docling-vlm"))
     model_name: str = Field(default="google/gemma-3-12b-it")
     batch_size: int = Field(default=8, ge=1)
     timeout_seconds: int = Field(default=300, ge=1)
@@ -539,7 +539,7 @@ class VaultSettings(BaseModel):
 class FeatureFlagSettings(BaseModel):
     """Dynamic feature flag configuration."""
 
-    pdf_processing_backend: Literal["mineru", "docling_vlm"] = "mineru"
+    pdf_processing_backend: Literal["mineru", "docling_vlm"] = "docling_vlm"
     docling_rollout_percentage: int = Field(default=0, ge=0, le=100)
     retrieval_backend: Literal["bm25", "splade", "qwen3", "hybrid"] = "hybrid"
     retrieval_rollout_percentage: int = Field(default=100, ge=0, le=100)
@@ -553,8 +553,12 @@ class FeatureFlagSettings(BaseModel):
 
     def is_enabled(self, name: str) -> bool:
         lowered = name.lower()
-        if lowered == "pdf_processing_backend:docling_vlm":
-            return self.pdf_processing_backend == "docling_vlm"
+        if lowered.startswith("pdf_processing_backend:"):
+            backend = lowered.split(":", 1)[1]
+            return backend == self.pdf_processing_backend
+        if lowered.startswith("retrieval_backend:"):
+            backend = lowered.split(":", 1)[1]
+            return backend == self.retrieval_backend
         return self.flags.get(lowered, False)
 
 

@@ -176,7 +176,13 @@ class DoclingVLMService:
 
     def health(self) -> dict[str, Any]:
         try:
-            self._gpu.assert_total_memory(self._config.required_total_memory_mb)
+            device = self._gpu.assert_total_memory(self._config.required_total_memory_mb)
+            required_free = int(
+                self._config.gpu_memory_fraction * self._config.required_total_memory_mb
+            )
+            available_free = self._gpu.assert_available_memory(
+                required_free, device=device
+            )
         except GpuNotAvailableError as exc:
             return {"status": "error", "detail": str(exc)}
         cache_exists = Path(self._config.model_path).exists()
@@ -186,6 +192,7 @@ class DoclingVLMService:
             "model_path": str(self._config.model_path),
             "pipeline_ready": pipeline_ready,
             "cache_exists": cache_exists,
+            "available_memory_mb": available_free,
         }
 
     # ------------------------------------------------------------------

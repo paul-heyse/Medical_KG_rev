@@ -13,7 +13,7 @@ from typing import Any
 from huggingface_hub import snapshot_download
 
 DEFAULT_REPO = "google/gemma-3-12b-it"
-DEFAULT_TARGET = Path("/models/gemma3-12b")
+DEFAULT_TARGET = Path("/models/docling-vlm")
 
 
 def _parse_args() -> argparse.Namespace:

@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    MK_DOCLING_VLM_CACHE=/models/docling-vlm \
+    HUGGINGFACE_HUB_CACHE=/models/docling-vlm \
+    TRANSFORMERS_CACHE=/models/docling-vlm \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cu121
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        git-lfs \
+        curl \
+        ffmpeg \
+        libglib2.0-0 \
+        libgl1 && \
+    rm -rf /var/lib/apt/lists/* && \
+    git lfs install --system
+
+RUN mkdir -p ${MK_DOCLING_VLM_CACHE}
+
+COPY requirements.txt requirements-dev.txt pyproject.toml poetry.lock* ./
+
+RUN pip install --upgrade pip && \
+    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi && \
+    if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi && \
+    pip install "docling[vlm]>=2.0.0" "docling-core>=2.0.0" "vllm>=0.11.0"
+
+COPY . .
+
+RUN pip install .
+
+COPY ops/docker/docling_vlm_setup.py /docker-entrypoint.d/docling_vlm_setup.py
+RUN python /docker-entrypoint.d/docling_vlm_setup.py --ensure-cache --warmup
+
+EXPOSE 8000
+
+ENTRYPOINT ["uvicorn", "Medical_KG_rev.services.parsing.docling_vlm_server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

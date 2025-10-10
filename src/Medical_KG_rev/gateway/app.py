@@ -44,6 +44,7 @@ Example:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -64,7 +65,8 @@ from Medical_KG_rev.chunking.exceptions import (
 
 from ..config.settings import get_settings
 from ..observability import setup_observability
-from ..services.health import CheckResult, HealthService, success
+from ..services.health import CheckResult, HealthService, failure, success
+from ..services.parsing.docling_vlm_service import DoclingVLMService
 from ..utils.logging import get_correlation_id, get_logger
 from .graphql.schema import graphql_router
 from .middleware import CachePolicy, CachingMiddleware, TenantValidationMiddleware
@@ -200,6 +202,8 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory="docs"), name="static")
 
     gateway_service = get_gateway_service()
+    docling_config = settings.docling_vlm.as_config()
+    docling_service = DoclingVLMService(docling_config, eager=False)
 
     def kafka_check() -> CheckResult:
         health = gateway_service.orchestrator.kafka.health()
@@ -208,12 +212,22 @@ def create_app() -> FastAPI:
         detail = ", ".join(f"{key}={value}" for key, value in health.items())
         return CheckResult(status="error", detail=detail)
 
+    def docling_check() -> CheckResult:
+        model_path = docling_config.model_path
+        if not Path(model_path).exists():
+            return failure(f"Gemma3 cache missing at {model_path}")
+        health_state = docling_service.health()
+        if health_state.get("status") != "ok":
+            return failure(str(health_state))
+        return success("Docling VLM ready")
+
     app.state.health = HealthService(
         checks={
             "neo4j": lambda: success("neo4j stub"),
             "opensearch": lambda: success("opensearch stub"),
             "kafka": kafka_check,
             "redis": lambda: success("redis stub"),
+            "docling_vlm": docling_check,
         },
         version=app.version,
     )

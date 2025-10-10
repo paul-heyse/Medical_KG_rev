@@ -1,0 +1,11 @@
+# Default Docling VLM configuration
+model_name: google/gemma-3-12b-it
+model_path: /models/gemma3-12b
+batch_size: 8
+timeout_seconds: 300
+retry_attempts: 3
+gpu_memory_fraction: 0.95
+max_model_len: 4096
+device: cuda
+warmup_prompts: 1
+required_total_memory_mb: 24576

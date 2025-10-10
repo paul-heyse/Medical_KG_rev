@@ -45,6 +45,7 @@ class VLLMModelConfig:
     trust_remote_code: bool = True
     download_dir: str = "/models/qwen3-embedding"
     revision: str | None = "main"
+    model_type: str = "vllm"
 
 
 @dataclass(slots=True)
@@ -68,12 +69,20 @@ class VLLMLoggingConfig:
 
 
 @dataclass(slots=True)
+class VLLMGPUConfig:
+    model_type: str = "vllm"
+    gpu_memory_utilization: float = 0.8
+    required_total_memory_mb: int | None = None
+
+
+@dataclass(slots=True)
 class VLLMConfig:
     service: VLLMServiceConfig = field(default_factory=VLLMServiceConfig)
     model: VLLMModelConfig = field(default_factory=VLLMModelConfig)
     batching: VLLMBatchingConfig = field(default_factory=VLLMBatchingConfig)
     health_check: VLLMHealthCheckConfig = field(default_factory=VLLMHealthCheckConfig)
     logging: VLLMLoggingConfig = field(default_factory=VLLMLoggingConfig)
+    gpu: VLLMGPUConfig = field(default_factory=VLLMGPUConfig)
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> VLLMConfig:
@@ -82,12 +91,14 @@ class VLLMConfig:
         batching = VLLMBatchingConfig(**data.get("batching", {}))
         health = VLLMHealthCheckConfig(**data.get("health_check", {}))
         logging = VLLMLoggingConfig(**data.get("logging", {}))
+        gpu = VLLMGPUConfig(**data.get("gpu", {}))
         return cls(
             service=service,
             model=model,
             batching=batching,
             health_check=health,
             logging=logging,
+            gpu=gpu,
         )
 
     @classmethod
@@ -114,6 +125,7 @@ if BaseModel is not None:  # pragma: no cover - exercised when pydantic installe
         trust_remote_code: bool = Field(default=True)
         download_dir: str = Field(default="/models/qwen3-embedding")
         revision: str | None = Field(default="main")
+        model_type: str = Field(default="vllm")
 
     class _VLLMBatchingModel(BaseModel):
         max_batch_size: int = Field(default=64, ge=1)
@@ -129,12 +141,18 @@ if BaseModel is not None:  # pragma: no cover - exercised when pydantic installe
         level: str = Field(default="INFO")
         format: str = Field(default="json")
 
+    class _VLLMGPUModel(BaseModel):
+        model_type: str = Field(default="vllm")
+        gpu_memory_utilization: float = Field(default=0.8, ge=0.0, le=1.0)
+        required_total_memory_mb: int | None = Field(default=None, ge=1)
+
     class _VLLMConfigModel(BaseModel):
         service: _VLLMServiceModel = Field(default_factory=_VLLMServiceModel)
         model: _VLLMModelModel = Field(default_factory=_VLLMModelModel)
         batching: _VLLMBatchingModel = Field(default_factory=_VLLMBatchingModel)
         health_check: _VLLMHealthCheckModel = Field(default_factory=_VLLMHealthCheckModel)
         logging: _VLLMLoggingModel = Field(default_factory=_VLLMLoggingModel)
+        gpu: _VLLMGPUModel = Field(default_factory=_VLLMGPUModel)
 
 
 def load_vllm_config(path: str | Path | None = None) -> VLLMConfig:
@@ -148,6 +166,7 @@ __all__ = [
     "VLLMConfig",
     "VLLMHealthCheckConfig",
     "VLLMLoggingConfig",
+    "VLLMGPUConfig",
     "VLLMModelConfig",
     "VLLMServiceConfig",
     "load_vllm_config",

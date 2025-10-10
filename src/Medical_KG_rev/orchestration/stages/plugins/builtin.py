@@ -71,6 +71,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     PipelineState,
     StageContext,
 )
+from Medical_KG_rev.orchestration.stages.docling_vlm_stage import DoclingVLMProcessingStage
 from Medical_KG_rev.orchestration.stages.pdf_download import StorageAwarePdfDownloadStage
 from Medical_KG_rev.orchestration.stages.pdf_gate import SimplePdfGateStage
 from Medical_KG_rev.orchestration.stages.plugin_manager import (
@@ -78,6 +79,8 @@ from Medical_KG_rev.orchestration.stages.plugin_manager import (
     StagePluginContext,
     StagePluginMetadata,
 )
+from Medical_KG_rev.services.parsing.docling import DoclingVLMOutputParser
+from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMService
 
 # TYPE DEFINITIONS & CONSTANTS
 logger = structlog.get_logger(__name__)
@@ -142,12 +145,15 @@ class CoreStagePlugin(StagePlugin):
                     "knowledge-graph",
                     "pdf-download",
                     "pdf-gate",
+                    "pdf-vlm-process",
                 ),
                 description="Built-in stage implementations",
             )
         )
         self._adapter_manager: AdapterPluginManager | None = None
         self._pipeline_resource: HaystackPipelineResource | None = None
+        self._docling_service: DoclingVLMService | None = None
+        self._docling_parser = DoclingVLMOutputParser()
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize the plugin with required dependencies.
@@ -255,6 +261,15 @@ class CoreStagePlugin(StagePlugin):
             return StorageAwarePdfDownloadStage()
         if stage_type == "pdf-gate":
             return SimplePdfGateStage()
+        if stage_type == "pdf-vlm-process":
+            if self._docling_service is None:
+                self._docling_service = DoclingVLMService()
+            storage_client = context.get("pdf_storage")
+            return DoclingVLMProcessingStage(
+                service=self._docling_service,
+                parser=self._docling_parser,
+                storage_client=storage_client,
+            )
         raise ValueError(f"Unsupported stage type '{stage_type}' for core plugin")
 
 
@@ -262,9 +277,10 @@ class PdfTwoPhasePlugin(StagePlugin):
     """Plugin providing download and gate stages for the pdf-two-phase pipeline.
 
     This plugin specializes in PDF processing workflows, providing stages for
-    downloading PDFs and gating pipeline execution based on MinerU readiness.
+    downloading PDFs and gating pipeline execution based on backend readiness.
     It's designed for two-phase PDF processing where the first phase handles
-    PDF acquisition and the second phase waits for MinerU processing completion.
+    PDF acquisition and the second phase waits for MinerU or Docling processing
+    completion depending on the active feature flag.
 
     Attributes:
         _ledger: Job ledger for tracking PDF processing state
@@ -306,6 +322,7 @@ class PdfTwoPhasePlugin(StagePlugin):
             )
         )
         self._ledger: JobLedger | None = None
+        self._backend = get_settings().feature_flags.pdf_processing_backend
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize the plugin with required dependencies.
@@ -350,9 +367,9 @@ class PdfTwoPhasePlugin(StagePlugin):
         """
         assert self._ledger is not None
         if definition.stage_type == "download":
-            return _PdfDownloadStage(self._ledger)
+            return _PdfDownloadStage(self._ledger, backend=self._backend)
         if definition.stage_type == "gate":
-            return _PdfGateStage(self._ledger, gate_name=definition.name)
+            return _PdfGateStage(self._ledger, gate_name=definition.name, backend=self._backend)
         raise ValueError(f"Unsupported stage type '{definition.stage_type}' for PDF plugin")
 
 
@@ -377,17 +394,19 @@ class _PdfDownloadStage:
 
     """
 
-    def __init__(self, ledger: JobLedger) -> None:
+    def __init__(self, ledger: JobLedger, *, backend: str) -> None:
         """Initialize the PDF download stage.
 
         Args:
             ledger: Job ledger for tracking download state
+            backend: Active PDF processing backend identifier
 
         Raises:
             None: Initialization always succeeds.
 
         """
         self._ledger = ledger
+        self._backend = backend
 
     def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]:
         """Execute the PDF download stage.
@@ -431,6 +450,8 @@ class _PdfDownloadStage:
         job_id = ctx.job_id or state.job_id
         if job_id:
             self._ledger.set_pdf_downloaded(job_id, True)
+            if self._backend == "docling_vlm":
+                self._ledger.set_pdf_vlm_ready(job_id, True)
         logger.info(
             "dagster.stage.pdf_download.completed",
             job_id=job_id,
@@ -440,11 +461,12 @@ class _PdfDownloadStage:
 
 
 class _PdfGateStage:
-    """Gate stage that validates MinerU readiness using the job ledger.
+    """Gate stage that validates downstream processing readiness using the ledger.
 
     This private stage implementation handles pipeline gating for PDF processing.
-    It checks the job ledger to determine if MinerU processing is complete
-    and either allows pipeline continuation or raises a gate not ready exception.
+    It checks the job ledger to determine if the configured backend (MinerU or
+    Docling VLM) has completed processing and either allows pipeline continuation
+    or raises a gate not ready exception.
 
     Attributes:
         _ledger: Job ledger for checking processing state
@@ -459,12 +481,13 @@ class _PdfGateStage:
 
     """
 
-    def __init__(self, ledger: JobLedger, *, gate_name: str) -> None:
+    def __init__(self, ledger: JobLedger, *, gate_name: str, backend: str) -> None:
         """Initialize the PDF gate stage.
 
         Args:
             ledger: Job ledger for checking processing state
             gate_name: Name of this gate for logging and error reporting
+            backend: Active PDF processing backend identifier
 
         Raises:
             None: Initialization always succeeds.
@@ -472,6 +495,7 @@ class _PdfGateStage:
         """
         self._ledger = ledger
         self._gate_name = gate_name
+        self._backend = backend
 
     def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision:
         """Execute the PDF gate stage.
@@ -496,7 +520,10 @@ class _PdfGateStage:
         if not job_id:
             raise ValueError("PDF gate requires a job identifier for ledger lookup")
         entry = self._ledger.get(job_id)
-        ready = bool(entry and entry.pdf_ir_ready)
+        if self._backend == "docling_vlm":
+            ready = bool(entry and entry.pdf_vlm_ready)
+        else:
+            ready = bool(entry and entry.pdf_ir_ready)
         decision = GateDecision(name=self._gate_name, ready=ready)
         if not ready:
             logger.info(
@@ -505,7 +532,12 @@ class _PdfGateStage:
                 gate=self._gate_name,
             )
             raise PipelineGateNotReady(
-                f"MinerU IR not ready for job {job_id}", gate=self._gate_name
+                (
+                    f"Docling VLM not ready for job {job_id}"
+                    if self._backend == "docling_vlm"
+                    else f"MinerU IR not ready for job {job_id}"
+                ),
+                gate=self._gate_name,
             )
         logger.info(
             "dagster.stage.pdf_gate.ready",

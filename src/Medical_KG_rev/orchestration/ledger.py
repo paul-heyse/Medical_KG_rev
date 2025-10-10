@@ -129,6 +129,7 @@ class JobLedgerEntry:
     retry_count_per_stage: dict[str, int] = field(default_factory=dict)
     pdf_downloaded: bool = False
     pdf_ir_ready: bool = False
+    pdf_vlm_ready: bool = False
 
     def is_terminal(self) -> bool:
         """Check if job is in a terminal state.
@@ -167,6 +168,7 @@ class JobLedgerEntry:
             retry_count_per_stage=dict(self.retry_count_per_stage),
             pdf_downloaded=self.pdf_downloaded,
             pdf_ir_ready=self.pdf_ir_ready,
+            pdf_vlm_ready=self.pdf_vlm_ready,
         )
 
 
@@ -264,6 +266,7 @@ class JobLedger:
         pipeline_name: str | None = None,
         pdf_downloaded: bool | None = None,
         pdf_ir_ready: bool | None = None,
+        pdf_vlm_ready: bool | None = None,
     ) -> JobLedgerEntry:
         if job_id not in self._entries:
             raise JobLedgerError(f"Job {job_id} not found")
@@ -300,6 +303,8 @@ class JobLedger:
             entry.pdf_downloaded = pdf_downloaded
         if pdf_ir_ready is not None:
             entry.pdf_ir_ready = pdf_ir_ready
+        if pdf_vlm_ready is not None:
+            entry.pdf_vlm_ready = pdf_vlm_ready
         entry.updated_at = datetime.utcnow()
         self._refresh_metrics()
         return entry
@@ -384,6 +389,9 @@ class JobLedger:
 
     def set_pdf_ir_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
         return self._update(job_id, pdf_ir_ready=value)
+
+    def set_pdf_vlm_ready(self, job_id: str, value: bool = True) -> JobLedgerEntry:
+        return self._update(job_id, pdf_vlm_ready=value)
 
     def record_attempt(self, job_id: str) -> int:
         if job_id not in self._entries:

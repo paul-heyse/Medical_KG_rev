@@ -4925,6 +4925,37 @@ async def test_coordinator_data_sanitization():
 
 ## 🚀 Deployment & Operations
 
+### **🔥 Torch Dependency Isolation Strategy**
+
+**Core Principle**: All torch-dependent components MUST be isolated in Docker containers to maintain a torch-free main API gateway.
+
+**Current Torch Usage Analysis**:
+
+| Component | Current Location | Torch Usage | Migration Plan |
+|-----------|-----------------|-------------|---------------|
+| **GPU Manager** | `services/gpu/manager.py` | CUDA device detection & memory management | Move to GPU services Docker container |
+| **Embedding Services** | `embeddings/utils/gpu.py` | GPU memory monitoring for embeddings | Move to embedding service Docker container |
+| **Vector Store GPU** | `services/vector_store/gpu.py` | GPU statistics and memory info | Move to vector store service Docker container |
+| **Reranking Pipeline** | `services/reranking/` | Cross-encoder reranking with GPU | Move to reranking service Docker container |
+| **Chunking Semantics** | `chunking/base.py` | GPU semantic validation checks | **REMOVE** - Docling provides better chunking |
+| **Observability Metrics** | `observability/metrics.py` | GPU metrics collection | Move to monitoring service Docker container |
+
+**Strategic Benefits**:
+
+- **Main API Gateway**: Completely torch-free, lightweight deployment
+- **GPU Services**: Isolated, scalable GPU-accelerated processing
+- **Cost Optimization**: GPU resources only deployed where needed
+- **Maintenance Simplicity**: Torch updates don't affect main application
+
+**Migration Timeline**:
+
+1. **Phase 1**: Remove torch from chunking (immediate - Docling replacement)
+2. **Phase 2**: Move GPU management to Docker services (Week 1-2)
+3. **Phase 3**: Move embedding and reranking to Docker containers (Week 3-4)
+4. **Phase 4**: Create torch-free main gateway deployment (Week 5)
+
+**Active Change Proposal**: [`implement-torch-isolation-architecture`](openspec/changes/implement-torch-isolation-architecture/) - Comprehensive implementation plan for torch isolation architecture
+
 ### **Coordinator Deployment Strategy**
 
 **1. Service Discovery & Registration**

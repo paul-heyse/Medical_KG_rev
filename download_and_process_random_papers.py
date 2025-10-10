@@ -34,14 +34,13 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import requests  # type: ignore[import-untyped]
 
-from Medical_KG_rev.adapters.base import AdapterContext  # type: ignore[import-untyped]
 from Medical_KG_rev.adapters.openalex import OpenAlexAdapter  # type: ignore[import-untyped]
 from Medical_KG_rev.config.settings import get_settings  # type: ignore[import-untyped]
 from Medical_KG_rev.services.mineru.service import MineruProcessor  # type: ignore[import-untyped]
@@ -65,6 +64,7 @@ class RandomPaperProcessor:
         Args:
             sample_size: Number of random papers to fetch
             output_dir: Directory to store downloaded PDFs and processed results
+
         """
         self.sample_size = sample_size
         self.output_dir = Path(output_dir)
@@ -105,6 +105,7 @@ class RandomPaperProcessor:
 
         Returns:
             True if vLLM server is healthy, False otherwise
+
         """
         print(f"🔍 Checking vLLM server health at {self.results['vllm_url']}...")
 
@@ -116,19 +117,19 @@ class RandomPaperProcessor:
             async with client:
                 is_healthy = await client.health_check()
                 if is_healthy:
-                    print(f"✅ vLLM server is healthy and ready")
+                    print("✅ vLLM server is healthy and ready")
                     self.results["vllm_healthy"] = True
                     return True
                 else:
-                    print(f"❌ vLLM server is not healthy")
+                    print("❌ vLLM server is not healthy")
                     return False
         except Exception as e:
             print(f"❌ Cannot connect to vLLM server: {e}")
-            print(f"ℹ️  Make sure Docker services are running:")
-            print(f"   docker compose up -d vllm-server")
+            print("ℹ️  Make sure Docker services are running:")
+            print("   docker compose up -d vllm-server")
             return False
 
-    def fetch_random_papers(self) -> List[Dict[str, Any]]:
+    def fetch_random_papers(self) -> list[dict[str, Any]]:
         """Fetch random papers from OpenAlex."""
         print(f"🔍 Fetching {self.sample_size} random papers from OpenAlex...")
 
@@ -157,20 +158,24 @@ class RandomPaperProcessor:
                 batch_size = min(samples_per_batch, remaining)
                 seed = 42 + batch_num  # Different seed for each batch
 
-                print(f"   Fetching batch {batch_num + 1}/{batches_needed} ({batch_size} papers, seed={seed})...")
+                print(
+                    f"   Fetching batch {batch_num + 1}/{batches_needed} ({batch_size} papers, seed={seed})..."
+                )
 
                 try:
-                    batch_works = (Works()
+                    batch_works = (
+                        Works()
                         .filter(open_access={"is_oa": True})
                         .sample(batch_size, seed=seed)
-                        .get())
+                        .get()
+                    )
 
                     if batch_works:
                         works_list = batch_works if isinstance(batch_works, list) else [batch_works]
                         all_works.extend(works_list)
                         print(f"      ✅ Got {len(works_list)} papers")
                     else:
-                        print(f"      ⚠️  No papers in this batch")
+                        print("      ⚠️  No papers in this batch")
 
                 except Exception as e:
                     print(f"      ⚠️  Error fetching batch: {e}")
@@ -179,9 +184,10 @@ class RandomPaperProcessor:
                 # Add small delay to avoid rate limiting
                 if batch_num < batches_needed - 1:
                     import time
+
                     time.sleep(0.5)
 
-            documents = all_works[:self.sample_size]  # Ensure exact count
+            documents = all_works[: self.sample_size]  # Ensure exact count
 
             if not documents:
                 print("❌ No works returned from OpenAlex")
@@ -192,7 +198,7 @@ class RandomPaperProcessor:
             if documents:
                 # Convert pyalex Work objects to paper format for processing
                 papers = []
-                for work in documents[:self.sample_size]:
+                for work in documents[: self.sample_size]:
                     # Get PDF URL from primary_location or open_access
                     pdf_url = None
                     if work.get("primary_location") and work["primary_location"].get("pdf_url"):
@@ -209,7 +215,11 @@ class RandomPaperProcessor:
                     paper = {
                         "id": work_id,
                         "title": work.get("title", "Unknown"),
-                        "doi": work.get("doi", "").replace("https://doi.org/", "") if work.get("doi") else None,
+                        "doi": (
+                            work.get("doi", "").replace("https://doi.org/", "")
+                            if work.get("doi")
+                            else None
+                        ),
                         "pdf_urls": [pdf_url] if pdf_url else [],
                         "pdf_manifest": {"url": pdf_url} if pdf_url else None,
                         "authorships": work.get("authorships", []),
@@ -229,7 +239,7 @@ class RandomPaperProcessor:
             print(f"❌ Error fetching papers: {e}")
             return []
 
-    def download_pdf(self, paper: Dict[str, Any]) -> Optional[Path]:
+    def download_pdf(self, paper: dict[str, Any]) -> Path | None:
         """Download PDF for a paper if available."""
         pdf_urls = paper.get("pdf_urls", [])
         if not pdf_urls:
@@ -245,39 +255,38 @@ class RandomPaperProcessor:
             print(f"📥 Downloading PDF: {pdf_filename}")
 
             # Use requests to download the PDF
-            headers = {
-                "User-Agent": f"Medical_KG_rev/1.0 ({self.email})",
-                "From": self.email
-            }
+            headers = {"User-Agent": f"Medical_KG_rev/1.0 ({self.email})", "From": self.email}
 
             response = requests.get(pdf_url, headers=headers, timeout=30, allow_redirects=True)
             response.raise_for_status()
 
             # Validate that we actually got a PDF, not an HTML page
-            content_type = response.headers.get('Content-Type', '').lower()
+            content_type = response.headers.get("Content-Type", "").lower()
             content = response.content
 
             # Check if it's actually a PDF
             is_pdf = False
-            if content_type and 'application/pdf' in content_type:
+            if content_type and "application/pdf" in content_type:
                 is_pdf = True
-            elif content.startswith(b'%PDF'):
+            elif content.startswith(b"%PDF"):
                 # Check PDF magic number
                 is_pdf = True
 
             if not is_pdf:
                 # Check if it's HTML (with or without leading whitespace)
-                content_start = content[:2000].decode('utf-8', errors='ignore').strip()
-                if (content_start.startswith('<!DOCTYPE') or
-                    content_start.startswith('<html') or
-                    content_start.startswith('<HTML') or
-                    '<html' in content_start[:500].lower()):
+                content_start = content[:2000].decode("utf-8", errors="ignore").strip()
+                if (
+                    content_start.startswith("<!DOCTYPE")
+                    or content_start.startswith("<html")
+                    or content_start.startswith("<HTML")
+                    or "<html" in content_start[:500].lower()
+                ):
                     print(f"⚠️  Skipping: {pdf_filename} - Downloaded HTML page instead of PDF")
                     print(f"   Content-Type: {content_type}")
                     print(f"   URL: {pdf_url}")
                     return None
                 # If not clearly HTML, might still be PDF with wrong header
-                elif len(content) > 1000 and not content_start.startswith('<'):
+                elif len(content) > 1000 and not content_start.startswith("<"):
                     # Treat as binary/potential PDF
                     is_pdf = True
 
@@ -296,7 +305,7 @@ class RandomPaperProcessor:
             print(f"❌ Failed to download PDF for {paper_id}: {e}")
             return None
 
-    def process_pdf_with_mineru(self, pdf_path: Path, paper: Dict[str, Any]) -> Dict[str, Any]:
+    def process_pdf_with_mineru(self, pdf_path: Path, paper: dict[str, Any]) -> dict[str, Any]:
         """Process PDF using MinerU with vLLM backend.
 
         This method demonstrates the MinerU + vLLM integration:
@@ -311,6 +320,7 @@ class RandomPaperProcessor:
 
         Returns:
             Dictionary with processing results and metadata
+
         """
         try:
             print(f"🔄 Processing PDF with MinerU + vLLM: {pdf_path.name}")
@@ -328,13 +338,11 @@ class RandomPaperProcessor:
 
             # Create MinerU request
             request = MineruRequest(
-                tenant_id="random-papers",
-                document_id=clean_doc_id,
-                content=pdf_content
+                tenant_id="random-papers", document_id=clean_doc_id, content=pdf_content
             )
 
             # Process with MinerU (which uses vLLM backend)
-            print(f"   ⚙️  Sending to MinerU processor...")
+            print("   ⚙️  Sending to MinerU processor...")
             start_time = time.time()
             response = self.mineru_processor.process(request)
             processing_time = time.time() - start_time
@@ -346,7 +354,9 @@ class RandomPaperProcessor:
             num_figures = 0
 
             print(f"   ✅ Processing complete in {processing_time:.2f}s")
-            print(f"   📊 Extracted: {num_blocks} blocks, {num_tables} tables, {num_figures} figures")
+            print(
+                f"   📊 Extracted: {num_blocks} blocks, {num_tables} tables, {num_figures} figures"
+            )
 
             # Save processed results
             paper_id = paper["id"].split("/")[-1] if "/" in paper["id"] else paper["id"]
@@ -357,24 +367,33 @@ class RandomPaperProcessor:
                 """Convert a block to JSON-serializable format with hierarchy metadata"""
                 # Handle different block types and their attributes
                 block_data = {
-                    "id": getattr(block, 'id', None),
-                    "text": getattr(block, 'text', None) or getattr(block, 'content', None),
+                    "id": getattr(block, "id", None),
+                    "text": getattr(block, "text", None) or getattr(block, "content", None),
                 }
 
                 # Add optional attributes if they exist
-                for attr in ['page', 'bbox', 'confidence', 'reading_order', 'metadata',
-                             'table_id', 'figure_id', 'equation_id', 'block_type']:
+                for attr in [
+                    "page",
+                    "bbox",
+                    "confidence",
+                    "reading_order",
+                    "metadata",
+                    "table_id",
+                    "figure_id",
+                    "equation_id",
+                    "block_type",
+                ]:
                     if hasattr(block, attr):
                         value = getattr(block, attr)
                         if value is not None:
                             # Extract hierarchy info from metadata for top-level access
-                            if attr == 'metadata' and isinstance(value, dict):
+                            if attr == "metadata" and isinstance(value, dict):
                                 block_data[attr] = value
                                 # Promote hierarchy metadata to top level for easier access
-                                if 'text_level' in value:
-                                    block_data['heading_level'] = value['text_level']
-                                if 'is_heading' in value:
-                                    block_data['is_heading'] = value['is_heading']
+                                if "text_level" in value:
+                                    block_data["heading_level"] = value["text_level"]
+                                if "is_heading" in value:
+                                    block_data["is_heading"] = value["is_heading"]
                             else:
                                 block_data[attr] = value
 
@@ -411,6 +430,7 @@ class RandomPaperProcessor:
 
             # Save to JSON file
             import json
+
             with open(output_file, "w") as f:
                 json.dump(processed_data, f, indent=2)
 
@@ -420,6 +440,7 @@ class RandomPaperProcessor:
         except Exception as e:
             print(f"❌ Error processing PDF {pdf_path.name}: {e}")
             import traceback
+
             print(f"   Stack trace: {traceback.format_exc()}")
             return {
                 "paper_id": paper["id"],
@@ -432,19 +453,19 @@ class RandomPaperProcessor:
 
     def process_all_papers(self, skip_vllm_check: bool = False) -> None:
         """Main processing workflow demonstrating end-to-end MinerU + vLLM integration."""
-        print("="*70)
+        print("=" * 70)
         print("END-TO-END PDF PROCESSING WITH MINERU + VLLM DOCKER")
-        print("="*70)
+        print("=" * 70)
         print(f"Sample size: {self.sample_size}")
         print(f"Output directory: {self.output_dir}")
         print(f"Email: {self.email}")
         print(f"vLLM URL: {self.results['vllm_url']}")
-        print("-"*70)
+        print("-" * 70)
 
         # Step 0: Check vLLM server health (optional)
         if not skip_vllm_check:
             print("\n🏥 STEP 0: Validating vLLM Server Health")
-            print("-"*70)
+            print("-" * 70)
             try:
                 vllm_healthy = asyncio.run(self.check_vllm_health())
             except Exception as e:
@@ -464,21 +485,21 @@ class RandomPaperProcessor:
                 self.results["vllm_healthy"] = True
         else:
             print("\n⏭️  STEP 0: Skipping vLLM validation (simulated mode)")
-            print("-"*70)
+            print("-" * 70)
             print("ℹ️  Running in simulated mode for pipeline testing")
             self.results["vllm_healthy"] = False
 
         # Step 1: Fetch random papers
-        print(f"\n📚 STEP 1: Fetching Papers from OpenAlex")
-        print("-"*70)
+        print("\n📚 STEP 1: Fetching Papers from OpenAlex")
+        print("-" * 70)
         papers = self.fetch_random_papers()
         if not papers:
             print("❌ No papers to process")
             return
 
         # Step 2: Identify papers with PDFs
-        print(f"\n📊 STEP 2: Identifying Papers with PDFs")
-        print("-"*70)
+        print("\n📊 STEP 2: Identifying Papers with PDFs")
+        print("-" * 70)
         papers_with_pdfs = [p for p in papers if p.get("pdf_urls")]
         self.results["papers_with_pdfs"] = len(papers_with_pdfs)
 
@@ -489,8 +510,8 @@ class RandomPaperProcessor:
             return
 
         # Step 3: Download PDFs
-        print(f"\n📥 STEP 3: Downloading PDFs")
-        print("-"*70)
+        print("\n📥 STEP 3: Downloading PDFs")
+        print("-" * 70)
         downloaded_pdfs = []
         for i, paper in enumerate(papers_with_pdfs, 1):
             print(f"[{i}/{len(papers_with_pdfs)}] ", end="")
@@ -506,13 +527,13 @@ class RandomPaperProcessor:
             return
 
         # Step 4: Process PDFs with MinerU + vLLM
-        print(f"\n⚙️  STEP 4: Processing PDFs with MinerU + vLLM")
-        print("-"*70)
-        print(f"This demonstrates the full Docker integration:")
-        print(f"  • PDFs are processed by MinerU service")
-        print(f"  • MinerU connects to vLLM server via HTTP")
-        print(f"  • vLLM provides GPU-accelerated inference")
-        print("-"*70)
+        print("\n⚙️  STEP 4: Processing PDFs with MinerU + vLLM")
+        print("-" * 70)
+        print("This demonstrates the full Docker integration:")
+        print("  • PDFs are processed by MinerU service")
+        print("  • MinerU connects to vLLM server via HTTP")
+        print("  • vLLM provides GPU-accelerated inference")
+        print("-" * 70)
 
         for i, (pdf_path, paper) in enumerate(downloaded_pdfs, 1):
             print(f"\n[{i}/{len(downloaded_pdfs)}]")
@@ -522,19 +543,23 @@ class RandomPaperProcessor:
 
                 if result["success"]:
                     self.results["pdfs_processed"] += 1
-                    self.results["total_processing_time"] += result.get("processing_time_seconds", 0)
+                    self.results["total_processing_time"] += result.get(
+                        "processing_time_seconds", 0
+                    )
                 else:
                     self.results["processing_errors"] += 1
 
             except Exception as e:
                 print(f"❌ Unexpected error processing {pdf_path.name}: {e}")
                 self.results["processing_errors"] += 1
-                self.results["processing_details"].append({
-                    "paper_id": paper["id"],
-                    "title": paper["title"],
-                    "error": str(e),
-                    "success": False
-                })
+                self.results["processing_details"].append(
+                    {
+                        "paper_id": paper["id"],
+                        "title": paper["title"],
+                        "error": str(e),
+                        "success": False,
+                    }
+                )
 
         # Calculate average processing time
         if self.results["pdfs_processed"] > 0:
@@ -543,8 +568,8 @@ class RandomPaperProcessor:
             )
 
         # Step 5: Generate summary report
-        print(f"\n📋 STEP 5: Generating Summary Report")
-        print("-"*70)
+        print("\n📋 STEP 5: Generating Summary Report")
+        print("-" * 70)
         self.generate_summary_report()
 
     def generate_summary_report(self) -> None:
@@ -592,7 +617,7 @@ class RandomPaperProcessor:
                 "total_tables_extracted": total_tables_extracted,
             },
             "success_rates": {},
-            "processing_details": self.results["processing_details"]
+            "processing_details": self.results["processing_details"],
         }
 
         # Calculate success rates
@@ -608,22 +633,23 @@ class RandomPaperProcessor:
 
         # Save report
         import json
+
         with open(report_file, "w") as f:
             json.dump(summary, f, indent=2)
 
         # Print summary
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("END-TO-END PROCESSING SUMMARY")
-        print("="*70)
+        print("=" * 70)
         print(f"✅ vLLM Server:        {self.results['vllm_url']}")
         print(f"✅ vLLM Healthy:       {self.results['vllm_healthy']}")
-        print("-"*70)
+        print("-" * 70)
         print(f"Papers fetched:        {self.results['papers_fetched']}")
         print(f"Papers with PDFs:      {self.results['papers_with_pdfs']}")
         print(f"PDFs downloaded:       {self.results['pdfs_downloaded']}")
         print(f"PDFs processed:        {self.results['pdfs_processed']}")
         print(f"Processing errors:     {self.results['processing_errors']}")
-        print("-"*70)
+        print("-" * 70)
         print(f"Total blocks extracted: {total_blocks_extracted}")
         print(f"Total tables extracted: {total_tables_extracted}")
         print(f"Total processing time:  {self.results['total_processing_time']:.2f}s")
@@ -639,12 +665,12 @@ class RandomPaperProcessor:
             process_rate = self.results["pdfs_processed"] / self.results["pdfs_downloaded"]
             print(f"Processing success rate: {process_rate:.1%}")
 
-        print("="*70)
+        print("=" * 70)
         print(f"📁 Results saved to: {self.output_dir}")
         print(f"   • PDFs: {self.pdf_dir}")
         print(f"   • Processed: {self.processed_dir}")
         print(f"   • Reports: {report_file}")
-        print("="*70)
+        print("=" * 70)
 
         if self.results["pdfs_processed"] > 0:
             print("\n🎉 SUCCESS! End-to-end MinerU + vLLM Docker integration verified!")
@@ -685,24 +711,21 @@ Prerequisites:
 
   3. Run this script:
      python download_and_process_random_papers.py
-        """
+        """,
     )
     parser.add_argument(
-        "--samples",
-        type=int,
-        default=10,
-        help="Number of random papers to fetch (default: 10)"
+        "--samples", type=int, default=10, help="Number of random papers to fetch (default: 10)"
     )
     parser.add_argument(
         "--output",
         type=str,
         default="random_papers_output",
-        help="Output directory (default: random_papers_output)"
+        help="Output directory (default: random_papers_output)",
     )
     parser.add_argument(
         "--no-vllm",
         action="store_true",
-        help="Skip vLLM validation and use simulated mode for testing"
+        help="Skip vLLM validation and use simulated mode for testing",
     )
     args = parser.parse_args()
 
@@ -712,10 +735,7 @@ Prerequisites:
 
     try:
         # Initialize processor
-        processor = RandomPaperProcessor(
-            sample_size=args.samples,
-            output_dir=args.output
-        )
+        processor = RandomPaperProcessor(sample_size=args.samples, output_dir=args.output)
 
         # Process papers
         processor.process_all_papers(skip_vllm_check=args.no_vllm)
@@ -726,6 +746,7 @@ Prerequisites:
     except Exception as e:
         print(f"\n\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

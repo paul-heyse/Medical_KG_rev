@@ -9,6 +9,7 @@ from typing import Any
 try:  # pragma: no cover - optional dependency guard
     import httpx
 except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environments
+
     class _HttpxFallback:
         class HTTPError(Exception):
             pass
@@ -110,7 +111,9 @@ class OpenAICompatEmbedder:
         converted = [list(map(float, vector)) for vector in vectors]
         if self._normalize:
             converted = normalize_batch(converted)
-        ids = list(request.ids or [f"{request.namespace}:{index}" for index in range(len(converted))])
+        ids = list(
+            request.ids or [f"{request.namespace}:{index}" for index in range(len(converted))]
+        )
         records: list[EmbeddingRecord] = []
         for chunk_id, vector in zip(ids, converted, strict=False):
             records.append(

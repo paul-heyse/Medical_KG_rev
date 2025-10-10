@@ -59,23 +59,15 @@ def benchmark_segmenters(
                 try:
                     spans = segmenter(text)
                 except Exception as exc:  # pragma: no cover - defensive
-                    raise RuntimeError(
-                        f"segmenter '{name}' failed while processing input"
-                    ) from exc
+                    raise RuntimeError(f"segmenter '{name}' failed while processing input") from exc
                 if not isinstance(spans, Iterable):
-                    raise TypeError(
-                        f"segmenter '{name}' returned non-iterable spans"
-                    )
+                    raise TypeError(f"segmenter '{name}' returned non-iterable spans")
                 total_sentences += sum(1 for _ in spans)
         duration = max(clock() - start_time, 0.0)
         documents_processed = documents_per_run * repeats
         if duration > 0:
-            docs_per_second = (
-                documents_processed / duration if documents_processed else 0.0
-            )
-            sentences_per_second = (
-                total_sentences / duration if total_sentences else 0.0
-            )
+            docs_per_second = documents_processed / duration if documents_processed else 0.0
+            sentences_per_second = total_sentences / duration if total_sentences else 0.0
         else:
             docs_per_second = 0.0
             sentences_per_second = 0.0

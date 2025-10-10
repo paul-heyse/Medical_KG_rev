@@ -76,9 +76,7 @@ class NamespaceRegistry:
             expected = config.params.dimension
             target_namespace = namespace
         if expected != vector_length:
-            raise DimensionMismatchError(
-                expected, vector_length, namespace=target_namespace
-            )
+            raise DimensionMismatchError(expected, vector_length, namespace=target_namespace)
 
     def list(self, *, tenant_id: str) -> Mapping[str, NamespaceConfig]:
         return dict(self._namespaces.get(tenant_id, {}))

@@ -77,7 +77,13 @@ class Table(StructuredArtifact):
         body_rows = []
         for row in grid:
             body_rows.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-        return "<table><thead><tr>" + header_html + "</tr></thead><tbody>" + "".join(body_rows) + "</tbody></table>"
+        return (
+            "<table><thead><tr>"
+            + header_html
+            + "</tr></thead><tbody>"
+            + "".join(body_rows)
+            + "</tbody></table>"
+        )
 
     def by_row(self) -> dict[int, list[TableCell]]:
         grouped: dict[int, list[TableCell]] = defaultdict(list)

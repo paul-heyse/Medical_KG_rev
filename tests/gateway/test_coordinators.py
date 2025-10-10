@@ -10,6 +10,7 @@ from pybreaker import CircuitBreaker
 
 from Medical_KG_rev.chunking.exceptions import ChunkingFailedError
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
+from Medical_KG_rev.gateway.chunking_errors import ChunkingErrorTranslator
 from Medical_KG_rev.gateway.coordinators import (
     ChunkingCoordinator,
     ChunkingRequest,
@@ -22,11 +23,10 @@ from Medical_KG_rev.gateway.coordinators import (
 from Medical_KG_rev.gateway.models import DocumentChunk, ProblemDetail
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration.ledger import JobLedger
-from Medical_KG_rev.gateway.chunking_errors import ChunkingErrorTranslator
-from Medical_KG_rev.services.retrieval.chunking import ChunkCommand
 from Medical_KG_rev.services.embedding.namespace.registry import EmbeddingNamespaceRegistry
 from Medical_KG_rev.services.embedding.namespace.schema import EmbeddingKind, NamespaceConfig
 from Medical_KG_rev.services.embedding.policy import NamespaceAccessDecision
+from Medical_KG_rev.services.retrieval.chunking import ChunkCommand
 
 
 class _StubChunk:
@@ -41,11 +41,14 @@ class _StubChunker:
     def __init__(self, *, raise_error: Exception | None = None) -> None:
         self._raise = raise_error
 
-    def chunk(self, command: ChunkCommand) -> list[_StubChunk]:  # noqa: D401
+    def chunk(self, command: ChunkCommand) -> list[_StubChunk]:
         if self._raise:
             raise self._raise
         return [_StubChunk(command.text)]
-    def chunk(self, tenant_id: str, document_id: str, text: str, options) -> list[_StubChunk]:  # noqa: D401
+
+    def chunk(
+        self, tenant_id: str, document_id: str, text: str, options
+    ) -> list[_StubChunk]:
         if self._raise:
             raise self._raise
         return [_StubChunk(text)]
@@ -98,17 +101,19 @@ class _StubEmbedder:
     def __init__(self, records: list[EmbeddingRecord]) -> None:
         self._records = records
 
-    def embed_documents(self, request) -> list[EmbeddingRecord]:  # noqa: D401
+    def embed_documents(self, request) -> list[EmbeddingRecord]:
         return self._records
 
 
 class _StubEmbeddingRegistry:
-    def __init__(self, namespace: str, embedder: _StubEmbedder, registry: EmbeddingNamespaceRegistry) -> None:
+    def __init__(
+        self, namespace: str, embedder: _StubEmbedder, registry: EmbeddingNamespaceRegistry
+    ) -> None:
         self._namespace = namespace
         self._embedder = embedder
         self.namespace_registry = registry
 
-    def get(self, namespace: str) -> _StubEmbedder:  # noqa: D401
+    def get(self, namespace: str) -> _StubEmbedder:
         if namespace != self._namespace:
             raise ValueError(f"Unknown namespace {namespace}")
         return self._embedder
@@ -119,7 +124,9 @@ class _AllowAllPolicy:
         self._namespace = namespace
         self._config = config
 
-    def evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         if namespace != self._namespace:
             raise ValueError("unexpected namespace")
         return NamespaceAccessDecision(
@@ -188,7 +195,9 @@ def test_job_lifecycle_failure_records_event(lifecycle: JobLifecycleManager) -> 
     assert events[-1].payload["reason"] == "boom"
 
 
-def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
+def test_chunking_coordinator_success(
+    lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig
+) -> None:
     chunker = _StubChunker()
     translator = ChunkingErrorTranslator(strategies=["section"])
     coordinator = ChunkingCoordinator(
@@ -216,7 +225,9 @@ def test_chunking_coordinator_success(lifecycle: JobLifecycleManager, chunk_conf
     assert result.metadata == {"chunks": 1}
 
 
-def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig) -> None:
+def test_chunking_coordinator_error_maps_problem(
+    lifecycle: JobLifecycleManager, chunk_config: CoordinatorConfig
+) -> None:
     chunker = _StubChunker(raise_error=ChunkingFailedError("failed"))
     translator = ChunkingErrorTranslator(strategies=["section"])
     coordinator = ChunkingCoordinator(
@@ -245,7 +256,9 @@ def test_chunking_coordinator_error_maps_problem(lifecycle: JobLifecycleManager,
     assert problem.title == "Chunking failed"
 
 
-def test_embedding_coordinator_success(lifecycle: JobLifecycleManager, embed_config: CoordinatorConfig) -> None:
+def test_embedding_coordinator_success(
+    lifecycle: JobLifecycleManager, embed_config: CoordinatorConfig
+) -> None:
     registry = EmbeddingNamespaceRegistry()
     namespace = "single_vector.demo.3.v1"
     ns_config = NamespaceConfig(

@@ -43,6 +43,7 @@ from Medical_KG_rev.orchestration.stages.contracts import StageContext
 try:  # pragma: no cover - optional dependency for structured CloudEvents
     from cloudevents.http import CloudEvent  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
+
     class CloudEvent(dict):  # type: ignore[override]
         """Fallback CloudEvent implementation using a simple mapping."""
 
@@ -73,6 +74,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
 # ==============================================================================
 # STAGE IMPLEMENTATIONS
 # ==============================================================================
+
 
 def _to_message(event: CloudEvent) -> dict[str, Any]:
     """Convert CloudEvent to Kafka message format.

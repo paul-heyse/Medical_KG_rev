@@ -111,6 +111,7 @@ logger = structlog.get_logger(__name__)
 # EXCEPTION CLASSES
 # ==============================================================================
 
+
 class MineruOutOfMemoryError(MineruCliError, ChunkingMineruOutOfMemoryError):
     """Raised when MinerU CLI indicates an out-of-memory failure.
 
@@ -158,6 +159,7 @@ class MineruGpuUnavailableError(MineruCliError, ChunkingMineruGpuUnavailableErro
 # ==============================================================================
 # SERVICE IMPLEMENTATION
 # ==============================================================================
+
 
 class MineruProcessor:
     """MinerU processor configured for split-container vLLM usage.
@@ -241,9 +243,7 @@ class MineruProcessor:
         self._pdf_storage = pdf_storage
         self._vllm_client = vllm_client
         parser_instance = parser or MineruOutputParser()
-        postprocessor_instance = postprocessor or MineruPostProcessor(
-            figure_storage=figure_storage
-        )
+        postprocessor_instance = postprocessor or MineruPostProcessor(figure_storage=figure_storage)
         self._pipeline = MineruPipeline(
             parser=parser_instance,
             postprocessor=postprocessor_instance,
@@ -421,10 +421,12 @@ class MineruProcessor:
             )
 
         batch_limit = max(1, self._settings.workers.batch_size)
-        batches = [request_list[i : i + batch_limit] for i in range(0, len(request_list), batch_limit)]
-        logger.bind(
-            size=len(request_list), batches=len(batches), batch_limit=batch_limit
-        ).info("mineru.process.batch_started")
+        batches = [
+            request_list[i : i + batch_limit] for i in range(0, len(request_list), batch_limit)
+        ]
+        logger.bind(size=len(request_list), batches=len(batches), batch_limit=batch_limit).info(
+            "mineru.process.batch_started"
+        )
 
         start_monotonic = time.monotonic()
         aggregated_documents: list[Document] = []
@@ -438,9 +440,9 @@ class MineruProcessor:
             processed_at = partial.processed_at
 
         duration = time.monotonic() - start_monotonic
-        logger.bind(
-            size=len(request_list), batches=len(batches), duration=round(duration, 4)
-        ).info("mineru.process.batch_completed")
+        logger.bind(size=len(request_list), batches=len(batches), duration=round(duration, 4)).info(
+            "mineru.process.batch_completed"
+        )
 
         return MineruBatchResponse(
             documents=aggregated_documents,
@@ -496,9 +498,9 @@ class MineruProcessor:
         try:
             return orchestrate(self._execute_cli)
         except MineruCliError as exc:
-            logger.bind(
-                reason="cli-error", error=str(exc), batch=batch_index
-            ).error("mineru.process.failed")
+            logger.bind(reason="cli-error", error=str(exc), batch=batch_index).error(
+                "mineru.process.failed"
+            )
             if self._handle_cli_failure(exc):
                 return orchestrate(self._execute_simulated_cli)
             raise
@@ -597,9 +599,9 @@ class MineruProcessor:
             raise RuntimeError(
                 f"MinerU version {installed} does not satisfy expectation '{self._settings.expected_version}'"
             )
-        logger.bind(
-            installed=installed, expected=self._settings.expected_version
-        ).info("mineru.version.validated")
+        logger.bind(installed=installed, expected=self._settings.expected_version).info(
+            "mineru.version.validated"
+        )
         return installed
 
     @staticmethod
@@ -618,6 +620,7 @@ class MineruProcessor:
             strings to integer tuples and comparing component by component.
 
         """
+
         def _normalize(value: str) -> tuple[int, ...]:
             parts: list[int] = []
             for token in value.split("."):
@@ -749,6 +752,7 @@ class MineruProcessor:
             if server is not accessible or healthy.
 
         """
+
         async def _check() -> bool:
             try:
                 if self._vllm_client:
@@ -778,6 +782,7 @@ class MineruProcessor:
 # ==============================================================================
 # GRPC SERVICE IMPLEMENTATION
 # ==============================================================================
+
 
 class MineruGrpcService:
     """Async gRPC servicer bridging proto definitions to the processor.

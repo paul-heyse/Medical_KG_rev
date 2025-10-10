@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Section header checker for Medical_KG_rev repository-wide components.
+"""Section header checker for Medical_KG_rev repository-wide components.
 
 This script validates that all Python modules follow the established
 section header standards including:
@@ -15,11 +14,8 @@ Usage:
 """
 
 import argparse
-import ast
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 # Section header patterns - must match exactly
 SECTION_PATTERN = r"^# ={10,} ([A-Z][A-Z_/ ]*[A-Z]) ={10,}$"
@@ -32,7 +28,7 @@ GATEWAY_SECTIONS = [
     "COORDINATOR IMPLEMENTATION",
     "ERROR TRANSLATION",
     "FACTORY FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 SERVICE_SECTIONS = [
@@ -43,7 +39,7 @@ SERVICE_SECTIONS = [
     "IMPLEMENTATIONS",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 ADAPTER_SECTIONS = [
@@ -54,7 +50,7 @@ ADAPTER_SECTIONS = [
     "ERROR HANDLING",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 ORCHESTRATION_SECTIONS = [
@@ -65,7 +61,7 @@ ORCHESTRATION_SECTIONS = [
     "PLUGIN REGISTRATION",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 KG_SECTIONS = [
@@ -76,7 +72,7 @@ KG_SECTIONS = [
     "TEMPLATES",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 STORAGE_SECTIONS = [
@@ -87,7 +83,7 @@ STORAGE_SECTIONS = [
     "IMPLEMENTATIONS",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 VALIDATION_SECTIONS = [
@@ -98,7 +94,7 @@ VALIDATION_SECTIONS = [
     "ERROR HANDLING",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 UTILITY_SECTIONS = [
@@ -108,7 +104,7 @@ UTILITY_SECTIONS = [
     "HELPER CLASSES",
     "FACTORY FUNCTIONS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 TEST_SECTIONS = [
@@ -118,7 +114,7 @@ TEST_SECTIONS = [
     "UNIT TESTS",
     "INTEGRATION TESTS",
     "HELPER FUNCTIONS",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 # Legacy sections for backward compatibility
@@ -127,7 +123,7 @@ LEGACY_COORDINATOR_SECTIONS = [
     "REQUEST/RESPONSE MODELS",
     "COORDINATOR IMPLEMENTATION",
     "ERROR TRANSLATION",
-    "EXPORTS"
+    "EXPORTS",
 ]
 
 LEGACY_SERVICE_SECTIONS = [
@@ -142,7 +138,7 @@ LEGACY_SERVICE_SECTIONS = [
     "VALIDATION ENDPOINTS",
     "EXTRACTION ENDPOINTS",
     "ADMIN & UTILITY ENDPOINTS",
-    "PRIVATE HELPERS"
+    "PRIVATE HELPERS",
 ]
 
 # Repository-wide paths to check
@@ -176,20 +172,21 @@ EXCLUDE_PATTERNS = {
     "__init__.py",  # Often minimal, check separately
 }
 
+
 class SectionHeaderChecker:
     """Check section header compliance for Python files."""
 
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
     def log(self, message: str, level: str = "INFO"):
         """Log a message if verbose mode is enabled."""
         if self.verbose or level in ("ERROR", "WARNING"):
             print(f"[{level}] {message}")
 
-    def get_expected_sections(self, file_path: Path) -> List[str]:
+    def get_expected_sections(self, file_path: Path) -> list[str]:
         """Get expected sections for a file based on its type."""
         file_str = str(file_path)
 
@@ -240,9 +237,9 @@ class SectionHeaderChecker:
             # Default minimal sections
             return ["IMPORTS", "EXPORTS"]
 
-    def extract_sections(self, content: str) -> List[Tuple[int, str]]:
+    def extract_sections(self, content: str) -> list[tuple[int, str]]:
         """Extract section headers from file content."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         sections = []
 
         for i, line in enumerate(lines):
@@ -250,20 +247,20 @@ class SectionHeaderChecker:
             # Match multi-line headers like: # ==============================================================================
             # SECTION NAME
             # ==============================================================================
-            if line.startswith('# =') and line.endswith('='):
+            if line.startswith("# =") and line.endswith("="):
                 # Check if next line contains the section name
                 if i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
-                    if next_line.startswith('# ') and not next_line.startswith('# ='):
+                    if next_line.startswith("# ") and not next_line.startswith("# ="):
                         section_name = next_line[2:].strip()  # Remove '# ' prefix
                         sections.append((i + 1, section_name))
             # Match single-line headers like: # ============================================================================== SECTION NAME ==============================================================================
-            elif line.startswith('# =') and '=' in line[3:]:
+            elif line.startswith("# =") and "=" in line[3:]:
                 # Find the section name between equals signs
-                start_idx = line.find(' ', 3)
-                end_idx = line.rfind(' =')
+                start_idx = line.find(" ", 3)
+                end_idx = line.rfind(" =")
                 if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                    section_name = line[start_idx+1:end_idx].strip()
+                    section_name = line[start_idx + 1 : end_idx].strip()
                     sections.append((i + 1, section_name))
 
         return sections
@@ -273,7 +270,7 @@ class SectionHeaderChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -313,7 +310,9 @@ class SectionHeaderChecker:
 
         for section_name, count in section_counts.items():
             if count > 1:
-                self.errors.append(f"{file_path}: Duplicate section '{section_name}' appears {count} times")
+                self.errors.append(
+                    f"{file_path}: Duplicate section '{section_name}' appears {count} times"
+                )
 
         return len(self.errors) == 0
 
@@ -353,14 +352,14 @@ class SectionHeaderChecker:
             for warning in self.warnings:
                 report.append(f"  ⚠️  {warning}")
 
-        report.append(f"\nSUMMARY:")
+        report.append("\nSUMMARY:")
         report.append(f"  Total Errors: {len(self.errors)}")
         report.append(f"  Total Warnings: {len(self.warnings)}")
 
         if len(self.errors) == 0:
-            report.append(f"  Status: ✅ ALL CHECKS PASSED")
+            report.append("  Status: ✅ ALL CHECKS PASSED")
         else:
-            report.append(f"  Status: ❌ ERRORS FOUND")
+            report.append("  Status: ❌ ERRORS FOUND")
 
         return "\n".join(report)
 
@@ -368,7 +367,9 @@ class SectionHeaderChecker:
 def main():
     """Main entry point for the section header checker."""
     parser = argparse.ArgumentParser(description="Check section header compliance")
-    parser.add_argument("path", nargs="?", default=".", help="Path to check (default: current directory)")
+    parser.add_argument(
+        "path", nargs="?", default=".", help="Path to check (default: current directory)"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()

@@ -82,12 +82,37 @@ def default_registry() -> ChunkerRegistry:
     registry.register("layout_heuristic", LayoutHeuristicChunker)
 
     optional_specs = [
-        ("Medical_KG_rev.chunking.chunkers.semantic", "SemanticSplitterChunker", "semantic_splitter", False),
-        ("Medical_KG_rev.chunking.chunkers.semantic", "SemanticClusterChunker", "semantic_cluster", True),
-        ("Medical_KG_rev.chunking.chunkers.semantic", "GraphPartitionChunker", "graph_partition", True),
+        (
+            "Medical_KG_rev.chunking.chunkers.semantic",
+            "SemanticSplitterChunker",
+            "semantic_splitter",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.chunkers.semantic",
+            "SemanticClusterChunker",
+            "semantic_cluster",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.chunkers.semantic",
+            "GraphPartitionChunker",
+            "graph_partition",
+            True,
+        ),
         ("Medical_KG_rev.chunking.chunkers.advanced", "GraphRAGChunker", "graph_rag", True),
-        ("Medical_KG_rev.chunking.chunkers.advanced", "DiscourseSegmenterChunker", "discourse_segmenter", True),
-        ("Medical_KG_rev.chunking.chunkers.advanced", "GrobidSectionChunker", "grobid_section", True),
+        (
+            "Medical_KG_rev.chunking.chunkers.advanced",
+            "DiscourseSegmenterChunker",
+            "discourse_segmenter",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.chunkers.advanced",
+            "GrobidSectionChunker",
+            "grobid_section",
+            True,
+        ),
         ("Medical_KG_rev.chunking.chunkers.advanced", "LayoutAwareChunker", "layout_aware", True),
         ("Medical_KG_rev.chunking.chunkers.classical", "TextTilingChunker", "text_tiling", True),
         ("Medical_KG_rev.chunking.chunkers.classical", "C99Chunker", "c99", True),
@@ -97,17 +122,72 @@ def default_registry() -> ChunkerRegistry:
     ]
 
     optional_adapters = [
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainSplitterChunker", "langchain.recursive_character", False),
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainTokenSplitterChunker", "langchain.token", False),
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainMarkdownChunker", "langchain.markdown", False),
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainHTMLChunker", "langchain.html", False),
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainNLTKChunker", "langchain.nltk", False),
-        ("Medical_KG_rev.chunking.adapters.langchain", "LangChainSpacyChunker", "langchain.spacy", False),
-        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexNodeParserChunker", "llama_index.semantic_splitter", True),
-        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexHierarchicalChunker", "llama_index.hierarchical", True),
-        ("Medical_KG_rev.chunking.adapters.llamaindex", "LlamaIndexSentenceChunker", "llama_index.sentence", True),
-        ("Medical_KG_rev.chunking.adapters.haystack", "HaystackPreprocessorChunker", "haystack.preprocessor", True),
-        ("Medical_KG_rev.chunking.adapters.unstructured_adapter", "UnstructuredChunker", "unstructured.adapter", True),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainSplitterChunker",
+            "langchain.recursive_character",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainTokenSplitterChunker",
+            "langchain.token",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainMarkdownChunker",
+            "langchain.markdown",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainHTMLChunker",
+            "langchain.html",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainNLTKChunker",
+            "langchain.nltk",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.langchain",
+            "LangChainSpacyChunker",
+            "langchain.spacy",
+            False,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.llamaindex",
+            "LlamaIndexNodeParserChunker",
+            "llama_index.semantic_splitter",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.llamaindex",
+            "LlamaIndexHierarchicalChunker",
+            "llama_index.hierarchical",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.llamaindex",
+            "LlamaIndexSentenceChunker",
+            "llama_index.sentence",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.haystack",
+            "HaystackPreprocessorChunker",
+            "haystack.preprocessor",
+            True,
+        ),
+        (
+            "Medical_KG_rev.chunking.adapters.unstructured_adapter",
+            "UnstructuredChunker",
+            "unstructured.adapter",
+            True,
+        ),
     ]
 
     for module_path, attribute, name, experimental in [*optional_specs, *optional_adapters]:

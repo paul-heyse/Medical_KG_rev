@@ -10,7 +10,9 @@ import numpy as np
 PoolingStrategy = Literal["mean", "max", "cls", "last_token", "none"]
 
 
-def pool_hidden_states(hidden_states: Sequence[Sequence[float]], strategy: PoolingStrategy) -> list[float]:
+def pool_hidden_states(
+    hidden_states: Sequence[Sequence[float]], strategy: PoolingStrategy
+) -> list[float]:
     if strategy == "none":
         return list(hidden_states[0]) if hidden_states else []
     if not hidden_states:

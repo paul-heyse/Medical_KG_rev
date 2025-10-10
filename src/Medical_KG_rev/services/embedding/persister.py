@@ -192,6 +192,7 @@ class PersisterRuntimeSettings:
             hybrid_backends = {}
         return cls(backend=backend, cache_limit=cache_limit, hybrid_backends=hybrid_backends)
 
+
 # ============================================================================
 # INTERFACE (Protocols/ABCs)
 # ============================================================================
@@ -256,7 +257,12 @@ class EmbeddingPersister(ABC):
         self._cache_limit = 256
 
     @abstractmethod
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Persist records to the backing store.
 
         Abstract method that concrete persisters must implement to define
@@ -274,7 +280,9 @@ class EmbeddingPersister(ABC):
 
         """
 
-    def persist_batch(self, records: Sequence[EmbeddingRecord], context: PersistenceContext) -> PersistenceReport:
+    def persist_batch(
+        self, records: Sequence[EmbeddingRecord], context: PersistenceContext
+    ) -> PersistenceReport:
         """Persist a batch of embedding records.
 
         Coordinates the persistence process including error handling,
@@ -306,7 +314,9 @@ class EmbeddingPersister(ABC):
             )
         report.duration_ms = (perf_counter() - started) * 1000
         if self._telemetry:
-            self._telemetry.record_persistence(report, namespace=context.namespace, tenant_id=context.tenant_id)
+            self._telemetry.record_persistence(
+                report, namespace=context.namespace, tenant_id=context.tenant_id
+            )
         return report
 
     def _remember(self, record: EmbeddingRecord) -> None:
@@ -436,6 +446,7 @@ class EmbeddingPersister(ABC):
         if kwargs:
             self._logger.info("persister.configure", **kwargs)
 
+
 # ============================================================================
 # IMPLEMENTATIONS
 # ============================================================================
@@ -472,7 +483,12 @@ class VectorStorePersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._storage_router = storage_router
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Persist records to vector store via storage router.
 
         Args:
@@ -512,7 +528,12 @@ class DatabasePersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._store: dict[str, EmbeddingRecord] = {}
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Persist records to in-memory store.
 
         Args:
@@ -584,7 +605,12 @@ class DryRunPersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._operations: list[PersistenceContext] = []
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Record operation without actual persistence.
 
         Args:
@@ -628,7 +654,12 @@ class MockPersister(EmbeddingPersister):
         super().__init__()
         self.persisted_records: list[EmbeddingRecord] = []
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Store records in memory for test verification.
 
         Args:
@@ -675,7 +706,12 @@ class HybridPersister(EmbeddingPersister):
         super().__init__(telemetry=telemetry)
         self._persisters = dict(persisters)
 
-    def _persist(self, records: Sequence[EmbeddingRecord], context: PersistenceContext, report: PersistenceReport) -> None:
+    def _persist(
+        self,
+        records: Sequence[EmbeddingRecord],
+        context: PersistenceContext,
+        report: PersistenceReport,
+    ) -> None:
         """Route records to appropriate persisters by kind.
 
         Args:
@@ -701,6 +737,7 @@ class HybridPersister(EmbeddingPersister):
             report.errors.extend(child_report.errors)
             for record in items:
                 self._remember(record)
+
 
 # ============================================================================
 # FACTORY FUNCTIONS
@@ -786,6 +823,7 @@ def build_persister(
 
     persister.configure(cache_limit=resolved.cache_limit)
     return persister
+
 
 # ============================================================================
 # EXPORTS

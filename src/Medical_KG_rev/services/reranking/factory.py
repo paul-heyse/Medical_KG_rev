@@ -20,9 +20,7 @@ class RerankerFactory:
     """Registry + factory to create reranker instances on demand."""
 
     _constructors: dict[str, Callable[[], RerankerPort]] = field(default_factory=dict)
-    _instances: dict[tuple[str, tuple[Any, ...] | None], RerankerPort] = field(
-        default_factory=dict
-    )
+    _instances: dict[tuple[str, tuple[Any, ...] | None], RerankerPort] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self._constructors:
@@ -89,6 +87,8 @@ class RerankerFactory:
             if hasattr(reranker, "quantization") and config.quantization:
                 reranker.quantization = config.quantization
         return reranker
+
+
 class _LazyColbertIndex:
     """Placeholder index that raises helpful errors until configured."""
 
@@ -113,7 +113,9 @@ class _LazyColbertIndex:
 class _LazyQdrant:
     """Placeholder client providing descriptive errors until configured."""
 
-    def retrieve(self, *args: Any, **kwargs: Any) -> Sequence[Any]:  # pragma: no cover - simple guard
+    def retrieve(
+        self, *args: Any, **kwargs: Any
+    ) -> Sequence[Any]:  # pragma: no cover - simple guard
         raise RerankingError(
             title="Qdrant not configured",
             status=503,

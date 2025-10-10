@@ -67,6 +67,7 @@ JSONAPI_CONTENT_TYPE = "application/vnd.api+json"
 # HELPER FUNCTIONS
 # ==============================================================================
 
+
 def _normalise_payload(data: Any) -> Any:
     """Normalize payload data for JSON:API serialization.
 
@@ -89,6 +90,7 @@ def _normalise_payload(data: Any) -> Any:
 # ==============================================================================
 # PRESENTER IMPLEMENTATION
 # ==============================================================================
+
 
 class JSONAPIPresenter(ResponsePresenter):
     """Presenter producing JSON:API compliant envelopes."""

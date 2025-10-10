@@ -48,11 +48,7 @@ def _check_docker() -> dict[str, object]:
         name = model.get("name", "unknown")
         dockerfile_name = model.get("dockerfile")
         image_tag = model.get("image")
-        dockerfile_path = (
-            VLLM_CATALOG.parent / dockerfile_name
-            if dockerfile_name
-            else None
-        )
+        dockerfile_path = VLLM_CATALOG.parent / dockerfile_name if dockerfile_name else None
         exists = dockerfile_path.exists() if dockerfile_path else False
         dockerfiles[name] = str(dockerfile_path.resolve()) if exists else None
 
@@ -100,9 +96,7 @@ def _check_docker() -> dict[str, object]:
                 text=True,
             )
             if result.returncode == 0:
-                services = {
-                    line.strip() for line in result.stdout.splitlines() if line.strip()
-                }
+                services = {line.strip() for line in result.stdout.splitlines() if line.strip()}
                 info["compose_service"] = DOCKER_COMPOSE_SERVICE in services
             else:
                 info["compose_service"] = False

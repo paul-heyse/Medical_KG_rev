@@ -32,9 +32,7 @@ def test_quality_matches_baseline(simulated_processor):
         for document in batch.documents
     }
 
-    baseline_documents = {
-        entry["document_id"]: entry for entry in baseline.get("documents", [])
-    }
+    baseline_documents = {entry["document_id"]: entry for entry in baseline.get("documents", [])}
 
     for doc_id, expected in baseline_documents.items():
         assert doc_id in observed, f"Missing document {doc_id} in pipeline output"
@@ -46,9 +44,9 @@ def test_quality_matches_baseline(simulated_processor):
                 assert actual_value == 0
             else:
                 similarity = actual_value / baseline_value
-                assert similarity >= 0.95, (
-                    f"{key} similarity for {doc_id} below 95%: {similarity:.2%}"
-                )
+                assert (
+                    similarity >= 0.95
+                ), f"{key} similarity for {doc_id} below 95%: {similarity:.2%}"
 
     metric_keys = ("blocks", "tables", "figures", "equations")
     totals = {key: sum(stats[key] for stats in observed.values()) for key in metric_keys}

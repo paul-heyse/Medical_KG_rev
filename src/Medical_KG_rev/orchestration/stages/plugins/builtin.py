@@ -208,7 +208,11 @@ class CoreStagePlugin(StagePlugin):
                 raise ValueError(f"Stage '{definition.name}' requires an adapter")
             strict = bool(config.get("strict", False))
             domain_value = config.get("domain")
-            domain = AdapterDomain(domain_value) if domain_value is not None else AdapterDomain.BIOMEDICAL
+            domain = (
+                AdapterDomain(domain_value)
+                if domain_value is not None
+                else AdapterDomain.BIOMEDICAL
+            )
             parameters = config.get("parameters", {}) if isinstance(config, Mapping) else {}
             return AdapterIngestStage(
                 self._adapter_manager,
@@ -219,14 +223,18 @@ class CoreStagePlugin(StagePlugin):
             )
         if stage_type == "parse":
             from Medical_KG_rev.orchestration.dagster.stages import AdapterParseStage
+
             return AdapterParseStage()
         if stage_type == "ir-validation":
             from Medical_KG_rev.orchestration.dagster.stages import IRValidationStage
+
             return IRValidationStage()
         if stage_type == "chunk":
             splitter = self._pipeline_resource.splitter
             # SimpleDocumentSplitter implements the required run() method for DocumentSplitter interface
-            return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
+            return HaystackChunker(
+                splitter, chunker_name="haystack.semantic", granularity="paragraph"
+            )
         if stage_type == "embed":
             embedder = self._pipeline_resource.embedder
             return HaystackEmbedder(embedder=embedder, require_gpu=False, sparse_expander=None)
@@ -237,9 +245,11 @@ class CoreStagePlugin(StagePlugin):
             )
         if stage_type == "extract":
             from Medical_KG_rev.orchestration.dagster.stages import NoOpExtractStage
+
             return NoOpExtractStage()
         if stage_type == "knowledge-graph":
             from Medical_KG_rev.orchestration.dagster.stages import NoOpKnowledgeGraphStage
+
             return NoOpKnowledgeGraphStage()
         if stage_type == "pdf-download":
             return StorageAwarePdfDownloadStage()
@@ -404,7 +414,9 @@ class _PdfDownloadStage:
         tenant = ctx.tenant_id
         artifacts: list[DownloadArtifact] = []
         for index, payload in enumerate(payloads):
-            uri = str(payload.get("pdf_url") or payload.get("download_url") or payload.get("uri") or "")
+            uri = str(
+                payload.get("pdf_url") or payload.get("download_url") or payload.get("uri") or ""
+            )
             if not uri:
                 raise ValueError("PDF payload missing 'pdf_url' or 'download_url'")
             artifacts.append(

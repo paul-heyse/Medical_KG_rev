@@ -50,14 +50,21 @@ class TestStorageAwarePdfDownloadStage:
         assert stage._stage_name == "pdf-download"
 
     @pytest.mark.asyncio
-    async def test_execute_with_pdf_urls(self, stage: StorageAwarePdfDownloadStage, pipeline_state: PipelineState, mock_pdf_storage: PdfStorageClient) -> None:
+    async def test_execute_with_pdf_urls(
+        self,
+        stage: StorageAwarePdfDownloadStage,
+        pipeline_state: PipelineState,
+        mock_pdf_storage: PdfStorageClient,
+    ) -> None:
         """Test stage execution with PDF URLs."""
         # Mock HTTP client response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake pdf content"
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.HttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.HttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request.return_value = mock_response
             mock_http_client.return_value = mock_client
@@ -79,7 +86,9 @@ class TestStorageAwarePdfDownloadStage:
             # Verify result contains storage URIs
             assert "pdf_assets" in result.metadata
             assert len(result.metadata["pdf_assets"]) == 2
-            assert all(asset["storage_uri"].startswith("s3://") for asset in result.metadata["pdf_assets"])
+            assert all(
+                asset["storage_uri"].startswith("s3://") for asset in result.metadata["pdf_assets"]
+            )
 
     @pytest.mark.asyncio
     async def test_execute_no_pdf_urls(self, stage: StorageAwarePdfDownloadStage) -> None:
@@ -97,13 +106,17 @@ class TestStorageAwarePdfDownloadStage:
         assert result == pipeline_state
 
     @pytest.mark.asyncio
-    async def test_execute_http_error(self, stage: StorageAwarePdfDownloadStage, pipeline_state: PipelineState) -> None:
+    async def test_execute_http_error(
+        self, stage: StorageAwarePdfDownloadStage, pipeline_state: PipelineState
+    ) -> None:
         """Test stage execution with HTTP error."""
         # Mock HTTP client to return error
         mock_response = MagicMock()
         mock_response.status_code = 404
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.HttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.HttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request.return_value = mock_response
             mock_http_client.return_value = mock_client
@@ -116,14 +129,21 @@ class TestStorageAwarePdfDownloadStage:
             assert all(asset["error"] is not None for asset in result.metadata["pdf_assets"])
 
     @pytest.mark.asyncio
-    async def test_execute_storage_error(self, stage: StorageAwarePdfDownloadStage, pipeline_state: PipelineState, mock_pdf_storage: PdfStorageClient) -> None:
+    async def test_execute_storage_error(
+        self,
+        stage: StorageAwarePdfDownloadStage,
+        pipeline_state: PipelineState,
+        mock_pdf_storage: PdfStorageClient,
+    ) -> None:
         """Test stage execution with storage error."""
         # Mock HTTP client response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake pdf content"
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.HttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.HttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request.return_value = mock_response
             mock_http_client.return_value = mock_client
@@ -144,7 +164,9 @@ class TestStorageAwarePdfDownloadStage:
         mock_response.status_code = 200
         mock_response.content = b"fake pdf content"
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.HttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.HttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request.return_value = mock_response
             mock_http_client.return_value = mock_client
@@ -156,7 +178,9 @@ class TestStorageAwarePdfDownloadStage:
 
     def test_download_with_retries_failure(self, stage: StorageAwarePdfDownloadStage) -> None:
         """Test PDF download with retries - failure case."""
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.HttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.HttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request.side_effect = Exception("Network error")
             mock_http_client.return_value = mock_client
@@ -210,9 +234,7 @@ class TestAsyncStorageAwarePdfDownloadStage:
             job_id="test-job",
             tenant_id="test-tenant",
             document_id="test-doc",
-            metadata={
-                "pdf_urls": ["https://example.com/paper1.pdf"]
-            },
+            metadata={"pdf_urls": ["https://example.com/paper1.pdf"]},
         )
 
     def test_stage_name(self, stage: AsyncStorageAwarePdfDownloadStage) -> None:
@@ -220,14 +242,21 @@ class TestAsyncStorageAwarePdfDownloadStage:
         assert stage._stage_name == "pdf-download"
 
     @pytest.mark.asyncio
-    async def test_execute_async_success(self, stage: AsyncStorageAwarePdfDownloadStage, pipeline_state: PipelineState, mock_pdf_storage: PdfStorageClient) -> None:
+    async def test_execute_async_success(
+        self,
+        stage: AsyncStorageAwarePdfDownloadStage,
+        pipeline_state: PipelineState,
+        mock_pdf_storage: PdfStorageClient,
+    ) -> None:
         """Test async stage execution success."""
         # Mock async HTTP client response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake pdf content"
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request = AsyncMock(return_value=mock_response)
             mock_http_client.return_value = mock_client
@@ -252,13 +281,17 @@ class TestAsyncStorageAwarePdfDownloadStage:
             assert result.metadata["pdf_assets"][0]["storage_uri"].startswith("s3://")
 
     @pytest.mark.asyncio
-    async def test_download_with_retries_async_success(self, stage: AsyncStorageAwarePdfDownloadStage) -> None:
+    async def test_download_with_retries_async_success(
+        self, stage: AsyncStorageAwarePdfDownloadStage
+    ) -> None:
         """Test async PDF download with retries - success case."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake pdf content"
 
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request = AsyncMock(return_value=mock_response)
             mock_http_client.return_value = mock_client
@@ -269,9 +302,13 @@ class TestAsyncStorageAwarePdfDownloadStage:
             mock_client.request.assert_called_once_with("GET", "https://example.com/test.pdf")
 
     @pytest.mark.asyncio
-    async def test_download_with_retries_async_failure(self, stage: AsyncStorageAwarePdfDownloadStage) -> None:
+    async def test_download_with_retries_async_failure(
+        self, stage: AsyncStorageAwarePdfDownloadStage
+    ) -> None:
         """Test async PDF download with retries - failure case."""
-        with patch("Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient") as mock_http_client:
+        with patch(
+            "Medical_KG_rev.orchestration.stages.pdf_download.AsyncHttpClient"
+        ) as mock_http_client:
             mock_client = MagicMock()
             mock_client.request = AsyncMock(side_effect=Exception("Network error"))
             mock_http_client.return_value = mock_client

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import pytest
 
 from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
@@ -36,7 +34,6 @@ class TestStorageIntegration:
     async def test_s3_pdf_storage_integration(self, s3_settings: ObjectStorageSettings) -> None:
         """Test PDF storage integration with S3 using moto."""
         try:
-            import moto
             from moto import mock_s3
         except ImportError:
             pytest.skip("moto not available for S3 integration tests")
@@ -44,6 +41,7 @@ class TestStorageIntegration:
         with mock_s3():
             # Create S3 bucket
             import boto3
+
             s3_client = boto3.client("s3", region_name=s3_settings.region)
             s3_client.create_bucket(Bucket=s3_settings.bucket)
 
@@ -87,7 +85,7 @@ class TestStorageIntegration:
     async def test_redis_cache_integration(self, redis_settings: RedisCacheSettings) -> None:
         """Test Redis cache integration."""
         try:
-            import redis.asyncio as redis
+            pass
         except ImportError:
             pytest.skip("redis not available for integration tests")
 
@@ -109,6 +107,7 @@ class TestStorageIntegration:
         # Test cache expiration
         await clients.cache_backend.set(test_key, test_value, ttl=1)
         import asyncio
+
         await asyncio.sleep(1.1)  # Wait for expiration
 
         expired_value = await clients.cache_backend.get(test_key)
@@ -116,10 +115,11 @@ class TestStorageIntegration:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_document_artifact_storage_integration(self, s3_settings: ObjectStorageSettings) -> None:
+    async def test_document_artifact_storage_integration(
+        self, s3_settings: ObjectStorageSettings
+    ) -> None:
         """Test document artifact storage integration."""
         try:
-            import moto
             from moto import mock_s3
         except ImportError:
             pytest.skip("moto not available for S3 integration tests")
@@ -127,6 +127,7 @@ class TestStorageIntegration:
         with mock_s3():
             # Create S3 bucket
             import boto3
+
             s3_client = boto3.client("s3", region_name=s3_settings.region)
             s3_client.create_bucket(Bucket=s3_settings.bucket)
 
@@ -155,6 +156,7 @@ class TestStorageIntegration:
 
             # Extract checksum from URI for retrieval
             import hashlib
+
             checksum = hashlib.sha256(artifact_data).hexdigest()
 
             # Test artifact retrieval
@@ -169,7 +171,6 @@ class TestStorageIntegration:
     async def test_storage_error_handling(self, s3_settings: ObjectStorageSettings) -> None:
         """Test storage error handling scenarios."""
         try:
-            import moto
             from moto import mock_s3
         except ImportError:
             pytest.skip("moto not available for S3 integration tests")
@@ -196,7 +197,6 @@ class TestStorageIntegration:
     async def test_concurrent_storage_operations(self, s3_settings: ObjectStorageSettings) -> None:
         """Test concurrent storage operations."""
         try:
-            import moto
             from moto import mock_s3
         except ImportError:
             pytest.skip("moto not available for S3 integration tests")
@@ -204,6 +204,7 @@ class TestStorageIntegration:
         with mock_s3():
             # Create S3 bucket
             import boto3
+
             s3_client = boto3.client("s3", region_name=s3_settings.region)
             s3_client.create_bucket(Bucket=s3_settings.bucket)
 
@@ -245,7 +246,6 @@ class TestStoragePerformance:
     async def test_large_file_upload_performance(self) -> None:
         """Test performance with large file uploads."""
         try:
-            import moto
             from moto import mock_s3
         except ImportError:
             pytest.skip("moto not available for performance tests")
@@ -253,6 +253,7 @@ class TestStoragePerformance:
         with mock_s3():
             # Create S3 bucket
             import boto3
+
             s3_settings = ObjectStorageSettings(
                 bucket="test-performance-bucket",
                 region="us-east-1",
@@ -269,6 +270,7 @@ class TestStoragePerformance:
             large_pdf_data = b"x" * (1024 * 1024)  # 1MB
 
             import time
+
             start_time = time.time()
 
             asset = await clients.pdf_storage_client.store_pdf(
@@ -310,6 +312,7 @@ class TestStoragePerformance:
 
         # Test many cache operations
         import time
+
         start_time = time.time()
 
         # Set many cache entries

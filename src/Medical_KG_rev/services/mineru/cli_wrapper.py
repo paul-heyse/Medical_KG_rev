@@ -77,6 +77,7 @@ logger = structlog.get_logger(__name__)
 # EXCEPTION CLASSES
 # ==============================================================================
 
+
 class MineruCliError(RuntimeError):
     """Raised when the MinerU CLI invocation fails.
 
@@ -96,6 +97,7 @@ class MineruCliError(RuntimeError):
 # ==============================================================================
 # DATA MODELS
 # ==============================================================================
+
 
 @dataclass(slots=True)
 class MineruCliInput:
@@ -190,6 +192,7 @@ class MineruCliResult:
 # ==============================================================================
 # CLI IMPLEMENTATIONS
 # ==============================================================================
+
 
 class MineruCliBase:
     """Base class for MinerU CLI integrations.
@@ -432,23 +435,29 @@ class SubprocessMineruCli(MineruCliBase):
                 # - text_level: heading hierarchy (1=H1, 2=H2, etc.)
                 # - Cleaner, flattened structure
                 # - Better section clustering information
-                output_path = output_dir / item.document_id / "vlm" / f"{item.document_id}_content_list.json"
+                output_path = (
+                    output_dir / item.document_id / "vlm" / f"{item.document_id}_content_list.json"
+                )
                 if not output_path.exists():
                     logger.bind(
                         output_path=str(output_path),
                         document_id=item.document_id,
-                        output_dir_contents=list((output_dir / item.document_id).rglob("*")) if (output_dir / item.document_id).exists() else "dir_not_found"
+                        output_dir_contents=(
+                            list((output_dir / item.document_id).rglob("*"))
+                            if (output_dir / item.document_id).exists()
+                            else "dir_not_found"
+                        ),
                     ).error("mineru.cli.output_not_found")
                     raise MineruCliError(
                         f"MinerU CLI did not produce output for document '{item.document_id}' at {output_path}"
                     )
                 # Read the JSON content before the temp directory is deleted
                 json_content = output_path.read_text(encoding="utf-8")
-                outputs.append(MineruCliOutput(
-                    document_id=item.document_id,
-                    path=output_path,
-                    json_content=json_content
-                ))
+                outputs.append(
+                    MineruCliOutput(
+                        document_id=item.document_id, path=output_path, json_content=json_content
+                    )
+                )
 
         return MineruCliResult(
             outputs=outputs,
@@ -583,11 +592,11 @@ class SimulatedMineruCli(MineruCliBase):
             # Read JSON content for new MineruCliOutput format
             json_content = json.dumps(payload)
 
-            outputs.append(MineruCliOutput(
-                document_id=item.document_id,
-                path=Path(path),
-                json_content=json_content
-            ))
+            outputs.append(
+                MineruCliOutput(
+                    document_id=item.document_id, path=Path(path), json_content=json_content
+                )
+            )
             stdout_lines.append(f"simulated:{item.document_id}")
 
         duration = time.monotonic() - start
@@ -602,6 +611,7 @@ class SimulatedMineruCli(MineruCliBase):
 # ==============================================================================
 # FACTORY FUNCTIONS
 # ==============================================================================
+
 
 def create_cli(settings: MineruSettings) -> MineruCliBase:
     """Factory that resolves the appropriate CLI implementation.

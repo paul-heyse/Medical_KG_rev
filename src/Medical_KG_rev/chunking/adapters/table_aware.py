@@ -64,7 +64,9 @@ class TableAwareChunker(BaseChunker):
                 chunks.append(assembler.build([context], metadata=self._table_metadata(context)))
                 continue
             buffer.append(context)
-            if len(buffer) >= self.max_paragraphs or context.block.metadata.get("table_context_break"):
+            if len(buffer) >= self.max_paragraphs or context.block.metadata.get(
+                "table_context_break"
+            ):
                 flush_buffer()
 
         flush_buffer()
@@ -88,7 +90,11 @@ class TableAwareChunker(BaseChunker):
                     "table_headers": list(table.headers),
                 }
             )
-            exports = getattr(table, "metadata", {}).get("exports") if hasattr(table, "metadata") else None
+            exports = (
+                getattr(table, "metadata", {}).get("exports")
+                if hasattr(table, "metadata")
+                else None
+            )
             if isinstance(exports, dict):
                 for key in ("json", "csv", "markdown"):
                     value = exports.get(key)

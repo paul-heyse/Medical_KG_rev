@@ -6,14 +6,16 @@ def test_event_emitter_publishes_lifecycle_events() -> None:
         def __init__(self) -> None:
             self.topics: dict[str, list[dict[str, object]]] = {}
 
-        def create_topics(self, topics):  # noqa: D401 - mimic client interface
+        def create_topics(self, topics):
             for topic in topics:
                 self.topics.setdefault(topic, [])
 
-        def publish(self, topic: str, value: dict[str, object], *, key=None, headers=None):  # noqa: D401
+        def publish(
+            self, topic: str, value: dict[str, object], *, key=None, headers=None
+        ):
             self.topics.setdefault(topic, []).append(value)
 
-        def consume(self, topic: str):  # noqa: D401
+        def consume(self, topic: str):
             while self.topics.get(topic):
                 yield type("Message", (), {"value": self.topics[topic].pop(0)})()
 

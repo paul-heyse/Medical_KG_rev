@@ -1,4 +1,4 @@
-.venv/
+.venv
 .pytest_cache/
 __pycache__/
 *.pyc
@@ -20,8 +20,6 @@ htmlcov/
 # Extended bytecode ignores
 *.py[cod]
 
-# Generated documentation
-docs/api/
 
 # Generated protobuf stubs
 src/Medical_KG_rev/proto/gen/
@@ -37,3 +35,4 @@ pip-wheel-metadata/
 models/qwen3-embedding-8b/
 models/splade-v3/
 .vllm_cache/
+

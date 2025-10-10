@@ -80,9 +80,7 @@ class UnstructuredChunker(BaseChunker):
         token_counter: TokenCounter | None = None,
     ) -> None:
         if strategy not in {"title", "element", "page"}:
-            raise ChunkerConfigurationError(
-                "strategy must be one of 'title', 'element', or 'page'"
-            )
+            raise ChunkerConfigurationError("strategy must be one of 'title', 'element', or 'page'")
         self.strategy = strategy
         self.counter = token_counter or default_token_counter()
         self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
@@ -95,11 +93,7 @@ class UnstructuredChunker(BaseChunker):
         granularity: Granularity | None = None,
         blocks: Iterable | None = None,
     ) -> list[Chunk]:
-        contexts = [
-            ctx
-            for ctx in self.normalizer.iter_block_contexts(document)
-            if ctx.text
-        ]
+        contexts = [ctx for ctx in self.normalizer.iter_block_contexts(document) if ctx.text]
         if not contexts:
             return []
         mapper = OffsetMapper(contexts, token_counter=self.counter)
@@ -129,4 +123,3 @@ class UnstructuredChunker(BaseChunker):
 
     def explain(self) -> dict[str, object]:
         return {"framework": "unstructured", "strategy": self.strategy}
-

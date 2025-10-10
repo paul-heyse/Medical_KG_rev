@@ -68,6 +68,7 @@ from Medical_KG_rev.models.table import Table
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass(slots=True)
 class Block:
     """Representation of a document block produced by MinerU.
@@ -174,6 +175,7 @@ class Document:
 # ==============================================================================
 # REQUEST/RESPONSE MODELS
 # ==============================================================================
+
 
 @dataclass(slots=True)
 class MineruRequest:
@@ -296,6 +298,7 @@ class MineruBatchRequest:
 # ==============================================================================
 # PROCESSING METADATA
 # ==============================================================================
+
 
 @dataclass(slots=True)
 class ProcessingMetadata:

@@ -187,7 +187,9 @@ class FaissVectorStore(VectorStorePort):
         existing = tenant_state.get(namespace)
         if existing:
             if existing.dimension != params.dimension:
-                raise DimensionMismatchError(existing.dimension, params.dimension, namespace=namespace)
+                raise DimensionMismatchError(
+                    existing.dimension, params.dimension, namespace=namespace
+                )
             existing.params = params
             existing.compression = compression
             existing.reorder_k = params.reorder_k
@@ -206,7 +208,9 @@ class FaissVectorStore(VectorStorePort):
             cpu_index = self._build_index(namespace, params, compression)
 
         if _index_dimension(cpu_index) != params.dimension:
-            raise DimensionMismatchError(_index_dimension(cpu_index), params.dimension, namespace=namespace)
+            raise DimensionMismatchError(
+                _index_dimension(cpu_index), params.dimension, namespace=namespace
+            )
 
         payload_store = _SQLiteStore(sqlite_path, params.dimension)
         vector_map, next_internal_id = payload_store.load_id_map()
@@ -225,7 +229,9 @@ class FaissVectorStore(VectorStorePort):
             training_threshold=_training_threshold(params, compression),
             requires_training=not cpu_index.is_trained,
             vector_id_to_internal=vector_map,
-            internal_to_vector_id={internal: vector_id for vector_id, internal in vector_map.items()},
+            internal_to_vector_id={
+                internal: vector_id for vector_id, internal in vector_map.items()
+            },
             next_internal_id=next_internal_id,
         )
 
@@ -272,7 +278,9 @@ class FaissVectorStore(VectorStorePort):
             state.vector_id_to_internal[record.vector_id] = internal_id
             state.internal_to_vector_id[internal_id] = record.vector_id
 
-            state.pending_records = [r for r in state.pending_records if r.vector_id != record.vector_id]
+            state.pending_records = [
+                r for r in state.pending_records if r.vector_id != record.vector_id
+            ]
             state.pending_records.append(
                 _PendingRecord(
                     vector_id=record.vector_id,
@@ -340,7 +348,9 @@ class FaissVectorStore(VectorStorePort):
             scored = [
                 (
                     vector_id,
-                    _score_vectors(raw_query, stored_vectors.get(vector_id), state.metric, state.normalize),
+                    _score_vectors(
+                        raw_query, stored_vectors.get(vector_id), state.metric, state.normalize
+                    ),
                 )
                 for vector_id, _ in matches
                 if stored_vectors.get(vector_id) is not None
@@ -403,7 +413,10 @@ class FaissVectorStore(VectorStorePort):
         metadata = state.payload_store.fetch_metadata(vector_ids)
         records: list[dict[str, object]] = []
         for vector_id in vector_ids:
-            record: dict[str, object] = {"vector_id": vector_id, "metadata": metadata.get(vector_id, {})}
+            record: dict[str, object] = {
+                "vector_id": vector_id,
+                "metadata": metadata.get(vector_id, {}),
+            }
             if include_payloads and vector_id in vectors:
                 record["values"] = vectors[vector_id].tolist()
             records.append(record)
@@ -580,21 +593,31 @@ class FaissVectorStore(VectorStorePort):
             base = faiss.index_factory(params.dimension, factory, metric)
         elif kind == "ivf_flat":
             if params.nlist is None:
-                raise InvalidNamespaceConfigError(namespace, detail="nlist is required for IVF indexes")
+                raise InvalidNamespaceConfigError(
+                    namespace, detail="nlist is required for IVF indexes"
+                )
             factory = f"IVF{params.nlist},{_flat_factory_string(compression)}"
             base = faiss.index_factory(params.dimension, factory, metric)
         elif kind == "ivf_pq":
             if params.nlist is None:
-                raise InvalidNamespaceConfigError(namespace, detail="nlist is required for IVF_PQ indexes")
+                raise InvalidNamespaceConfigError(
+                    namespace, detail="nlist is required for IVF_PQ indexes"
+                )
             if compression.pq_m is None or compression.pq_nbits is None:
-                raise InvalidNamespaceConfigError(namespace, detail="PQ configuration requires pq_m and pq_nbits")
+                raise InvalidNamespaceConfigError(
+                    namespace, detail="PQ configuration requires pq_m and pq_nbits"
+                )
             factory = f"IVF{params.nlist},PQ{compression.pq_m}x{compression.pq_nbits}"
             base = faiss.index_factory(params.dimension, factory, metric)
         elif kind == "opq_ivf_pq":
             if params.nlist is None:
-                raise InvalidNamespaceConfigError(namespace, detail="nlist is required for OPQ IVF_PQ indexes")
+                raise InvalidNamespaceConfigError(
+                    namespace, detail="nlist is required for OPQ IVF_PQ indexes"
+                )
             if compression.pq_m is None or compression.pq_nbits is None:
-                raise InvalidNamespaceConfigError(namespace, detail="OPQ+PQ requires pq_m and pq_nbits")
+                raise InvalidNamespaceConfigError(
+                    namespace, detail="OPQ+PQ requires pq_m and pq_nbits"
+                )
             opq_m = compression.opq_m or compression.pq_m
             factory = f"OPQ{opq_m},IVF{params.nlist},PQ{compression.pq_m}x{compression.pq_nbits}"
             base = faiss.index_factory(params.dimension, factory, metric)
@@ -606,7 +629,9 @@ class FaissVectorStore(VectorStorePort):
             if metric == faiss.METRIC_INNER_PRODUCT:
                 base.metric_type = faiss.METRIC_INNER_PRODUCT
         else:
-            raise InvalidNamespaceConfigError(namespace, detail=f"Unsupported FAISS index kind '{params.kind}'")
+            raise InvalidNamespaceConfigError(
+                namespace, detail=f"Unsupported FAISS index kind '{params.kind}'"
+            )
 
         return faiss.IndexIDMap2(base)
 

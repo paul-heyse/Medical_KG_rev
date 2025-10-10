@@ -41,8 +41,6 @@ Example:
 
 """
 
-
-
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
@@ -270,12 +268,11 @@ class ICD11Adapter(ResilientHTTPAdapter):
             section = Section(
                 id="icd11",
                 title="ICD-11",
-                blocks=[Block(
-                    id="icd11-block",
-                    type=BlockType.PARAGRAPH,
-                    text=_to_text(display),
-                    spans=[]
-                )],
+                blocks=[
+                    Block(
+                        id="icd11-block", type=BlockType.PARAGRAPH, text=_to_text(display), spans=[]
+                    )
+                ],
             )
 
             documents.append(
@@ -339,12 +336,9 @@ class MeSHAdapter(ResilientHTTPAdapter):
             section = Section(
                 id="mesh",
                 title="MeSH Descriptor",
-                blocks=[Block(
-                    id="mesh-block",
-                    type=BlockType.PARAGRAPH,
-                    text=_to_text(name),
-                    spans=[]
-                )],
+                blocks=[
+                    Block(id="mesh-block", type=BlockType.PARAGRAPH, text=_to_text(name), spans=[])
+                ],
             )
 
             documents.append(

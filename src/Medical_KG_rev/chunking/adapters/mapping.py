@@ -86,4 +86,3 @@ class OffsetMapper:
                 )
             )
         return SegmentProjection(contexts=sliced, end_offset=end)
-

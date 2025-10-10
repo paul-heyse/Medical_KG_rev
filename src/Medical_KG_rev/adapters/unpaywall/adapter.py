@@ -115,6 +115,7 @@ def _linear_retry_config(attempts: int, initial: float, timeout: float) -> Retry
 # ADAPTER IMPLEMENTATION
 # ==============================================================================
 
+
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
 
@@ -208,9 +209,7 @@ class UnpaywallAdapter(PdfManifestMixin, ResilientHTTPAdapter):
     def fetch(self, context: AdapterContext) -> Iterable[dict[str, Any]]:
         """Fetch open access status for a DOI."""
         doi = validate_doi(_require_parameter(context, "doi"))
-        payload = self._get_json(
-            f"/{doi}", params={"email": self._pdf_settings.contact_email}
-        )
+        payload = self._get_json(f"/{doi}", params={"email": self._pdf_settings.contact_email})
         return [payload]
 
     def parse(
@@ -256,12 +255,7 @@ class UnpaywallAdapter(PdfManifestMixin, ResilientHTTPAdapter):
                 id="unpaywall",
                 title="Open Access",
                 blocks=[
-                    Block(
-                        id="oa-block",
-                        type=BlockType.PARAGRAPH,
-                        text=_to_text(text),
-                        spans=[]
-                    )
+                    Block(id="oa-block", type=BlockType.PARAGRAPH, text=_to_text(text), spans=[])
                 ],
             )
 

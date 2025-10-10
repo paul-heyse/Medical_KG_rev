@@ -295,7 +295,9 @@ class NamespaceAccessPolicy(ABC):
         self._settings = NamespacePolicySettings(**new_values)
         self.invalidate()
 
-    def evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access for the supplied namespace/tenant/scope.
 
         Args:
@@ -330,7 +332,9 @@ class NamespaceAccessPolicy(ABC):
 
         # Evaluate policy and measure duration
         started = perf_counter()
-        decision = self._evaluate(namespace=namespace, tenant_id=tenant_id, required_scope=required_scope)
+        decision = self._evaluate(
+            namespace=namespace, tenant_id=tenant_id, required_scope=required_scope
+        )
         duration_ms = (perf_counter() - started) * 1000
         decision = replace(decision, duration_ms=duration_ms)
 
@@ -429,7 +433,9 @@ class NamespaceAccessPolicy(ABC):
         }
 
     @abstractmethod
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Perform the actual policy evaluation.
 
         Args:
@@ -499,7 +505,9 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
 
     """
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access using the namespace registry configuration.
 
         Args:
@@ -617,7 +625,9 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         )
         self._delegate = delegate
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access using delegate policy but always grant access.
 
         Args:
@@ -762,7 +772,9 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         )
         self._decisions[(namespace, tenant_id, scope)] = decision
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access using predefined decisions.
 
         Args:
@@ -855,7 +867,9 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         super().__init__(registry, telemetry=telemetry, settings=settings)
         self._resolver = resolver
 
-    def _evaluate(self, *, namespace: str, tenant_id: str, required_scope: str) -> NamespaceAccessDecision:
+    def _evaluate(
+        self, *, namespace: str, tenant_id: str, required_scope: str
+    ) -> NamespaceAccessDecision:
         """Evaluate access using custom resolver callable.
 
         Args:
@@ -901,7 +915,9 @@ def build_policy_chain(
     telemetry: EmbeddingTelemetry | None = None,
     settings: NamespacePolicySettings | None = None,
     dry_run: bool = False,
-    extra_policies: Iterable[Callable[[NamespaceAccessPolicy], NamespaceAccessPolicy]] | None = None,
+    extra_policies: (
+        Iterable[Callable[[NamespaceAccessPolicy], NamespaceAccessPolicy]] | None
+    ) = None,
 ) -> NamespaceAccessPolicy:
     """Build a composed namespace access policy.
 
@@ -930,7 +946,9 @@ def build_policy_chain(
         ... )
 
     """
-    policy: NamespaceAccessPolicy = StandardNamespacePolicy(registry, telemetry=telemetry, settings=settings)
+    policy: NamespaceAccessPolicy = StandardNamespacePolicy(
+        registry, telemetry=telemetry, settings=settings
+    )
     if dry_run:
         policy = DryRunNamespacePolicy(policy, telemetry=telemetry)
     for factory in extra_policies or ():

@@ -37,7 +37,9 @@ def _load_pyserini_encoder(mode: str) -> type:
     try:
         module = importlib.import_module("pyserini.encode")
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional dependency
-        raise PyseriniNotInstalledError("pyserini>=0.22.0 is required for SPLADE embeddings") from exc
+        raise PyseriniNotInstalledError(
+            "pyserini>=0.22.0 is required for SPLADE embeddings"
+        ) from exc
     class_name = "SpladeQueryEncoder" if mode == "query" else "SpladeDocumentEncoder"
     try:
         return getattr(module, class_name)
@@ -84,7 +86,9 @@ class PyseriniSparseEmbedder:
         if not isinstance(weights, dict):  # pragma: no cover - Pyserini contract
             raise TypeError("Pyserini SPLADE encoder must return a dict of term weights")
         if self._max_terms is not None:
-            items = sorted(weights.items(), key=lambda item: item[1], reverse=True)[: self._max_terms]
+            items = sorted(weights.items(), key=lambda item: item[1], reverse=True)[
+                : self._max_terms
+            ]
             return {term: float(score) for term, score in items}
         return {term: float(score) for term, score in weights.items()}
 

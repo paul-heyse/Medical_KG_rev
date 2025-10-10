@@ -155,7 +155,6 @@ class TestStorageHelperMixinIntegration:
     @pytest.mark.asyncio
     async def test_openalex_adapter_with_storage(self) -> None:
         """Test OpenAlex adapter with storage mixin."""
-        from Medical_KG_rev.adapters.base import AdapterContext
         from Medical_KG_rev.adapters.openalex.adapter import OpenAlexAdapter
 
         # Create adapter with storage

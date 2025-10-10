@@ -126,7 +126,6 @@ XLINK_NS = "{http://www.w3.org/1999/xlink}"
 
 def _extract_license_from_xml(root: Element) -> str | None:
     """Extract license reference from PMC XML if present."""
-
     for node in root.findall(".//license"):
         href = node.get(f"{XLINK_NS}href")
         if href and href.strip():
@@ -139,7 +138,6 @@ def _extract_license_from_xml(root: Element) -> str | None:
 
 def _collect_pdf_assets(root: Element, pmcid: str | None) -> list[Mapping[str, Any]]:
     """Collect candidate PDF assets from PMC XML."""
-
     license_hint = _extract_license_from_xml(root)
     landing_page = f"https://europepmc.org/article/pmcid/{pmcid}" if pmcid else None
     assets: list[dict[str, Any]] = []
@@ -186,6 +184,7 @@ def _collect_pdf_assets(root: Element, pmcid: str | None) -> list[Mapping[str, A
 # ==============================================================================
 # ADAPTER IMPLEMENTATION
 # ==============================================================================
+
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
@@ -283,7 +282,9 @@ class PMCAdapter(PdfManifestMixin, ResilientHTTPAdapter):
         xml_text = self._get_text(f"/webservices/rest/{pmcid}/fullTextXML")
         return [{"xml_content": xml_text}]
 
-    def parse(self, payloads: Iterable[dict[str, Any]], context: AdapterContext) -> Sequence[Document]:
+    def parse(
+        self, payloads: Iterable[dict[str, Any]], context: AdapterContext
+    ) -> Sequence[Document]:
         """Parse PMC XML into documents."""
         documents: list[Document] = []
         for payload in payloads:
@@ -297,19 +298,18 @@ class PMCAdapter(PdfManifestMixin, ResilientHTTPAdapter):
 
             blocks: list[Block] = []
             if abstract_text:
-                blocks.append(Block(
-                    id="pmc-abstract",
-                    type=BlockType.PARAGRAPH,
-                    text=abstract_text,
-                    spans=[]
-                ))
+                blocks.append(
+                    Block(id="pmc-abstract", type=BlockType.PARAGRAPH, text=abstract_text, spans=[])
+                )
             for idx, paragraph in enumerate(body_paragraphs[:5]):
-                blocks.append(Block(
-                    id=f"pmc-body-{idx}",
-                    type=BlockType.PARAGRAPH,
-                    text=_to_text(paragraph),
-                    spans=[]
-                ))
+                blocks.append(
+                    Block(
+                        id=f"pmc-body-{idx}",
+                        type=BlockType.PARAGRAPH,
+                        text=_to_text(paragraph),
+                        spans=[],
+                    )
+                )
 
             section = Section(id="pmc", title="Europe PMC", blocks=blocks)
 
@@ -328,7 +328,7 @@ class PMCAdapter(PdfManifestMixin, ResilientHTTPAdapter):
                 title=title,
                 sections=[section],
                 metadata=metadata,
-                )
+            )
             if manifest_assets:
                 manifest = self.build_pdf_manifest(
                     connector="pmc",
@@ -341,7 +341,6 @@ class PMCAdapter(PdfManifestMixin, ResilientHTTPAdapter):
 
     def polite_headers(self) -> Mapping[str, str]:
         """Expose polite pool headers for tests and diagnostics."""
-
         return self._polite_headers
 
 

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.config import RerankingSettings
+from Medical_KG_rev.services.reranking.errors import RerankingError
 from Medical_KG_rev.services.retrieval.faiss_index import FAISSIndex
 from Medical_KG_rev.services.retrieval.opensearch_client import OpenSearchClient
 from Medical_KG_rev.services.retrieval.rerank_policy import TenantRerankPolicy
 from Medical_KG_rev.services.retrieval.retrieval_service import RetrievalService
-from Medical_KG_rev.services.reranking.errors import RerankingError
 
 
 def _setup_clients():
@@ -20,10 +20,14 @@ def _setup_clients():
 
 
 def _policy(**overrides: bool) -> TenantRerankPolicy:
-    return TenantRerankPolicy(default_enabled=False, tenant_defaults=overrides, experiment_ratio=0.0)
+    return TenantRerankPolicy(
+        default_enabled=False, tenant_defaults=overrides, experiment_ratio=0.0
+    )
 
 
-def _service(opensearch: OpenSearchClient, faiss: FAISSIndex, **policy_overrides: bool) -> RetrievalService:
+def _service(
+    opensearch: OpenSearchClient, faiss: FAISSIndex, **policy_overrides: bool
+) -> RetrievalService:
     return RetrievalService(
         opensearch,
         faiss,
@@ -143,17 +147,14 @@ def test_chunking_profile_filter_limits_results():
     )
 
     assert results
-    assert all(
-        result.metadata.get("chunking_profile") == "ctgov-registry"
-        for result in results
-    )
+    assert all(result.metadata.get("chunking_profile") == "ctgov-registry" for result in results)
 
 
 def test_rerank_fallback_records_error():
     opensearch, faiss = _setup_clients()
 
     class FailingEngine:
-        def rerank(self, *args, **kwargs):  # noqa: D401 - signature proxy
+        def rerank(self, *args, **kwargs):
             raise RerankingError("boom", status=500)
 
     service = RetrievalService(

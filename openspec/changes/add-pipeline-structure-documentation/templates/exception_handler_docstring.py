@@ -6,9 +6,9 @@ comments explaining the error translation strategy.
 
 # Example exception handling with documentation:
 
+
 def _execute(self, request: ChunkingRequest, **kwargs) -> ChunkingResult:
     """Execute chunking operation with comprehensive error handling."""
-
     job_id = self._lifecycle.create_job(request.tenant_id, "chunk")
     text = self._extract_text(job_id, request)
     command = ChunkCommand(
@@ -75,7 +75,9 @@ def _execute(self, request: ChunkingRequest, **kwargs) -> ChunkingResult:
             # This is a service unavailable error (503) - retry after cooldown
             raise self._translate_error(job_id, command, exc)
         # Re-raise unexpected runtime errors
-        self._lifecycle.mark_failed(job_id, reason=message or "Runtime error during chunking", stage="chunk")
+        self._lifecycle.mark_failed(
+            job_id, reason=message or "Runtime error during chunking", stage="chunk"
+        )
         raise
 
     # Merge chunk metadata with standard fields (granularity, chunker).
@@ -106,7 +108,9 @@ def _execute(self, request: ChunkingRequest, **kwargs) -> ChunkingResult:
         metadata=payload,
     )
 
+
 # Example of _translate_error method documentation:
+
 
 def _translate_error(
     self,
@@ -132,6 +136,7 @@ def _translate_error(
     Note:
         Side effects: Updates job lifecycle and emits failure metrics
         Thread safety: Not thread-safe due to shared lifecycle manager
+
     """
     report = self._errors.translate(exc, command=command, job_id=job_id)
     if report is None:

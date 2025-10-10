@@ -28,7 +28,9 @@ def _build_query(vector: Sequence[float], top_k: int) -> VectorQuery:
     return VectorQuery(values=list(vector), top_k=top_k)
 
 
-def compute_recall_at_k(results: Sequence[VectorMatch], ground_truth: Sequence[str], k: int) -> float:
+def compute_recall_at_k(
+    results: Sequence[VectorMatch], ground_truth: Sequence[str], k: int
+) -> float:
     top = {match.vector_id for match in results[:k]}
     if not ground_truth:
         return 0.0
@@ -36,7 +38,9 @@ def compute_recall_at_k(results: Sequence[VectorMatch], ground_truth: Sequence[s
     return len(relevant) / len(ground_truth)
 
 
-def compute_ndcg(results: Sequence[VectorMatch], ground_truth: Mapping[str, float], k: int) -> float:
+def compute_ndcg(
+    results: Sequence[VectorMatch], ground_truth: Mapping[str, float], k: int
+) -> float:
     if not results:
         return 0.0
     dcg = 0.0
@@ -50,7 +54,9 @@ def compute_ndcg(results: Sequence[VectorMatch], ground_truth: Mapping[str, floa
     return dcg / idcg if idcg else 0.0
 
 
-def profile_latency(store: VectorStorePort, namespace: str, queries: Sequence[VectorQuery], *, tenant_id: str) -> dict[str, float]:
+def profile_latency(
+    store: VectorStorePort, namespace: str, queries: Sequence[VectorQuery], *, tenant_id: str
+) -> dict[str, float]:
     timings: list[float] = []
     for query in queries:
         start = perf_counter()
@@ -141,7 +147,11 @@ def hybrid_retrieval_evaluation(
         store.query(
             tenant_id=tenant_id,
             namespace=namespace,
-            query=VectorQuery(values=list(query), top_k=5, filters={"lexical_query": " ".join(lexical_terms), "mode": "lexical"}),
+            query=VectorQuery(
+                values=list(query),
+                top_k=5,
+                filters={"lexical_query": " ".join(lexical_terms), "mode": "lexical"},
+            ),
         )
     )
     combined_ids = {match.vector_id for match in vector_results + lexical_results}
@@ -153,7 +163,9 @@ def hybrid_retrieval_evaluation(
 
 
 def build_leaderboard(runs: Sequence[EvaluationRun]) -> list[EvaluationRun]:
-    return sorted(runs, key=lambda run: (run.recall_at_k.get(10, 0.0), -run.latency_ms), reverse=True)
+    return sorted(
+        runs, key=lambda run: (run.recall_at_k.get(10, 0.0), -run.latency_ms), reverse=True
+    )
 
 
 __all__ = [
@@ -167,4 +179,3 @@ __all__ = [
     "hybrid_retrieval_evaluation",
     "profile_latency",
 ]
-

@@ -37,7 +37,9 @@ class HTTPWrapperMixin:
         response = self.http_client.request("GET", path, **kwargs)
         return response.text
 
-    def _post_json(self, path: str, data: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+    def _post_json(
+        self, path: str, data: dict[str, Any] | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         """Make POST request with JSON data and return JSON response."""
         response = self.http_client.request("POST", path, json=data, **kwargs)
         json_data = response.json()

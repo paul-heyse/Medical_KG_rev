@@ -55,10 +55,12 @@ def test_training_pipeline_builds_dataset() -> None:
     pipeline = OpenSearchLTRReranker.training_pipeline(
         label_getter=lambda pair: 1.0 if pair.doc_id == "doc-1" else 0.0
     )
-    dataset = pipeline.build_dataset([
-        _pair("doc-1", bm25_score=10.0, dense_score=0.5, splade_score=0.3),
-        _pair("doc-2", bm25_score=6.0, dense_score=0.1, splade_score=0.2),
-    ])
+    dataset = pipeline.build_dataset(
+        [
+            _pair("doc-1", bm25_score=10.0, dense_score=0.5, splade_score=0.3),
+            _pair("doc-2", bm25_score=6.0, dense_score=0.1, splade_score=0.2),
+        ]
+    )
     assert dataset.feature_order
     assert len(dataset.features) == 2
 

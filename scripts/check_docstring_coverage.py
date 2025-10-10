@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Docstring coverage checker for Medical_KG_rev repository-wide components.
+"""Docstring coverage checker for Medical_KG_rev repository-wide components.
 
 This script calculates docstring coverage for Python files and fails if
 coverage falls below the minimum threshold. Provides detailed reporting
@@ -15,7 +14,6 @@ import argparse
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 # Repository-wide paths to check
 REPOSITORY_PATHS = [
@@ -48,16 +46,17 @@ EXCLUDE_PATTERNS = {
     "__init__.py",  # Often minimal, check separately
 }
 
+
 class DocstringCoverageChecker:
     """Check docstring coverage for Python files."""
 
     def __init__(self, verbose: bool = False, min_coverage: float = 90.0):
         self.verbose = verbose
         self.min_coverage = min_coverage
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
-        self.coverage_data: Dict[str, Dict[str, any]] = {}
-        self.domain_coverage: Dict[str, Dict[str, any]] = {}
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+        self.coverage_data: dict[str, dict[str, any]] = {}
+        self.domain_coverage: dict[str, dict[str, any]] = {}
 
     def log(self, message: str, level: str = "INFO"):
         """Log a message if verbose mode is enabled."""
@@ -91,36 +90,38 @@ class DocstringCoverageChecker:
 
     def has_docstring(self, node: ast.AST) -> bool:
         """Check if an AST node has a docstring."""
-        if not hasattr(node, 'body') or not node.body:
+        if not hasattr(node, "body") or not node.body:
             return False
 
         first_stmt = node.body[0]
-        return (isinstance(first_stmt, ast.Expr) and
-                isinstance(first_stmt.value, ast.Constant) and
-                isinstance(first_stmt.value.value, str))
+        return (
+            isinstance(first_stmt, ast.Expr)
+            and isinstance(first_stmt.value, ast.Constant)
+            and isinstance(first_stmt.value.value, str)
+        )
 
     def should_check_node(self, node: ast.AST) -> bool:
         """Determine if a node should be checked for docstring coverage."""
         # Skip private methods/functions (starting with _)
-        if hasattr(node, 'name') and node.name.startswith('_'):
+        if hasattr(node, "name") and node.name.startswith("_"):
             return False
 
         # Skip test functions
-        if hasattr(node, 'name') and node.name.startswith('test_'):
+        if hasattr(node, "name") and node.name.startswith("test_"):
             return False
 
         # Skip property setters/getters
-        if isinstance(node, ast.FunctionDef) and node.name.startswith(('get_', 'set_')):
+        if isinstance(node, ast.FunctionDef) and node.name.startswith(("get_", "set_")):
             return False
 
         return True
 
-    def check_file(self, file_path: Path) -> Tuple[int, int, List[str]]:
+    def check_file(self, file_path: Path) -> tuple[int, int, list[str]]:
         """Check docstring coverage for a single Python file."""
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -152,8 +153,8 @@ class DocstringCoverageChecker:
                     if self.has_docstring(node):
                         documented_items += 1
                     else:
-                        line_num = getattr(node, 'lineno', '?')
-                        node_type = 'class' if isinstance(node, ast.ClassDef) else 'function'
+                        line_num = getattr(node, "lineno", "?")
+                        node_type = "class" if isinstance(node, ast.ClassDef) else "function"
                         missing_docstrings.append(f"{file_path}:{line_num}:{node_type}:{node.name}")
 
         return total_items, documented_items, missing_docstrings
@@ -187,24 +188,20 @@ class DocstringCoverageChecker:
                 domain_type = self.get_domain_type(file_path)
 
                 self.coverage_data[str(file_path)] = {
-                    'total': file_total,
-                    'documented': file_documented,
-                    'coverage': file_coverage,
-                    'missing': file_missing,
-                    'domain': domain_type
+                    "total": file_total,
+                    "documented": file_documented,
+                    "coverage": file_coverage,
+                    "missing": file_missing,
+                    "domain": domain_type,
                 }
 
                 # Track domain coverage
                 if domain_type not in self.domain_coverage:
-                    self.domain_coverage[domain_type] = {
-                        'total': 0,
-                        'documented': 0,
-                        'files': 0
-                    }
+                    self.domain_coverage[domain_type] = {"total": 0, "documented": 0, "files": 0}
 
-                self.domain_coverage[domain_type]['total'] += file_total
-                self.domain_coverage[domain_type]['documented'] += file_documented
-                self.domain_coverage[domain_type]['files'] += 1
+                self.domain_coverage[domain_type]["total"] += file_total
+                self.domain_coverage[domain_type]["documented"] += file_documented
+                self.domain_coverage[domain_type]["files"] += 1
 
                 if file_coverage < self.min_coverage:
                     self.errors.append(
@@ -217,11 +214,11 @@ class DocstringCoverageChecker:
         # Store overall coverage data
         if total_items > 0:
             overall_coverage = (total_documented / total_items) * 100
-            self.coverage_data['OVERALL'] = {
-                'total': total_items,
-                'documented': total_documented,
-                'coverage': overall_coverage,
-                'missing': all_missing
+            self.coverage_data["OVERALL"] = {
+                "total": total_items,
+                "documented": total_documented,
+                "coverage": overall_coverage,
+                "missing": all_missing,
             }
 
             if overall_coverage < self.min_coverage:
@@ -243,32 +240,38 @@ class DocstringCoverageChecker:
 
         if self.coverage_data:
             # Show overall coverage
-            if 'OVERALL' in self.coverage_data:
-                overall = self.coverage_data['OVERALL']
-                report.append(f"\nOVERALL COVERAGE: {overall['coverage']:.1f}% "
-                            f"({overall['documented']}/{overall['total']} items documented)")
+            if "OVERALL" in self.coverage_data:
+                overall = self.coverage_data["OVERALL"]
+                report.append(
+                    f"\nOVERALL COVERAGE: {overall['coverage']:.1f}% "
+                    f"({overall['documented']}/{overall['total']} items documented)"
+                )
 
             # Show domain coverage
             if self.domain_coverage:
-                report.append(f"\nDOMAIN COVERAGE:")
+                report.append("\nDOMAIN COVERAGE:")
                 for domain, data in sorted(self.domain_coverage.items()):
-                    if data['total'] > 0:
-                        domain_coverage = (data['documented'] / data['total']) * 100
+                    if data["total"] > 0:
+                        domain_coverage = (data["documented"] / data["total"]) * 100
                         status = "✅" if domain_coverage >= self.min_coverage else "❌"
-                        report.append(f"  {status} {domain}: {domain_coverage:.1f}% "
-                                    f"({data['documented']}/{data['total']} items, {data['files']} files)")
+                        report.append(
+                            f"  {status} {domain}: {domain_coverage:.1f}% "
+                            f"({data['documented']}/{data['total']} items, {data['files']} files)"
+                        )
 
             # Show per-file coverage
-            report.append(f"\nPER-FILE COVERAGE:")
+            report.append("\nPER-FILE COVERAGE:")
             for file_path, data in self.coverage_data.items():
-                if file_path != 'OVERALL':
-                    status = "✅" if data['coverage'] >= self.min_coverage else "❌"
-                    report.append(f"  {status} {file_path}: {data['coverage']:.1f}% "
-                                f"({data['documented']}/{data['total']} items documented)")
+                if file_path != "OVERALL":
+                    status = "✅" if data["coverage"] >= self.min_coverage else "❌"
+                    report.append(
+                        f"  {status} {file_path}: {data['coverage']:.1f}% "
+                        f"({data['documented']}/{data['total']} items documented)"
+                    )
 
             # Show missing docstrings
-            if 'OVERALL' in self.coverage_data:
-                missing = self.coverage_data['OVERALL']['missing']
+            if "OVERALL" in self.coverage_data:
+                missing = self.coverage_data["OVERALL"]["missing"]
                 if missing:
                     report.append(f"\nMISSING DOCSTRINGS ({len(missing)} items):")
                     for item in missing[:20]:  # Show first 20
@@ -286,15 +289,15 @@ class DocstringCoverageChecker:
             for warning in self.warnings:
                 report.append(f"  ⚠️  {warning}")
 
-        report.append(f"\nSUMMARY:")
+        report.append("\nSUMMARY:")
         report.append(f"  Minimum Coverage Required: {self.min_coverage}%")
         report.append(f"  Total Errors: {len(self.errors)}")
         report.append(f"  Total Warnings: {len(self.warnings)}")
 
         if len(self.errors) == 0:
-            report.append(f"  Status: ✅ ALL CHECKS PASSED")
+            report.append("  Status: ✅ ALL CHECKS PASSED")
         else:
-            report.append(f"  Status: ❌ COVERAGE BELOW THRESHOLD")
+            report.append("  Status: ❌ COVERAGE BELOW THRESHOLD")
 
         return "\n".join(report)
 
@@ -302,8 +305,15 @@ class DocstringCoverageChecker:
 def main():
     """Main entry point for the docstring coverage checker."""
     parser = argparse.ArgumentParser(description="Check docstring coverage")
-    parser.add_argument("path", nargs="?", default=".", help="Path to check (default: current directory)")
-    parser.add_argument("--min-coverage", type=float, default=90.0, help="Minimum coverage percentage (default: 90.0)")
+    parser.add_argument(
+        "path", nargs="?", default=".", help="Path to check (default: current directory)"
+    )
+    parser.add_argument(
+        "--min-coverage",
+        type=float,
+        default=90.0,
+        help="Minimum coverage percentage (default: 90.0)",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
@@ -316,10 +326,10 @@ def main():
         if total > 0:
             coverage = (documented / total) * 100
             checker.coverage_data[str(path)] = {
-                'total': total,
-                'documented': documented,
-                'coverage': coverage,
-                'missing': missing
+                "total": total,
+                "documented": documented,
+                "coverage": coverage,
+                "missing": missing,
             }
             success = coverage >= args.min_coverage
         else:

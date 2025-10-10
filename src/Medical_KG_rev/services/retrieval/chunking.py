@@ -41,9 +41,7 @@ class ChunkCommand(BaseModel):
     overlap: float | None = Field(default=None, ge=0.0, lt=1.0)
     options: dict[str, Any] = Field(default_factory=dict)
     correlation_id: str = Field(default_factory=lambda: uuid4().hex)
-    requested_at: datetime = Field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    requested_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     @field_validator("text")
     @classmethod
@@ -144,9 +142,7 @@ class ChunkingService:
     def chunk(self, command: ChunkCommand) -> list[Chunk]:
         """Chunk raw text into retrieval-ready spans."""
         if command.strategy not in self._SUPPORTED_STRATEGIES:
-            raise ChunkerConfigurationError(
-                f"Unsupported chunking strategy '{command.strategy}'"
-            )
+            raise ChunkerConfigurationError(f"Unsupported chunking strategy '{command.strategy}'")
 
         stage = self._resolve_stage()
         options = ChunkingOptions(

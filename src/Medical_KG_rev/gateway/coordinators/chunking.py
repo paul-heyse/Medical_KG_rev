@@ -45,6 +45,7 @@ Example:
     >>> print(f"Processed {len(result.chunks)} chunks")
 
 """
+
 from __future__ import annotations
 
 # ============================================================================
@@ -364,9 +365,7 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
         payload = request.options or {}
         raw_text = payload.get("text") if isinstance(payload, Mapping) else None
         if not isinstance(raw_text, str) or not raw_text.strip():
-            raise InvalidDocumentError(
-                "Chunking requests must include a non-empty 'text' field"
-            )
+            raise InvalidDocumentError("Chunking requests must include a non-empty 'text' field")
         return raw_text
 
     def _translate_error(
@@ -429,11 +428,9 @@ class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
             },
         )
 
-
-# ============================================================================
-# ERROR TRANSLATION
-# ============================================================================
-
+    # ============================================================================
+    # ERROR TRANSLATION
+    # ============================================================================
 
     @staticmethod
     def _metadata_without_text(options: Mapping[str, Any] | None) -> Mapping[str, Any]:

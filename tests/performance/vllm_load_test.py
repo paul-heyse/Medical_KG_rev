@@ -11,7 +11,6 @@ from Medical_KG_rev.services.mineru.vllm_client import VLLMClient
 
 async def single_request(client: VLLMClient, request_id: int) -> float:
     """Issue a single chat completion request and return latency in seconds."""
-
     start = time.time()
     await client.chat_completion(
         messages=[{"role": "user", "content": f"Summarise request {request_id}"}],
@@ -22,7 +21,6 @@ async def single_request(client: VLLMClient, request_id: int) -> float:
 
 async def load_test(concurrency: int = 10, total_requests: int = 100) -> None:
     """Run a simple fixed-concurrency load test against the vLLM server."""
-
     client = VLLMClient(base_url="http://localhost:8000")
     async with client:
         durations: list[float] = []

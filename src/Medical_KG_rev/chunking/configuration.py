@@ -74,7 +74,9 @@ class ChunkingConfig(BaseModel):
             try:
                 override_data = yaml.safe_load(overrides) or {}
             except yaml.YAMLError as exc:  # pragma: no cover - invalid override is rare
-                raise ChunkerConfigurationError("Invalid CHUNKING_CONFIG_OVERRIDES payload") from exc
+                raise ChunkerConfigurationError(
+                    "Invalid CHUNKING_CONFIG_OVERRIDES payload"
+                ) from exc
             data = _deep_merge(data, override_data)
         try:
             return cls.model_validate(data)
@@ -102,11 +104,7 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "chunking
 def _deep_merge(base: dict[str, Any], overrides: Mapping[str, Any]) -> dict[str, Any]:
     merged = dict(base)
     for key, value in overrides.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, Mapping)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, Mapping):
             merged[key] = _deep_merge(merged[key], value)
         else:
             merged[key] = value

@@ -295,7 +295,9 @@ class VespaRankProfileReranker(BaseReranker):
             for pair in batch
         ]
         if self._onnx_session is not None and np is not None and self._onnx_input is not None:
-            matrix = np.array([vector.as_ordered(feature_order) for vector in vectors], dtype=np.float32)
+            matrix = np.array(
+                [vector.as_ordered(feature_order) for vector in vectors], dtype=np.float32
+            )
             outputs = self._onnx_session.run(None, {self._onnx_input: matrix})
             scores = [_bounded(float(value)) for value in outputs[0].reshape(-1)]
             contributions = [vector.values for vector in vectors]

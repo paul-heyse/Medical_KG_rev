@@ -96,6 +96,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
         """No-op business event recording."""
         return None
 
+
 # ============================================================================
 # TYPE DEFINITIONS
 # ============================================================================
@@ -319,7 +320,9 @@ class EmbeddingTelemetry(ABC):
         self._snapshot.policy_denials += 1
         self._record_decision("denied", decision)
 
-    def record_embedding_started(self, *, namespace: str, tenant_id: str, model: str | None = None) -> None:
+    def record_embedding_started(
+        self, *, namespace: str, tenant_id: str, model: str | None = None
+    ) -> None:
         """Record the start of an embedding operation.
 
         Logs the beginning of an embedding operation with context

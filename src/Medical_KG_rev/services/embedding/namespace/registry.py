@@ -37,14 +37,18 @@ class EmbeddingNamespaceRegistry:
         except KeyError as exc:  # pragma: no cover - exercised via tests
             available = ", ".join(sorted(self._namespaces))
             raise ValueError(
-                f"Namespace '{namespace}' not found. Available: {available}" if available else "No namespaces registered"
+                f"Namespace '{namespace}' not found. Available: {available}"
+                if available
+                else "No namespaces registered"
             ) from exc
 
     def list_namespaces(self) -> list[str]:
         return sorted(self._namespaces)
 
     def list_by_kind(self, kind: EmbeddingKind) -> list[str]:
-        return sorted(namespace for namespace, config in self._namespaces.items() if config.kind == kind)
+        return sorted(
+            namespace for namespace, config in self._namespaces.items() if config.kind == kind
+        )
 
     def exists(self, namespace: str, *, include_disabled: bool = False) -> bool:
         config = self._namespaces.get(namespace)

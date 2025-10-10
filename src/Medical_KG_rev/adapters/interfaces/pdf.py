@@ -8,10 +8,11 @@ consistent metadata describing downloadable assets.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
-from typing import Iterable, Mapping, Protocol, Sequence, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from Medical_KG_rev.adapters.base import AdapterContext
 from Medical_KG_rev.models import Document
@@ -32,7 +33,6 @@ class PdfAssetManifest:
 
     def as_metadata(self) -> Mapping[str, object | None]:
         """Render the manifest entry as metadata for document storage."""
-
         return MappingProxyType(
             {
                 "url": self.url,
@@ -53,16 +53,11 @@ class PdfManifest:
 
     connector: str
     assets: tuple[PdfAssetManifest, ...]
-    retrieved_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    polite_headers: Mapping[str, str] = field(
-        default_factory=lambda: MappingProxyType({})
-    )
+    retrieved_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    polite_headers: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 
     def as_metadata(self) -> Mapping[str, object]:
         """Convert the manifest to a serialisable mapping."""
-
         return MappingProxyType(
             {
                 "connector": self.connector,
@@ -74,7 +69,6 @@ class PdfManifest:
 
     def pdf_urls(self) -> tuple[str, ...]:
         """Expose the ordered list of URLs for backward compatibility."""
-
         return tuple(asset.url for asset in self.assets)
 
 
@@ -98,6 +92,6 @@ class PdfCapableAdapter(Protocol):
 
 __all__ = [
     "PdfAssetManifest",
-    "PdfManifest",
     "PdfCapableAdapter",
+    "PdfManifest",
 ]

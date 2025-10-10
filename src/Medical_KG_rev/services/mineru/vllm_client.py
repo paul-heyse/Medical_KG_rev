@@ -164,6 +164,8 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
 
         """
         return _FallbackLogger(name)
+
+
 try:  # pragma: no cover - metrics may be unavailable in lightweight envs
     from Medical_KG_rev.observability.metrics import (
         MINERU_VLLM_CLIENT_FAILURES,
@@ -171,6 +173,7 @@ try:  # pragma: no cover - metrics may be unavailable in lightweight envs
         MINERU_VLLM_REQUEST_DURATION,
     )
 except Exception:  # pragma: no cover - provide dummy metrics for tests without deps
+
     class _DummyMetric:
         """Dummy metric implementation for environments without metrics.
 
@@ -215,6 +218,7 @@ except Exception:  # pragma: no cover - provide dummy metrics for tests without 
                 Dummy timer context manager
 
             """
+
             class _Timer:
                 """Dummy timer context manager."""
 
@@ -246,6 +250,7 @@ logger = get_logger(__name__)
 # ==============================================================================
 # EXCEPTION CLASSES
 # ==============================================================================
+
 
 class VLLMClientError(Exception):
     """Base class for vLLM client errors.
@@ -296,6 +301,7 @@ class VLLMServerError(VLLMClientError):
 # HELPER FUNCTIONS
 # ==============================================================================
 
+
 def _record_retry(retry_state: RetryCallState) -> None:
     """Record retry attempt for observability.
 
@@ -319,6 +325,7 @@ def _record_retry(retry_state: RetryCallState) -> None:
 # ==============================================================================
 # CLIENT IMPLEMENTATION
 # ==============================================================================
+
 
 class VLLMClient:
     """Async HTTP client for the vLLM OpenAI-compatible API.
@@ -531,12 +538,8 @@ class VLLMClient:
         try:
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(self._retry_attempts),
-                wait=wait_exponential(
-                    multiplier=self._retry_backoff_multiplier, min=4, max=60
-                ),
-                retry=retry_if_exception_type(
-                    (httpx.TimeoutException, httpx.NetworkError)
-                ),
+                wait=wait_exponential(multiplier=self._retry_backoff_multiplier, min=4, max=60),
+                retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
                 before_sleep=_record_retry,
                 reraise=True,
             ):

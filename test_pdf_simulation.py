@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test PDF processing simulation with text content."""
-
-import os
 import sys
 from pathlib import Path
 
@@ -18,7 +16,7 @@ def test_pdf_simulation():
 
     try:
         # Create simulated PDF content as text
-        simulated_pdf_content = """
+        simulated_pdf_content = b"""
         Title: Machine Learning in Medical Diagnosis
 
         Abstract:
@@ -45,22 +43,20 @@ def test_pdf_simulation():
         References:
         1. Smith, J. et al. (2023). Deep Learning in Medical Imaging.
         2. Johnson, A. et al. (2022). AI Applications in Healthcare.
-        """.encode('utf-8')
+        """
 
         # Initialize MinerU processor
         processor = MineruProcessor()
 
         # Create request
         request = MineruRequest(
-            tenant_id="test",
-            document_id="simulated-pdf-1",
-            content=simulated_pdf_content
+            tenant_id="test", document_id="simulated-pdf-1", content=simulated_pdf_content
         )
 
         print("🔄 Processing simulated PDF content...")
         response = processor.process(request)
 
-        print(f"✅ Processing successful!")
+        print("✅ Processing successful!")
         print(f"   Document ID: {response.document.document_id if response.document else 'None'}")
         print(f"   Blocks: {len(response.document.blocks) if response.document else 0}")
         print(f"   Tables: {len(response.document.tables) if response.document else 0}")
@@ -69,9 +65,13 @@ def test_pdf_simulation():
 
         # Show sample blocks
         if response.document and response.document.blocks:
-            print(f"\n📄 Sample blocks:")
+            print("\n📄 Sample blocks:")
             for i, block in enumerate(response.document.blocks[:3]):
-                print(f"   Block {i+1}: {block.text[:100]}..." if block.text else f"   Block {i+1}: [No text]")
+                print(
+                    f"   Block {i+1}: {block.text[:100]}..."
+                    if block.text
+                    else f"   Block {i+1}: [No text]"
+                )
 
         return True
 

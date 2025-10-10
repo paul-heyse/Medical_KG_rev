@@ -103,9 +103,7 @@ class RerankerEvaluator:
             for result in sorted(evaluations, key=lambda item: item.latency_p95_ms)
         ]
 
-    def ab_test(
-        self, baseline: EvaluationResult, challenger: EvaluationResult
-    ) -> dict[str, float]:
+    def ab_test(self, baseline: EvaluationResult, challenger: EvaluationResult) -> dict[str, float]:
         """Compare two rerankers returning deltas for key metrics."""
 
         def _round(value: float) -> float:
@@ -118,9 +116,7 @@ class RerankerEvaluator:
             "latency_delta": _round(challenger.latency_p95_ms - baseline.latency_p95_ms),
         }
 
-    def leaderboard(
-        self, evaluations: Sequence[EvaluationResult]
-    ) -> list[EvaluationResult]:
+    def leaderboard(self, evaluations: Sequence[EvaluationResult]) -> list[EvaluationResult]:
         """Sort rerankers by nDCG@10 descending while favouring lower latency ties."""
         return sorted(
             evaluations,

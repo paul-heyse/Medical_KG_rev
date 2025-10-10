@@ -35,9 +35,7 @@ class MultiGranularityPipeline:
         tenant_id: str,
     ) -> list[Chunk]:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None, self._execute, document, tenant_id
-        )
+        return await loop.run_in_executor(None, self._execute, document, tenant_id)
 
     def chunk(self, document: Document, *, tenant_id: str) -> list[Chunk]:
         return self._execute(document, tenant_id)

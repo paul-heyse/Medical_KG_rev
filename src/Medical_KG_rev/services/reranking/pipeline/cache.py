@@ -114,7 +114,9 @@ class RerankCacheManager:
 
     def invalidate(self, tenant_id: str, doc_ids: Iterable[str]) -> None:
         for key in list(self._store):
-            if any(key.endswith(f":{doc_id}") and key.startswith(f"{tenant_id}:") for doc_id in doc_ids):
+            if any(
+                key.endswith(f":{doc_id}") and key.startswith(f"{tenant_id}:") for doc_id in doc_ids
+            ):
                 self._store.pop(key, None)
         if self.backend is not None:
             for doc_id in doc_ids:

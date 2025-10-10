@@ -15,6 +15,7 @@ else:  # pragma: no cover - fallback when PyYAML unavailable
     def _safe_load(_: str) -> dict[str, Any]:
         return {}
 
+
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingKind
 
 DEFAULT_EMBEDDING_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embeddings.yaml"
@@ -101,7 +102,10 @@ class EmbeddingsConfiguration:
         )
 
     def to_embedder_configs(self) -> list[EmbedderConfig]:
-        return [definition.to_embedder_config(namespace) for namespace, definition in self.namespaces.items()]
+        return [
+            definition.to_embedder_config(namespace)
+            for namespace, definition in self.namespaces.items()
+        ]
 
 
 def load_embeddings_config(path: Path | None = None) -> EmbeddingsConfiguration:

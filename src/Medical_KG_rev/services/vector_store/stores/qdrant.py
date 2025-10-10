@@ -81,9 +81,7 @@ class QdrantVectorStore(VectorStorePort):
         options = _NamespaceOptions(
             params=params,
             compression=compression,
-            reorder_final=bool(
-                (metadata.get("search") or {}).get("reorder_final")
-            ),
+            reorder_final=bool((metadata.get("search") or {}).get("reorder_final")),
             named_vectors=named_vectors,
         )
         self._namespace_options[(tenant_id, namespace)] = options
@@ -109,9 +107,7 @@ class QdrantVectorStore(VectorStorePort):
                 return
             raise BackendUnavailableError("Failed to inspect Qdrant collection") from exc
 
-        self._validate_existing_collection(
-            info, tenant_id, namespace, params, named_vectors
-        )
+        self._validate_existing_collection(info, tenant_id, namespace, params, named_vectors)
         self._client.update_collection(
             collection_name=namespace,
             hnsw_config=hnsw_config,
@@ -276,9 +272,7 @@ class QdrantVectorStore(VectorStorePort):
         namespace: str | None = None,
     ) -> Mapping[str, HealthStatus]:
         namespaces = (
-            [namespace]
-            if namespace
-            else sorted(self._tenant_namespaces.get(tenant_id, set()))
+            [namespace] if namespace else sorted(self._tenant_namespaces.get(tenant_id, set()))
         )
         statuses: dict[str, HealthStatus] = {}
         for ns in namespaces:
@@ -336,7 +330,9 @@ class QdrantVectorStore(VectorStorePort):
             full_scan_threshold=0,
         )
 
-    def _build_optimizers_config(self, metadata: Mapping[str, object]) -> qm.OptimizersConfigDiff | None:
+    def _build_optimizers_config(
+        self, metadata: Mapping[str, object]
+    ) -> qm.OptimizersConfigDiff | None:
         gpu_config = metadata.get("gpu") if metadata else None
         if not isinstance(gpu_config, Mapping):
             return None
@@ -359,9 +355,7 @@ class QdrantVectorStore(VectorStorePort):
             config_kwargs: dict[str, object] = {"always_ram": True}
             if hasattr(qm, "BinaryQuantizationEncoding"):
                 config_kwargs["encoding"] = qm.BinaryQuantizationEncoding.ONE_BIT
-            return qm.BinaryQuantization(
-                binary=qm.BinaryQuantizationConfig(**config_kwargs)
-            )
+            return qm.BinaryQuantization(binary=qm.BinaryQuantizationConfig(**config_kwargs))
         if kind in {"pq", "opq_pq"}:
             ratio = self._infer_pq_ratio(compression)
             return qm.ProductQuantization(
@@ -407,9 +401,7 @@ class QdrantVectorStore(VectorStorePort):
             for name, definition in named_vectors.items():
                 existing = vectors.get(name)
                 if not existing:
-                    raise NamespaceNotFoundError(
-                        f"{namespace}:{name}", tenant_id=tenant_id
-                    )
+                    raise NamespaceNotFoundError(f"{namespace}:{name}", tenant_id=tenant_id)
                 size = getattr(existing, "size", None)
                 if size is not None and size != definition.dimension:
                     raise DimensionMismatchError(
@@ -425,7 +417,11 @@ class QdrantVectorStore(VectorStorePort):
     ) -> qm.SearchParams | None:
         if options is None and query.reorder is None:
             return None
-        reorder = query.reorder if query.reorder is not None else (options.reorder_final if options else False)
+        reorder = (
+            query.reorder
+            if query.reorder is not None
+            else (options.reorder_final if options else False)
+        )
         quantization = qm.QuantizationSearchParams(rescore=reorder) if reorder else None
         ef_search = None
         if options and options.params.ef_search:

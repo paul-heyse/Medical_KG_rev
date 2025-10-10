@@ -68,7 +68,6 @@ def _linear_retry_config(attempts: int, initial: float, timeout: float) -> Retry
 
 def _select_license(message: Mapping[str, Any]) -> str | None:
     """Extract the most specific license reference available from Crossref."""
-
     license_field = message.get("license")
     if isinstance(license_field, Sequence):
         for entry in license_field:
@@ -93,7 +92,6 @@ def _extract_pdf_assets(
     message: Mapping[str, Any], landing_page: str | None
 ) -> list[Mapping[str, Any]]:
     """Normalise Crossref link metadata into manifest entries."""
-
     assets: list[dict[str, Any]] = []
     links = message.get("link")
     if not isinstance(links, Sequence):
@@ -279,5 +277,4 @@ class CrossrefAdapter(PdfManifestMixin, ResilientHTTPAdapter):
 
     def polite_headers(self) -> Mapping[str, str]:
         """Expose polite pool headers for observability/tests."""
-
         return self._polite_headers

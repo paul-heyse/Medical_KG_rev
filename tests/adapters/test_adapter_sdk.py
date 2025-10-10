@@ -1,7 +1,5 @@
 import pytest
 
-import pytest
-
 from Medical_KG_rev.adapters import AdapterDomain, AdapterPluginManager, AdapterRequest
 from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
 from Medical_KG_rev.adapters.yaml_parser import AdapterConfig, load_adapter_config

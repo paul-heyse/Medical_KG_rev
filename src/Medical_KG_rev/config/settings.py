@@ -140,7 +140,6 @@ class ConnectorPdfSettings(BaseModel):
 
     def polite_headers(self) -> dict[str, str]:
         """Return polite pool headers used by HTTP clients."""
-
         headers: dict[str, str] = {}
         if self.contact_email:
             headers.setdefault("From", self.contact_email)
@@ -151,7 +150,6 @@ class ConnectorPdfSettings(BaseModel):
     @property
     def max_file_size_bytes(self) -> int:
         """Expose the configured maximum PDF size in bytes."""
-
         return int(self.max_file_size_mb * 1024 * 1024)
 
 
@@ -227,7 +225,6 @@ class OpenAlexSettings(BaseModel):
 
     def polite_headers(self) -> dict[str, str]:
         """Expose polite headers for HTTP clients."""
-
         return self.pdf.polite_headers()
 
 
@@ -585,11 +582,11 @@ class RerankerModelSettings(BaseModel):
                 if not torch.cuda.is_available():  # type: ignore[attr-defined]
                     raise ValueError("GPU is required for the configured reranker but unavailable")
             except Exception as exc:  # pragma: no cover - torch optional
-                raise ValueError("GPU is required for the configured reranker but unavailable") from exc
-            if not getattr(reranker, "requires_gpu", False):
                 raise ValueError(
-                    f"Reranker '{self.reranker_id}' does not support GPU execution"
-                )
+                    "GPU is required for the configured reranker but unavailable"
+                ) from exc
+            if not getattr(reranker, "requires_gpu", False):
+                raise ValueError(f"Reranker '{self.reranker_id}' does not support GPU execution")
         return self
 
 
@@ -672,7 +669,9 @@ class ObjectStorageSettings(BaseModel):
     session_token: SecretStr | None = Field(default=None, description="AWS session token")
     use_tls: bool = Field(default=True, description="Use TLS for S3 connections")
     tls_cert_path: str | None = Field(default=None, description="Path to TLS certificate")
-    max_file_size: int = Field(default=100 * 1024 * 1024, description="Maximum file size in bytes (100MB)")
+    max_file_size: int = Field(
+        default=100 * 1024 * 1024, description="Maximum file size in bytes (100MB)"
+    )
     key_prefix: str = Field(default="pdf", description="Key prefix for stored objects")
 
 

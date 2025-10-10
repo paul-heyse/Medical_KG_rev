@@ -26,7 +26,9 @@ def service() -> VectorStoreService:
     registry = NamespaceRegistry()
     store = InMemoryVectorStore()
     svc = VectorStoreService(store, registry)
-    context = SecurityContext(subject="tester", tenant_id="tenant-a", scopes={"index:write", "index:read"})
+    context = SecurityContext(
+        subject="tester", tenant_id="tenant-a", scopes={"index:write", "index:read"}
+    )
     config = NamespaceConfig(
         name="dense.test.128.v1",
         params=IndexParams(dimension=128, kind="hnsw"),
@@ -39,10 +41,14 @@ def service() -> VectorStoreService:
 
 @pytest.fixture()
 def context() -> SecurityContext:
-    return SecurityContext(subject="tester", tenant_id="tenant-a", scopes={"index:write", "index:read"})
+    return SecurityContext(
+        subject="tester", tenant_id="tenant-a", scopes={"index:write", "index:read"}
+    )
 
 
-def test_upsert_and_query_returns_results(service: VectorStoreService, context: SecurityContext) -> None:
+def test_upsert_and_query_returns_results(
+    service: VectorStoreService, context: SecurityContext
+) -> None:
     base = [0.0] * 128
     vec1 = base.copy()
     vec1[0] = 1.0
@@ -115,7 +121,9 @@ def test_snapshot_restore_round_trip(
     assert restored and restored[0].metadata["text"] == "alpha"
 
 
-def test_rebuild_namespace_returns_report(service: VectorStoreService, context: SecurityContext) -> None:
+def test_rebuild_namespace_returns_report(
+    service: VectorStoreService, context: SecurityContext
+) -> None:
     report = service.rebuild_namespace(
         context=context,
         namespace="dense.test.128.v1",
@@ -124,7 +132,9 @@ def test_rebuild_namespace_returns_report(service: VectorStoreService, context: 
     assert report.rebuilt
 
 
-def test_health_check_reports_namespaces(service: VectorStoreService, context: SecurityContext) -> None:
+def test_health_check_reports_namespaces(
+    service: VectorStoreService, context: SecurityContext
+) -> None:
     statuses = service.check_health(context=context)
     assert "dense.test.128.v1" in statuses
     status = statuses["dense.test.128.v1"]

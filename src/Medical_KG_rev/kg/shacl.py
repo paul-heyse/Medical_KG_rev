@@ -66,6 +66,7 @@ class ValidationError(ValueError):
 
     """
 
+
 # ============================================================================
 # DATA MODELS
 # ============================================================================
@@ -124,6 +125,7 @@ class GraphEdgePayload:
     start: str
     end: str
     properties: Mapping[str, object] | None = None
+
 
 # ============================================================================
 # SHACL VALIDATOR IMPLEMENTATION

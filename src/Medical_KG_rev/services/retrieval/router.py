@@ -64,7 +64,12 @@ class RetrievalRouter:
                 )
                 futures[executor.submit(strategy.handler, strategy_request)] = strategy
             aggregates: dict[str, dict[str, object]] = defaultdict(
-                lambda: {"score": 0.0, "sources": {}, "metadata": {}, "namespace": request.namespace}
+                lambda: {
+                    "score": 0.0,
+                    "sources": {},
+                    "metadata": {},
+                    "namespace": request.namespace,
+                }
             )
             for future in as_completed(futures):
                 strategy = futures[future]
@@ -104,4 +109,3 @@ __all__ = [
     "RouterMatch",
     "RoutingRequest",
 ]
-

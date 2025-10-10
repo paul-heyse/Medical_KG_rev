@@ -231,12 +231,9 @@ class OpenFDADrugEventAdapter(OpenFDAAdapter):
             section = Section(
                 id="adverse-events",
                 title="Adverse Events",
-                blocks=[Block(
-                    id="adverse-block",
-                    type=BlockType.PARAGRAPH,
-                    text=summary_text,
-                    spans=[]
-                )],
+                blocks=[
+                    Block(id="adverse-block", type=BlockType.PARAGRAPH, text=summary_text, spans=[])
+                ],
             )
 
             documents.append(
@@ -288,7 +285,7 @@ class OpenFDADeviceAdapter(OpenFDAAdapter):
                 id="device-description",
                 type=BlockType.PARAGRAPH,
                 text=_to_text(description),
-                spans=[]
+                spans=[],
             )
             section = Section(id="device", title="Device Details", blocks=[block])
 

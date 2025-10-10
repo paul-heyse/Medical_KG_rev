@@ -73,6 +73,7 @@ from .port import Chunk
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass
 class _BlockContext:
     """Internal data structure for block processing with absolute offsets.
@@ -111,6 +112,7 @@ class _BlockContext:
 # ==============================================================================
 # DOCUMENT PROCESSING FUNCTIONS
 # ==============================================================================
+
 
 def iter_block_contexts(document: Document) -> Iterable[_BlockContext]:
     """Yield block contexts with absolute offsets within the document.
@@ -202,6 +204,7 @@ def group_contexts(
 # ==============================================================================
 # CHUNK CONSTRUCTION FUNCTIONS
 # ==============================================================================
+
 
 def build_chunk(
     *,
@@ -354,6 +357,7 @@ def assemble_chunks(
 # ==============================================================================
 # INTENT PROVIDER FUNCTIONS
 # ==============================================================================
+
 
 def identity_intent_provider(section: Section | None) -> str | None:
     """Extract intent from section metadata using 'intent' key.

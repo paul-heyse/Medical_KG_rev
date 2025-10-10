@@ -7,7 +7,10 @@ import faiss
 import numpy as np
 import pytest
 
-from Medical_KG_rev.services.vector_store.errors import DimensionMismatchError, InvalidNamespaceConfigError
+from Medical_KG_rev.services.vector_store.errors import (
+    DimensionMismatchError,
+    InvalidNamespaceConfigError,
+)
 from Medical_KG_rev.services.vector_store.models import (
     CompressionPolicy,
     IndexParams,
@@ -16,7 +19,6 @@ from Medical_KG_rev.services.vector_store.models import (
     VectorRecord,
 )
 from Medical_KG_rev.services.vector_store.stores.faiss import FaissVectorStore
-
 
 TENANT = "tenant-a"
 NAMESPACE = "dense.test"
@@ -215,7 +217,7 @@ def test_gpu_requested_without_device_falls_back(tmp_path: Path) -> None:
     )
 
     assert len(matches) == 2
-    state = store._tenants[TENANT][NAMESPACE]  # noqa: SLF001 - test helper
+    state = store._tenants[TENANT][NAMESPACE]
     if faiss.get_num_gpus() == 0:
         assert state.gpu_index is None
 

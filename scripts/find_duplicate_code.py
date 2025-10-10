@@ -10,30 +10,29 @@ Usage:
 Examples:
     python scripts/find_duplicate_code.py src/Medical_KG_rev/
     python scripts/find_duplicate_code.py tests/
+
 """
 
 import argparse
 import ast
-import os
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
 
 
 class DuplicateDetector:
     """Detects duplicate code patterns using AST analysis."""
 
     def __init__(self) -> None:
-        self.functions: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
-        self.classes: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
-        self.imports: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
-        self.errors: List[str] = []
+        self.functions: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        self.classes: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        self.imports: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        self.errors: list[str] = []
 
     def analyze_file(self, file_path: Path) -> None:
         """Analyze a single Python file for duplicates."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content, filename=str(file_path))
@@ -92,7 +91,7 @@ class DuplicateDetector:
             return f"from {module} import {','.join(names)}"
         return ""
 
-    def find_duplicates(self) -> Dict[str, List[Tuple[str, int]]]:
+    def find_duplicates(self) -> dict[str, list[tuple[str, int]]]:
         """Find all duplicate patterns."""
         duplicates = {}
 
@@ -159,8 +158,12 @@ class DuplicateDetector:
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Find duplicate code patterns")
-    parser.add_argument("path", nargs="?", default="src/Medical_KG_rev/",
-                       help="Path to analyze (default: src/Medical_KG_rev/)")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default="src/Medical_KG_rev/",
+        help="Path to analyze (default: src/Medical_KG_rev/)",
+    )
     parser.add_argument("--output", "-o", help="Output file (default: stdout)")
 
     args = parser.parse_args()
@@ -188,7 +191,7 @@ def main() -> None:
     report = detector.generate_report()
 
     if args.output:
-        with open(args.output, 'w', encoding='utf-8') as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             f.write(report)
         print(f"Report written to {args.output}")
     else:

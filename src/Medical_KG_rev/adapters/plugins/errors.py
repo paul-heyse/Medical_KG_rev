@@ -50,4 +50,3 @@ class AdapterPluginError(RuntimeError):
 
 # EXPORTS
 __all__ = ["AdapterPluginError"]
-

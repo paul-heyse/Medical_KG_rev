@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 import textwrap
+from pathlib import Path
 
 import httpx
 import pytest

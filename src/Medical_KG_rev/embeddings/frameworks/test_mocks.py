@@ -176,7 +176,9 @@ class LlamaStyle:
             List of embedding vectors
 
         """
-        return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]
+        return [
+            [float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts
+        ]
 
     def embed(self, texts):  # pragma: no cover - invoked via delegate helper
         """Embed multiple texts (alias for embed_documents).
@@ -188,4 +190,6 @@ class LlamaStyle:
             List of embedding vectors
 
         """
-        return [[float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts]
+        return [
+            [float(len(text)), float(len(text)) / 2.0, float(len(text)) / 4.0] for text in texts
+        ]

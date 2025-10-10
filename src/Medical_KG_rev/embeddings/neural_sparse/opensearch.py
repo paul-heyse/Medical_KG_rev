@@ -77,10 +77,7 @@ class OpenSearchNeuralSparseEmbedder:
         vectors = [self._neural_vector(text, dim) for text in request.texts]
         combined_query = " ".join(request.texts)
         query_payload = self._neural_query(combined_query, request.namespace)
-        extras = [
-            {**self._metadata(), "neural_query": query_payload}
-            for _ in vectors
-        ]
+        extras = [{**self._metadata(), "neural_query": query_payload} for _ in vectors]
         documents = self._builder.neural_sparse(
             request,
             vectors,
@@ -97,4 +94,6 @@ class OpenSearchNeuralSparseEmbedder:
 
 
 def register_neural_sparse(registry: EmbedderRegistry) -> None:
-    registry.register("opensearch-neural", lambda config: OpenSearchNeuralSparseEmbedder(config=config))
+    registry.register(
+        "opensearch-neural", lambda config: OpenSearchNeuralSparseEmbedder(config=config)
+    )

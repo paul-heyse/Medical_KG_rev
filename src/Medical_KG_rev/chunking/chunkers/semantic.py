@@ -127,9 +127,7 @@ class SemanticClusterChunker(EmbeddingContextualChunker):
                 last_label = label
         tail = context_list[start:]
         if tail:
-            segments.append(
-                Segment(contexts=list(tail), metadata={"cluster": int(last_label)})
-            )
+            segments.append(Segment(contexts=list(tail), metadata={"cluster": int(last_label)}))
         return segments
 
     def explain(self) -> dict[str, object]:
@@ -217,9 +215,7 @@ class GraphPartitionChunker(EmbeddingContextualChunker):
                 last_label = label
         tail = context_list[start:]
         if tail:
-            segments.append(
-                Segment(contexts=list(tail), metadata={"community": int(last_label)})
-            )
+            segments.append(Segment(contexts=list(tail), metadata={"community": int(last_label)}))
         return segments
 
     def explain(self) -> dict[str, object]:
@@ -255,18 +251,12 @@ class GraphPartitionChunker(EmbeddingContextualChunker):
             raise ChunkerConfigurationError(
                 "networkx must be installed for GraphPartitionChunker"
             ) from exc
-        if self.algorithm == "louvain" and hasattr(
-            nx.algorithms.community, "louvain_communities"
-        ):
+        if self.algorithm == "louvain" and hasattr(nx.algorithms.community, "louvain_communities"):
             communities = list(
-                nx.algorithms.community.louvain_communities(  # type: ignore[attr-defined]
-                    graph
-                )
+                nx.algorithms.community.louvain_communities(graph)  # type: ignore[attr-defined]
             )
         else:
-            communities = list(
-                nx.algorithms.community.greedy_modularity_communities(graph)
-            )
+            communities = list(nx.algorithms.community.greedy_modularity_communities(graph))
         labels = [0] * graph.number_of_nodes()
         for community_id, nodes in enumerate(communities):
             for node in nodes:

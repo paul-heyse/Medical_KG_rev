@@ -26,7 +26,7 @@ class FakeHttpx:
     def configure(
         self,
         *,
-        response: "FakeResponse" | None = None,
+        response: FakeResponse | None = None,
         exception: Exception | None = None,
     ) -> None:
         self._response = response
@@ -105,7 +105,9 @@ def test_openai_embedder_normalizes_vectors(embedder_config, fake_httpx: FakeHtt
     assert isclose(sqrt(sum(value * value for value in vector)), 1.0)
 
 
-def test_openai_embedder_respects_disable_normalization(embedder_config, fake_httpx: FakeHttpx) -> None:
+def test_openai_embedder_respects_disable_normalization(
+    embedder_config, fake_httpx: FakeHttpx
+) -> None:
     config = replace(embedder_config, normalize=False)
     fake_httpx.configure(response=FakeResponse(payload={"data": [{"embedding": [0.25, 0.75]}]}))
     embedder = openai_compat.OpenAICompatEmbedder(config=config)
@@ -146,7 +148,9 @@ def test_openai_embedder_wraps_network_error(embedder_config, fake_httpx: FakeHt
         embedder.embed_documents(_request(["fail"]))
 
 
-def test_openai_embedder_validates_embeddings_present(embedder_config, fake_httpx: FakeHttpx) -> None:
+def test_openai_embedder_validates_embeddings_present(
+    embedder_config, fake_httpx: FakeHttpx
+) -> None:
     fake_httpx.configure(response=FakeResponse(payload={"data": []}))
     embedder = openai_compat.OpenAICompatEmbedder(config=embedder_config)
     with pytest.raises(ValueError):

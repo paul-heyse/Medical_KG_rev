@@ -125,9 +125,7 @@ class _BaseWrapper(VectorStorePort):
         namespace: str,
         force: bool = False,
     ) -> RebuildReport:
-        return self._delegate.rebuild_index(
-            tenant_id=tenant_id, namespace=namespace, force=force
-        )
+        return self._delegate.rebuild_index(tenant_id=tenant_id, namespace=namespace, force=force)
 
     def check_health(
         self,
@@ -145,9 +143,7 @@ class WeaviateStore(_BaseWrapper):
         super().__init__(OpenSearchKNNStore(default_engine="lucene"))
         self._weights: dict[tuple[str, str], float] = {}
 
-    def configure_hybrid(
-        self, *, tenant_id: str, namespace: str, vector_weight: float
-    ) -> None:
+    def configure_hybrid(self, *, tenant_id: str, namespace: str, vector_weight: float) -> None:
         self._weights[(tenant_id, namespace)] = min(max(vector_weight, 0.0), 1.0)
 
     def create_or_update_collection(
@@ -465,4 +461,3 @@ __all__ = [
     "VespaStore",
     "WeaviateStore",
 ]
-

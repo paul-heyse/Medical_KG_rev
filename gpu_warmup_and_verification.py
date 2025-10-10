@@ -14,14 +14,12 @@ Features:
 - Monitors GPU utilization during processing
 - Provides detailed GPU status report
 """
-
-import os
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -36,12 +34,13 @@ class GPUWarmupAndVerification:
         self.verification_results = {}
         self.warmup_results = {}
 
-    def check_cuda_availability(self) -> Dict[str, Any]:
+    def check_cuda_availability(self) -> dict[str, Any]:
         """Check CUDA availability and basic info."""
         print("🔍 Checking CUDA availability...")
 
         try:
             import torch
+
             cuda_available = torch.cuda.is_available()
 
             if cuda_available:
@@ -64,55 +63,51 @@ class GPUWarmupAndVerification:
                     "memory_total_mb": memory_total / (1024 * 1024),
                     "memory_free_mb": (memory_total - memory_reserved) / (1024 * 1024),
                     "cuda_version": torch.version.cuda,
-                    "pytorch_version": torch.__version__
+                    "pytorch_version": torch.__version__,
                 }
 
                 print(f"✅ CUDA available: {device_name}")
                 print(f"   Device count: {device_count}")
                 print(f"   Current device: {current_device}")
-                print(f"   Memory: {cuda_info['memory_free_mb']:.1f} MB free / {cuda_info['memory_total_mb']:.1f} MB total")
+                print(
+                    f"   Memory: {cuda_info['memory_free_mb']:.1f} MB free / {cuda_info['memory_total_mb']:.1f} MB total"
+                )
                 print(f"   CUDA version: {cuda_info['cuda_version']}")
                 print(f"   PyTorch version: {cuda_info['pytorch_version']}")
 
             else:
-                cuda_info = {
-                    "available": False,
-                    "error": "CUDA not available in PyTorch"
-                }
+                cuda_info = {"available": False, "error": "CUDA not available in PyTorch"}
                 print("❌ CUDA not available in PyTorch")
 
             return cuda_info
 
         except ImportError:
-            return {
-                "available": False,
-                "error": "PyTorch not installed"
-            }
+            return {"available": False, "error": "PyTorch not installed"}
         except Exception as e:
-            return {
-                "available": False,
-                "error": f"CUDA check failed: {str(e)}"
-            }
+            return {"available": False, "error": f"CUDA check failed: {e!s}"}
 
-    def check_nvidia_smi(self) -> Dict[str, Any]:
+    def check_nvidia_smi(self) -> dict[str, Any]:
         """Check nvidia-smi availability and GPU info."""
         print("🔍 Checking nvidia-smi...")
 
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu",
-                 "--format=csv,noheader,nounits"],
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu",
+                    "--format=csv,noheader,nounits",
+                ],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0:
-                lines = result.stdout.strip().split('\n')
+                lines = result.stdout.strip().split("\n")
                 gpus = []
 
                 for i, line in enumerate(lines):
-                    parts = [p.strip() for p in line.split(',')]
+                    parts = [p.strip() for p in line.split(",")]
                     if len(parts) >= 6:
                         gpu_info = {
                             "index": i,
@@ -121,48 +116,35 @@ class GPUWarmupAndVerification:
                             "memory_used_mb": int(parts[2]),
                             "memory_free_mb": int(parts[3]),
                             "utilization_percent": int(parts[4]),
-                            "temperature_c": int(parts[5])
+                            "temperature_c": int(parts[5]),
                         }
                         gpus.append(gpu_info)
 
-                nvidia_info = {
-                    "available": True,
-                    "gpus": gpus
-                }
+                nvidia_info = {"available": True, "gpus": gpus}
 
                 print(f"✅ nvidia-smi available: {len(gpus)} GPU(s) detected")
                 for gpu in gpus:
                     print(f"   GPU {gpu['index']}: {gpu['name']}")
-                    print(f"     Memory: {gpu['memory_free_mb']} MB free / {gpu['memory_total_mb']} MB total")
+                    print(
+                        f"     Memory: {gpu['memory_free_mb']} MB free / {gpu['memory_total_mb']} MB total"
+                    )
                     print(f"     Utilization: {gpu['utilization_percent']}%")
                     print(f"     Temperature: {gpu['temperature_c']}°C")
 
             else:
-                nvidia_info = {
-                    "available": False,
-                    "error": f"nvidia-smi failed: {result.stderr}"
-                }
+                nvidia_info = {"available": False, "error": f"nvidia-smi failed: {result.stderr}"}
                 print("❌ nvidia-smi not available or failed")
 
             return nvidia_info
 
         except FileNotFoundError:
-            return {
-                "available": False,
-                "error": "nvidia-smi not found"
-            }
+            return {"available": False, "error": "nvidia-smi not found"}
         except subprocess.TimeoutExpired:
-            return {
-                "available": False,
-                "error": "nvidia-smi timeout"
-            }
+            return {"available": False, "error": "nvidia-smi timeout"}
         except Exception as e:
-            return {
-                "available": False,
-                "error": f"nvidia-smi check failed: {str(e)}"
-            }
+            return {"available": False, "error": f"nvidia-smi check failed: {e!s}"}
 
-    def check_mineru_gpu_dependencies(self) -> Dict[str, Any]:
+    def check_mineru_gpu_dependencies(self) -> dict[str, Any]:
         """Check MinerU GPU dependencies."""
         print("🔍 Checking MinerU GPU dependencies...")
 
@@ -171,7 +153,11 @@ class GPUWarmupAndVerification:
         # Check doclayout-yolo
         try:
             import doclayout_yolo
-            dependencies["doclayout_yolo"] = {"available": True, "version": getattr(doclayout_yolo, "__version__", "unknown")}
+
+            dependencies["doclayout_yolo"] = {
+                "available": True,
+                "version": getattr(doclayout_yolo, "__version__", "unknown"),
+            }
             print("✅ doclayout-yolo available")
         except ImportError:
             dependencies["doclayout_yolo"] = {"available": False, "error": "Not installed"}
@@ -180,6 +166,7 @@ class GPUWarmupAndVerification:
         # Check ultralytics
         try:
             import ultralytics
+
             dependencies["ultralytics"] = {"available": True, "version": ultralytics.__version__}
             print("✅ ultralytics available")
         except ImportError:
@@ -189,8 +176,12 @@ class GPUWarmupAndVerification:
         # Check PyTorch CUDA
         try:
             import torch
+
             if torch.cuda.is_available():
-                dependencies["pytorch_cuda"] = {"available": True, "cuda_version": torch.version.cuda}
+                dependencies["pytorch_cuda"] = {
+                    "available": True,
+                    "cuda_version": torch.version.cuda,
+                }
                 print("✅ PyTorch CUDA available")
             else:
                 dependencies["pytorch_cuda"] = {"available": False, "error": "CUDA not available"}
@@ -201,7 +192,7 @@ class GPUWarmupAndVerification:
 
         return dependencies
 
-    def perform_gpu_warmup(self) -> Dict[str, Any]:
+    def perform_gpu_warmup(self) -> dict[str, Any]:
         """Perform GPU warmup operations."""
         print("🔥 Performing GPU warmup...")
 
@@ -227,10 +218,7 @@ class GPUWarmupAndVerification:
                 torch.cuda.synchronize()
 
             tensor_time = time.time() - start_time
-            warmup_results["tensor_operations"] = {
-                "success": True,
-                "time_seconds": tensor_time
-            }
+            warmup_results["tensor_operations"] = {"success": True, "time_seconds": tensor_time}
             print(f"   ✅ Tensor operations: {tensor_time:.2f}s")
 
             # Warmup 2: Model loading simulation
@@ -243,7 +231,7 @@ class GPUWarmupAndVerification:
                 torch.nn.ReLU(),
                 torch.nn.Linear(512, 256),
                 torch.nn.ReLU(),
-                torch.nn.Linear(256, 10)
+                torch.nn.Linear(256, 10),
             ).to(device)
 
             # Forward pass
@@ -253,10 +241,7 @@ class GPUWarmupAndVerification:
                 torch.cuda.synchronize()
 
             model_time = time.time() - start_time
-            warmup_results["model_operations"] = {
-                "success": True,
-                "time_seconds": model_time
-            }
+            warmup_results["model_operations"] = {"success": True, "time_seconds": model_time}
             print(f"   ✅ Model operations: {model_time:.2f}s")
 
             # Warmup 3: Memory allocation test
@@ -275,10 +260,7 @@ class GPUWarmupAndVerification:
             torch.cuda.synchronize()
 
             memory_time = time.time() - start_time
-            warmup_results["memory_operations"] = {
-                "success": True,
-                "time_seconds": memory_time
-            }
+            warmup_results["memory_operations"] = {"success": True, "time_seconds": memory_time}
             print(f"   ✅ Memory operations: {memory_time:.2f}s")
 
             warmup_results["overall_success"] = True
@@ -287,15 +269,12 @@ class GPUWarmupAndVerification:
             print(f"✅ GPU warmup completed in {warmup_results['total_time']:.2f}s")
 
         except Exception as e:
-            warmup_results = {
-                "overall_success": False,
-                "error": str(e)
-            }
+            warmup_results = {"overall_success": False, "error": str(e)}
             print(f"❌ GPU warmup failed: {e}")
 
         return warmup_results
 
-    def monitor_gpu_during_processing(self, duration_seconds: int = 30) -> Dict[str, Any]:
+    def monitor_gpu_during_processing(self, duration_seconds: int = 30) -> dict[str, Any]:
         """Monitor GPU utilization during processing."""
         print(f"📊 Monitoring GPU for {duration_seconds} seconds...")
 
@@ -308,15 +287,18 @@ class GPUWarmupAndVerification:
             while time.time() - start_time < duration_seconds:
                 try:
                     result = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,temperature.gpu",
-                         "--format=csv,noheader,nounits"],
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=utilization.gpu,memory.used,temperature.gpu",
+                            "--format=csv,noheader,nounits",
+                        ],
                         capture_output=True,
                         text=True,
-                        timeout=5
+                        timeout=5,
                     )
 
                     if result.returncode == 0:
-                        parts = [p.strip() for p in result.stdout.strip().split(',')]
+                        parts = [p.strip() for p in result.stdout.strip().split(",")]
                         if len(parts) >= 3:
                             gpu_utilization.append(int(parts[0]))
                             gpu_memory.append(int(parts[1]))
@@ -350,10 +332,10 @@ class GPUWarmupAndVerification:
                 "avg_memory_mb": avg_memory,
                 "max_memory_mb": max_memory,
                 "avg_temperature_c": avg_temperature,
-                "max_temperature_c": max_temperature
+                "max_temperature_c": max_temperature,
             }
 
-            print(f"✅ GPU monitoring completed:")
+            print("✅ GPU monitoring completed:")
             print(f"   Average utilization: {avg_utilization:.1f}%")
             print(f"   Maximum utilization: {max_utilization:.1f}%")
             print(f"   Average memory: {avg_memory:.1f} MB")
@@ -362,20 +344,16 @@ class GPUWarmupAndVerification:
             print(f"   Maximum temperature: {max_temperature:.1f}°C")
 
         else:
-            monitoring_results = {
-                "success": False,
-                "error": "No GPU data collected"
-            }
+            monitoring_results = {"success": False, "error": "No GPU data collected"}
             print("❌ GPU monitoring failed")
 
         return monitoring_results
 
-    def test_mineru_gpu_processing(self) -> Dict[str, Any]:
+    def test_mineru_gpu_processing(self) -> dict[str, Any]:
         """Test MinerU GPU processing with a simple operation."""
         print("🧪 Testing MinerU GPU processing...")
 
         try:
-            import shutil
             import tempfile
 
             from mineru.cli.client import main as mineru_main
@@ -448,13 +426,20 @@ startxref
                 original_argv = sys.argv.copy()
                 sys.argv = [
                     "mineru",
-                    "--path", str(test_pdf_path),
-                    "--output", str(output_dir),
-                    "--method", "auto",
-                    "--backend", "pipeline",
-                    "--device", "cuda",
-                    "--formula", "true",
-                    "--table", "true"
+                    "--path",
+                    str(test_pdf_path),
+                    "--output",
+                    str(output_dir),
+                    "--method",
+                    "auto",
+                    "--backend",
+                    "pipeline",
+                    "--device",
+                    "cuda",
+                    "--formula",
+                    "true",
+                    "--table",
+                    "true",
                 ]
 
                 try:
@@ -470,18 +455,15 @@ startxref
                         "success": True,
                         "processing_time_seconds": processing_time,
                         "output_files_count": len(output_files),
-                        "output_files": [str(f) for f in output_files]
+                        "output_files": [str(f) for f in output_files],
                     }
 
-                    print(f"✅ MinerU GPU test successful:")
+                    print("✅ MinerU GPU test successful:")
                     print(f"   Processing time: {processing_time:.2f}s")
                     print(f"   Output files: {len(output_files)}")
 
                 except Exception as e:
-                    test_results = {
-                        "success": False,
-                        "error": str(e)
-                    }
+                    test_results = {"success": False, "error": str(e)}
                     print(f"❌ MinerU GPU test failed: {e}")
 
                 finally:
@@ -489,25 +471,19 @@ startxref
                     sys.argv = original_argv
 
         except ImportError:
-            test_results = {
-                "success": False,
-                "error": "MinerU not available"
-            }
+            test_results = {"success": False, "error": "MinerU not available"}
             print("❌ MinerU not available")
         except Exception as e:
-            test_results = {
-                "success": False,
-                "error": str(e)
-            }
+            test_results = {"success": False, "error": str(e)}
             print(f"❌ MinerU GPU test failed: {e}")
 
         return test_results
 
-    def run_complete_verification(self) -> Dict[str, Any]:
+    def run_complete_verification(self) -> dict[str, Any]:
         """Run complete GPU verification and warmup."""
-        print("="*70)
+        print("=" * 70)
         print("GPU WARMUP AND VERIFICATION")
-        print("="*70)
+        print("=" * 70)
 
         results = {}
 
@@ -540,11 +516,11 @@ startxref
 
         return results
 
-    def print_summary(self, results: Dict[str, Any]) -> None:
+    def print_summary(self, results: dict[str, Any]) -> None:
         """Print verification summary."""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("GPU VERIFICATION SUMMARY")
-        print("="*70)
+        print("=" * 70)
 
         # CUDA Status
         cuda_available = results["cuda_info"].get("available", False)
@@ -559,10 +535,16 @@ startxref
 
         # Dependencies Status
         deps = results["dependencies"]
-        print(f"Dependencies:")
-        print(f"   doclayout-yolo: {'✅ YES' if deps.get('doclayout_yolo', {}).get('available', False) else '❌ NO'}")
-        print(f"   ultralytics: {'✅ YES' if deps.get('ultralytics', {}).get('available', False) else '❌ NO'}")
-        print(f"   PyTorch CUDA: {'✅ YES' if deps.get('pytorch_cuda', {}).get('available', False) else '❌ NO'}")
+        print("Dependencies:")
+        print(
+            f"   doclayout-yolo: {'✅ YES' if deps.get('doclayout_yolo', {}).get('available', False) else '❌ NO'}"
+        )
+        print(
+            f"   ultralytics: {'✅ YES' if deps.get('ultralytics', {}).get('available', False) else '❌ NO'}"
+        )
+        print(
+            f"   PyTorch CUDA: {'✅ YES' if deps.get('pytorch_cuda', {}).get('available', False) else '❌ NO'}"
+        )
 
         # Warmup Status
         warmup_success = results["warmup"].get("overall_success", False)
@@ -581,20 +563,19 @@ startxref
         monitoring_success = results["monitoring"].get("success", False)
         print(f"GPU Monitoring: {'✅ SUCCESS' if monitoring_success else '❌ FAILED'}")
         if monitoring_success:
-            print(f"   Average utilization: {results['monitoring']['avg_utilization_percent']:.1f}%")
-            print(f"   Maximum utilization: {results['monitoring']['max_utilization_percent']:.1f}%")
+            print(
+                f"   Average utilization: {results['monitoring']['avg_utilization_percent']:.1f}%"
+            )
+            print(
+                f"   Maximum utilization: {results['monitoring']['max_utilization_percent']:.1f}%"
+            )
 
         # Overall Status
-        overall_success = (
-            cuda_available and
-            nvidia_available and
-            warmup_success and
-            mineru_success
-        )
+        overall_success = cuda_available and nvidia_available and warmup_success and mineru_success
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print(f"OVERALL GPU STATUS: {'✅ READY' if overall_success else '❌ NOT READY'}")
-        print("="*70)
+        print("=" * 70)
 
         if overall_success:
             print("🎉 GPU is fully operational and ready for MinerU processing!")
@@ -613,7 +594,7 @@ startxref
             if not mineru_success:
                 print("   • MinerU GPU test failed")
 
-        print("="*70)
+        print("=" * 70)
 
 
 def main():
@@ -624,10 +605,10 @@ def main():
 
     # Return appropriate exit code
     overall_success = (
-        results["cuda_info"].get("available", False) and
-        results["nvidia_info"].get("available", False) and
-        results["warmup"].get("overall_success", False) and
-        results["mineru_test"].get("success", False)
+        results["cuda_info"].get("available", False)
+        and results["nvidia_info"].get("available", False)
+        and results["warmup"].get("overall_success", False)
+        and results["mineru_test"].get("success", False)
     )
 
     sys.exit(0 if overall_success else 1)

@@ -24,8 +24,8 @@ SAMPLE_DOCUMENTS: dict[str, bytes] = {
         """
     ).encode("utf-8"),
     "doc-03-multi-page": (
-        "Baseline Characteristics\nAge Distribution\n\fOutcome Measures\nPrimary Endpoint\nSecondary Endpoint\n"
-    ).encode("utf-8"),
+        b"Baseline Characteristics\nAge Distribution\n\fOutcome Measures\nPrimary Endpoint\nSecondary Endpoint\n"
+    ),
     "doc-04-adverse-events": dedent(
         """
         Adverse Events Summary
@@ -161,6 +161,8 @@ SAMPLE_DOCUMENTS: dict[str, bytes] = {
         Secondary endpoints trending positive
         Safety profile acceptable
         Future studies recommended
+        """
+    ).encode("utf-8"),
     "doc-basic": dedent(
         """
         Clinical Study Report
@@ -172,8 +174,8 @@ SAMPLE_DOCUMENTS: dict[str, bytes] = {
     "doc-table": dedent(
         """
         Arm | Dose | Outcome
-        Control | 5mg | Stable
-        Treatment | 10mg | Improved
+        Control | 5 mg | Stable
+        Treatment | 10 mg | Improved
         """
     ).encode("utf-8"),
     "doc-multi": dedent(
@@ -188,4 +190,3 @@ SAMPLE_DOCUMENTS: dict[str, bytes] = {
 }
 
 E2E_PRIMARY_DOCUMENT_ID = "doc-05-lab-results"
-

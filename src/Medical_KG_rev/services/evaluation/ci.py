@@ -43,6 +43,7 @@ from __future__ import annotations
 # CI INTEGRATION FUNCTIONS
 # ==============================================================================
 
+
 def enforce_recall_threshold(
     baseline: float,
     current: float,

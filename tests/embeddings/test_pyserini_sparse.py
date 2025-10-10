@@ -25,7 +25,7 @@ def stub_loader(monkeypatch: pytest.MonkeyPatch):
                 return value
             return {f"{text}_term": 1.0}
 
-    def loader(mode: str):  # noqa: D401 - compatibility shim
+    def loader(mode: str):
         created["mode"] = mode
         created["encoder_class"] = StubEncoder
         return StubEncoder

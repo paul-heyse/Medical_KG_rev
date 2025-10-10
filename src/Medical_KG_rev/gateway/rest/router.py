@@ -107,6 +107,7 @@ JSONAPI_CONTENT_TYPE = "application/vnd.api+json"
 # ADAPTER ENDPOINTS
 # ==============================================================================
 
+
 @router.get("/adapters", response_model=None)
 async def list_adapters(
     domain: str | None = Query(default=None),
@@ -209,6 +210,7 @@ async def get_adapter_config_schema(
 # HEALTH ENDPOINTS
 # ==============================================================================
 
+
 @health_router.get("/health", include_in_schema=True)
 async def health_check(request: Request) -> JSONResponse:
     service: HealthService = request.app.state.health  # type: ignore[attr-defined]
@@ -242,6 +244,7 @@ def _apply_tenant(
 # ==============================================================================
 # INGESTION ENDPOINTS
 # ==============================================================================
+
 
 @router.post("/ingest/{dataset}", status_code=207, response_model=None)
 async def ingest_dataset(
@@ -279,9 +282,7 @@ async def ingest_pipeline(
     lifecycle: LifecycleDep = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
-    ingest_request = IngestionRequest.model_validate(
-        request.model_dump(exclude={"dataset"})
-    )
+    ingest_request = IngestionRequest.model_validate(request.model_dump(exclude={"dataset"}))
     result: BatchOperationResult = service.ingest(request.dataset, ingest_request)
     meta = lifecycle.meta(
         {
@@ -305,6 +306,7 @@ async def ingest_pipeline(
 # ==============================================================================
 # JOB MANAGEMENT ENDPOINTS
 # ==============================================================================
+
 
 @router.get("/jobs/{job_id}", status_code=200, response_model=JobStatus)
 async def get_job(
@@ -464,6 +466,7 @@ async def ingest_pmc(
 # PROCESSING ENDPOINTS
 # ==============================================================================
 
+
 @router.post("/chunk", status_code=200)
 async def chunk_document(
     request: ChunkRequest,
@@ -555,6 +558,7 @@ async def retrieve(
 # NAMESPACE ENDPOINTS
 # ==============================================================================
 
+
 @router.get("/namespaces", status_code=200)
 async def list_namespaces(
     http_request: Request,
@@ -631,9 +635,7 @@ async def get_namespace_policy_health(
 @router.get("/namespaces/policy/metrics", status_code=200)
 async def get_namespace_policy_metrics(
     security: SecurityContext = Depends(
-        secure_endpoint(
-            scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/metrics"
-        )
+        secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/metrics")
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep = Depends(get_response_presenter),
@@ -666,7 +668,9 @@ async def validate_namespace(
     request: NamespaceValidationRequest,
     http_request: Request,
     security: SecurityContext = Depends(
-        secure_endpoint(scopes=[Scopes.EMBED_READ], endpoint="POST /v1/namespaces/{namespace}/validate")
+        secure_endpoint(
+            scopes=[Scopes.EMBED_READ], endpoint="POST /v1/namespaces/{namespace}/validate"
+        )
     ),
     service: GatewayService = Depends(get_gateway_service),
     presenter: PresenterDep = Depends(get_response_presenter),
@@ -805,6 +809,7 @@ async def entity_link(
 # EXTRACTION ENDPOINTS
 # ==============================================================================
 
+
 @router.post("/extract/{kind}", status_code=200)
 async def extract(
     *,
@@ -854,6 +859,7 @@ async def kg_write(
 # ==============================================================================
 # AUDIT ENDPOINTS
 # ==============================================================================
+
 
 @router.get("/audit/logs", status_code=200)
 async def list_audit_logs(

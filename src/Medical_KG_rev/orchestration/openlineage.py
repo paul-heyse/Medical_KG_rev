@@ -53,9 +53,7 @@ class GPUUtilizationFacet(BaseFacet):
     """Facet describing GPU utilisation for a job run."""
 
     facet_name: ClassVar[str] = "gpuUtilization"
-    schema_url: ClassVar[str] = (
-        "https://openlineage.io/spec/facets/1-0-0/GpuUtilizationFacet.json"
-    )
+    schema_url: ClassVar[str] = "https://openlineage.io/spec/facets/1-0-0/GpuUtilizationFacet.json"
 
     gpu_memory_used_mb: float | None = None
     gpu_utilization_percent: float | None = None
@@ -74,9 +72,7 @@ class ModelVersionFacet(BaseFacet):
     """Facet linking a run to the model version responsible for outputs."""
 
     facet_name: ClassVar[str] = "modelVersion"
-    schema_url: ClassVar[str] = (
-        "https://openlineage.io/spec/facets/1-0-0/ModelVersionFacet.json"
-    )
+    schema_url: ClassVar[str] = "https://openlineage.io/spec/facets/1-0-0/ModelVersionFacet.json"
 
     model_name: str
     model_version: str | None = None
@@ -93,9 +89,7 @@ class RetryAttemptFacet(BaseFacet):
     """Facet capturing retry counts per stage for a run."""
 
     facet_name: ClassVar[str] = "retryAttempts"
-    schema_url: ClassVar[str] = (
-        "https://openlineage.io/spec/facets/1-0-0/RetryAttemptFacet.json"
-    )
+    schema_url: ClassVar[str] = "https://openlineage.io/spec/facets/1-0-0/RetryAttemptFacet.json"
 
     attempts: Mapping[str, int]
 
@@ -309,9 +303,7 @@ class OpenLineageEmitter:
         if isinstance(metrics, Mapping):
             gpu_facet = GPUUtilizationFacet(
                 gpu_memory_used_mb=_coerce_float(metrics.get("gpu_memory_mb")),
-                gpu_utilization_percent=_coerce_float(
-                    metrics.get("gpu_utilization_percent")
-                ),
+                gpu_utilization_percent=_coerce_float(metrics.get("gpu_utilization_percent")),
             )
             if gpu_facet._payload():
                 job_facets[gpu_facet.facet_name] = gpu_facet.as_dict(self.producer)
@@ -353,4 +345,3 @@ __all__ = [
     "RetryAttemptFacet",
     "RunState",
 ]
-

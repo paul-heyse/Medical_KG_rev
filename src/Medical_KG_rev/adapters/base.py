@@ -82,6 +82,7 @@ class AdapterResult:
 # ADAPTER IMPLEMENTATION
 # ==============================================================================
 
+
 class BaseAdapter(ABC):
     """Base class that all adapters must inherit from."""
 

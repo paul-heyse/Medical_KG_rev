@@ -68,9 +68,7 @@ class ChunkingRuntime:
         allow_experimental: bool,
         enable_multi_granularity: bool,
     ) -> ChunkerSession:
-        registered = self.factory.create_many(
-            settings, allow_experimental=allow_experimental
-        )
+        registered = self.factory.create_many(settings, allow_experimental=allow_experimental)
         plan = ChunkerPlan(
             entries=tuple(registered),
             enable_multi_granularity=enable_multi_granularity,
@@ -90,6 +88,4 @@ class ChunkingRuntime:
         *,
         allow_experimental: bool,
     ) -> list[RegisteredChunker]:
-        return self.factory.create_many(
-            settings, allow_experimental=allow_experimental
-        )
+        return self.factory.create_many(settings, allow_experimental=allow_experimental)

@@ -1,0 +1,17 @@
+# Files to ignore for pip-extra-reqs (patterns)
+*.so
+*.pyc
+*.pyd
+__pycache__
+.git
+.venv
+node_modules
+build
+dist
+*.egg-info
+demo_output
+gpu_optimized_output
+mineru_direct_output
+random_papers_output
+real_pdf_output
+site

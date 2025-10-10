@@ -13,7 +13,10 @@ from Medical_KG_rev.services.embedding.policy import (
     StandardNamespacePolicy,
     build_policy_chain,
 )
-from Medical_KG_rev.services.embedding.telemetry import StandardEmbeddingTelemetry, TelemetrySettings
+from Medical_KG_rev.services.embedding.telemetry import (
+    StandardEmbeddingTelemetry,
+    TelemetrySettings,
+)
 
 
 @pytest.fixture()
@@ -36,25 +39,37 @@ def registry() -> EmbeddingNamespaceRegistry:
 
 
 def test_standard_policy_allows_authorised_tenant(registry: EmbeddingNamespaceRegistry) -> None:
-    telemetry = StandardEmbeddingTelemetry(TelemetrySettings(enable_logging=False, enable_metrics=False))
-    policy = StandardNamespacePolicy(registry, telemetry=telemetry, settings=NamespacePolicySettings(cache_ttl_seconds=10))
+    telemetry = StandardEmbeddingTelemetry(
+        TelemetrySettings(enable_logging=False, enable_metrics=False)
+    )
+    policy = StandardNamespacePolicy(
+        registry, telemetry=telemetry, settings=NamespacePolicySettings(cache_ttl_seconds=10)
+    )
 
-    decision = policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
+    decision = policy.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write"
+    )
 
     assert decision.allowed
     assert decision.config is not None
     assert telemetry.snapshot().policy_evaluations == 1
 
     # Cached evaluation should be counted as a cache hit.
-    policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
+    policy.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write"
+    )
     assert policy.stats()["cache_hits"] == 1
 
 
 def test_standard_policy_denies_cross_tenant(registry: EmbeddingNamespaceRegistry) -> None:
-    telemetry = StandardEmbeddingTelemetry(TelemetrySettings(enable_logging=False, enable_metrics=False))
+    telemetry = StandardEmbeddingTelemetry(
+        TelemetrySettings(enable_logging=False, enable_metrics=False)
+    )
     policy = StandardNamespacePolicy(registry, telemetry=telemetry)
 
-    decision = policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-b", required_scope="embed:write")
+    decision = policy.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-b", required_scope="embed:write"
+    )
 
     assert not decision.allowed
     assert decision.denied_due_to_tenant()
@@ -65,7 +80,9 @@ def test_dry_run_policy_marks_denials(registry: EmbeddingNamespaceRegistry) -> N
     policy = StandardNamespacePolicy(registry)
     dry_run = DryRunNamespacePolicy(policy)
 
-    decision = dry_run.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-b", required_scope="embed:write")
+    decision = dry_run.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-b", required_scope="embed:write"
+    )
 
     assert decision.allowed
     assert decision.metadata["dry_run_denied"] is True
@@ -73,9 +90,13 @@ def test_dry_run_policy_marks_denials(registry: EmbeddingNamespaceRegistry) -> N
 
 def test_mock_policy_allows_registered_decision(registry: EmbeddingNamespaceRegistry) -> None:
     mock = MockNamespacePolicy(registry)
-    mock.register_decision(namespace="single_vector.test.3.v1", tenant_id="tenant-x", scope="embed:read", allowed=True)
+    mock.register_decision(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-x", scope="embed:read", allowed=True
+    )
 
-    decision = mock.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-x", required_scope="embed:read")
+    decision = mock.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-x", required_scope="embed:read"
+    )
 
     assert decision.allowed
 
@@ -93,13 +114,17 @@ def test_custom_policy_delegates(registry: EmbeddingNamespaceRegistry, allowed: 
         )
 
     policy = CustomNamespacePolicy(registry, resolver)
-    decision = policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
+    decision = policy.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write"
+    )
     assert decision.allowed is allowed
 
 
 def test_policy_update_settings_clears_cache(registry: EmbeddingNamespaceRegistry) -> None:
     policy = StandardNamespacePolicy(registry)
-    policy.evaluate(namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write")
+    policy.evaluate(
+        namespace="single_vector.test.3.v1", tenant_id="tenant-a", required_scope="embed:write"
+    )
     snapshot = policy.debug_snapshot()
     assert snapshot["cache_keys"], "expected cached decisions"
 

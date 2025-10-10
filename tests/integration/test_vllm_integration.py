@@ -1,5 +1,3 @@
-import asyncio
-
 from __future__ import annotations
 
 import asyncio
@@ -14,6 +12,8 @@ from .utils import run_async
 
 pytestmark = pytest.mark.integration
 
+BASE_URL = os.getenv("TEST_VLLM_BASE_URL", "http://localhost:8000")
+
 
 def test_real_vllm_chat_completion(live_vllm_client: VLLMClient):
     response = run_async(
@@ -22,7 +22,7 @@ def test_real_vllm_chat_completion(live_vllm_client: VLLMClient):
             max_tokens=64,
             temperature=0.0,
         )
-BASE_URL = os.getenv("TEST_VLLM_BASE_URL", "http://localhost:8000")
+    )
 
 
 @pytest.fixture

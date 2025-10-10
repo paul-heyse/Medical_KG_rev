@@ -270,7 +270,6 @@ def _update_gpu_metrics() -> None:
 def instrument_application(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
     """Instrument FastAPI application with metrics."""
     # Add middleware for request metrics
-    pass
 
 
 def register_metrics(app: FastAPI, settings: AppSettings) -> None:  # type: ignore[valid-type]
@@ -376,7 +375,6 @@ def observe_job_duration(operation: str, duration_seconds: float) -> None:
     JOB_DURATION.labels(operation=operation).observe(max(duration_seconds, 0.0))
 
 
-
 def record_chunking_document(profile: str, duration_seconds: float, chunks: int) -> None:
     """Record metrics for a completed chunking operation."""
     labels = (profile or "unknown",)
@@ -399,8 +397,6 @@ def increment_mineru_gate_triggered() -> None:
 def increment_postpdf_start_triggered() -> None:
     """Increment the post-PDF start triggered counter."""
     POSTPDF_START_TRIGGERED.inc()
-
-
 
 
 def record_reranking_operation(

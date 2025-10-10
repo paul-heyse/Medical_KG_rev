@@ -12,26 +12,31 @@ from ..utils.logging import configure_logging
 try:  # pragma: no cover - metrics optional in minimal environments
     from .metrics import register_metrics
 except Exception:  # pragma: no cover - fallback stub when dependencies missing
+
     def register_metrics(app, settings):  # type: ignore[override]
         logger.warning("metrics.registration.unavailable", reason="dependencies_missing")
+
 
 try:  # pragma: no cover - sentry optional dependency
     from .sentry import initialise_sentry
 except Exception:  # pragma: no cover - fallback stub when sentry dependencies missing
+
     def initialise_sentry(settings):  # type: ignore[override]
         logger.info("sentry.disabled", reason="dependencies_missing")
+
 
 try:  # pragma: no cover - tracing optional dependency
     from .tracing import configure_tracing, instrument_application
 except Exception:  # pragma: no cover - fallback stub when tracing dependencies missing
+
     def configure_tracing(service_name, telemetry):  # type: ignore[override]
         logger.info("tracing.disabled", reason="dependencies_missing")
 
     def instrument_application(app, settings):  # type: ignore[override]
         logger.info("tracing.instrumentation.skipped", reason="dependencies_missing")
 
+
 if TYPE_CHECKING:  # pragma: no cover - import hints only
-    from fastapi import FastAPI
 
     from Medical_KG_rev.config.settings import AppSettings
 

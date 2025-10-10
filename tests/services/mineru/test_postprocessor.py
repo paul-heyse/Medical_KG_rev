@@ -11,7 +11,6 @@ from Medical_KG_rev.services.mineru.postprocessor import MineruPostProcessor
 from Medical_KG_rev.services.mineru.types import MineruRequest
 from Medical_KG_rev.storage.object_store import FigureStorageClient, InMemoryObjectStore
 
-
 pytest.importorskip("pydantic")
 
 

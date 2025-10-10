@@ -6,8 +6,8 @@ import pytest
 
 from Medical_KG_rev.chunking import ChunkingService
 from Medical_KG_rev.chunking.exceptions import ChunkingUnavailableError, InvalidDocumentError
-from Medical_KG_rev.chunking.registry import ChunkerRegistry
 from Medical_KG_rev.chunking.factory import ChunkerFactory
+from Medical_KG_rev.chunking.registry import ChunkerRegistry
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
 
@@ -76,12 +76,11 @@ def test_section_chunker(simple_config: Path) -> None:
     assert {chunk.granularity for chunk in chunks} == {"section"}
     assert chunks[0].chunk_id.startswith(f"{document.id}:section_aware:section:")
     assert chunks[0].meta["token_count"] > 0
+
+
 def test_chunk_page_number_propagated(simple_config: Path) -> None:
     base = build_document().sections[0]
-    blocks = [
-        block.model_copy(update={"metadata": {"page_number": 3}})
-        for block in base.blocks
-    ]
+    blocks = [block.model_copy(update={"metadata": {"page_number": 3}}) for block in base.blocks]
     document = Document(
         id="doc-page",
         source="pmc",
@@ -119,7 +118,7 @@ def test_chunking_circuit_breaker_opens(tmp_path: Path) -> None:
         name = "failing"
         version = "v1"
 
-        def chunk(self, document, *, tenant_id, granularity=None, blocks=None):  # noqa: ANN001
+        def chunk(self, document, *, tenant_id, granularity=None, blocks=None):
             raise MemoryError("simulated OOM")
 
         def explain(self):

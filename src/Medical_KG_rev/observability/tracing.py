@@ -20,7 +20,6 @@ _GRPC_INSTRUMENTED = False
 def configure_tracing(service_name: str, telemetry: Any) -> None:
     """Configure OpenTelemetry tracing."""
     # Configure tracing based on telemetry settings
-    pass
 
 
 def instrument_application(app, settings: AppSettings) -> None:

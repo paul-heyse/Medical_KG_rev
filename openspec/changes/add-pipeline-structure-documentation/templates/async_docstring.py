@@ -50,6 +50,7 @@ Example:
 
 # Real example for async embedding persistence:
 
+
 async def persist_embeddings(
     self,
     context: PersistenceContext,
@@ -111,9 +112,12 @@ async def persist_embeddings(
         >>> metadata = {"model": "biobert", "timestamp": "2024-01-01T00:00:00Z"}
         >>> await persister.persist_embeddings(context, vectors, metadata)
         >>> # Vectors are now persisted to storage backend
+
     """
 
+
 # Real example for async embedding generation:
+
 
 async def generate_embeddings(
     self,
@@ -180,4 +184,5 @@ async def generate_embeddings(
         Generated 2 embeddings
         Text 1: 768 dimensions
         Text 2: 768 dimensions
+
     """

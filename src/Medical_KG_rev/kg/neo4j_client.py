@@ -55,6 +55,7 @@ from .shacl import ShaclValidator
 # CLIENT IMPLEMENTATION
 # ==============================================================================
 
+
 class Neo4jError(Exception):
     """Raised when Neo4j operations fail."""
 

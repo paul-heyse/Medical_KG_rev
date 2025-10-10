@@ -76,6 +76,7 @@ TOKEN_PATTERN = re.compile(r"[^\[\].]+|\[\d+\]")
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class RateLimitConfig:
     """Configuration for rate limiting adapter requests.
@@ -217,7 +218,6 @@ class AdapterConfig:
     rate_limit: RateLimitConfig | None = None
 
 
-
 class RateLimitModel(BaseModel):
     """Pydantic model for validating rate limit configuration.
 
@@ -315,12 +315,10 @@ class AdapterConfigModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-
-
-
 # ==============================================================================
 # ADAPTER IMPLEMENTATION
 # ==============================================================================
+
 
 class YAMLConfiguredAdapter(ResilientHTTPAdapter):
     """Adapter generated from a declarative YAML configuration.
@@ -498,6 +496,7 @@ class YAMLConfiguredAdapter(ResilientHTTPAdapter):
 # FACTORY FUNCTIONS
 # ==============================================================================
 
+
 def load_adapter_config(path: Path) -> AdapterConfig:
     """Load and validate adapter configuration from YAML file.
 
@@ -572,9 +571,11 @@ def create_adapter_from_config(
     """
     return YAMLConfiguredAdapter(config, client=client)
 
+
 # ==============================================================================
 # HELPER FUNCTIONS
 # ==============================================================================
+
 
 class _FormatDict(dict):
     """Helper mapping that raises clear errors for missing keys.
@@ -734,6 +735,7 @@ def _to_text(value: Any) -> str:
     if isinstance(value, str):
         return value
     return str(value)
+
 
 # ==============================================================================
 # EXPORTS

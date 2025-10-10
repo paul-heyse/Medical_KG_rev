@@ -45,7 +45,10 @@ class StorageAwarePdfDownloadStage(DownloadStage):
         """Initialize stage with storage resources."""
         self._pdf_storage = context.get("pdf_storage")
         if self._pdf_storage is None:
-            logger.warning("pdf_download_stage.no_storage", message="PDF storage not available, using in-memory only")
+            logger.warning(
+                "pdf_download_stage.no_storage",
+                message="PDF storage not available, using in-memory only",
+            )
 
     async def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]:
         """Download PDFs and store them in object storage."""
@@ -149,7 +152,9 @@ class StorageAwarePdfDownloadStage(DownloadStage):
                     error=str(e),
                 )
                 # Fall back to in-memory storage
-                return self._create_in_memory_artifact(pdf_url, pdf_data, content_type, document_id, state.tenant_id)
+                return self._create_in_memory_artifact(
+                    pdf_url, pdf_data, content_type, document_id, state.tenant_id
+                )
         else:
             # No storage available, use in-memory only
             return self._create_in_memory_artifact(pdf_url, pdf_data, content_type)
@@ -215,7 +220,7 @@ class StorageAwarePdfDownloadStage(DownloadStage):
 
             # Wait before retry
             if attempt < self._config.retry_attempts - 1:
-                wait_time = self._config.retry_backoff_multiplier * (2 ** attempt)
+                wait_time = self._config.retry_backoff_multiplier * (2**attempt)
                 time.sleep(wait_time)
 
         logger.error(
@@ -358,7 +363,9 @@ class AsyncStorageAwarePdfDownloadStage(StorageAwarePdfDownloadStage):
                     pdf_url=pdf_url,
                     error=str(e),
                 )
-                return self._create_in_memory_artifact(pdf_url, pdf_data, content_type, document_id, state.tenant_id)
+                return self._create_in_memory_artifact(
+                    pdf_url, pdf_data, content_type, document_id, state.tenant_id
+                )
         else:
             return self._create_in_memory_artifact(pdf_url, pdf_data, content_type)
 
@@ -423,7 +430,7 @@ class AsyncStorageAwarePdfDownloadStage(StorageAwarePdfDownloadStage):
 
             # Wait before retry
             if attempt < self._config.retry_attempts - 1:
-                wait_time = self._config.retry_backoff_multiplier * (2 ** attempt)
+                wait_time = self._config.retry_backoff_multiplier * (2**attempt)
                 await asyncio.sleep(wait_time)
 
         logger.error(

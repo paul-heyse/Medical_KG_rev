@@ -14,11 +14,11 @@ from Medical_KG_rev.gateway.services import GatewayService
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration.dagster.configuration import PipelineConfigLoader
 from Medical_KG_rev.orchestration.dagster.runtime import DagsterRunResult
-from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 from Medical_KG_rev.orchestration.ledger import JobLedger
+from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 
 if TYPE_CHECKING:
-    from Medical_KG_rev.gateway.models import IngestionRequest
+    pass
 
 
 class _StubOrchestrator:
@@ -32,7 +32,9 @@ class _StubOrchestrator:
     def available_pipelines(self) -> list[str]:
         return list(self._pipelines)
 
-    def submit(self, *, pipeline: str, context, adapter_request, payload) -> DagsterRunResult:  # noqa: ANN001 - protocol
+    def submit(
+        self, *, pipeline: str, context, adapter_request, payload
+    ) -> DagsterRunResult:
         self.submissions.append(
             {
                 "pipeline": pipeline,

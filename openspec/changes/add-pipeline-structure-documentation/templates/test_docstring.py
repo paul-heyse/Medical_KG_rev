@@ -40,6 +40,7 @@ Example:
 
 # Real example for coordinator tests:
 
+
 def test_chunking_coordinator_raises_error_when_profile_not_found():
     """Test that ChunkingCoordinator raises CoordinatorError when ChunkingService raises ProfileNotFoundError.
 
@@ -84,7 +85,9 @@ def test_chunking_coordinator_raises_error_when_profile_not_found():
         ...     coordinator.execute(ChunkingRequest(profile="invalid_profile"))
         >>> assert exc_info.value.status_code == 400
         >>> assert "profile_not_found" in str(exc_info.value)
+
     """
+
 
 def test_embedding_coordinator_denies_access_when_tenant_not_allowed():
     """Test that EmbeddingCoordinator denies access when tenant is not in allowed list.
@@ -132,9 +135,12 @@ def test_embedding_coordinator_denies_access_when_tenant_not_allowed():
         ...     coordinator.execute(EmbeddingRequest(tenant_id="denied_tenant"))
         >>> assert exc_info.value.status_code == 403
         >>> assert "access denied" in str(exc_info.value).lower()
+
     """
 
+
 # Real example for service tests:
+
 
 def test_chunking_service_returns_chunks_when_valid_text_provided():
     """Test that ChunkingService returns chunks when given valid document text.
@@ -178,7 +184,9 @@ def test_chunking_service_returns_chunks_when_valid_text_provided():
         ...     assert chunk.chunk_index == i
         ...     assert len(chunk.content) > 0
         ...     assert "token_count" in chunk.metadata
+
     """
+
 
 def test_embedding_service_generates_embeddings_when_valid_texts_provided():
     """Test that EmbeddingService generates embeddings when given valid text inputs.
@@ -226,9 +234,12 @@ def test_embedding_service_generates_embeddings_when_valid_texts_provided():
         ...     assert len(embedding.data) == 768  # biobert dimension
         ...     assert "model" in embedding.metadata
         ...     assert embedding.metadata["model"] == "biobert"
+
     """
 
+
 # Real example for orchestration tests:
+
 
 def test_stage_plugin_registration_succeeds_when_valid_stage_provided():
     """Test that stage plugin registration succeeds when valid stage function is provided.
@@ -282,4 +293,5 @@ def test_stage_plugin_registration_succeeds_when_valid_stage_provided():
         >>> result = stage(context)
         >>> assert result.success is True
         >>> assert result.data["test"] == "value"
+
     """

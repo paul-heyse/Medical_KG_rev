@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import gzip
 import json
+from urllib.parse import urlencode
 
 import pytest
 from pydantic import BaseModel
 from starlette.requests import Request
-from urllib.parse import urlencode
 
 from Medical_KG_rev.auth.context import SecurityContext
+from Medical_KG_rev.gateway.presentation.errors import ErrorDetail
+from Medical_KG_rev.gateway.presentation.jsonapi import JSONAPIPresenter
 from Medical_KG_rev.gateway.presentation.lifecycle import (
     RequestLifecycle,
     pop_lifecycle,
     push_lifecycle,
 )
-from Medical_KG_rev.gateway.presentation.errors import ErrorDetail
-from Medical_KG_rev.gateway.presentation.jsonapi import JSONAPIPresenter
 from Medical_KG_rev.gateway.presentation.odata import ODataParams
 from Medical_KG_rev.gateway.presentation.requests import apply_tenant_context
 from Medical_KG_rev.observability.metrics import REQUEST_COUNTER

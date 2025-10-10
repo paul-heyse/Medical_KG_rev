@@ -34,6 +34,7 @@ Example:
 
 # Real example for coordinator properties:
 
+
 class ChunkingCoordinator:
     """Chunking coordinator with computed properties."""
 
@@ -69,6 +70,7 @@ class ChunkingCoordinator:
             ...     result = coordinator.execute(request)
             ... else:
             ...     raise ServiceUnavailableError("Coordinator not healthy")
+
         """
 
     @property
@@ -102,6 +104,7 @@ class ChunkingCoordinator:
             ...     request.strategy = "semantic"
             ... else:
             ...     request.strategy = "section"
+
         """
 
     @property
@@ -138,9 +141,12 @@ class ChunkingCoordinator:
             >>> print(f"Average duration: {metrics['avg_duration_s']:.2f}s")
             Success rate: 95.2%
             Average duration: 0.45s
+
         """
 
+
 # Real example for service properties:
+
 
 class ChunkingService:
     """Chunking service with computed properties."""
@@ -180,6 +186,7 @@ class ChunkingService:
             section: 512 tokens
             semantic: 256 tokens
             paragraph: 1024 tokens
+
         """
 
     @property
@@ -211,4 +218,5 @@ class ChunkingService:
             >>> if memory_mb > 1000:  # 1GB threshold
             ...     print(f"High memory usage: {memory_mb:.1f}MB")
             ...     # Consider clearing caches or reducing batch size
+
         """

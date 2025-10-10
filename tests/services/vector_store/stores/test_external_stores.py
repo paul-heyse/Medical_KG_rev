@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
-
 from Medical_KG_rev.services.vector_store.models import (
     CompressionPolicy,
     IndexParams,
@@ -122,9 +120,7 @@ def test_lancedb_creates_fragments(tmp_path: Path) -> None:
 def test_duckdb_materialise_matrix() -> None:
     store = DuckDBVSSStore()
     _setup(store)
-    metrics = store.materialise(
-        tenant_id="tenant", namespace="default", vectors=[[0.1, 0.2, 0.3]]
-    )
+    metrics = store.materialise(tenant_id="tenant", namespace="default", vectors=[[0.1, 0.2, 0.3]])
     assert metrics["rows"] == 1
 
 

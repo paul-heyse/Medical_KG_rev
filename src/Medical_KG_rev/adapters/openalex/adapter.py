@@ -303,8 +303,12 @@ def _build_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     authors = _collect_authors(payload.get("authorships"))
     concepts = _collect_concepts(payload.get("concepts"))
     topics = _collect_topics(payload)
-    open_access = payload.get("open_access") if isinstance(payload.get("open_access"), Mapping) else {}
-    pdf_assets = payload.get("pdf_assets") if isinstance(payload.get("pdf_assets"), Sequence) else []
+    open_access = (
+        payload.get("open_access") if isinstance(payload.get("open_access"), Mapping) else {}
+    )
+    pdf_assets = (
+        payload.get("pdf_assets") if isinstance(payload.get("pdf_assets"), Sequence) else []
+    )
     pdf_urls = payload.get("pdf_urls") if isinstance(payload.get("pdf_urls"), Sequence) else []
 
     metadata: dict[str, Any] = {
@@ -504,4 +508,3 @@ def _safe_get(mapping: Any, key: str) -> Any:
 __all__ = [
     "OpenAlexAdapter",
 ]
-

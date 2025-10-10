@@ -27,7 +27,9 @@ class ChunkerFactory:
         self._cache: dict[tuple[object, ...], BaseChunker] = {}
         self._lock = RLock()
 
-    def create(self, config: ChunkerConfig, *, allow_experimental: bool = False) -> RegisteredChunker:
+    def create(
+        self, config: ChunkerConfig, *, allow_experimental: bool = False
+    ) -> RegisteredChunker:
         entry = self.registry.list_chunkers(include_experimental=True).get(config.name)
         if entry is None:
             raise ChunkerConfigurationError(f"Chunker '{config.name}' is not registered")
@@ -49,9 +51,7 @@ class ChunkerFactory:
         registered: list[RegisteredChunker] = []
         for setting in settings:
             registered.append(
-                self.create(
-                    setting.to_config(), allow_experimental=allow_experimental
-                )
+                self.create(setting.to_config(), allow_experimental=allow_experimental)
             )
         if not registered:
             raise ChunkerConfigurationError("At least one chunker must be configured")

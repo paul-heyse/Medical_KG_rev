@@ -14,7 +14,9 @@ def _document() -> Document:
         source="pmc",
         title="Ingestion Sample",
         sections=[section],
-        metadata={"tei_xml": "<TEI><text><body><div type='intro'><head>Intro</head></div></body></text></TEI>"},
+        metadata={
+            "tei_xml": "<TEI><text><body><div type='intro'><head>Intro</head></div></body></text></TEI>"
+        },
     )
 
 
@@ -25,4 +27,3 @@ def test_ingestion_service_chunking_run() -> None:
     assert result.granularity_counts
     stored = service.list_chunks("tenant", "doc-ingest")
     assert stored
-

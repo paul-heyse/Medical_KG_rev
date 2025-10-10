@@ -50,7 +50,9 @@ class DomainConfig:
             id=str(data["id"]),
             description=str(data.get("description", "")),
             adapters=dict(data.get("adapters", {})),
-            default_features={k: bool(v) for k, v in dict(data.get("default_features", {})).items()},
+            default_features={
+                k: bool(v) for k, v in dict(data.get("default_features", {})).items()
+            },
         )
 
 

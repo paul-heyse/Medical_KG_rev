@@ -1,22 +1,23 @@
 from __future__ import annotations
 
 import base64
-import orjson
 import zlib
-from typing import Iterable
+from collections.abc import Iterable
 
+import orjson
 import pytest
+
 from Medical_KG_rev.orchestration.stages import contracts as state_contracts
 
 pytest.importorskip("pydantic")
 
-from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
+from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
-from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+from Medical_KG_rev.models.ir import Document
 from Medical_KG_rev.orchestration.stages.contracts import (
+    DownloadArtifact,
     EmbeddingBatch,
     EmbeddingVector,
-    DownloadArtifact,
     GateDecision,
     GraphWriteReceipt,
     IndexReceipt,
@@ -24,8 +25,8 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     PipelineStateLifecycleHook,
     PipelineStateSnapshot,
     PipelineStateValidationError,
-    StagePerformanceSample,
     StageContext,
+    StagePerformanceSample,
     StageResultSnapshot,
 )
 
@@ -65,9 +66,7 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     state.apply_stage_output("ingest", "ingest", payloads)
     assert state.require_payloads() == tuple(payloads)
 
-    artifacts = [
-        DownloadArtifact(document_id="doc-1", tenant_id="tenant", uri="s3://bucket/a.pdf")
-    ]
+    artifacts = [DownloadArtifact(document_id="doc-1", tenant_id="tenant", uri="s3://bucket/a.pdf")]
     state.apply_stage_output("download", "download", artifacts)
     assert state.require_downloads()[0].uri.endswith("a.pdf")
 
@@ -97,9 +96,7 @@ def test_pipeline_state_stage_flow_serialises() -> None:
     assert state.require_chunks()[0].chunk_id == "c1"
 
     batch = EmbeddingBatch(
-        vectors=(
-            EmbeddingVector(id="c1", values=(0.1, 0.2), metadata={"chunk_id": "c1"}),
-        ),
+        vectors=(EmbeddingVector(id="c1", values=(0.1, 0.2), metadata={"chunk_id": "c1"}),),
         model="stub",
         tenant_id="tenant",
     )

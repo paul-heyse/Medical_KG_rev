@@ -30,7 +30,9 @@ class EvaluationReport:
             lines.append(f"- **{metric}**: {value:.4f}")
         lines.append("\n## Per-Query Metrics")
         for query_id, metrics in self.per_query.items():
-            lines.append(f"- **{query_id}**: " + ", ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
+            lines.append(
+                f"- **{query_id}**: " + ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
+            )
         return "\n".join(lines)
 
     def to_json(self) -> str:

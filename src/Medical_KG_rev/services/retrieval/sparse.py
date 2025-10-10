@@ -81,8 +81,10 @@ class BM25Retriever:
                 continue
             df = sum(1 for counter in self._index.values() if term in counter)
             idf = log((len(self._index) - df + 0.5) / (df + 0.5) + 1)
-            norm_tf = tf * (self._k1 + 1) / (
-                tf + self._k1 * (1 - self._b + self._b * doc_len / (self._avg_len or 1))
+            norm_tf = (
+                tf
+                * (self._k1 + 1)
+                / (tf + self._k1 * (1 - self._b + self._b * doc_len / (self._avg_len or 1)))
             )
             score += idf * norm_tf * qf
         return score
@@ -193,4 +195,3 @@ __all__ = [
     "SparseDocument",
     "SparseQueryBuilder",
 ]
-

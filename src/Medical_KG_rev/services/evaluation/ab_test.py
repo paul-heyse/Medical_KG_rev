@@ -11,6 +11,8 @@ except ImportError:
     # Fallback for environments without scipy
     def betainc(a: float, b: float, x: float) -> float:
         return 0.5  # Simplified fallback
+
+
 from collections.abc import Sequence
 from statistics import mean, stdev
 

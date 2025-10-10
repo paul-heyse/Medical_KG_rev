@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
-from Medical_KG_rev.storage.base import CacheBackend, ObjectStore
+from Medical_KG_rev.storage.base import ObjectStore
 from Medical_KG_rev.storage.clients import (
     DocumentStorageClient,
     PdfAsset,
@@ -45,7 +45,9 @@ class TestPdfStorageClient:
         return PdfStorageClient(mock_store, settings)
 
     @pytest.mark.asyncio
-    async def test_store_pdf_success(self, client: PdfStorageClient, mock_store: ObjectStore) -> None:
+    async def test_store_pdf_success(
+        self, client: PdfStorageClient, mock_store: ObjectStore
+    ) -> None:
         """Test successful PDF storage."""
         pdf_data = b"fake pdf content"
         tenant_id = "tenant-123"
@@ -90,7 +92,9 @@ class TestPdfStorageClient:
             assert result == mock_asset
 
     @pytest.mark.asyncio
-    async def test_get_pdf_data_from_store(self, client: PdfStorageClient, mock_store: ObjectStore) -> None:
+    async def test_get_pdf_data_from_store(
+        self, client: PdfStorageClient, mock_store: ObjectStore
+    ) -> None:
         """Test retrieving PDF data from object store."""
         tenant_id = "tenant-123"
         document_id = "doc-456"
@@ -138,12 +142,16 @@ class TestDocumentStorageClient:
         )
 
     @pytest.fixture
-    def client(self, mock_store: ObjectStore, settings: ObjectStorageSettings) -> DocumentStorageClient:
+    def client(
+        self, mock_store: ObjectStore, settings: ObjectStorageSettings
+    ) -> DocumentStorageClient:
         """Document storage client with mocked dependencies."""
         return DocumentStorageClient(mock_store, settings)
 
     @pytest.mark.asyncio
-    async def test_upload_document_artifact(self, client: DocumentStorageClient, mock_store: ObjectStore) -> None:
+    async def test_upload_document_artifact(
+        self, client: DocumentStorageClient, mock_store: ObjectStore
+    ) -> None:
         """Test uploading document artifacts."""
         artifact_data = b"fake artifact content"
         tenant_id = "tenant-123"
@@ -170,7 +178,9 @@ class TestDocumentStorageClient:
         assert call_args[0][1] == artifact_data
 
     @pytest.mark.asyncio
-    async def test_get_document_artifact(self, client: DocumentStorageClient, mock_store: ObjectStore) -> None:
+    async def test_get_document_artifact(
+        self, client: DocumentStorageClient, mock_store: ObjectStore
+    ) -> None:
         """Test retrieving document artifacts."""
         tenant_id = "tenant-123"
         document_id = "doc-456"
@@ -241,6 +251,7 @@ class TestStorageClientFactories:
         result = create_object_store(settings)
 
         from Medical_KG_rev.storage.object_store import InMemoryObjectStore
+
         assert isinstance(result, InMemoryObjectStore)
 
     def test_create_cache_backend_redis(self) -> None:
@@ -263,6 +274,7 @@ class TestStorageClientFactories:
         result = create_cache_backend(settings)
 
         from Medical_KG_rev.storage.cache import InMemoryCache
+
         assert isinstance(result, InMemoryCache)
 
     def test_create_storage_clients(self) -> None:
@@ -270,8 +282,10 @@ class TestStorageClientFactories:
         object_settings = ObjectStorageSettings(bucket="test-bucket")
         redis_settings = RedisCacheSettings()
 
-        with patch("Medical_KG_rev.storage.clients.create_object_store") as mock_create_store, \
-             patch("Medical_KG_rev.storage.clients.create_cache_backend") as mock_create_cache:
+        with (
+            patch("Medical_KG_rev.storage.clients.create_object_store") as mock_create_store,
+            patch("Medical_KG_rev.storage.clients.create_cache_backend") as mock_create_cache,
+        ):
 
             mock_store = MagicMock()
             mock_cache = MagicMock()

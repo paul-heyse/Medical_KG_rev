@@ -151,9 +151,7 @@ class StagePluginManager:
             canonical = stage_type.lower().strip()
             self._registry[metadata.name] = plugin
             self._stage_index[canonical].append(metadata.name)
-            STAGE_PLUGIN_REGISTRATIONS.labels(
-                plugin=metadata.name, stage_type=canonical
-            ).inc()
+            STAGE_PLUGIN_REGISTRATIONS.labels(plugin=metadata.name, stage_type=canonical).inc()
         logger.info(
             "orchestration.stage_plugins.registered",
             plugin=metadata.name,
@@ -167,9 +165,7 @@ class StagePluginManager:
             plugin.health_check(self.context)
         except Exception as exc:
             metadata = plugin.metadata
-            STAGE_PLUGIN_FAILURES.labels(
-                plugin=metadata.name, stage_type="__health__"
-            ).inc()
+            STAGE_PLUGIN_FAILURES.labels(plugin=metadata.name, stage_type="__health__").inc()
             STAGE_PLUGIN_HEALTH.labels(plugin=metadata.name).set(0)
             logger.warning(
                 "orchestration.stage_plugins.unhealthy",
@@ -232,9 +228,7 @@ class StagePluginManager:
                 )
                 return stage
 
-        raise StagePluginNotAvailable(
-            f"Registered plugins declined stage type '{stage_type}'"
-        )
+        raise StagePluginNotAvailable(f"Registered plugins declined stage type '{stage_type}'")
 
 
 __all__ = [
@@ -250,4 +244,3 @@ __all__ = [
     "hookimpl",
     "hookspec",
 ]
-

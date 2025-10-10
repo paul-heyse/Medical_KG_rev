@@ -88,6 +88,7 @@ channels:
 # EXPORT FUNCTIONS
 # ==============================================================================
 
+
 def export_openapi() -> str:
     """Export OpenAPI specification for REST endpoints.
 
@@ -123,6 +124,7 @@ def export_asyncapi() -> str:
 # ==============================================================================
 # CLI INTERFACE
 # ==============================================================================
+
 
 def main() -> None:
     """Main CLI entry point for gateway utilities.

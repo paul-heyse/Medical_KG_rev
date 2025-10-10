@@ -97,6 +97,7 @@ class ResponseCache:
 # MIDDLEWARE IMPLEMENTATION
 # ==============================================================================
 
+
 class CachingMiddleware(BaseHTTPMiddleware):
     """Implements ETag generation and cache headers for GET endpoints."""
 

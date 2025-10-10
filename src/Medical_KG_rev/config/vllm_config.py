@@ -19,9 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover - allow running without pydantic
     Field = None  # type: ignore[assignment]
 
 
-DEFAULT_VLLM_CONFIG = (
-    Path(__file__).resolve().parents[3] / "config" / "embedding" / "vllm.yaml"
-)
+DEFAULT_VLLM_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embedding" / "vllm.yaml"
 
 
 def _load_mapping(path: Path) -> Mapping[str, Any]:

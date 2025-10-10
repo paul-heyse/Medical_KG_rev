@@ -14,7 +14,10 @@ from Medical_KG_rev.services.embedding.persister import (
     VectorStorePersister,
     build_persister,
 )
-from Medical_KG_rev.services.embedding.telemetry import StandardEmbeddingTelemetry, TelemetrySettings
+from Medical_KG_rev.services.embedding.telemetry import (
+    StandardEmbeddingTelemetry,
+    TelemetrySettings,
+)
 
 
 def _sample_record(record_id: str, kind: str = "single_vector") -> EmbeddingRecord:
@@ -46,7 +49,9 @@ def _context() -> PersistenceContext:
 
 def test_vector_store_persister_persists_and_caches() -> None:
     router = StorageRouter()
-    telemetry = StandardEmbeddingTelemetry(TelemetrySettings(enable_logging=False, enable_metrics=False))
+    telemetry = StandardEmbeddingTelemetry(
+        TelemetrySettings(enable_logging=False, enable_metrics=False)
+    )
     persister = VectorStorePersister(router, telemetry=telemetry)
 
     record = _sample_record("rec-1")

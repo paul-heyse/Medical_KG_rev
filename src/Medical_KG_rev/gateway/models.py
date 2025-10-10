@@ -80,6 +80,7 @@ class BatchError(BaseModel):
 # OPERATION MODELS
 # ==============================================================================
 
+
 class OperationStatus(BaseModel):
     """Represents the state of a submitted operation across protocols."""
 
@@ -153,6 +154,7 @@ class EmbeddingVector(BaseModel):
 # RETRIEVAL MODELS
 # ==============================================================================
 
+
 class DocumentSummary(BaseModel):
     id: str
     title: str
@@ -211,6 +213,7 @@ class GraphEdge(BaseModel):
 # ==============================================================================
 # REQUEST MODELS
 # ==============================================================================
+
 
 class IngestionRequest(BaseModel):
     tenant_id: str
@@ -301,6 +304,7 @@ class NamespaceValidationResponse(BaseModel):
 # ==============================================================================
 # NAMESPACE MODELS
 # ==============================================================================
+
 
 class NamespaceValidationRequest(BaseModel):
     tenant_id: str
@@ -395,6 +399,7 @@ class EvaluationQuery(BaseModel):
 # EVALUATION MODELS
 # ==============================================================================
 
+
 class EvaluationRequest(BaseModel):
     tenant_id: str
     test_set_name: str | None = None
@@ -447,7 +452,9 @@ class EvaluationResponse(BaseModel):
 
     @classmethod
     def from_result(cls, result: EvaluationResult) -> EvaluationResponse:
-        metrics = {name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()}
+        metrics = {
+            name: MetricSummaryView.from_metric(summary) for name, summary in result.metrics.items()
+        }
         latency = MetricSummaryView.from_metric(result.latency)
         config = json.loads(result.config.to_json())
         return cls(
@@ -522,6 +529,7 @@ class SearchArguments(BaseModel):
 # HELPER FUNCTIONS
 # ==============================================================================
 
+
 def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationResult:
     """Build a batch operation result from a collection of operation statuses.
 
@@ -550,28 +558,23 @@ __all__ = [
     # Error models
     "ProblemDetail",
     "BatchError",
-
     # Operation models
     "OperationStatus",
     "BatchOperationResult",
-
     # Adapter models
     "AdapterMetadataView",
-
     # Retrieval models
     "DocumentSummary",
     "RetrievalResult",
     "EntityLinkResult",
     "GraphNode",
     "GraphEdge",
-
     # Request models
     "IngestionRequest",
     "PipelineIngestionRequest",
     "ChunkRequest",
     "EmbedRequest",
     "RetrieveRequest",
-
     # Namespace models
     "NamespaceValidationRequest",
     "NamespaceValidationResult",
@@ -581,7 +584,6 @@ __all__ = [
     "NamespacePolicyUpdateRequest",
     "NamespacePolicyDiagnosticsView",
     "NamespacePolicyHealthView",
-
     # Evaluation models
     "EvaluationRequest",
     "EvaluationQuery",
@@ -589,15 +591,12 @@ __all__ = [
     "EvaluationResult",
     "MetricSummaryView",
     "EvaluationResponse",
-
     # Job models
     "JobHistoryEntry",
     "JobStatus",
-
     # Utility models
     "Pagination",
     "SearchArguments",
-
     # Helper functions
     "build_batch_result",
 ]

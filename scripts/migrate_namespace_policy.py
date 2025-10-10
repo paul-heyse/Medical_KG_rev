@@ -30,7 +30,6 @@ def _serialise_persister(settings: PersisterRuntimeSettings) -> dict[str, object
 
 def export_configuration(service: GatewayService) -> dict[str, object]:
     """Render the embedding runtime configuration for archival."""
-
     policy_settings = service.namespace_policy_settings or NamespacePolicySettings()
     persister_settings = service.embedding_persister_settings or PersisterRuntimeSettings()
     return {

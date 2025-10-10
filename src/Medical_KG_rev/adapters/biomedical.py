@@ -67,16 +67,16 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
 from Medical_KG_rev.adapters.crossref import (
-    CrossrefAdapter as CrossrefAdapterV2,  # noqa: F401 - re-export for backwards compatibility
+    CrossrefAdapter as CrossrefAdapterV2,
 )
 from Medical_KG_rev.adapters.openalex import (
     OpenAlexAdapter,  # noqa: F401 - re-export for backwards compatibility
 )
 from Medical_KG_rev.adapters.pmc import (
-    PMCAdapter as PMCAdapterV2,  # noqa: F401 - re-export for backwards compatibility
+    PMCAdapter as PMCAdapterV2,
 )
 from Medical_KG_rev.adapters.unpaywall import (
-    UnpaywallAdapter as UnpaywallAdapterV2,  # noqa: F401 - re-export for backwards compatibility
+    UnpaywallAdapter as UnpaywallAdapterV2,
 )
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
@@ -104,6 +104,7 @@ from .base import AdapterContext, BaseAdapter
 # ==============================================================================
 # UTILITY FUNCTIONS
 # ==============================================================================
+
 
 def _require_parameter(context: AdapterContext, key: str) -> str:
     """Extract and validate a required string parameter from adapter context.
@@ -226,6 +227,7 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
 # ==============================================================================
 # BASE ADAPTER CLASSES
 # ==============================================================================
+
 
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps HttpClient with sensible defaults.
@@ -364,6 +366,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 # ==============================================================================
 # BIOMEDICAL ADAPTER IMPLEMENTATIONS
 # ==============================================================================
+
 
 class ClinicalTrialsAdapter(ResilientHTTPAdapter):
     """Adapter for ClinicalTrials.gov API v2.
@@ -1748,6 +1751,7 @@ class SemanticScholarAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
 
 # ==============================================================================
 # EXPORTS

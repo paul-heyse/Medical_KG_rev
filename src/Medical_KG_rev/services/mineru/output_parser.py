@@ -72,6 +72,7 @@ logger = structlog.get_logger(__name__)
 # EXCEPTION CLASSES
 # ==============================================================================
 
+
 class MineruOutputParserError(RuntimeError):
     """Raised when MinerU CLI output cannot be parsed.
 
@@ -89,12 +90,11 @@ class MineruOutputParserError(RuntimeError):
 
     """
 
-    pass
-
 
 # ==============================================================================
 # DATA MODELS
 # ==============================================================================
+
 
 @dataclass(slots=True)
 class ParsedBlock:
@@ -196,6 +196,7 @@ class ParsedDocument:
 # ==============================================================================
 # PARSER IMPLEMENTATION
 # ==============================================================================
+
 
 class MineruOutputParser:
     """Parses structured JSON output emitted by MinerU CLI.
@@ -372,40 +373,46 @@ class MineruOutputParser:
             # Map content_list types to internal types
             if block_type == "image":
                 # Images/figures
-                figure = self._parse_figure({
-                    "id": block_id,
-                    "content": content,
-                    "bbox": bbox,
-                    "page_number": page_num,
-                    "metadata": {
-                        **metadata,
-                        "mineru_type": block_type,
-                        "img_path": block_data.get("img_path"),
-                        "image_caption": block_data.get("image_caption", []),
-                        "image_footnote": block_data.get("image_footnote", []),
+                figure = self._parse_figure(
+                    {
+                        "id": block_id,
+                        "content": content,
+                        "bbox": bbox,
+                        "page_number": page_num,
+                        "metadata": {
+                            **metadata,
+                            "mineru_type": block_type,
+                            "img_path": block_data.get("img_path"),
+                            "image_caption": block_data.get("image_caption", []),
+                            "image_footnote": block_data.get("image_footnote", []),
+                        },
                     }
-                })
+                )
                 all_figures.append(figure)
             elif block_type == "table":
                 # Tables
-                table = self._parse_table({
-                    "id": block_id,
-                    "content": content,
-                    "bbox": bbox,
-                    "page_number": page_num,
-                    "metadata": {**metadata, "mineru_type": block_type}
-                })
+                table = self._parse_table(
+                    {
+                        "id": block_id,
+                        "content": content,
+                        "bbox": bbox,
+                        "page_number": page_num,
+                        "metadata": {**metadata, "mineru_type": block_type},
+                    }
+                )
                 all_tables.append(table)
             else:
                 # Text blocks (with or without heading level)
-                block = self._parse_block({
-                    "id": block_id,
-                    "block_type": "header" if text_level else "text",
-                    "text": content,
-                    "bbox": bbox,
-                    "page": page_num,
-                    "metadata": metadata,
-                })
+                block = self._parse_block(
+                    {
+                        "id": block_id,
+                        "block_type": "header" if text_level else "text",
+                        "text": content,
+                        "bbox": bbox,
+                        "page": page_num,
+                        "metadata": metadata,
+                    }
+                )
                 all_blocks.append(block)
 
         # Generate document_id from content hash
@@ -414,6 +421,7 @@ class MineruOutputParser:
             content_str = str(len(all_blocks))
 
         import hashlib
+
         document_id = f"mineru_{hashlib.md5(content_str.encode()).hexdigest()[:12]}"
 
         parsed = ParsedDocument(
@@ -467,39 +475,48 @@ class MineruOutputParser:
                 # Map MinerU v2.5.4 types to our internal types
                 if block_type in ("table", "table_caption"):
                     # Tables in new format
-                    table = self._parse_table({
-                        "id": block_id,
-                        "content": content,
-                        "bbox": bbox,
-                        "page_number": page_num,
-                        "metadata": {"mineru_type": block_type}
-                    })
+                    table = self._parse_table(
+                        {
+                            "id": block_id,
+                            "content": content,
+                            "bbox": bbox,
+                            "page_number": page_num,
+                            "metadata": {"mineru_type": block_type},
+                        }
+                    )
                     all_tables.append(table)
                 elif block_type in ("image", "figure", "figure_caption"):
                     # Figures in new format
-                    figure = self._parse_figure({
-                        "id": block_id,
-                        "content": content,
-                        "bbox": bbox,
-                        "page_number": page_num,
-                        "metadata": {"mineru_type": block_type}
-                    })
+                    figure = self._parse_figure(
+                        {
+                            "id": block_id,
+                            "content": content,
+                            "bbox": bbox,
+                            "page_number": page_num,
+                            "metadata": {"mineru_type": block_type},
+                        }
+                    )
                     all_figures.append(figure)
                 else:
                     # Everything else is a content block
-                    block = self._parse_block({
-                        "id": block_id,
-                        "block_type": block_type,  # header, title, text, etc.
-                        "text": content,  # Use 'text' instead of 'content' for ParsedBlock
-                        "bbox": bbox,
-                        "page": page_num,
-                        "metadata": {"angle": block_data.get("angle", 0)}
-                    })
+                    block = self._parse_block(
+                        {
+                            "id": block_id,
+                            "block_type": block_type,  # header, title, text, etc.
+                            "text": content,  # Use 'text' instead of 'content' for ParsedBlock
+                            "bbox": bbox,
+                            "page": page_num,
+                            "metadata": {"angle": block_data.get("angle", 0)},
+                        }
+                    )
                     all_blocks.append(block)
 
         # Generate a document_id from content hash if not provided
         import hashlib
-        content_str = "".join(b.text or "" for b in all_blocks[:10] if b.text)  # First 10 blocks with text
+
+        content_str = "".join(
+            b.text or "" for b in all_blocks[:10] if b.text
+        )  # First 10 blocks with text
         if not content_str and all_blocks:
             content_str = str(len(all_blocks))  # Fallback to block count
         document_id = f"mineru_{hashlib.md5(content_str.encode()).hexdigest()[:12]}"
@@ -510,7 +527,7 @@ class MineruOutputParser:
             tables=all_tables,
             figures=all_figures,
             equations=[],  # v2.5.4 doesn't separate equations
-            metadata={"format": "mineru_v2.5.4", "pages": len(pages)}
+            metadata={"format": "mineru_v2.5.4", "pages": len(pages)},
         )
 
         logger.debug(

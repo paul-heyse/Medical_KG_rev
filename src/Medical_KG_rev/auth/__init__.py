@@ -44,7 +44,9 @@ else:  # pragma: no cover - optional dependency fallback
         """
         raise RuntimeError("FastAPI is required for get_security_context")
 
-    def secure_endpoint(*args: Any, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def secure_endpoint(
+        *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Placeholder that signals FastAPI is required to secure endpoints.
 
         Raises:

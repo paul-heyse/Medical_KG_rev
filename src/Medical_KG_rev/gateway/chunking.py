@@ -114,7 +114,9 @@ class ChunkingErrorTranslator:
             )
             return TranslatedChunkingError(detail, failure_type, "client")
         if isinstance(exc, ChunkerConfigurationError):
-            strategies = list(self._available_strategies() or []) if self._available_strategies else []
+            strategies = (
+                list(self._available_strategies() or []) if self._available_strategies else []
+            )
             extensions = {"valid_strategies": strategies}
             if correlation_id:
                 extensions["correlation_id"] = correlation_id
@@ -203,4 +205,3 @@ class ChunkingErrorTranslator:
 
 
 __all__ = ["ChunkingErrorTranslator", "ChunkingSeverity", "TranslatedChunkingError"]
-

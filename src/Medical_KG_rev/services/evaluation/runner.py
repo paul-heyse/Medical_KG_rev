@@ -133,9 +133,7 @@ class EvaluationRunner:
         metrics_summary = self._summarise_metrics(per_query.values())
         latency_summary = self._summarise_latencies(latencies)
         per_query_type_summary = {
-            key.value: {
-                metric: _metrics_mean_metric(values, metric) for metric in metrics_summary
-            }
+            key.value: {metric: _metrics_mean_metric(values, metric) for metric in metrics_summary}
             for key, values in per_query_type_values.items()
         }
 

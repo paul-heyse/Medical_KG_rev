@@ -97,6 +97,7 @@ logger = structlog.get_logger(__name__)
 # FACTORY FUNCTIONS
 # ==============================================================================
 
+
 def _default_stage_factory() -> StageFactory:
     """Instantiate the default stage factory using registered adapters.
 
@@ -125,6 +126,7 @@ def _default_stage_factory() -> StageFactory:
 # ==============================================================================
 # DATA MODELS
 # ==============================================================================
+
 
 @dataclass(slots=True)
 class EmbeddingRequest:
@@ -255,6 +257,7 @@ class EmbeddingResponse:
 # SERVICE IMPLEMENTATION
 # ==============================================================================
 
+
 class EmbeddingWorker:
     """Thin wrapper that executes the embed stage via Dagster components.
 
@@ -352,9 +355,7 @@ class EmbeddingWorker:
 
         """
         cleaned_texts = [
-            text.strip()
-            for text in request.texts
-            if isinstance(text, str) and text.strip()
+            text.strip() for text in request.texts if isinstance(text, str) and text.strip()
         ]
         if not cleaned_texts:
             logger.warning(
@@ -574,6 +575,7 @@ class EmbeddingWorker:
 # GRPC SERVICE IMPLEMENTATION
 # ==============================================================================
 
+
 @dataclass(slots=True)
 class EmbeddingGrpcService:
     """Async gRPC servicer bridging requests into the embedding worker.
@@ -658,4 +660,3 @@ __all__ = [
     "EmbeddingVector",
     "EmbeddingWorker",
 ]
-

@@ -23,7 +23,7 @@ import structlog
 from prometheus_client import Counter, Histogram
 
 if importlib_util.find_spec("pydantic") is not None:
-    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
+    from pydantic import BaseModel  # type: ignore[import]
 
     PYDANTIC_AVAILABLE = True
 else:  # pragma: no cover - fallback for lightweight environments
@@ -39,13 +39,17 @@ else:  # pragma: no cover - fallback for lightweight environments
             for key, value in data.items():
                 setattr(self, key, value)
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> BaseModel:
+        def model_copy(
+            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+        ) -> BaseModel:
             payload = self.model_dump(mode="python")
             if update:
                 payload.update(update)
             return self.__class__(**payload)
 
-        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+        def model_dump(
+            self, mode: str = "python"
+        ) -> dict[str, Any]:  # pragma: no cover - trivial shim
             return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
 
         @classmethod
@@ -59,6 +63,7 @@ else:  # pragma: no cover - fallback for lightweight environments
 
     def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
         return dict(kwargs)
+
 
 if PYDANTIC_AVAILABLE:
     from Medical_KG_rev.adapters.plugins.models import AdapterRequest  # type: ignore[import]
@@ -88,7 +93,9 @@ else:  # pragma: no cover - fallback for lightweight test environments
                 parameters=copy.deepcopy(self.parameters) if deep else dict(self.parameters),
             )
 
-        def model_dump(self, mode: str = "json") -> dict[str, Any]:  # pragma: no cover - simple shim
+        def model_dump(
+            self, mode: str = "json"
+        ) -> dict[str, Any]:  # pragma: no cover - simple shim
             return {
                 "tenant_id": self.tenant_id,
                 "correlation_id": self.correlation_id,
@@ -147,11 +154,14 @@ else:  # pragma: no cover - fallback shim
 
         @classmethod
         def model_validate(cls, payload: Mapping[str, Any]) -> Entity:
-            return cls(id=str(payload.get("id", "")), type=str(payload.get("type", "")), text=str(payload.get("text", "")))
+            return cls(
+                id=str(payload.get("id", "")),
+                type=str(payload.get("type", "")),
+                text=str(payload.get("text", "")),
+            )
 
         def model_dump(self, mode: str = "json") -> dict[str, Any]:
             return asdict(self)
-
 
     @dataclass(slots=True)
     class Claim:
@@ -193,17 +203,14 @@ else:  # pragma: no cover - fallback shim
                 "sections": list(self.sections),
                 "metadata": copy.deepcopy(self.metadata),
             }
+
+
 from dataclasses import dataclass, field
 
 import orjson
-from attrs import asdict as attr_asdict
 from attrs import define
-from attrs import define as attr_define
-from attrs import field as attr_field
 from attrs import field as attrs_field
-from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
 from Medical_KG_rev.chunking.models import Chunk
@@ -255,6 +262,7 @@ _STATE_DEPENDENCY_FAILURES = Counter(
 
 if importlib_util.find_spec("orjson") is not None:
     import orjson as _orjson  # type: ignore[import]
+
     ORJSON_AVAILABLE = True
 else:  # pragma: no cover - fallback path for minimal environments
     ORJSON_AVAILABLE = False
@@ -294,13 +302,17 @@ else:  # pragma: no cover - fallback for lightweight environments
             for key, value in data.items():
                 setattr(self, key, value)
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> BaseModel:
+        def model_copy(
+            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+        ) -> BaseModel:
             payload = self.model_dump(mode="python")
             if update:
                 payload.update(update)
             return self.__class__(**payload)
 
-        def model_dump(self, mode: str = "python") -> dict[str, Any]:  # pragma: no cover - trivial shim
+        def model_dump(
+            self, mode: str = "python"
+        ) -> dict[str, Any]:  # pragma: no cover - trivial shim
             return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
 
         @classmethod
@@ -336,12 +348,7 @@ else:  # pragma: no cover - fallback for environments without attrs
 
 
 if importlib_util.find_spec("tenacity") is not None:
-    from tenacity import (  # type: ignore[import]
-        retry,
-        retry_if_exception_type,
-        stop_after_attempt,
-        wait_exponential,
-    )
+    from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore[import]
 else:  # pragma: no cover - fallback for environments without tenacity
 
     def stop_after_attempt(count: int) -> int:
@@ -350,10 +357,18 @@ else:  # pragma: no cover - fallback for environments without tenacity
     def wait_exponential(**_: Any) -> None:  # pragma: no cover - compatibility shim
         return None
 
-    def retry_if_exception_type(exc_type: type[BaseException]) -> type[BaseException]:  # pragma: no cover - shim
+    def retry_if_exception_type(
+        exc_type: type[BaseException],
+    ) -> type[BaseException]:  # pragma: no cover - shim
         return exc_type
 
-    def retry(*, reraise: bool | None = None, stop: Any | None = None, wait: Any | None = None, retry: Any | None = None):
+    def retry(
+        *,
+        reraise: bool | None = None,
+        stop: Any | None = None,
+        wait: Any | None = None,
+        retry: Any | None = None,
+    ):
         max_attempts = stop if isinstance(stop, int) else 1
 
         def _decorator(func):
@@ -484,7 +499,9 @@ else:
                 pipeline_version=payload.get("pipeline_version"),
             )
 
-        def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> StageContext:
+        def model_copy(
+            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+        ) -> StageContext:
             payload = self.to_dict()
             if update:
                 payload.update(update)
@@ -496,6 +513,8 @@ else:
         @classmethod
         def model_validate(cls, payload: Mapping[str, Any]) -> StageContext:
             return cls.from_dict(payload)
+
+
 logger = structlog.get_logger(__name__)
 _STATE_SERIALISE_COUNTER = Counter(
     "medical_kg_pipeline_state_serialise_total",
@@ -663,6 +682,8 @@ class GateDecision:
     name: str
     ready: bool
     metadata: dict[str, Any] = attrs_field(factory=dict)
+
+
 @dataclass(slots=True)
 class PdfGateState:
     """Represents the progress of the PDF two-phase pipeline gate."""
@@ -702,14 +723,20 @@ class PipelineStateLifecycleHook:
     """Callback hooks executed when stages progress."""
 
     on_started: Callable[[PipelineState, str, str], None] | None = None
-    on_completed: Callable[[
-        PipelineState,
-        str,
-        str,
-        int,
-        int,
-        int,
-    ], None] | None = None
+    on_completed: (
+        Callable[
+            [
+                PipelineState,
+                str,
+                str,
+                int,
+                int,
+                int,
+            ],
+            None,
+        ]
+        | None
+    ) = None
     on_failed: Callable[[PipelineState, str, str, BaseException], None] | None = None
 
 
@@ -843,8 +870,12 @@ else:
         """Fallback schema shim when Pydantic is not installed."""
 
         @staticmethod
-        def model_validate(payload: Mapping[str, Any]) -> Mapping[str, Any]:  # pragma: no cover - trivial
+        def model_validate(
+            payload: Mapping[str, Any],
+        ) -> Mapping[str, Any]:  # pragma: no cover - trivial
             return payload
+
+
 class PipelineGateNotReady(RuntimeError):
     """Raised when a gate stage determines processing must pause."""
 
@@ -881,11 +912,15 @@ class PipelineState:
     _dirty: bool = field(default=True, init=False, repr=False)
     _cache: _StateCache = field(default_factory=_StateCache, init=False, repr=False)
     _tenant_id: str = field(init=False, repr=False)
-    _checkpoints: dict[str, PipelineStateSnapshot] = field(default_factory=dict, init=False, repr=False)
+    _checkpoints: dict[str, PipelineStateSnapshot] = field(
+        default_factory=dict, init=False, repr=False
+    )
     _lifecycle_hooks: list[PipelineStateLifecycleHook] = field(
         default_factory=list, init=False, repr=False
     )
-    _profiler: PipelineStateProfiler = field(default_factory=PipelineStateProfiler, init=False, repr=False)
+    _profiler: PipelineStateProfiler = field(
+        default_factory=PipelineStateProfiler, init=False, repr=False
+    )
 
     _VALIDATORS: ClassVar[list[tuple[str | None, Callable[[PipelineState], None]]]] = []
     _STAGE_DEPENDENCIES: ClassVar[dict[str, tuple[str, ...]]] = {
@@ -1209,6 +1244,7 @@ class PipelineState:
 
     def get_gate_decision(self, name: str) -> GateDecision | None:
         return self.gate_decisions.get(name)
+
     def has_pdf_assets(self) -> bool:
         return bool(self.pdf_assets)
 
@@ -1230,9 +1266,7 @@ class PipelineState:
             else:
                 raise TypeError("PDF assets must be PdfAsset instances or mappings")
         self.pdf_assets = tuple(converted)
-        self.metadata.setdefault("pdf", {})["assets"] = [
-            attr_asdict(asset) for asset in converted
-        ]
+        self.metadata.setdefault("pdf", {})["assets"] = [attr_asdict(asset) for asset in converted]
         self._mark_dirty()
         _state_logger.debug("pipeline_state.pdf_assets.set", count=len(converted))
 
@@ -1380,7 +1414,9 @@ class PipelineState:
         else:
             self.metadata[key] = output
 
-        self.stage_results[stage_name] = StageResultSnapshot(stage=stage_name, stage_type=stage_type)
+        self.stage_results[stage_name] = StageResultSnapshot(
+            stage=stage_name, stage_type=stage_type
+        )
         self._mark_dirty()
         logger.debug(
             "pipeline_state.stage_output_applied",
@@ -1549,8 +1585,7 @@ class PipelineState:
         stage_payload: dict[str, StageResultSnapshot] = {}
         if include_stage_results:
             stage_payload = {
-                name: copy.deepcopy(result)
-                for name, result in self.stage_results.items()
+                name: copy.deepcopy(result) for name, result in self.stage_results.items()
             }
         return PipelineStateSnapshot(
             payloads=tuple(copy.deepcopy(self.payloads)),
@@ -1643,9 +1678,7 @@ class PipelineState:
             "payload_count": len(self.payloads),
             "document_id": getattr(self.document, "id", None),
             "chunk_count": len(self.chunks),
-            "embedding_count": len(self.embedding_batch.vectors)
-            if self.embedding_batch
-            else 0,
+            "embedding_count": len(self.embedding_batch.vectors) if self.embedding_batch else 0,
             "entity_count": len(self.entities),
             "claim_count": len(self.claims),
             "metadata": copy.deepcopy(self.metadata),
@@ -1741,10 +1774,7 @@ class PipelineState:
 
     def _cache_key(self) -> str:
         return (
-            self.job_id
-            or self.context.job_id
-            or self.context.correlation_id
-            or f"state-{id(self)}"
+            self.job_id or self.context.job_id or self.context.correlation_id or f"state-{id(self)}"
         )
 
         start = time.perf_counter()
@@ -1754,6 +1784,7 @@ class PipelineState:
         _STATE_SERIALISATION_LATENCY.labels(format="json").observe(elapsed)
         return encoded
         return orjson.dumps(self.serialise()).decode("utf-8")
+
     def to_model(self) -> PipelineStateModel:
         """Return the Pydantic representation for the current state."""
         if not self._dirty and self._cache.json_bytes is not None:
@@ -1850,12 +1881,8 @@ class PipelineState:
             entries["payload_count"] = (len(self.payloads), len(other.payloads))
         if len(self.chunks) != len(other.chunks):
             entries["chunk_count"] = (len(self.chunks), len(other.chunks))
-        self_embeddings = (
-            len(self.embedding_batch.vectors) if self.embedding_batch else 0
-        )
-        other_embeddings = (
-            len(other.embedding_batch.vectors) if other.embedding_batch else 0
-        )
+        self_embeddings = len(self.embedding_batch.vectors) if self.embedding_batch else 0
+        other_embeddings = len(other.embedding_batch.vectors) if other.embedding_batch else 0
         if self_embeddings != other_embeddings:
             entries["embedding_count"] = (self_embeddings, other_embeddings)
         if len(self.entities) != len(other.entities):
@@ -1919,7 +1946,9 @@ class PipelineState:
         state.metadata.update(dict(recovered.get("metadata", {})))
         pdf_payload = recovered.get("pdf")
         if isinstance(pdf_payload, Mapping):
-            state.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            state.pdf_tracker.downloads = tuple(
+                str(item) for item in pdf_payload.get("downloads", ())
+            )
             state.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
             state.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
             state.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
@@ -1939,9 +1968,7 @@ class PipelineState:
         gates = recovered.get("gate_status")
         if isinstance(gates, Mapping):
             for name, ready in gates.items():
-                state.gate_decisions[str(name)] = GateDecision(
-                    name=str(name), ready=bool(ready)
-                )
+                state.gate_decisions[str(name)] = GateDecision(name=str(name), ready=bool(ready))
         pdf_payload = recovered.get("pdf_assets")
         if isinstance(pdf_payload, Sequence):
             state.set_pdf_assets(pdf_payload)
@@ -2067,7 +2094,9 @@ class PipelineState:
         self.schema_version = str(payload.get("version", self.schema_version))
         pdf_payload = payload.get("pdf")
         if isinstance(pdf_payload, Mapping):
-            self.pdf_tracker.downloads = tuple(str(item) for item in pdf_payload.get("downloads", ()))
+            self.pdf_tracker.downloads = tuple(
+                str(item) for item in pdf_payload.get("downloads", ())
+            )
             self.pdf_tracker.last_attempt_ms = pdf_payload.get("last_attempt_ms")
             self.pdf_tracker.gate_open = bool(pdf_payload.get("gate_open", False))
             self.pdf_tracker.gate_reason = pdf_payload.get("gate_reason")
@@ -2205,7 +2234,9 @@ class IndexStage(Protocol):
 class ExtractStage(Protocol):
     """Run extraction models over the IR document."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> tuple[list[Entity], list[Claim]]: ...
+    def execute(
+        self, ctx: StageContext, state: PipelineState
+    ) -> tuple[list[Entity], list[Claim]]: ...
 
 
 @runtime_checkable

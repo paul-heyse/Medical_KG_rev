@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from unittest import mock
-
-import asyncio
 import types
+from unittest import mock
 
 import pytest
 
 grpc = pytest.importorskip("grpc")
 
 from Medical_KG_rev.gateway.grpc.server import EmbeddingService, GatewayGrpcServer
-from Medical_KG_rev.gateway.services import get_gateway_service
 from Medical_KG_rev.gateway.models import EmbeddingMetadata, EmbeddingResponse, EmbeddingVector
+from Medical_KG_rev.gateway.services import get_gateway_service
 
 
 def test_grpc_server_start_registers_services(monkeypatch) -> None:
@@ -64,7 +62,9 @@ async def test_embedding_service_serializes_response(monkeypatch: pytest.MonkeyP
                 metadata={"tenant_id": "tenant"},
             )
         ],
-        metadata=EmbeddingMetadata(provider="vllm", dimension=3, duration_ms=5.0, model="stub-model"),
+        metadata=EmbeddingMetadata(
+            provider="vllm", dimension=3, duration_ms=5.0, model="stub-model"
+        ),
     )
     monkeypatch.setattr(service, "embed", lambda request: stub_response)
 

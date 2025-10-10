@@ -17,7 +17,6 @@ _DEFAULT_VLLM_BASE_URL = os.getenv("TEST_VLLM_BASE_URL", "http://localhost:8000"
 @pytest.fixture
 def live_vllm_client() -> VLLMClient:
     """Provide a healthy vLLM client or skip the test if unavailable."""
-
     client = VLLMClient(base_url=_DEFAULT_VLLM_BASE_URL)
     try:
         healthy = run_async(client.health_check())
@@ -41,7 +40,6 @@ class _HealthyVLLMClient:
 @pytest.fixture
 def simulated_processor() -> MineruProcessor:
     """Provide a MinerU processor wired to the simulated CLI and live vLLM client."""
-
     settings = MineruSettings(vllm_server={"base_url": _DEFAULT_VLLM_BASE_URL})
     cli = SimulatedMineruCli(settings)
     client = VLLMClient(base_url=_DEFAULT_VLLM_BASE_URL)

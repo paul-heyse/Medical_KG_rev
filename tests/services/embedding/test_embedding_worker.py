@@ -1,7 +1,9 @@
 from Medical_KG_rev.orchestration.stages.contracts import (
     EmbeddingBatch,
-    EmbeddingVector as StageEmbeddingVector,
     StageContext,
+)
+from Medical_KG_rev.orchestration.stages.contracts import (
+    EmbeddingVector as StageEmbeddingVector,
 )
 from Medical_KG_rev.services.embedding.service import (
     EmbeddingRequest,
@@ -13,7 +15,7 @@ class _StubEmbedStage:
     def __init__(self) -> None:
         self.calls: list[tuple[StageContext, list[object]]] = []
 
-    def execute(self, ctx: StageContext, chunks):  # noqa: ANN001 - protocol hook
+    def execute(self, ctx: StageContext, chunks):
         self.calls.append((ctx, list(chunks)))
         vectors = [
             StageEmbeddingVector(
@@ -50,4 +52,3 @@ def test_worker_generates_chunk_ids_when_missing() -> None:
     ids = [vector.id for vector in response.vectors]
     assert len(ids) == 2
     assert all(id_.startswith("tenant:") for id_ in ids)
-

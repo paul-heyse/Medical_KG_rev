@@ -15,8 +15,6 @@ Requirements:
     - Sufficient disk space for model weights
     - Internet connection for downloading models
 """
-
-import os
 import subprocess
 import sys
 import time
@@ -98,7 +96,9 @@ def start_vllm_server():
 
     # Check if vLLM server is already running
     try:
-        result = subprocess.run("curl -s http://localhost:8000/health", shell=True, capture_output=True, text=True)
+        result = subprocess.run(
+            "curl -s http://localhost:8000/health", shell=True, capture_output=True, text=True
+        )
         if result.returncode == 0:
             print("✅ vLLM server already running")
             return True
@@ -124,7 +124,12 @@ def start_vllm_server():
         for i in range(60):  # Wait up to 5 minutes
             time.sleep(5)
             try:
-                result = subprocess.run("curl -s http://localhost:8000/health", shell=True, capture_output=True, text=True)
+                result = subprocess.run(
+                    "curl -s http://localhost:8000/health",
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                )
                 if result.returncode == 0:
                     print("✅ vLLM server started successfully")
                     return True
@@ -179,9 +184,9 @@ def test_mineru_processing():
 
 def main():
     """Main setup workflow."""
-    print("="*70)
+    print("=" * 70)
     print("MINERU FULL SETUP")
-    print("="*70)
+    print("=" * 70)
 
     # Step 1: Check GPU
     if not check_gpu():
@@ -207,13 +212,13 @@ def main():
         print("❌ MinerU processing test failed")
         return False
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✅ MINERU SETUP COMPLETE!")
-    print("="*70)
+    print("=" * 70)
     print("MinerU is now ready for full PDF processing.")
     print("You can now process PDFs using:")
     print("  magic-pdf --path <pdf_file> --output-dir <output_dir> --method auto")
-    print("="*70)
+    print("=" * 70)
 
     return True
 

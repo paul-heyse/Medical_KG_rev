@@ -85,6 +85,7 @@ logger = structlog.get_logger(__name__)
 # METRICS COLLECTION
 # ==============================================================================
 
+
 class PipelineMetrics:
     """Encapsulates Prometheus metric emission for MinerU batches.
 
@@ -147,12 +148,8 @@ class PipelineMetrics:
 
         """
         unique_pages = {block.page for block in parsed.blocks}
-        MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(
-            len(unique_pages)
-        )
-        MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(
-            len(parsed.tables)
-        )
+        MINERU_PDF_PAGES_PROCESSED_TOTAL.labels(worker_id=self._worker_id).inc(len(unique_pages))
+        MINERU_TABLE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(len(parsed.tables))
         MINERU_FIGURE_EXTRACTION_COUNT.labels(worker_id=self._worker_id).observe(
             len(parsed.figures)
         )
@@ -161,6 +158,7 @@ class PipelineMetrics:
 # ==============================================================================
 # PIPELINE ORCHESTRATION
 # ==============================================================================
+
 
 class MineruPipeline:
     """Runs the MinerU CLI, parser, and post-processor for a batch of requests.
@@ -302,7 +300,7 @@ class MineruPipeline:
                 continue
             try:
                 # Use json_content if available (MinerU v2.5.4+), otherwise fall back to path
-                if hasattr(output, 'json_content'):
+                if hasattr(output, "json_content"):
                     parsed = self._parser.parse_json(output.json_content)
                 else:
                     parsed = self._parser.parse_path(output.path)
@@ -323,9 +321,7 @@ class MineruPipeline:
                 cli_result=cli_result,
                 planned_memory_mb=planned_memory_mb,
             )
-            document = self._postprocessor.build_document(
-                parsed, request, metadata.as_dict()
-            )
+            document = self._postprocessor.build_document(parsed, request, metadata.as_dict())
             documents.append(document)
             metadata_entries.append(metadata)
             self._metrics.record_extraction(parsed)

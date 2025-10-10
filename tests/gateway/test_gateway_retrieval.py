@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from Medical_KG_rev.gateway.models import RetrieveRequest
 from Medical_KG_rev.gateway.services import GatewayService
@@ -70,7 +71,9 @@ class _StubRetrievalService:
         return list(self._results)
 
 
-def _gateway_with_results(results: Sequence[RetrievalResult]) -> tuple[GatewayService, _StubRetrievalService, _DummyLedger]:
+def _gateway_with_results(
+    results: Sequence[RetrievalResult],
+) -> tuple[GatewayService, _StubRetrievalService, _DummyLedger]:
     events = _DummyEvents()
     ledger = _DummyLedger()
     orchestrator = _DummyOrchestrator()

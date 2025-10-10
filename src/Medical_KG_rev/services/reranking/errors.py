@@ -143,9 +143,7 @@ class InvalidPairFormatError(RerankingError):
             None: Initialization always succeeds.
 
         """
-        super().__init__(
-            title="Invalid query/document pair", status=400, detail=detail
-        )
+        super().__init__(title="Invalid query/document pair", status=400, detail=detail)
 
 
 class UnknownRerankerError(RerankingError):

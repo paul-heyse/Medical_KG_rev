@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test MinerU simulation mode for PDF processing."""
-
-import os
 import sys
 from pathlib import Path
 
@@ -24,16 +22,12 @@ def test_mineru_simulation():
         processor = MineruProcessor()
 
         # Create request
-        request = MineruRequest(
-            tenant_id="test",
-            document_id="test-doc-1",
-            content=test_content
-        )
+        request = MineruRequest(tenant_id="test", document_id="test-doc-1", content=test_content)
 
         print("🔄 Processing test document...")
         response = processor.process(request)
 
-        print(f"✅ Processing successful!")
+        print("✅ Processing successful!")
         print(f"   Document ID: {response.document.document_id if response.document else 'None'}")
         print(f"   Blocks: {len(response.document.blocks) if response.document else 0}")
         print(f"   Metadata: {response.metadata.worker_id if response.metadata else 'None'}")

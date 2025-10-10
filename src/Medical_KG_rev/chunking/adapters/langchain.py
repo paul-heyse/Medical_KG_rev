@@ -87,11 +87,7 @@ class _BaseLangChainChunker(BaseChunker):
         granularity: Granularity | None = None,
         blocks: Iterable | None = None,
     ) -> list[Chunk]:
-        contexts = [
-            ctx
-            for ctx in self.normalizer.iter_block_contexts(document)
-            if ctx.text
-        ]
+        contexts = [ctx for ctx in self.normalizer.iter_block_contexts(document) if ctx.text]
         if not contexts:
             return []
         mapper = OffsetMapper(contexts, token_counter=self.counter)
@@ -244,4 +240,3 @@ class LangChainSpacyChunker(_BaseLangChainChunker):
             splitter_name="SpacyTextSplitter",
             token_counter=token_counter,
         )
-

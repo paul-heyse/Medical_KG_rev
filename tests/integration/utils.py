@@ -11,7 +11,6 @@ T = TypeVar("T")
 
 def run_async(awaitable: Awaitable[T]) -> T:
     """Execute an awaitable in a freshly created event loop and return the result."""
-
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)

@@ -121,7 +121,9 @@ class AdapterPluginManager:
 
     def list_metadata(self, domain: AdapterDomain | None = None) -> list[AdapterMetadata]:
         if domain is None:
-            values: Iterable[AdapterMetadata] = (registered.metadata for registered in self._adapters.values())
+            values: Iterable[AdapterMetadata] = (
+                registered.metadata for registered in self._adapters.values()
+            )
         else:
             values = self._registry.list(domain)
         return sorted(values, key=lambda meta: meta.name)
@@ -192,7 +194,9 @@ class AdapterPluginManager:
     # Internal helpers
     # ------------------------------------------------------------------
     def _resolve_metadata(self, plugin: Any) -> AdapterMetadata:
-        metadata_getter: Callable[[], AdapterMetadata] | None = getattr(plugin, "get_metadata", None)
+        metadata_getter: Callable[[], AdapterMetadata] | None = getattr(
+            plugin, "get_metadata", None
+        )
         if metadata_getter is None:
             raise AdapterPluginError("Adapter plugins must define a 'get_metadata' method")
         metadata = metadata_getter()

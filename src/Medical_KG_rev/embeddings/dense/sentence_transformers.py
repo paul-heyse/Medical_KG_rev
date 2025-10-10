@@ -20,7 +20,12 @@ _MODEL_DEFAULTS: dict[str, dict[str, object]] = {
     "BAAI/bge-small-en": {"dim": 384, "pooling": "mean"},
     "BAAI/bge-base-en": {"dim": 768, "pooling": "mean"},
     "BAAI/bge-large-en": {"dim": 1024, "pooling": "mean"},
-    "intfloat/e5-base-v2": {"dim": 768, "pooling": "mean", "query_prefix": "query:", "document_prefix": "passage:"},
+    "intfloat/e5-base-v2": {
+        "dim": 768,
+        "pooling": "mean",
+        "query_prefix": "query:",
+        "document_prefix": "passage:",
+    },
     "Alibaba-NLP/gte-base-en-v1.5": {"dim": 768, "pooling": "mean"},
     "sentence-transformers/specter2": {"dim": 768, "pooling": "cls"},
     "cambridgeltl/SapBERT-from-PubMedBERT-fulltext": {"dim": 768, "pooling": "cls"},

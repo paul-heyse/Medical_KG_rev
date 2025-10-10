@@ -57,6 +57,7 @@ from tenacity.wait import wait_base, wait_exponential, wait_incrementing, wait_n
 # TYPE DEFINITIONS
 # ==============================================================================
 
+
 class BackoffStrategy(str, Enum):
     """Supported retry backoff strategies for HTTP clients."""
 

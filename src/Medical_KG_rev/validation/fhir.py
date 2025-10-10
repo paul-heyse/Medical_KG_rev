@@ -42,6 +42,7 @@ from jsonschema import Draft202012Validator
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass
 class _CompiledSchema:
     """Internal data model for compiled schema information.
@@ -206,6 +207,7 @@ FHIR_SCHEMAS: dict[str, dict[str, object]] = {
 # ==============================================================================
 # VALIDATOR IMPLEMENTATION
 # ==============================================================================
+
 
 class FHIRValidationError(ValueError):
     """Raised when a FHIR resource fails schema or terminology validation."""

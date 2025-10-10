@@ -31,7 +31,9 @@ class CompressionConfig(BaseModel):
     def _validate_params(self) -> CompressionConfig:
         if self.kind == "pq" and (self.pq_m is None or self.pq_nbits is None):
             raise ValueError("pq compression requires pq_m and pq_nbits")
-        if self.kind == "opq" and (self.pq_m is None or self.pq_nbits is None or self.opq_m is None):
+        if self.kind == "opq" and (
+            self.pq_m is None or self.pq_nbits is None or self.opq_m is None
+        ):
             raise ValueError("opq compression requires pq_m, pq_nbits, and opq_m")
         return self
 
@@ -151,4 +153,3 @@ __all__ = [
     "load_vector_store_config",
     "migrate_vector_store_config",
 ]
-

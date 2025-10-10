@@ -43,6 +43,7 @@ Example:
 
 # Real example for stage plugin decorator:
 
+
 def stage_plugin(
     name: str,
     version: str = "1.0.0",
@@ -70,7 +71,8 @@ def stage_plugin(
         Use this decorator on functions that implement orchestration
         stages. The function must accept StageContext and return StageResult.
 
-    Parameters:
+    Parameters
+    ----------
         name: Unique name for the stage plugin. Used for discovery
             and configuration. Must be unique across all plugins.
         version: Version string for the stage plugin. Used for
@@ -80,7 +82,8 @@ def stage_plugin(
         dependencies: List of other stage names that this stage depends on.
             Used for dependency resolution and execution ordering.
 
-    Returns:
+    Returns
+    -------
         Callable: Decorator function that returns the original function
             with added metadata and registration.
 
@@ -103,9 +106,12 @@ def stage_plugin(
         >>> # Stage is now registered and can be discovered
         >>> stage = plugin_manager.get_stage("metadata_extraction")
         >>> result = stage(context)
+
     """
 
+
 # Real example for metrics decorator:
+
 
 def track_metrics(
     operation: str,
@@ -131,13 +137,15 @@ def track_metrics(
         Use this decorator on functions that represent significant
         operations that should be monitored and tracked.
 
-    Parameters:
+    Parameters
+    ----------
         operation: Name of the operation for metrics labeling.
             Used as the 'operation' label in Prometheus metrics.
         labels: Additional labels to include in metrics.
             Useful for adding context like tenant_id, model_name, etc.
 
-    Returns:
+    Returns
+    -------
         Callable: Decorator function that returns the original function
             with added metrics tracking.
 
@@ -158,9 +166,12 @@ def track_metrics(
         >>> # Metrics are automatically tracked
         >>> chunks = chunk_document("text", "section")
         >>> # Prometheus metrics emitted: operation_time, operation_success, etc.
+
     """
 
+
 # Real example for validation decorator:
+
 
 def validate_request(
     schema: dict[str, Any],
@@ -185,13 +196,15 @@ def validate_request(
         Use this decorator on functions that accept structured
         input data that should be validated.
 
-    Parameters:
+    Parameters
+    ----------
         schema: JSON schema for validating function arguments.
             Must be a valid JSON schema object.
         strict: Whether to use strict validation mode.
             Strict mode disallows additional properties not in schema.
 
-    Returns:
+    Returns
+    -------
         Callable: Decorator function that returns the original function
             with added validation.
 
@@ -217,4 +230,5 @@ def validate_request(
         >>> # Validation happens automatically
         >>> result = process_document("tenant1", "doc1")
         >>> # Raises ValidationError if arguments don't match schema
+
     """

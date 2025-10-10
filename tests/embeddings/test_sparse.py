@@ -1,11 +1,13 @@
-from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRequest
 import sys
 from types import ModuleType
 
 import pytest
 
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingRequest
-from Medical_KG_rev.embeddings.sparse.splade import PyseriniSparseEmbedder, build_rank_features_mapping
+from Medical_KG_rev.embeddings.sparse.splade import (
+    PyseriniSparseEmbedder,
+    build_rank_features_mapping,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +21,7 @@ def fake_pyserini(monkeypatch: pytest.MonkeyPatch):
         def __init__(self, model_id: str) -> None:
             self.model_id = model_id
 
-        def encode(self, text: str, top_k: int = 400):  # noqa: D401 - mirrors Pyserini
+        def encode(self, text: str, top_k: int = 400):
             DocumentEncoder.called += 1
             tokens = [token for token in text.lower().split() if token]
             return {token: float(index + 1) for index, token in enumerate(tokens[:top_k])}

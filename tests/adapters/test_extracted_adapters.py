@@ -1,16 +1,10 @@
 """Tests for extracted biomedical adapters."""
 
-from collections.abc import Mapping, Sequence
-from typing import Any
-
 import httpx
-import pytest
 
 from Medical_KG_rev.adapters import (
     AdapterDomain,
     AdapterRequest,
-    create_adapter_from_config,
-    load_adapter_config,
 )
 from Medical_KG_rev.adapters.clinicaltrials import ClinicalTrialsAdapter
 from Medical_KG_rev.adapters.core import COREAdapter
@@ -62,7 +56,10 @@ def _mock_transport(callback) -> httpx.MockTransport:
 
 
 def _run_plugin(
-    plugin: BaseAdapterPlugin, *, parameters: dict[str, object], domain: AdapterDomain = AdapterDomain.BIOMEDICAL
+    plugin: BaseAdapterPlugin,
+    *,
+    parameters: dict[str, object],
+    domain: AdapterDomain = AdapterDomain.BIOMEDICAL,
 ) -> AdapterResponse:
     request = AdapterRequest(
         tenant_id="tenant",

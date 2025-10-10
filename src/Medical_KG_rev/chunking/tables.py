@@ -144,8 +144,5 @@ class TableHandler:
                 start = cursor
             end = start + len(row)
             cursor = end
-            normalized_rows.append(
-                {"index": index, "text": row, "start": start, "end": end}
-            )
+            normalized_rows.append({"index": index, "text": row, "start": start, "end": end})
         return normalized_rows
-

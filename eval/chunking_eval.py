@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-from __future__ import annotations
-
 import json
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
 from time import perf_counter
-from typing import Iterable, Mapping, Sequence
 
 import numpy as np
 
-from Medical_KG_rev.chunking.models import ChunkerConfig
-from Medical_KG_rev.chunking.registry import default_registry
-from Medical_KG_rev.chunking.models import Chunk
-from Medical_KG_rev.chunking.ports import BaseChunker
-from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.chunking.exceptions import ChunkerConfigurationError
+from Medical_KG_rev.chunking.models import Chunk, ChunkerConfig
+from Medical_KG_rev.chunking.ports import BaseChunker
+from Medical_KG_rev.chunking.registry import default_registry
+from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
 
 @dataclass(slots=True)
@@ -89,9 +86,7 @@ class ChunkingEvaluationRunner:
     # ------------------------------------------------------------------
     # Evaluation helpers
     # ------------------------------------------------------------------
-    def _evaluate_sample(
-        self, chunker: BaseChunker, sample: GoldSample
-    ) -> Mapping[str, float]:
+    def _evaluate_sample(self, chunker: BaseChunker, sample: GoldSample) -> Mapping[str, float]:
         document = self._build_document(sample)
         started = perf_counter()
         chunks = chunker.chunk(document, tenant_id=self.tenant_id, granularity="section")
@@ -228,9 +223,7 @@ class ChunkingEvaluationRunner:
         hits = sum(1.0 for gain in gains[:k] if gain > 0)
         return hits / relevant
 
-    def _ndcg(
-        self, gains: Sequence[float], ideal: Sequence[float], *, k: int
-    ) -> float:
+    def _ndcg(self, gains: Sequence[float], ideal: Sequence[float], *, k: int) -> float:
         def dcg(scores: Sequence[float]) -> float:
             total = 0.0
             for index, score in enumerate(scores[:k], start=1):
@@ -257,8 +250,10 @@ def main() -> None:  # pragma: no cover - CLI helper
     runner = ChunkingEvaluationRunner(chunkers)
     summaries = runner.run()
     for name, summary in summaries.items():
-        print(f"{name}: F1={summary.boundary_f1:.3f}, Recall@20={summary.recall_at_20:.3f}, "
-              f"nDCG@10={summary.ndcg_at_10:.3f}, Latency={summary.latency_ms:.2f}ms")
+        print(
+            f"{name}: F1={summary.boundary_f1:.3f}, Recall@20={summary.recall_at_20:.3f}, "
+            f"nDCG@10={summary.ndcg_at_10:.3f}, Latency={summary.latency_ms:.2f}ms"
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

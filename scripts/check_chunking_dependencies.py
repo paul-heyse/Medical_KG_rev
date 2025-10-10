@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import os
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def _check_modules(modules: Iterable[str]) -> list[str]:

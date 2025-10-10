@@ -1,7 +1,6 @@
 """Adapter SDK exports."""
 
 from .base import AdapterContext, AdapterResult, BaseAdapter
-from .interfaces import PdfAssetManifest, PdfCapableAdapter, PdfManifest
 from .biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
@@ -17,6 +16,7 @@ from .biomedical import (
     SemanticScholarAdapter,
     UnpaywallAdapter,
 )
+from .interfaces import PdfAssetManifest, PdfCapableAdapter, PdfManifest
 from .openalex import OpenAlexAdapter
 from .plugins.base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
 from .plugins.bootstrap import (
@@ -73,21 +73,6 @@ from .plugins.resilience import (
     retry_on_failure,
 )
 from .plugins.runtime import AdapterExecutionPlan, AdapterInvocationResult
-from .pmc import PMCAdapter as PMCAdapterV2
-from .semanticscholar import SemanticScholarAdapter as SemanticScholarAdapterV2
-from .terminology import (
-    ChEMBLAdapter as ChEMBLAdapterV2,
-)
-from .terminology import (
-    ICD11Adapter as ICD11AdapterV2,
-)
-from .terminology import (
-    MeSHAdapter as MeSHAdapterV2,
-)
-from .terminology import (
-    RxNormAdapter as RxNormAdapterV2,
-)
-from .unpaywall import UnpaywallAdapter as UnpaywallAdapterV2
 from .yaml_parser import AdapterConfig, create_adapter_from_config, load_adapter_config
 
 __all__ = [
@@ -133,11 +118,11 @@ __all__ = [
     "OpenFDADeviceAdapter",
     "OpenFDADrugEventAdapter",
     "OpenFDADrugLabelAdapter",
+    "PMCAdapter",
+    "Pagination",
     "PdfAssetManifest",
     "PdfCapableAdapter",
     "PdfManifest",
-    "PMCAdapter",
-    "Pagination",
     "ReadOnlyAdapterPlugin",
     "ResilienceConfig",
     "ResilientHTTPClient",

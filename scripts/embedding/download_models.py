@@ -46,9 +46,7 @@ def download_splade(cache_dir: Path = SPLADE_TARGET) -> Path:
 
 def cli() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--format", choices={"text", "json"}, default="text", help="Output format"
-    )
+    parser.add_argument("--format", choices={"text", "json"}, default="text", help="Output format")
     args = parser.parse_args()
 
     results: dict[str, str] = {}

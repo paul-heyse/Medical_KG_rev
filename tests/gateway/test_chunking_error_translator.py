@@ -63,9 +63,8 @@ def test_translator_maps_unavailable_with_retry(command: ChunkCommand) -> None:
     assert report.problem.status == 503
     assert report.problem.extensions["retry_after"] == 12
 
+
 from Medical_KG_rev.chunking.exceptions import (
-    ChunkingUnavailableError,
-    InvalidDocumentError,
     ProfileNotFoundError,
 )
 from Medical_KG_rev.gateway.chunking import ChunkingErrorTranslator
@@ -106,6 +105,7 @@ def test_translator_handles_invalid_document_without_command() -> None:
 def test_translator_reraises_unknown_errors() -> None:
     translator = ChunkingErrorTranslator(available_strategies=lambda: [])
     command = ChunkCommand(tenant_id="tenant-x", document_id="doc-42", text="body")
+
     class UnexpectedError(RuntimeError):
         pass
 

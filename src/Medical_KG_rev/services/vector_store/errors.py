@@ -66,7 +66,14 @@ class VectorStoreError(FoundationError):
 
     """
 
-    def __init__(self, message: str, *, status: int, detail: str | None = None, extra: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int,
+        detail: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the vector store error.
 
         Args:
@@ -210,7 +217,9 @@ class BackendUnavailableError(VectorStoreError):
 
     """
 
-    def __init__(self, message: str = "Vector backend unavailable", *, retry_after: float | None = None) -> None:
+    def __init__(
+        self, message: str = "Vector backend unavailable", *, retry_after: float | None = None
+    ) -> None:
         """Initialize the backend unavailable error.
 
         Args:

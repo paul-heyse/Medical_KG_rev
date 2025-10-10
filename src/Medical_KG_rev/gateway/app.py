@@ -109,7 +109,9 @@ def create_problem_response(detail: ProblemDetail) -> JSONResponse:
     payload: dict[str, Any] = detail.model_dump(mode="json")
     status = payload.get("status", 500)
     headers: dict[str, str] | None = None
-    retry_after = detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
+    retry_after = (
+        detail.extensions.get("retry_after") if isinstance(detail.extensions, dict) else None
+    )
     if isinstance(retry_after, (int, float)) and retry_after > 0:
         headers = {"Retry-After": str(int(retry_after))}
     return JSONResponse(
@@ -123,6 +125,7 @@ def create_problem_response(detail: ProblemDetail) -> JSONResponse:
 # ==============================================================================
 # MIDDLEWARE IMPLEMENTATION
 # ==============================================================================
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: FastAPI, *, headers_config) -> None:  # type: ignore[override]
@@ -148,6 +151,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # ==============================================================================
 # APPLICATION FACTORY
 # ==============================================================================
+
 
 def create_app() -> FastAPI:
     settings = get_settings()

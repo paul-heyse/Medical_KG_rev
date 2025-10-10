@@ -20,7 +20,11 @@ def main() -> None:
     cache_dir = Path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     for model in args.models:
-        snapshot_download(repo_id=model, local_dir=cache_dir / model.replace("/", "__"), local_dir_use_symlinks=False)
+        snapshot_download(
+            repo_id=model,
+            local_dir=cache_dir / model.replace("/", "__"),
+            local_dir_use_symlinks=False,
+        )
         print(f"Downloaded {model} to {cache_dir}")
 
 

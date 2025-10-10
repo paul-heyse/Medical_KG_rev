@@ -5,9 +5,8 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
-
 
 OVERLAYS = {
     "staging": Path("ops/k8s/overlays/staging"),

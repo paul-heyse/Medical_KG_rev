@@ -7,9 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-import httpx
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, ValidationError
 
 from Medical_KG_rev.adapters import (
     AdapterDomain,
@@ -25,6 +23,7 @@ from Medical_KG_rev.adapters import (
     ResilienceConfig,
     ResilientHTTPClient,
     SettingsHotReloader,
+    ValidationOutcome,
     VaultSecretProvider,
     apply_env_overrides,
     circuit_breaker,
@@ -35,11 +34,9 @@ from Medical_KG_rev.adapters import (
     register_biomedical_plugins,
     retry_on_failure,
     validate_on_startup,
-    ValidationOutcome,
 )
 from Medical_KG_rev.adapters.plugins import bootstrap as plugin_bootstrap
 from Medical_KG_rev.adapters.plugins.example import ExampleAdapterPlugin
-from pydantic import ValidationError
 
 
 def test_rate_limit_decorator_controls_throughput():
@@ -79,7 +76,9 @@ def test_circuit_breaker_opens_after_failures():
 
 
 def test_retry_on_failure_retries_until_success():
-    config = ResilienceConfig(max_attempts=3, backoff_strategy=BackoffStrategy.LINEAR, backoff_multiplier=0.01)
+    config = ResilienceConfig(
+        max_attempts=3, backoff_strategy=BackoffStrategy.LINEAR, backoff_multiplier=0.01
+    )
     attempts: list[int] = []
 
     @retry_on_failure(config, retry_exceptions=(RuntimeError,))
@@ -207,9 +206,10 @@ def test_register_biomedical_plugins_groups_by_domain():
     assert AdapterDomain.BIOMEDICAL in mapping
     biomedical_names = mapping[AdapterDomain.BIOMEDICAL]
     assert all(meta.name in biomedical_names for meta in metadata)
-    assert AdapterDomain.FINANCIAL in mapping and "financial-news" in mapping[AdapterDomain.FINANCIAL]
+    assert (
+        AdapterDomain.FINANCIAL in mapping and "financial-news" in mapping[AdapterDomain.FINANCIAL]
+    )
     assert AdapterDomain.LEGAL in mapping and "legal-precedent" in mapping[AdapterDomain.LEGAL]
-
 
 
 def test_get_plugin_manager_lists_domains(monkeypatch):
@@ -317,4 +317,3 @@ def test_vault_secret_provider_caches_results():
     secret = provider.get("secret/path")
     assert secret["api_key"] == "secret"
     assert calls == ["secret/path"]
-

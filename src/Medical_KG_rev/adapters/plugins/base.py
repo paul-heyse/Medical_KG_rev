@@ -42,7 +42,9 @@ class BaseAdapterPlugin(ABC):
 
     @hookimpl
     @abstractmethod
-    def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:  # pragma: no cover
+    def parse(
+        self, response: AdapterResponse, request: AdapterRequest
+    ) -> AdapterResponse:  # pragma: no cover
         """Parse raw payloads into canonical documents."""
 
     @hookimpl
@@ -65,4 +67,3 @@ class ReadOnlyAdapterPlugin(BaseAdapterPlugin):
 
     def parse(self, response: AdapterResponse, request: AdapterRequest) -> AdapterResponse:
         return response
-

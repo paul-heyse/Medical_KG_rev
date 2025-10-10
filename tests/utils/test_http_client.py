@@ -2,7 +2,6 @@ import time
 
 import httpx
 import pytest
-
 from pybreaker import CircuitBreakerError
 
 from Medical_KG_rev.utils.http_client import (

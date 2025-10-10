@@ -6,12 +6,12 @@ import pytest
 
 pytest.importorskip("yaml")
 
-from Medical_KG_rev.gateway.services import GatewayService
+from Medical_KG_rev.auth.scopes import Scopes
 from Medical_KG_rev.gateway.models import NamespacePolicyUpdateRequest
+from Medical_KG_rev.gateway.services import GatewayService
 from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 from Medical_KG_rev.orchestration import JobLedger
 from Medical_KG_rev.services.embedding.namespace.schema import EmbeddingKind, NamespaceConfig
-from Medical_KG_rev.auth.scopes import Scopes
 
 
 @pytest.fixture()
@@ -71,7 +71,11 @@ def test_namespace_policy_dry_run_toggle(service: GatewayService) -> None:
 def test_namespace_policy_diagnostics_and_invalidation(service: GatewayService) -> None:
     policy = service.namespace_policy
     assert policy is not None
-    policy.evaluate(namespace="single_vector.qwen3.4096.v1", tenant_id="tenant-a", required_scope=Scopes.EMBED_READ)
+    policy.evaluate(
+        namespace="single_vector.qwen3.4096.v1",
+        tenant_id="tenant-a",
+        required_scope=Scopes.EMBED_READ,
+    )
     diagnostics = service.namespace_policy_diagnostics()
     assert diagnostics.cache_keys
 

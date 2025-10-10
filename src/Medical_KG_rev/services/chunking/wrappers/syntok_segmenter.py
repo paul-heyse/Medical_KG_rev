@@ -11,7 +11,10 @@ Segment = tuple[int, int, str]
 class SyntokSentenceSegmenter:
     """Lightweight syntok-based sentence segmenter with offset tracking."""
 
-    def __init__(self, analyzer_factory: Callable[[], Callable[[str], Iterable[Iterable[object]]]] | None = None) -> None:
+    def __init__(
+        self,
+        analyzer_factory: Callable[[], Callable[[str], Iterable[Iterable[object]]]] | None = None,
+    ) -> None:
         self._analyzer_factory = analyzer_factory or _cached_analyzer
 
     def segment(self, text: str) -> list[Segment]:
@@ -20,7 +23,10 @@ class SyntokSentenceSegmenter:
         cursor = 0
         for paragraph in analyze(text):
             for sentence in paragraph:
-                rendered = "".join(getattr(token, "spacing", "") + getattr(token, "value", "") for token in sentence)
+                rendered = "".join(
+                    getattr(token, "spacing", "") + getattr(token, "value", "")
+                    for token in sentence
+                )
                 rendered = rendered.strip()
                 if not rendered:
                     continue
@@ -34,7 +40,9 @@ class SyntokSentenceSegmenter:
 
 
 @lru_cache(maxsize=1)
-def _cached_analyzer() -> Callable[[str], Iterable[Iterable[object]]]:  # pragma: no cover - heavy dependency
+def _cached_analyzer() -> (
+    Callable[[str], Iterable[Iterable[object]]]
+):  # pragma: no cover - heavy dependency
     try:
         from syntok import segmenter
     except ImportError as exc:  # pragma: no cover - executed when dependency missing

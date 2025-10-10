@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -28,9 +28,8 @@ class PdfManifestMixin:
         polite_headers: Mapping[str, str] | None = None,
     ) -> PdfManifest:
         """Create a :class:`PdfManifest` from raw asset dictionaries."""
-
         normalised_assets = self._normalise_assets(assets)
-        timestamp = retrieved_at or datetime.now(timezone.utc)
+        timestamp = retrieved_at or datetime.now(UTC)
         headers = MappingProxyType(dict(polite_headers or {}))
         return PdfManifest(
             connector=connector,
@@ -45,7 +44,6 @@ class PdfManifestMixin:
         manifest: PdfManifest,
     ) -> Sequence[Document]:
         """Attach manifest metadata to the provided documents in place."""
-
         urls = list(manifest.pdf_urls())
         for document in documents:
             metadata = dict(document.metadata)
@@ -63,16 +61,13 @@ class PdfManifestMixin:
         context: AdapterContext | None = None,
     ) -> Iterable[PdfAssetManifest]:
         """Yield manifest entries for the given documents."""
-
         for document in documents:
             yield from self._iter_manifest_assets(document)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _normalise_assets(
-        self, assets: Iterable[Mapping[str, Any]]
-    ) -> list[PdfAssetManifest]:
+    def _normalise_assets(self, assets: Iterable[Mapping[str, Any]]) -> list[PdfAssetManifest]:
         deduped: OrderedDict[tuple[str, str], PdfAssetManifest] = OrderedDict()
         for asset in assets:
             url = self._normalise_url(asset.get("url"))
@@ -164,9 +159,7 @@ class PdfManifestMixin:
             return candidate or None
         return None
 
-    def _iter_manifest_assets(
-        self, document: Document
-    ) -> Iterable[PdfAssetManifest]:
+    def _iter_manifest_assets(self, document: Document) -> Iterable[PdfAssetManifest]:
         manifest = document.metadata.get("pdf_manifest")
         if not isinstance(manifest, Mapping):
             return

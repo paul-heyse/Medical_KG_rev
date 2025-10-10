@@ -66,13 +66,17 @@ class FakeQdrantClient:
 
     def get_collection(self, *, collection_name: str, **_: Any) -> _CollectionInfo:
         if collection_name not in self.collections:
-            raise UnexpectedResponse(status_code=404, reason_phrase="Not Found", content=b"", headers={})
+            raise UnexpectedResponse(
+                status_code=404, reason_phrase="Not Found", content=b"", headers={}
+            )
         record = self.collections[collection_name]
         params = _CollectionParams(vectors=record["vectors"])
         size = self.collection_sizes.get(collection_name, 0)
         return _CollectionInfo(config=_CollectionConfig(params=params), points_count=size)
 
-    def recreate_collection(self, *, collection_name: str, vectors_config: Any, **kwargs: Any) -> bool:
+    def recreate_collection(
+        self, *, collection_name: str, vectors_config: Any, **kwargs: Any
+    ) -> bool:
         self.collections[collection_name] = {
             "vectors": vectors_config,
             "kwargs": kwargs,
@@ -111,7 +115,9 @@ class FakeQdrantClient:
             _ScoredPoint(id="vec-2", score=0.33, payload={}),
         ]
 
-    def delete(self, *, collection_name: str, points_selector: qm.PointIdsList, **_: Any) -> _UpdateResult:
+    def delete(
+        self, *, collection_name: str, points_selector: qm.PointIdsList, **_: Any
+    ) -> _UpdateResult:
         self.delete_calls.append({"collection": collection_name, "selector": points_selector})
         deleted = len(points_selector.points)
         self.collection_sizes[collection_name] = max(
@@ -128,7 +134,9 @@ class FakeQdrantClient:
         self.snapshots[collection_name] = snapshot
         return snapshot
 
-    def recover_snapshot(self, *, collection_name: str, location: str | None, snapshot_name: str | None, **_: Any) -> None:
+    def recover_snapshot(
+        self, *, collection_name: str, location: str | None, snapshot_name: str | None, **_: Any
+    ) -> None:
         self.recoveries.append(
             {
                 "collection": collection_name,

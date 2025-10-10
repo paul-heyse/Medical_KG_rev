@@ -28,7 +28,9 @@ class PdfGateStage(GateStage):
         """Initialize stage with ledger resources."""
         self._ledger = context.get("ledger")
         if self._ledger is None:
-            logger.warning("pdf_gate_stage.no_ledger", message="Ledger not available, gate will always pass")
+            logger.warning(
+                "pdf_gate_stage.no_ledger", message="Ledger not available, gate will always pass"
+            )
 
     def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision:
         """Check if PDF processing is ready to proceed."""
@@ -100,7 +102,7 @@ class PdfGateStage(GateStage):
                 # Continue without ledger check
 
         # Check PDF gate state in pipeline state
-        if hasattr(state, 'pdf_gate'):
+        if hasattr(state, "pdf_gate"):
             if not state.pdf_gate.downloaded:
                 logger.debug(
                     "pdf_gate_stage.state_not_downloaded",
@@ -158,7 +160,6 @@ class SimplePdfGateStage(GateStage):
 
     def initialise(self, context: StagePluginContext) -> None:
         """Initialize stage (no external dependencies)."""
-        pass
 
     def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision:
         """Check if PDF downloads are available."""

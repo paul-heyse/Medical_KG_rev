@@ -8,11 +8,12 @@ from pathlib import Path
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+
 def test_pyalex_import():
     """Test that pyalex can be imported and configured."""
     try:
-        from pyalex import Works
         from pyalex import config as pyalex_config
+
         print("✅ pyalex import successful")
 
         # Set email if not already set
@@ -24,16 +25,19 @@ def test_pyalex_import():
         print(f"❌ pyalex import failed: {e}")
         return False
 
+
 def test_openalex_adapter():
     """Test OpenAlex adapter initialization."""
     try:
         from Medical_KG_rev.adapters.openalex import OpenAlexAdapter
+
         adapter = OpenAlexAdapter(contact_email="paul@heyse.io")
         print(f"✅ OpenAlex adapter initialized: {adapter.name}")
         return True
     except Exception as e:
         print(f"❌ OpenAlex adapter initialization failed: {e}")
         return False
+
 
 def test_basic_search():
     """Test basic search functionality."""
@@ -46,7 +50,7 @@ def test_basic_search():
             tenant_id="test-tenant",
             domain="research",
             correlation_id="test-1",
-            parameters={"query": "machine learning medical diagnosis"}
+            parameters={"query": "machine learning medical diagnosis"},
         )
 
         print("🔍 Testing keyword search...")
@@ -76,6 +80,7 @@ def test_basic_search():
         print(f"❌ Search test failed: {e}")
         return False
 
+
 def test_doi_search():
     """Test DOI-based search."""
     try:
@@ -87,7 +92,7 @@ def test_doi_search():
             tenant_id="test-tenant",
             domain="research",
             correlation_id="test-doi-1",
-            parameters={"doi": "10.1371/journal.pone.0123456"}
+            parameters={"doi": "10.1371/journal.pone.0123456"},
         )
 
         print("🔍 Testing DOI search...")
@@ -96,7 +101,7 @@ def test_doi_search():
 
         if documents:
             doc = documents[0]
-            print(f"✅ DOI search successful")
+            print("✅ DOI search successful")
             print(f"   Document ID: {doc.id}")
             print(f"   Title: {doc.title}")
             print(f"   DOI: {doc.metadata.get('doi')}")
@@ -109,18 +114,19 @@ def test_doi_search():
         print(f"❌ DOI search test failed: {e}")
         return False
 
+
 def main():
     """Run all tests."""
-    print("="*60)
+    print("=" * 60)
     print("PYALEX PDF PIPELINE TEST")
-    print("="*60)
+    print("=" * 60)
 
     # Ensure email is set
     if not os.getenv("PYALEX_EMAIL"):
         os.environ["PYALEX_EMAIL"] = "paul@heyse.io"
 
     print(f"Email configuration: {os.getenv('PYALEX_EMAIL')}")
-    print("-"*60)
+    print("-" * 60)
 
     tests = [
         ("pyalex_import", test_pyalex_import),
@@ -139,9 +145,9 @@ def main():
             print(f"❌ {test_name} failed with exception: {e}")
             results[test_name] = False
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST RESULTS SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     passed = sum(1 for result in results.values() if result)
     total = len(results)
@@ -149,23 +155,24 @@ def main():
     print(f"Total tests: {total}")
     print(f"Passed: {passed}")
     print(f"Failed: {total - passed}")
-    print("-"*60)
+    print("-" * 60)
 
     for test_name, result in results.items():
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{test_name:20} {status}")
 
-    print("-"*60)
+    print("-" * 60)
 
     if passed == total:
         print("🎉 ALL TESTS PASSED! Ready for full PDF processing pipeline.")
     else:
         print("⚠️  Some tests failed. Review output above for details.")
 
-    print("="*60)
+    print("=" * 60)
 
     # Exit with appropriate code
     sys.exit(total - passed)
+
 
 if __name__ == "__main__":
     main()

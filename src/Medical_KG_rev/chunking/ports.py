@@ -33,5 +33,4 @@ class BaseChunker(Protocol):
 class SupportsSentenceSplitting(Protocol):
     """Protocol for sentence splitting adapters."""
 
-    def split(self, text: str) -> Iterable[str]:
-        ...
+    def split(self, text: str) -> Iterable[str]: ...

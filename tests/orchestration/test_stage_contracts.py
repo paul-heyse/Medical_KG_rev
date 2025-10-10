@@ -5,20 +5,21 @@ import pytest
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterRequest
 from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
-from Medical_KG_rev.orchestration.dagster.runtime import build_stage_factory
-from Medical_KG_rev.orchestration.dagster.stages import create_default_pipeline_resource
+from Medical_KG_rev.orchestration.dagster.runtime import StageFactory, build_stage_factory
+from Medical_KG_rev.orchestration.dagster.stages import (
+    create_default_pipeline_resource,
+    create_stage_plugin_manager,
+)
 from Medical_KG_rev.orchestration.ledger import JobLedger
-from Medical_KG_rev.orchestration.dagster.runtime import StageFactory
-from Medical_KG_rev.orchestration.dagster.stages import create_stage_plugin_manager
 from Medical_KG_rev.orchestration.stages.contracts import (
     ChunkStage,
-    EmbedStage,
     EmbeddingBatch,
+    EmbedStage,
     ExtractStage,
     GraphWriteReceipt,
-    IngestStage,
     IndexReceipt,
     IndexStage,
+    IngestStage,
     KGStage,
     ParseStage,
     PipelineState,
@@ -86,7 +87,8 @@ def test_default_stage_factory_complies_with_protocols(stage_context, adapter_re
     factory = StageFactory(create_stage_plugin_manager(manager))
     state = PipelineState.initialise(context=stage_context, adapter_request=adapter_request)
 
-    ingest = factory.resolve("default")
+    ingest = factory.resolve(
+        "default",
         _definition("ingest", "ingest", {"adapter": "clinical-trials", "strict": False}),
     )
     assert isinstance(ingest, IngestStage)
@@ -203,7 +205,9 @@ class _DecliningStagePlugin(StagePlugin):
         return None
 
 
-def test_stage_plugin_manager_retries_and_raises_on_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stage_plugin_manager_retries_and_raises_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     manager = StagePluginManager(StagePluginContext(resources={}))
     manager.register(_FailingStagePlugin())
     manager.create_stage.retry.sleep = lambda _: None  # type: ignore[attr-defined]

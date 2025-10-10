@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Import organizer for Medical_KG_rev repository.
+"""Import organizer for Medical_KG_rev repository.
 
 This script organizes imports according to the established standards:
 - Group imports by category (stdlib, third-party, first-party, relative)
@@ -15,10 +14,8 @@ Usage:
 
 import argparse
 import ast
-import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 
 class ImportOrganizer:
@@ -33,7 +30,7 @@ class ImportOrganizer:
     def organize_file(self, file_path: Path) -> bool:
         """Organize imports in a single Python file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Parse the file to understand its structure
@@ -49,7 +46,7 @@ class ImportOrganizer:
             if self._imports_changed(imports, organized_imports):
                 if not self.dry_run:
                     new_content = self._replace_imports(content, imports, organized_imports)
-                    with open(file_path, 'w', encoding='utf-8') as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         f.write(new_content)
                     self.files_modified += 1
                 else:
@@ -66,21 +63,21 @@ class ImportOrganizer:
             self.errors.append(f"Error processing {file_path}: {e}")
             return False
 
-    def _extract_imports(self, content: str) -> List[Tuple[int, str, str]]:
+    def _extract_imports(self, content: str) -> list[tuple[int, str, str]]:
         """Extract imports from file content."""
         imports = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         for i, line in enumerate(lines):
             line = line.strip()
-            if line.startswith(('import ', 'from ')):
-                imports.append((i, line, 'import'))
-            elif line.startswith('#') and 'import' in line:
-                imports.append((i, line, 'comment'))
+            if line.startswith(("import ", "from ")):
+                imports.append((i, line, "import"))
+            elif line.startswith("#") and "import" in line:
+                imports.append((i, line, "comment"))
 
         return imports
 
-    def _organize_imports(self, imports: List[Tuple[int, str, str]]) -> List[str]:
+    def _organize_imports(self, imports: list[tuple[int, str, str]]) -> list[str]:
         """Organize imports into proper groups."""
         stdlib_imports = []
         third_party_imports = []
@@ -89,53 +86,143 @@ class ImportOrganizer:
 
         # Known standard library modules
         stdlib_modules = {
-            'os', 'sys', 'pathlib', 'typing', 'collections', 'collections.abc',
-            'dataclasses', 'enum', 'functools', 'itertools', 'operator',
-            're', 'json', 'logging', 'asyncio', 'threading', 'multiprocessing',
-            'subprocess', 'shutil', 'tempfile', 'io', 'contextlib',
-            'abc', 'copy', 'pickle', 'time', 'datetime', 'calendar',
-            'math', 'random', 'statistics', 'decimal', 'fractions',
-            'urllib', 'http', 'email', 'html', 'xml', 'csv',
-            'sqlite3', 'hashlib', 'hmac', 'secrets', 'uuid',
-            'base64', 'binascii', 'struct', 'array', 'ctypes',
-            'weakref', 'gc', 'traceback', 'warnings', 'inspect',
-            'ast', 'dis', 'pickletools', 'keyword', 'token',
-            'tokenize', 'symbol', 'parser', 'codeop', 'py_compile',
-            'compileall', 'dis', 'pickletools', 'keyword', 'token',
-            'tokenize', 'symbol', 'parser', 'codeop', 'py_compile',
-            'compileall', 'site', 'sysconfig', 'platform', 'getopt',
-            'argparse', 'optparse', 'getpass', 'curses', 'tty',
-            'termios', 'pwd', 'grp', 'crypt', 'spwd', 'nis',
-            'syslog', 'resource', 'pipes', 'signal', 'mmap',
-            'select', 'selectors', 'socket', 'ssl', 'socketserver',
-            'xmlrpc', 'http.server', 'urllib.request', 'urllib.parse',
-            'urllib.error', 'urllib.robotparser', 'ftplib', 'poplib',
-            'imaplib', 'nntplib', 'smtplib', 'smtpd', 'telnetlib',
-            'uuid', 'socketserver', 'wsgiref', 'http.cookies',
-            'http.cookiejar', 'xml.etree', 'xml.dom', 'xml.sax',
-            'html.parser', 'html.entities', 'xmlrpc.client',
-            'xmlrpc.server', 'wsgiref.util', 'wsgiref.headers',
-            'wsgiref.simple_server', 'wsgiref.validate', 'wsgiref.handlers',
-            'wsgiref.middleware', 'wsgiref.types', 'wsgiref.util',
-            'wsgiref.headers', 'wsgiref.simple_server', 'wsgiref.validate',
-            'wsgiref.handlers', 'wsgiref.middleware', 'wsgiref.types'
+            "os",
+            "sys",
+            "pathlib",
+            "typing",
+            "collections",
+            "collections.abc",
+            "dataclasses",
+            "enum",
+            "functools",
+            "itertools",
+            "operator",
+            "re",
+            "json",
+            "logging",
+            "asyncio",
+            "threading",
+            "multiprocessing",
+            "subprocess",
+            "shutil",
+            "tempfile",
+            "io",
+            "contextlib",
+            "abc",
+            "copy",
+            "pickle",
+            "time",
+            "datetime",
+            "calendar",
+            "math",
+            "random",
+            "statistics",
+            "decimal",
+            "fractions",
+            "urllib",
+            "http",
+            "email",
+            "html",
+            "xml",
+            "csv",
+            "sqlite3",
+            "hashlib",
+            "hmac",
+            "secrets",
+            "uuid",
+            "base64",
+            "binascii",
+            "struct",
+            "array",
+            "ctypes",
+            "weakref",
+            "gc",
+            "traceback",
+            "warnings",
+            "inspect",
+            "ast",
+            "dis",
+            "pickletools",
+            "keyword",
+            "token",
+            "tokenize",
+            "symbol",
+            "parser",
+            "codeop",
+            "py_compile",
+            "compileall",
+            "site",
+            "sysconfig",
+            "platform",
+            "getopt",
+            "argparse",
+            "optparse",
+            "getpass",
+            "curses",
+            "tty",
+            "termios",
+            "pwd",
+            "grp",
+            "crypt",
+            "spwd",
+            "nis",
+            "syslog",
+            "resource",
+            "pipes",
+            "signal",
+            "mmap",
+            "select",
+            "selectors",
+            "socket",
+            "ssl",
+            "socketserver",
+            "xmlrpc",
+            "http.server",
+            "urllib.request",
+            "urllib.parse",
+            "urllib.error",
+            "urllib.robotparser",
+            "ftplib",
+            "poplib",
+            "imaplib",
+            "nntplib",
+            "smtplib",
+            "smtpd",
+            "telnetlib",
+            "wsgiref",
+            "http.cookies",
+            "http.cookiejar",
+            "xml.etree",
+            "xml.dom",
+            "xml.sax",
+            "html.parser",
+            "html.entities",
+            "xmlrpc.client",
+            "xmlrpc.server",
+            "wsgiref.util",
+            "wsgiref.headers",
+            "wsgiref.simple_server",
+            "wsgiref.validate",
+            "wsgiref.handlers",
+            "wsgiref.middleware",
+            "wsgiref.types",
         }
 
         for line_num, line, line_type in imports:
-            if line_type == 'comment':
+            if line_type == "comment":
                 continue
 
             # Determine import category
-            if line.startswith('from .') or line.startswith('import .'):
+            if line.startswith("from .") or line.startswith("import ."):
                 relative_imports.append(line)
-            elif line.startswith('from Medical_KG_rev') or line.startswith('import Medical_KG_rev'):
+            elif line.startswith("from Medical_KG_rev") or line.startswith("import Medical_KG_rev"):
                 first_party_imports.append(line)
             else:
                 # Extract module name
-                if line.startswith('from '):
-                    module = line.split()[1].split('.')[0]
+                if line.startswith("from "):
+                    module = line.split()[1].split(".")[0]
                 else:
-                    module = line.split()[1].split('.')[0]
+                    module = line.split()[1].split(".")[0]
 
                 if module in stdlib_modules:
                     stdlib_imports.append(line)
@@ -152,30 +239,35 @@ class ImportOrganizer:
         organized = []
         if stdlib_imports:
             organized.extend(stdlib_imports)
-            organized.append('')  # Blank line after group
+            organized.append("")  # Blank line after group
 
         if third_party_imports:
             organized.extend(third_party_imports)
-            organized.append('')  # Blank line after group
+            organized.append("")  # Blank line after group
 
         if first_party_imports:
             organized.extend(first_party_imports)
-            organized.append('')  # Blank line after group
+            organized.append("")  # Blank line after group
 
         if relative_imports:
             organized.extend(relative_imports)
-            organized.append('')  # Blank line after group
+            organized.append("")  # Blank line after group
 
         return organized
 
-    def _imports_changed(self, original: List[Tuple[int, str, str]], organized: List[str]) -> bool:
+    def _imports_changed(self, original: list[tuple[int, str, str]], organized: list[str]) -> bool:
         """Check if imports have changed."""
-        original_lines = [line for _, line, _ in original if not line.startswith('#')]
+        original_lines = [line for _, line, _ in original if not line.startswith("#")]
         return original_lines != organized
 
-    def _replace_imports(self, content: str, original_imports: List[Tuple[int, str, str]], organized_imports: List[str]) -> str:
+    def _replace_imports(
+        self,
+        content: str,
+        original_imports: list[tuple[int, str, str]],
+        organized_imports: list[str],
+    ) -> str:
         """Replace imports in file content."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Find the range of import lines
         if not original_imports:
@@ -187,9 +279,9 @@ class ImportOrganizer:
         # Replace the import section
         new_lines = lines[:start_line]
         new_lines.extend(organized_imports)
-        new_lines.extend(lines[end_line + 1:])
+        new_lines.extend(lines[end_line + 1 :])
 
-        return '\n'.join(new_lines)
+        return "\n".join(new_lines)
 
     def organize_directory(self, directory: Path) -> int:
         """Organize imports in all Python files in a directory."""
@@ -202,7 +294,9 @@ class ImportOrganizer:
 
         for file_path in python_files:
             # Skip certain files
-            if any(pattern in str(file_path) for pattern in ['__pycache__', '.git', '.pytest_cache']):
+            if any(
+                pattern in str(file_path) for pattern in ["__pycache__", ".git", ".pytest_cache"]
+            ):
                 continue
 
             if self.organize_file(file_path):
@@ -222,15 +316,15 @@ class ImportOrganizer:
             for error in self.errors:
                 report.append(f"  ❌ {error}")
 
-        report.append(f"\nSUMMARY:")
+        report.append("\nSUMMARY:")
         report.append(f"  Files processed: {self.files_processed}")
         report.append(f"  Files modified: {self.files_modified}")
         report.append(f"  Errors: {len(self.errors)}")
 
         if self.dry_run:
-            report.append(f"  Mode: DRY RUN (no files modified)")
+            report.append("  Mode: DRY RUN (no files modified)")
         else:
-            report.append(f"  Mode: LIVE (files modified)")
+            report.append("  Mode: LIVE (files modified)")
 
         return "\n".join(report)
 
@@ -238,12 +332,18 @@ class ImportOrganizer:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Organize imports in Python files")
-    parser.add_argument("path", nargs="?", default="src/Medical_KG_rev/",
-                       help="Path to organize (default: src/Medical_KG_rev/)")
-    parser.add_argument("--dry-run", action="store_true",
-                       help="Show what would be changed without modifying files")
-    parser.add_argument("--fix", action="store_true",
-                       help="Fix import organization (opposite of --dry-run)")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default="src/Medical_KG_rev/",
+        help="Path to organize (default: src/Medical_KG_rev/)",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be changed without modifying files"
+    )
+    parser.add_argument(
+        "--fix", action="store_true", help="Fix import organization (opposite of --dry-run)"
+    )
 
     args = parser.parse_args()
 

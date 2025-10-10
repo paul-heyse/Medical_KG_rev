@@ -44,7 +44,9 @@ def validate_chunk(chunk: Chunk) -> ChunkValidationResult:
         model = ChunkModel(**asdict(chunk))
     except ValidationError as exc:
         reason = ", ".join(err.get("msg", "invalid") for err in exc.errors())
-        return ChunkValidationResult(chunk_id=getattr(chunk, "chunk_id", ""), valid=False, reason=reason)
+        return ChunkValidationResult(
+            chunk_id=getattr(chunk, "chunk_id", ""), valid=False, reason=reason
+        )
     start, end = model.char_offsets
     if start < 0 or end < start:
         return ChunkValidationResult(
@@ -72,4 +74,9 @@ def validate_chunks(chunks: Iterable[Chunk]) -> list[ChunkValidationResult]:
     return [validate_chunk(chunk) for chunk in chunks]
 
 
-__all__ = ["ChunkValidationError", "ChunkValidationResult", "ensure_valid_chunks", "validate_chunks"]
+__all__ = [
+    "ChunkValidationError",
+    "ChunkValidationResult",
+    "ensure_valid_chunks",
+    "validate_chunks",
+]

@@ -274,7 +274,11 @@ class InMemoryVectorStore(VectorStorePort):
             params=params,
             compression=compression,
             metadata=metadata,
-            named_vectors={key: IndexParams(**value) for key, value in named_params_payload.items()} if named_params_payload else None,
+            named_vectors=(
+                {key: IndexParams(**value) for key, value in named_params_payload.items()}
+                if named_params_payload
+                else None
+            ),
         )
         records_payload = payload.get("records", [])
         records: list[VectorRecord] = []
@@ -329,9 +333,7 @@ class InMemoryVectorStore(VectorStorePort):
             state = tenant_state.get(namespace)
             healthy = state is not None
             details = {"vectors": len(state.vectors) if state else 0}
-            return {
-                namespace: HealthStatus(name=namespace, healthy=healthy, details=details)
-            }
+            return {namespace: HealthStatus(name=namespace, healthy=healthy, details=details)}
         return {
             name: HealthStatus(name=name, healthy=True, details={"vectors": len(state.vectors)})
             for name, state in tenant_state.items()

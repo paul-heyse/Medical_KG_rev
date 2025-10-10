@@ -10,14 +10,13 @@ Usage:
 Examples:
     python scripts/check_type_hints.py src/Medical_KG_rev/
     python scripts/check_type_hints.py tests/
+
 """
 
 import argparse
 import ast
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
 
 
 class TypeHintChecker:
@@ -30,12 +29,12 @@ class TypeHintChecker:
         self.deprecated_optional_usage = []
         self.deprecated_dict_list_usage = []
         self.errors = []
-        self.domain_stats: Dict[str, Dict[str, int]] = {}
+        self.domain_stats: dict[str, dict[str, int]] = {}
 
     def analyze_file(self, file_path: Path) -> None:
         """Analyze a single Python file for type hint issues."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content, filename=str(file_path))
@@ -44,15 +43,15 @@ class TypeHintChecker:
             # Initialize domain stats if needed
             if domain_type not in self.domain_stats:
                 self.domain_stats[domain_type] = {
-                    'files': 0,
-                    'functions': 0,
-                    'missing_return_types': 0,
-                    'missing_param_types': 0,
-                    'deprecated_optional': 0,
-                    'deprecated_dict_list': 0
+                    "files": 0,
+                    "functions": 0,
+                    "missing_return_types": 0,
+                    "missing_param_types": 0,
+                    "deprecated_optional": 0,
+                    "deprecated_dict_list": 0,
                 }
 
-            self.domain_stats[domain_type]['files'] += 1
+            self.domain_stats[domain_type]["files"] += 1
             self._visit_node(tree, file_path, domain_type)
             self.files_analyzed += 1
 
@@ -88,25 +87,25 @@ class TypeHintChecker:
 
     def _visit_node(self, node: ast.AST, file_path: Path, domain_type: str) -> None:
         """Visit AST nodes and check type hints."""
-        if isinstance(node, ast.FunctionDef):
-            self._check_function(node, file_path, domain_type)
-        elif isinstance(node, ast.AsyncFunctionDef):
+        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
             self._check_function(node, file_path, domain_type)
 
         # Recursively visit child nodes
         for child in ast.iter_child_nodes(node):
             self._visit_node(child, file_path, domain_type)
 
-    def _check_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path, domain_type: str) -> None:
+    def _check_function(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path, domain_type: str
+    ) -> None:
         """Check type hints for a function."""
-        self.domain_stats[domain_type]['functions'] += 1
+        self.domain_stats[domain_type]["functions"] += 1
 
         # Check return type annotation
         if node.returns is None:
             self.functions_without_return_types.append(
                 (str(file_path), node.lineno, node.name, domain_type)
             )
-            self.domain_stats[domain_type]['missing_return_types'] += 1
+            self.domain_stats[domain_type]["missing_return_types"] += 1
 
         # Check parameter type annotations
         for arg in node.args.args:
@@ -114,47 +113,47 @@ class TypeHintChecker:
                 self.functions_without_param_types.append(
                     (str(file_path), node.lineno, f"{node.name}({arg.arg})", domain_type)
                 )
-                self.domain_stats[domain_type]['missing_param_types'] += 1
+                self.domain_stats[domain_type]["missing_param_types"] += 1
 
         # Check for deprecated Optional usage
         deprecated_optional_count = self._check_deprecated_optional(node, file_path)
-        self.domain_stats[domain_type]['deprecated_optional'] += deprecated_optional_count
+        self.domain_stats[domain_type]["deprecated_optional"] += deprecated_optional_count
 
         # Check for deprecated dict/list usage
         deprecated_dict_list_count = self._check_deprecated_dict_list(node, file_path)
-        self.domain_stats[domain_type]['deprecated_dict_list'] += deprecated_dict_list_count
+        self.domain_stats[domain_type]["deprecated_dict_list"] += deprecated_dict_list_count
 
-    def _check_deprecated_optional(self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path) -> int:
+    def _check_deprecated_optional(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path
+    ) -> int:
         """Check for deprecated Optional[T] usage."""
         # This is a simplified check - in practice, you'd need to parse the annotation AST
         # For now, we'll check the source code directly
         count = 0
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines, 1):
-                if 'Optional[' in line and 'typing' in line:
-                    self.deprecated_optional_usage.append(
-                        (str(file_path), i, line.strip())
-                    )
+                if "Optional[" in line and "typing" in line:
+                    self.deprecated_optional_usage.append((str(file_path), i, line.strip()))
                     count += 1
         except Exception:
             pass
         return count
 
-    def _check_deprecated_dict_list(self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path) -> int:
+    def _check_deprecated_dict_list(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, file_path: Path
+    ) -> int:
         """Check for deprecated dict/list usage instead of Mapping/Sequence."""
         count = 0
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines, 1):
-                if ('dict[' in line or 'list[' in line) and 'typing' in line:
-                    self.deprecated_dict_list_usage.append(
-                        (str(file_path), i, line.strip())
-                    )
+                if ("dict[" in line or "list[" in line) and "typing" in line:
+                    self.deprecated_dict_list_usage.append((str(file_path), i, line.strip()))
                     count += 1
         except Exception:
             pass
@@ -181,7 +180,7 @@ class TypeHintChecker:
         if self.domain_stats:
             report.append("DOMAIN-SPECIFIC STATISTICS:")
             for domain, stats in sorted(self.domain_stats.items()):
-                if stats['functions'] > 0:
+                if stats["functions"] > 0:
                     report.append(f"  {domain}:")
                     report.append(f"    Files: {stats['files']}")
                     report.append(f"    Functions: {stats['functions']}")
@@ -192,7 +191,9 @@ class TypeHintChecker:
                     report.append("")
 
         # Functions without return types
-        report.append(f"Functions without return type annotations: {len(self.functions_without_return_types)}")
+        report.append(
+            f"Functions without return type annotations: {len(self.functions_without_return_types)}"
+        )
         if self.functions_without_return_types:
             report.append("Top 10 functions missing return types:")
             for file_path, line_num, func_name, domain in self.functions_without_return_types[:10]:
@@ -202,7 +203,9 @@ class TypeHintChecker:
         report.append("")
 
         # Functions without parameter types
-        report.append(f"Functions without parameter type annotations: {len(self.functions_without_param_types)}")
+        report.append(
+            f"Functions without parameter type annotations: {len(self.functions_without_param_types)}"
+        )
         if self.functions_without_param_types:
             report.append("Top 10 functions missing parameter types:")
             for file_path, line_num, func_sig, domain in self.functions_without_param_types[:10]:
@@ -233,16 +236,18 @@ class TypeHintChecker:
 
         # Summary
         total_issues = (
-            len(self.functions_without_return_types) +
-            len(self.functions_without_param_types) +
-            len(self.deprecated_optional_usage) +
-            len(self.deprecated_dict_list_usage)
+            len(self.functions_without_return_types)
+            + len(self.functions_without_param_types)
+            + len(self.deprecated_optional_usage)
+            + len(self.deprecated_dict_list_usage)
         )
 
         report.append("SUMMARY:")
         report.append(f"  Total type hint issues: {total_issues}")
         report.append(f"  Files analyzed: {self.files_analyzed}")
-        report.append(f"  Average issues per file: {total_issues / max(self.files_analyzed, 1):.1f}")
+        report.append(
+            f"  Average issues per file: {total_issues / max(self.files_analyzed, 1):.1f}"
+        )
 
         return "\n".join(report)
 
@@ -250,8 +255,12 @@ class TypeHintChecker:
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Check type hint coverage")
-    parser.add_argument("path", nargs="?", default="src/Medical_KG_rev/",
-                       help="Path to analyze (default: src/Medical_KG_rev/)")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default="src/Medical_KG_rev/",
+        help="Path to analyze (default: src/Medical_KG_rev/)",
+    )
     parser.add_argument("--output", "-o", help="Output file (default: stdout)")
 
     args = parser.parse_args()
@@ -279,7 +288,7 @@ def main() -> None:
     report = checker.generate_report()
 
     if args.output:
-        with open(args.output, 'w', encoding='utf-8') as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             f.write(report)
         print(f"Report written to {args.output}")
     else:
@@ -287,10 +296,10 @@ def main() -> None:
 
     # Exit with error code if issues found
     total_issues = (
-        len(checker.functions_without_return_types) +
-        len(checker.functions_without_param_types) +
-        len(checker.deprecated_optional_usage) +
-        len(checker.deprecated_dict_list_usage)
+        len(checker.functions_without_return_types)
+        + len(checker.functions_without_param_types)
+        + len(checker.deprecated_optional_usage)
+        + len(checker.deprecated_dict_list_usage)
     )
 
     if total_issues > 0:

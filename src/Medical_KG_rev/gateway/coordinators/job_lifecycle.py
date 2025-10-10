@@ -39,6 +39,7 @@ Example:
     >>> manager.mark_completed(job_id, {"embeddings": 100})
 
 """
+
 from __future__ import annotations
 
 # ============================================================================
@@ -303,9 +304,7 @@ class JobLifecycleManager:
         metadata = dict(payload or {})
         logger.info("gateway.job.complete", job_id=job_id, metadata=metadata)
         self._call_ledger(self.ledger.mark_completed, job_id, metadata=metadata)
-        self.events.publish(
-            JobEvent(job_id=job_id, type="jobs.completed", payload=metadata)
-        )
+        self.events.publish(JobEvent(job_id=job_id, type="jobs.completed", payload=metadata))
 
     def update_metadata(self, job_id: str, metadata: Mapping[str, Any]) -> None:
         """Update job metadata in the ledger.

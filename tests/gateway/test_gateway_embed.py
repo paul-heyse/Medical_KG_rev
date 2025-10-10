@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-import uuid
 
 import pytest
 
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
-from Medical_KG_rev.gateway.models import EmbedRequest, EmbeddingOptions, JobEvent
+from Medical_KG_rev.gateway.models import EmbeddingOptions, EmbedRequest, JobEvent
 from Medical_KG_rev.gateway.services import GatewayService
-from Medical_KG_rev.gateway.sse.manager import EventStreamManager
 
 
 @dataclass
@@ -49,7 +48,9 @@ class StubEmbedder:
         self.kind = kind
         self.requests: list[object] = []
 
-    def embed_documents(self, request) -> list[EmbeddingRecord]:  # noqa: ANN001 - protocol compliance
+    def embed_documents(
+        self, request
+    ) -> list[EmbeddingRecord]:
         self.requests.append(request)
         if self.kind == "sparse":
             return [
@@ -86,7 +87,9 @@ class StubEmbedder:
 
 
 @pytest.fixture()
-def gateway_service(monkeypatch: pytest.MonkeyPatch) -> tuple[GatewayService, StubLedger, StubEvents, StubEmbedder]:
+def gateway_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[GatewayService, StubLedger, StubEvents, StubEmbedder]:
     ledger = StubLedger()
     events = StubEvents()
     service = GatewayService(
@@ -99,7 +102,9 @@ def gateway_service(monkeypatch: pytest.MonkeyPatch) -> tuple[GatewayService, St
     return service, ledger, events, embedder
 
 
-def _build_request(namespace: str = "single_vector.qwen3.4096.v1", *, normalize: bool = True) -> EmbedRequest:
+def _build_request(
+    namespace: str = "single_vector.qwen3.4096.v1", *, normalize: bool = True
+) -> EmbedRequest:
     return EmbedRequest(
         tenant_id="tenant-123",
         texts=["alpha", "beta"],
@@ -108,14 +113,18 @@ def _build_request(namespace: str = "single_vector.qwen3.4096.v1", *, normalize:
     )
 
 
-def test_embed_returns_vectors_with_metadata(gateway_service, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_embed_returns_vectors_with_metadata(
+    gateway_service, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, ledger, events, embedder = gateway_service
     monkeypatch.setattr(uuid, "uuid4", lambda: uuid.UUID(int=1))
     response = service.embed(_build_request())
     assert len(response.embeddings) == 2
     first = response.embeddings[0]
     assert first.metadata["tenant_id"] == "tenant-123"
-    assert first.metadata["storage"]["faiss_index"].endswith("tenant-123/single_vector-qwen3-4096-v1.index")
+    assert first.metadata["storage"]["faiss_index"].endswith(
+        "tenant-123/single_vector-qwen3-4096-v1.index"
+    )
     assert all(event.type in {"jobs.started", "jobs.completed"} for event in events.events)
     assert embedder.requests, "Expected embedder to be invoked"
 
@@ -159,7 +168,9 @@ def test_list_namespaces_returns_namespace_info(gateway_service) -> None:
 
 def test_validate_namespace_tokens(monkeypatch: pytest.MonkeyPatch, gateway_service) -> None:
     service, ledger, events, _ = gateway_service
-    fake_tokenizer = SimpleNamespace(encode=lambda text, add_special_tokens=False: list(text.split()))
+    fake_tokenizer = SimpleNamespace(
+        encode=lambda text, add_special_tokens=False: list(text.split())
+    )
     monkeypatch.setattr(service.namespace_registry, "get_tokenizer", lambda ns: fake_tokenizer)
     monkeypatch.setattr(service.namespace_registry, "get_max_tokens", lambda ns: 5)
     result = service.validate_namespace_texts(

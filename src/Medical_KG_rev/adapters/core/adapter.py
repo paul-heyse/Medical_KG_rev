@@ -103,6 +103,7 @@ def _linear_retry_config(attempts: int, initial: float) -> RetryConfig:
 # ADAPTER IMPLEMENTATION
 # ==============================================================================
 
+
 class ResilientHTTPAdapter(BaseAdapter):
     """Base adapter that wraps :class:`HttpClient` with sensible defaults."""
 
@@ -203,15 +204,12 @@ class COREAdapter(ResilientHTTPAdapter):
 
                 # Extract PDF URL if available
                 download_url = data.get("downloadUrl")
-                if download_url and download_url.endswith('.pdf'):
+                if download_url and download_url.endswith(".pdf"):
                     metadata["pdf_urls"] = [download_url]
                     metadata["document_type"] = "pdf"
 
                 block = Block(
-                    id="core-text",
-                    type=BlockType.PARAGRAPH,
-                    text=_to_text(full_text),
-                    spans=[]
+                    id="core-text", type=BlockType.PARAGRAPH, text=_to_text(full_text), spans=[]
                 )
                 section = Section(id="core", title="CORE Full Text", blocks=[block])
 

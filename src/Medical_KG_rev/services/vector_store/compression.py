@@ -57,9 +57,7 @@ def _split_subvectors(matrix: np.ndarray, m: int) -> np.ndarray:
     return matrix.reshape(matrix.shape[0], m, dim)
 
 
-def train_pq(
-    vectors: Sequence[Sequence[float]], *, m: int, nbits: int
-) -> dict[str, object]:
+def train_pq(vectors: Sequence[Sequence[float]], *, m: int, nbits: int) -> dict[str, object]:
     """Train a simple product quantiser via k-means on subvectors."""
     matrix = _as_float32(vectors)
     subvectors = _split_subvectors(matrix, m)
@@ -81,9 +79,7 @@ def train_pq(
     return {"codebooks": codebooks, "m": m, "nbits": nbits}
 
 
-def apply_pq(
-    vectors: Sequence[Sequence[float]], codebooks: Sequence[np.ndarray]
-) -> np.ndarray:
+def apply_pq(vectors: Sequence[Sequence[float]], codebooks: Sequence[np.ndarray]) -> np.ndarray:
     matrix = _as_float32(vectors)
     m = len(codebooks)
     subvectors = _split_subvectors(matrix, m)
@@ -96,9 +92,7 @@ def apply_pq(
     return codes
 
 
-def learn_opq_rotation(
-    vectors: Sequence[Sequence[float]], *, m: int
-) -> dict[str, object]:
+def learn_opq_rotation(vectors: Sequence[Sequence[float]], *, m: int) -> dict[str, object]:
     """Estimate an orthogonal rotation prior to PQ (OPQ)."""
     matrix = _as_float32(vectors)
     cov = np.cov(matrix, rowvar=False)
@@ -206,7 +200,9 @@ class CompressionManager:
         raise CompressionError("unknown compression payload")
 
 
-def batch_vectors(records: Iterable[Sequence[float]], *, batch_size: int) -> Iterable[list[Sequence[float]]]:
+def batch_vectors(
+    records: Iterable[Sequence[float]], *, batch_size: int
+) -> Iterable[list[Sequence[float]]]:
     """Yield fixed-size batches suitable for GPU uploads."""
     batch: list[Sequence[float]] = []
     for vector in records:
@@ -216,4 +212,3 @@ def batch_vectors(records: Iterable[Sequence[float]], *, batch_size: int) -> Ite
             batch = []
     if batch:
         yield batch
-

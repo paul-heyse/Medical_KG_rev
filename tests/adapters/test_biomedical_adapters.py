@@ -5,7 +5,12 @@ import pytest
 
 httpx = pytest.importorskip("httpx")
 
-from Medical_KG_rev.adapters import AdapterDomain, AdapterRequest, create_adapter_from_config, load_adapter_config
+from Medical_KG_rev.adapters import (
+    AdapterDomain,
+    AdapterRequest,
+    create_adapter_from_config,
+    load_adapter_config,
+)
 from Medical_KG_rev.adapters.biomedical import (
     ChEMBLAdapter,
     ClinicalTrialsAdapter,
@@ -19,9 +24,8 @@ from Medical_KG_rev.adapters.biomedical import (
     SemanticScholarAdapter,
 )
 from Medical_KG_rev.adapters.crossref import CrossrefAdapter
-from Medical_KG_rev.config.settings import ConnectorPdfSettings
 from Medical_KG_rev.adapters.openalex import OpenAlexAdapter
-from Medical_KG_rev.adapters.pmc import PMCAdapter
+from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
 from Medical_KG_rev.adapters.plugins.domains.biomedical import (
     ChEMBLAdapterPlugin,
     ClinicalTrialsAdapterPlugin,
@@ -38,10 +42,10 @@ from Medical_KG_rev.adapters.plugins.domains.biomedical import (
     SemanticScholarAdapterPlugin,
     UnpaywallAdapterPlugin,
 )
-from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter
 from Medical_KG_rev.adapters.plugins.models import AdapterResponse
-from Medical_KG_rev.adapters.plugins.base import BaseAdapterPlugin
-from Medical_KG_rev.config.settings import get_settings
+from Medical_KG_rev.adapters.pmc import PMCAdapter
+from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter
+from Medical_KG_rev.config.settings import ConnectorPdfSettings, get_settings
 from Medical_KG_rev.utils.http_client import BackoffStrategy, HttpClient, RetryConfig
 
 
@@ -58,7 +62,10 @@ def _mock_transport(callback):
 
 
 def _run_plugin(
-    plugin: BaseAdapterPlugin, *, parameters: dict[str, object], domain: AdapterDomain = AdapterDomain.BIOMEDICAL
+    plugin: BaseAdapterPlugin,
+    *,
+    parameters: dict[str, object],
+    domain: AdapterDomain = AdapterDomain.BIOMEDICAL,
 ) -> AdapterResponse:
     request = AdapterRequest(
         tenant_id="tenant",
@@ -349,7 +356,7 @@ def test_openalex_plugin_uses_settings(monkeypatch) -> None:
     try:
         plugin = OpenAlexAdapterPlugin()
         adapter = plugin.adapter
-        assert getattr(adapter, "_max_results") == 9
+        assert adapter._max_results == 9
     finally:
         get_settings.cache_clear()
 

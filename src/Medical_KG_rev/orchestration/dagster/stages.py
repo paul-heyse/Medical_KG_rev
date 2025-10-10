@@ -88,7 +88,9 @@ class AdapterIngestStage(IngestStage):
         request = state.adapter_request
         merged_parameters = {**self._extra_parameters, **dict(request.parameters)}
         domain = request.domain or self._default_domain  # type: ignore[union-attr]
-        invocation_request = request.model_copy(update={"parameters": merged_parameters, "domain": domain})
+        invocation_request = request.model_copy(
+            update={"parameters": merged_parameters, "domain": domain}
+        )
         try:
             result = self._manager.invoke(self._adapter, invocation_request, strict=self._strict)
         except AdapterPluginError as exc:
@@ -247,7 +249,9 @@ class SimpleEmbedder:
 
     def run(self, *, documents: Sequence[Any]) -> dict[str, list[StubEmbeddingDocument]]:
         embedded = [
-            StubEmbeddingDocument(content=getattr(doc, "content", ""), meta=getattr(doc, "meta", {}))
+            StubEmbeddingDocument(
+                content=getattr(doc, "content", ""), meta=getattr(doc, "meta", {})
+            )
             for doc in documents
         ]
         return {"documents": embedded}
@@ -413,7 +417,9 @@ class CoreStagePlugin(StagePlugin):
 
         def build_chunk(_: StageDefinition, __: StagePluginResources) -> ChunkStage:
             splitter = pipeline_resource.splitter
-            return HaystackChunker(splitter, chunker_name="haystack.semantic", granularity="paragraph")
+            return HaystackChunker(
+                splitter, chunker_name="haystack.semantic", granularity="paragraph"
+            )
 
         def build_embed(_: StageDefinition, __: StagePluginResources) -> EmbedStage:
             embedder = pipeline_resource.embedder
@@ -430,7 +436,9 @@ class CoreStagePlugin(StagePlugin):
         def build_kg(_: StageDefinition, __: StagePluginResources) -> KGStage:
             return NoOpKnowledgeGraphStage()
 
-        def build_download(definition: StageDefinition, __: StagePluginResources) -> PdfDownloadStage:
+        def build_download(
+            definition: StageDefinition, __: StagePluginResources
+        ) -> PdfDownloadStage:
             config = definition.config
             urls = config.get("urls") if isinstance(config, Mapping) else None
             checksum_field = config.get("checksum_field") if isinstance(config, Mapping) else None
@@ -443,7 +451,11 @@ class CoreStagePlugin(StagePlugin):
 
         def build_gate(definition: StageDefinition, __: StagePluginResources) -> PdfGateStage:
             config = definition.config
-            field_name = config.get("field", "pdf_ir_ready") if isinstance(config, Mapping) else "pdf_ir_ready"
+            field_name = (
+                config.get("field", "pdf_ir_ready")
+                if isinstance(config, Mapping)
+                else "pdf_ir_ready"
+            )
             return PdfGateStage(job_ledger=job_ledger, field=str(field_name))
 
         return (

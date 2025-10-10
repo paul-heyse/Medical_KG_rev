@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Documentation compliance checker for Medical_KG_rev pipeline components.
+"""Documentation compliance checker for Medical_KG_rev pipeline components.
 
 This script validates that all pipeline components follow the established
 documentation standards including:
@@ -16,10 +15,8 @@ Usage:
 
 import argparse
 import ast
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Standard section headers for code organization
 REQUIRED_SECTIONS = {
@@ -32,7 +29,7 @@ REQUIRED_SECTIONS = {
     "ERROR TRANSLATION",
     "JOB STATE DATA MODEL",
     "LIFECYCLE MANAGER",
-    "EXPORTS"
+    "EXPORTS",
 }
 
 # Pipeline component paths to check
@@ -63,14 +60,15 @@ EXCLUDE_PATTERNS = {
     "__init__.py",  # Often minimal, check separately
 }
 
+
 class DocumentationChecker:
     """Check documentation compliance for Python files."""
 
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
-        self.fixes_applied: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+        self.fixes_applied: list[str] = []
 
     def log(self, message: str, level: str = "INFO"):
         """Log a message if verbose mode is enabled."""
@@ -82,7 +80,7 @@ class DocumentationChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -120,28 +118,36 @@ class DocumentationChecker:
             return False
 
         first_stmt = tree.body[0]
-        return (isinstance(first_stmt, ast.Expr) and
-                isinstance(first_stmt.value, ast.Constant) and
-                isinstance(first_stmt.value.value, str))
+        return (
+            isinstance(first_stmt, ast.Expr)
+            and isinstance(first_stmt.value, ast.Constant)
+            and isinstance(first_stmt.value.value, str)
+        )
 
-    def _check_section_headers(self, content: str, file_path: Path) -> Set[str]:
+    def _check_section_headers(self, content: str, file_path: Path) -> set[str]:
         """Check for required section headers."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         found_sections = set()
 
         for line in lines:
             line = line.strip()
-            if line.startswith('# ') and line[2:] in REQUIRED_SECTIONS:
+            if line.startswith("# ") and line[2:] in REQUIRED_SECTIONS:
                 found_sections.add(line[2:])
 
         # Determine which sections are missing based on file type
         expected_sections = self._get_expected_sections(file_path)
         return expected_sections - found_sections
 
-    def _get_expected_sections(self, file_path: Path) -> Set[str]:
+    def _get_expected_sections(self, file_path: Path) -> set[str]:
         """Get expected section headers for a file based on its type."""
         if "coordinators" in str(file_path):
-            return {"IMPORTS", "REQUEST/RESPONSE MODELS", "COORDINATOR IMPLEMENTATION", "ERROR TRANSLATION", "EXPORTS"}
+            return {
+                "IMPORTS",
+                "REQUEST/RESPONSE MODELS",
+                "COORDINATOR IMPLEMENTATION",
+                "ERROR TRANSLATION",
+                "EXPORTS",
+            }
         elif "base" in str(file_path):
             return {"IMPORTS", "DATA MODELS", "METRICS", "BASE COORDINATOR INTERFACE", "EXPORTS"}
         elif "job_lifecycle" in str(file_path):
@@ -154,24 +160,24 @@ class DocumentationChecker:
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 if not ast.get_docstring(node):
-                    if not node.name.startswith('_'):  # Skip private methods
+                    if not node.name.startswith("_"):  # Skip private methods
                         self.warnings.append(f"{file_path}: {node.name} missing docstring")
 
     def _check_type_hints(self, tree: ast.AST, file_path: Path):
         """Check for type hints on function definitions."""
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if not node.name.startswith('_'):  # Skip private methods
-                    if not node.returns and not node.name.startswith('test_'):
+                if not node.name.startswith("_"):  # Skip private methods
+                    if not node.returns and not node.name.startswith("test_"):
                         self.warnings.append(f"{file_path}: {node.name} missing return type hint")
 
     def _check_imports(self, content: str, file_path: Path):
         """Check import organization."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         import_lines = []
 
         for i, line in enumerate(lines):
-            if line.strip().startswith(('import ', 'from ')):
+            if line.strip().startswith(("import ", "from ")):
                 import_lines.append((i, line))
 
         # Check if imports are grouped and ordered
@@ -222,17 +228,17 @@ class DocumentationChecker:
             for fix in self.fixes_applied:
                 report.append(f"  ✅ {fix}")
 
-        report.append(f"\nSUMMARY:")
+        report.append("\nSUMMARY:")
         report.append(f"  Total Errors: {len(self.errors)}")
         report.append(f"  Total Warnings: {len(self.warnings)}")
         report.append(f"  Total Fixes: {len(self.fixes_applied)}")
 
         if len(self.errors) == 0 and len(self.warnings) == 0:
-            report.append(f"  Status: ✅ ALL CHECKS PASSED")
+            report.append("  Status: ✅ ALL CHECKS PASSED")
         elif len(self.errors) == 0:
-            report.append(f"  Status: ⚠️  WARNINGS ONLY")
+            report.append("  Status: ⚠️  WARNINGS ONLY")
         else:
-            report.append(f"  Status: ❌ ERRORS FOUND")
+            report.append("  Status: ❌ ERRORS FOUND")
 
         return "\n".join(report)
 
@@ -240,7 +246,9 @@ class DocumentationChecker:
 def main():
     """Main entry point for the documentation checker."""
     parser = argparse.ArgumentParser(description="Check documentation compliance")
-    parser.add_argument("path", nargs="?", default=".", help="Path to check (default: current directory)")
+    parser.add_argument(
+        "path", nargs="?", default=".", help="Path to check (default: current directory)"
+    )
     parser.add_argument("--fix", action="store_true", help="Apply automatic fixes where possible")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
@@ -273,4 +281,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -8,7 +8,7 @@ def test_embedding_evaluator_metrics() -> None:
         relevant={"q1": {"doc-1"}},
     )
 
-    def _retrieve(namespace: str, query: str, k: int):  # noqa: D401 - simple stub
+    def _retrieve(namespace: str, query: str, k: int):
         return [{"_id": "doc-1"}, {"_id": "doc-2"}]
 
     evaluator = EmbeddingEvaluator(dataset, _retrieve)

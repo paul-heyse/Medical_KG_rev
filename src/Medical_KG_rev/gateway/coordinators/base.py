@@ -43,6 +43,7 @@ Example:
     >>> result = coordinator(MyRequest(tenant_id="tenant1"))
 
 """
+
 from __future__ import annotations
 
 # ============================================================================
@@ -546,6 +547,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
             >>> # Method handles all resilience concerns automatically
 
         """
+
         def _call() -> _ResultT:
             if self._breaker is not None:
                 return self._breaker.call(self._execute, request, **kwargs)
@@ -578,9 +580,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
             ) from last.exception()
 
     @staticmethod
-    async def _consume_limiter(
-        limiter: AsyncLimiter, func: Callable[[], _ResultT]
-    ) -> _ResultT:
+    async def _consume_limiter(limiter: AsyncLimiter, func: Callable[[], _ResultT]) -> _ResultT:
         """Consume rate limiter permit and execute function.
 
         This static method handles the async rate limiter interaction,

@@ -36,6 +36,7 @@ async def test_vllm_connectivity() -> dict[str, Any]:
 
     Returns:
         Dictionary with test results
+
     """
     print("=" * 70)
     print("Testing MinerU → vLLM Integration")
@@ -57,7 +58,7 @@ async def test_vllm_connectivity() -> dict[str, Any]:
         mineru_settings = settings.mineru
         results["settings_loaded"] = True
         results["vllm_url"] = str(mineru_settings.vllm_server.base_url)
-        print(f"   ✓ Settings loaded successfully")
+        print("   ✓ Settings loaded successfully")
         print(f"   ✓ vLLM URL: {results['vllm_url']}")
         print(f"   ✓ Backend: {mineru_settings.workers.backend}")
         print(f"   ✓ Workers: {mineru_settings.workers.count}")
@@ -73,18 +74,18 @@ async def test_vllm_connectivity() -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=10.0) as http_client:
             response = await http_client.get(f"{results['vllm_url']}/health")
             results["vllm_reachable"] = True
-            print(f"   ✓ vLLM server is reachable")
+            print("   ✓ vLLM server is reachable")
             print(f"   ✓ HTTP status: {response.status_code}")
 
             if response.status_code == 200:
                 results["vllm_healthy"] = True
-                print(f"   ✓ vLLM server reports healthy status")
+                print("   ✓ vLLM server reports healthy status")
             else:
                 print(f"   ⚠ vLLM server responded but not healthy: {response.status_code}")
     except httpx.ConnectError as e:
         error_msg = f"Cannot connect to vLLM server: {e}"
         print(f"   ✗ {error_msg}")
-        print(f"   ℹ Make sure vLLM server is running: docker-compose up vllm-server")
+        print("   ℹ Make sure vLLM server is running: docker-compose up vllm-server")
         results["errors"].append(error_msg)
     except Exception as e:
         error_msg = f"HTTP request failed: {e}"
@@ -103,15 +104,15 @@ async def test_vllm_connectivity() -> dict[str, Any]:
             retry_backoff_multiplier=mineru_settings.http_client.retry_backoff_multiplier,
         )
         results["client_initialized"] = True
-        print(f"   ✓ VLLMClient initialized successfully")
+        print("   ✓ VLLMClient initialized successfully")
 
         # Test health check through client
         async with client:
             healthy = await client.health_check()
             if healthy:
-                print(f"   ✓ Health check through VLLMClient passed")
+                print("   ✓ Health check through VLLMClient passed")
             else:
-                print(f"   ⚠ Health check through VLLMClient failed")
+                print("   ⚠ Health check through VLLMClient failed")
                 results["errors"].append("VLLMClient health check failed")
     except Exception as e:
         error_msg = f"Failed to initialize VLLMClient: {e}"
@@ -140,16 +141,16 @@ async def test_vllm_connectivity() -> dict[str, Any]:
                 if chat_response and "choices" in chat_response:
                     message_content = chat_response["choices"][0]["message"]["content"]
                     content = str(message_content) if message_content else ""
-                    print(f"   ✓ Chat completion successful")
+                    print("   ✓ Chat completion successful")
                     print(f"   ✓ Response: {content[:100]}")
                     results["chat_completion"] = True
                 else:
-                    print(f"   ⚠ Unexpected response format")
+                    print("   ⚠ Unexpected response format")
                     results["chat_completion"] = False
         except Exception as e:
             error_msg = f"Chat completion failed: {e}"
             print(f"   ⚠ {error_msg}")
-            print(f"   ℹ This may be expected if the model is still loading")
+            print("   ℹ This may be expected if the model is still loading")
             results["errors"].append(error_msg)
             results["chat_completion"] = False
     else:
@@ -207,4 +208,3 @@ if __name__ == "__main__":
 
         traceback.print_exc()
         sys.exit(1)
-

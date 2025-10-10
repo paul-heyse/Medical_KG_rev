@@ -106,16 +106,16 @@ class StorageHelperMixin:
         url_lower = url.lower()
 
         # Check file extension
-        if url_lower.endswith('.pdf'):
+        if url_lower.endswith(".pdf"):
             return True
 
         # Check common PDF URL patterns
         pdf_patterns = [
-            '/pdf',
-            '/download',
-            '/fulltext',
-            'format=pdf',
-            'type=pdf',
+            "/pdf",
+            "/download",
+            "/fulltext",
+            "format=pdf",
+            "type=pdf",
         ]
 
         return any(pattern in url_lower for pattern in pdf_patterns)

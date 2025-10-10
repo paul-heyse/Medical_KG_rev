@@ -153,6 +153,7 @@ logger = structlog.get_logger(__name__)
 # TYPE DEFINITIONS & CONSTANTS
 # ============================================================================
 
+
 class GatewayError(RuntimeError):
     """Domain specific exception carrying problem detail information."""
 
@@ -174,6 +175,7 @@ def _build_stage_factory(
 # ============================================================================
 # SERVICE CLASS DEFINITION
 # ============================================================================
+
 
 @dataclass
 class GatewayService:
@@ -755,7 +757,11 @@ class GatewayService:
         """
         if self.embedding_coordinator is None:
             raise RuntimeError("Embedding coordinator not initialised")
-        if self.namespace_registry is None or self.namespace_policy is None or self.embedding_persister is None:
+        if (
+            self.namespace_registry is None
+            or self.namespace_policy is None
+            or self.embedding_persister is None
+        ):
             raise RuntimeError("Embedding components not initialised")
 
         options = request.options or EmbeddingOptions()
@@ -1044,7 +1050,7 @@ class GatewayService:
         filters = dict(request.filters or {})
         metadata = dict(request.metadata)
         if request.profile:
-            metadata['profile'] = request.profile
+            metadata["profile"] = request.profile
         try:
             results = self.retriever.retrieve(request.query, filters=filters or None)
         except Exception as exc:
@@ -1058,15 +1064,15 @@ class GatewayService:
             raise GatewayError(detail) from exc
         documents: list[DocumentSummary] = []
         for index, item in enumerate(results[: request.top_k]):
-            meta = dict(item.get('meta') or {})
-            doc_id = str(item.get('id') or meta.pop('id', None) or f"retrieved-{index}")
-            title = meta.pop('title', None) or doc_id
-            summary = meta.pop('summary', None)
-            source = meta.pop('source', None) or 'hybrid'
-            score = float(item.get('score') or meta.pop('score', 0.0) or 0.0)
-            content = item.get('content')
-            if content and 'content' not in meta:
-                meta['content'] = content
+            meta = dict(item.get("meta") or {})
+            doc_id = str(item.get("id") or meta.pop("id", None) or f"retrieved-{index}")
+            title = meta.pop("title", None) or doc_id
+            summary = meta.pop("summary", None)
+            source = meta.pop("source", None) or "hybrid"
+            score = float(item.get("score") or meta.pop("score", 0.0) or 0.0)
+            content = item.get("content")
+            if content and "content" not in meta:
+                meta["content"] = content
             documents.append(
                 DocumentSummary(
                     id=doc_id,
@@ -1075,35 +1081,39 @@ class GatewayService:
                     summary=summary,
                     source=source,
                     metadata=meta,
-                    explain=item.get('explain') if request.explain else None,
+                    explain=item.get("explain") if request.explain else None,
                 )
             )
         retrieval_duration = perf_counter() - started
-        observe_job_duration('retrieve', retrieval_duration)
-        record_business_event('retrieval_requests', request.tenant_id)
+        observe_job_duration("retrieve", retrieval_duration)
+        record_business_event("retrieval_requests", request.tenant_id)
         if documents:
-            record_business_event('documents_retrieved', request.tenant_id)
-        stage_timings = {'retrieve': round(retrieval_duration, 6)}
+            record_business_event("documents_retrieved", request.tenant_id)
+        stage_timings = {"retrieve": round(retrieval_duration, 6)}
         result = RetrievalResult(
             query=request.query,
             documents=documents,
             total=len(documents),
-            rerank_metrics={'stage_timings_ms': {name: round(value * 1000, 3) for name, value in stage_timings.items()}},
-            pipeline_version='haystack-hybrid/v1',
+            rerank_metrics={
+                "stage_timings_ms": {
+                    name: round(value * 1000, 3) for name, value in stage_timings.items()
+                }
+            },
+            pipeline_version="haystack-hybrid/v1",
             partial=False,
             degraded=False,
             errors=[],
             stage_timings=stage_timings,
         )
         ledger_metadata = {
-            'documents': result.total,
-            'pipeline_version': result.pipeline_version,
-            'filters': filters,
-            'metadata': metadata,
+            "documents": result.total,
+            "pipeline_version": result.pipeline_version,
+            "filters": filters,
+            "metadata": metadata,
         }
         self.ledger.update_metadata(job_id, ledger_metadata)
         if result.total == 0 and request.rerank:
-            ledger_metadata['status'] = 'no-results'
+            ledger_metadata["status"] = "no-results"
         self._complete_job(job_id, payload=ledger_metadata)
         return result
 

@@ -11,12 +11,9 @@ Requirements:
     - MinerU package installed (mineru>=2.5.4)
     - PDF files in random_papers_output/pdfs/
 """
-
-import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -29,6 +26,7 @@ def test_mineru_direct():
     try:
         # Import MinerU CLI
         from mineru.cli.client import main as mineru_main
+
         print("✅ MinerU CLI imported successfully")
 
         # Find PDF files
@@ -57,13 +55,20 @@ def test_mineru_direct():
             original_argv = sys.argv.copy()
             sys.argv = [
                 "mineru",
-                "--path", str(pdf_file),
-                "--output", str(output_dir),
-                "--method", "auto",
-                "--backend", "pipeline",
-                "--device", "cuda",
-                "--formula", "true",
-                "--table", "true"
+                "--path",
+                str(pdf_file),
+                "--output",
+                str(output_dir),
+                "--method",
+                "auto",
+                "--backend",
+                "pipeline",
+                "--device",
+                "cuda",
+                "--formula",
+                "true",
+                "--table",
+                "true",
             ]
 
             try:
@@ -78,7 +83,7 @@ def test_mineru_direct():
                     "pdf_file": str(pdf_file),
                     "processing_time": processing_time,
                     "output_files": [str(f) for f in output_files],
-                    "success": len(output_files) > 0
+                    "success": len(output_files) > 0,
                 }
 
                 if result["success"]:
@@ -94,11 +99,7 @@ def test_mineru_direct():
 
             except Exception as e:
                 print(f"❌ Error processing {pdf_file.name}: {e}")
-                results.append({
-                    "pdf_file": str(pdf_file),
-                    "error": str(e),
-                    "success": False
-                })
+                results.append({"pdf_file": str(pdf_file), "error": str(e), "success": False})
             finally:
                 # Restore original argv
                 sys.argv = original_argv
@@ -107,9 +108,9 @@ def test_mineru_direct():
         successful = sum(1 for r in results if r["success"])
         total = len(results)
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("MINERU DIRECT PROCESSING SUMMARY")
-        print("="*70)
+        print("=" * 70)
         print(f"Total PDFs: {total}")
         print(f"Successfully processed: {successful}")
         print(f"Failed: {total - successful}")
@@ -133,13 +134,13 @@ def test_mineru_direct():
 
 def main():
     """Main execution function."""
-    print("="*70)
+    print("=" * 70)
     print("MINERU DIRECT PROCESSING TEST")
-    print("="*70)
+    print("=" * 70)
 
     success = test_mineru_direct()
 
-    print("="*70)
+    print("=" * 70)
     sys.exit(0 if success else 1)
 
 

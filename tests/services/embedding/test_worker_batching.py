@@ -1,6 +1,6 @@
+import types
 from collections.abc import Sequence
 from dataclasses import dataclass
-import types
 
 import pytest
 
@@ -8,6 +8,8 @@ from Medical_KG_rev.embeddings.namespace import NamespaceManager
 from Medical_KG_rev.embeddings.ports import (
     EmbedderConfig,
     EmbeddingRecord,
+)
+from Medical_KG_rev.embeddings.ports import (
     EmbeddingRequest as AdapterEmbeddingRequest,
 )
 from Medical_KG_rev.embeddings.utils.gpu import GPUMemoryInfo
@@ -96,7 +98,9 @@ def worker_setup(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "Medical_KG_rev.embeddings.utils.gpu.memory_info",
-        lambda *args, **kwargs: GPUMemoryInfo(available=True, total_mb=24576, free_mb=20000, used_mb=4576),
+        lambda *args, **kwargs: GPUMemoryInfo(
+            available=True, total_mb=24576, free_mb=20000, used_mb=4576
+        ),
     )
     monkeypatch.setattr(
         "Medical_KG_rev.embeddings.utils.gpu.logger",
@@ -165,7 +169,9 @@ def test_worker_invokes_gpu_budget(worker_setup, monkeypatch: pytest.MonkeyPatch
     assert calls[0] == (0.9, 512)
 
 
-def test_worker_raises_when_gpu_budget_exhausted(worker_setup, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_worker_raises_when_gpu_budget_exhausted(
+    worker_setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
     worker, config, embedder = worker_setup
 
     def explode(require_gpu: bool, *, operation: str, fraction=None, reserve_mb=None):

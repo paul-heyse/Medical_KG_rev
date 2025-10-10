@@ -159,7 +159,9 @@ class StagePlugin(ABC):
     ) -> None:
         self._name = plugin_name or self.plugin_name or self.__class__.__name__.lower()
         self._version = version or self.version
-        self._dependencies = tuple(dependencies) if dependencies is not None else tuple(self.plugin_dependencies)
+        self._dependencies = (
+            tuple(dependencies) if dependencies is not None else tuple(self.plugin_dependencies)
+        )
         self._initialized = False
         self._logger = structlog.get_logger(__name__).bind(stage_plugin=self._name)
 
@@ -203,9 +205,7 @@ class StagePlugin(ABC):
         return StagePluginRegistration(metadata=metadata, builder=builder, provider=self)
 
     @abstractmethod
-    def registrations(
-        self, resources: StagePluginResources
-    ) -> Sequence[StagePluginRegistration]:
+    def registrations(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         """Return stage registrations exposed by the plugin."""
 
     def _ensure_initialized(self, resources: StagePluginResources) -> None:
@@ -216,9 +216,7 @@ class StagePlugin(ABC):
         self._logger.debug("stage.plugin.initialized")
 
     @hookimpl
-    def stage_builders(
-        self, resources: StagePluginResources
-    ) -> Sequence[StagePluginRegistration]:
+    def stage_builders(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         """Pluggy hook entry point delegating to :meth:`registrations`."""
         self._ensure_initialized(resources)
         registrations = self.registrations(resources)
@@ -559,11 +557,15 @@ class _StageRegistrationState:
             stage_type=registration.metadata.stage_type,
             provider_name=provider_name,
             dependencies=registration.metadata.dependencies,
-            provider=registration.provider if isinstance(registration.provider, StagePlugin) else None,
-            status="initialized"
-            if isinstance(registration.provider, StagePlugin)
-            and registration.provider.is_initialized
-            else "registered",
+            provider=(
+                registration.provider if isinstance(registration.provider, StagePlugin) else None
+            ),
+            status=(
+                "initialized"
+                if isinstance(registration.provider, StagePlugin)
+                and registration.provider.is_initialized
+                else "registered"
+            ),
         )
         state.stage_types.add(registration.metadata.stage_type)
         return state

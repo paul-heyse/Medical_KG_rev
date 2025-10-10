@@ -419,10 +419,7 @@ def _build_pipeline_job(
     *,
     resource_defs: Mapping[str, ResourceDefinition],
 ) -> BuiltPipelineJob:
-    stage_ops = {
-        stage.name: _make_stage_op(topology, stage)
-        for stage in topology.stages
-    }
+    stage_ops = {stage.name: _make_stage_op(topology, stage) for stage in topology.stages}
     order = _topological_order(topology.stages)
 
     safe_name = _normalise_name(topology.name)
@@ -671,7 +668,9 @@ def submit_to_dagster(
     )
 
 
-@sensor(name="pdf_ir_ready_sensor", minimum_interval_seconds=30, required_resource_keys={"job_ledger"})
+@sensor(
+    name="pdf_ir_ready_sensor", minimum_interval_seconds=30, required_resource_keys={"job_ledger"}
+)
 def pdf_ir_ready_sensor(context: SensorEvaluationContext):
     ledger: JobLedger = context.resources.job_ledger
     ready_requests: list[RunRequest] = []

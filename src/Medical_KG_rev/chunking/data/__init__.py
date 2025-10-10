@@ -11,4 +11,3 @@ def load_json_resource(name: str) -> Any:
         import json
 
         return json.load(handle)
-

@@ -4,11 +4,11 @@ import pytest
 
 pytest.importorskip("yaml")
 
-from Medical_KG_rev.services import GpuNotAvailableError
-from Medical_KG_rev.services.embedding.service import EmbeddingResponse, EmbeddingVector
 from Medical_KG_rev.orchestration.ingestion_pipeline import EmbeddingStage
 from Medical_KG_rev.orchestration.pipeline import PipelineContext
 from Medical_KG_rev.orchestration.stages import StageFailure
+from Medical_KG_rev.services import GpuNotAvailableError
+from Medical_KG_rev.services.embedding.service import EmbeddingResponse, EmbeddingVector
 
 
 @dataclass
@@ -49,13 +49,19 @@ def _context(chunks: list[dict]) -> PipelineContext:
 
 
 def test_embedding_stage_populates_context(monkeypatch: pytest.MonkeyPatch) -> None:
-    response = EmbeddingResponse(vectors=[_vector("single_vector.ns", "1"), _vector("single_vector.ns", "2")])
+    response = EmbeddingResponse(
+        vectors=[_vector("single_vector.ns", "1"), _vector("single_vector.ns", "2")]
+    )
     worker = StubWorker(responses=[response], calls=[])
     stage = EmbeddingStage(worker=worker, namespaces=["single_vector.ns"])
-    context = stage.execute(_context([
-        {"chunk_id": "1", "body": "alpha"},
-        {"chunk_id": "2", "body": "beta"},
-    ]))
+    context = stage.execute(
+        _context(
+            [
+                {"chunk_id": "1", "body": "alpha"},
+                {"chunk_id": "2", "body": "beta"},
+            ]
+        )
+    )
     assert worker.calls[0]["texts"] == ["alpha", "beta"]
     assert len(context.data["embeddings"]) == 2
     assert context.data["metrics"]["embedding"]["vectors"] == 2
@@ -70,7 +76,7 @@ def test_embedding_stage_raises_on_gpu_error() -> None:
     worker.run = failing_run  # type: ignore[assignment]
     stage = EmbeddingStage(worker=worker)
     with pytest.raises(StageFailure) as exc:
-        stage.execute(_context([{ "chunk_id": "1", "body": "text" }]))
+        stage.execute(_context([{"chunk_id": "1", "body": "text"}]))
     assert exc.value.error_type == "gpu_unavailable"
 
 
@@ -82,11 +88,15 @@ def test_embedding_stage_records_namespace_rollup(monkeypatch: pytest.MonkeyPatc
     ]
     worker = StubWorker(responses=[EmbeddingResponse(vectors=vectors)], calls=[])
     stage = EmbeddingStage(worker=worker)
-    context = stage.execute(_context([
-        {"chunk_id": "1", "body": "a"},
-        {"chunk_id": "2", "body": "b"},
-        {"chunk_id": "3", "body": "c"},
-    ]))
+    context = stage.execute(
+        _context(
+            [
+                {"chunk_id": "1", "body": "a"},
+                {"chunk_id": "2", "body": "b"},
+                {"chunk_id": "3", "body": "c"},
+            ]
+        )
+    )
     summary = context.data["embedding_summary"]
     assert summary["vectors"] == 3
     assert set(summary["per_namespace"].keys()) == {"single_vector.ns", "single_vector.other"}

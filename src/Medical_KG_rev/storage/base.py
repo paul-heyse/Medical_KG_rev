@@ -43,6 +43,7 @@ from typing import Any
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass
 class ObjectMetadata:
     """Metadata returned by object store operations.
@@ -60,6 +61,7 @@ class ObjectMetadata:
 # ==============================================================================
 # INTERFACES
 # ==============================================================================
+
 
 class StorageError(RuntimeError):
     """Base exception for storage backends."""

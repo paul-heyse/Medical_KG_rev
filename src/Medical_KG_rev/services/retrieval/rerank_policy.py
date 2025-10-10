@@ -40,8 +40,7 @@ class TenantRerankPolicy:
         payload = yaml.safe_load(candidate.read_text("utf-8")) or {}
         default_enabled = bool(payload.get("default_enabled", False))
         tenant_defaults = {
-            str(key): bool(value)
-            for key, value in (payload.get("tenants") or {}).items()
+            str(key): bool(value) for key, value in (payload.get("tenants") or {}).items()
         }
         experiment = payload.get("experiment") or {}
         ratio = float(experiment.get("rerank_ratio", 0.0))
@@ -75,4 +74,3 @@ class TenantRerankPolicy:
         enabled = threshold < self.experiment_ratio
         cohort = "experiment:rerank" if enabled else "experiment:control"
         return RerankDecision(enabled, cohort, "experiment")
-

@@ -51,7 +51,9 @@ class BGEReranker(BaseReranker):
 class MiniLMReranker(BaseReranker):
     """Fast cross encoder emulating MiniLM throughput."""
 
-    def __init__(self, batch_size: int = 64, device: str = "cpu", quantization: str | None = None) -> None:
+    def __init__(
+        self, batch_size: int = 64, device: str = "cpu", quantization: str | None = None
+    ) -> None:
         super().__init__(
             identifier="ms-marco-MiniLM-L6-v2",
             model_version="v1.0",

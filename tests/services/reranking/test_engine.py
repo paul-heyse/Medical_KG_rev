@@ -11,8 +11,8 @@ from Medical_KG_rev.services.reranking import (
     ScoredDocument,
 )
 from Medical_KG_rev.services.reranking.base import BaseReranker
-from Medical_KG_rev.services.reranking.models import QueryDocumentPair
 from Medical_KG_rev.services.reranking.errors import GPUUnavailableError
+from Medical_KG_rev.services.reranking.models import QueryDocumentPair
 
 
 def _build_engine() -> RerankingEngine:
@@ -98,7 +98,7 @@ def test_reranking_engine_enforces_tenant_isolation():
             documents=documents,
             reranker_id="cross_encoder:bge",
         )
-    except Exception as exc:  # noqa: BLE001 - verifying error type
+    except Exception as exc:
         assert exc.__class__.__name__ == "RerankingError"
     else:  # pragma: no cover - defensive assertion
         raise AssertionError("Expected reranking error for tenant mismatch")

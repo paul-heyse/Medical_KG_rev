@@ -15,7 +15,16 @@ class _RecordingFigureStorage:
         self.stored: list[tuple[str, str, str, bytes]] = []
         self.generated: list[tuple[str, str, str]] = []
 
-    def store_figure(self, tenant_id: str, document_id: str, figure_id: str, data: bytes, *, content_type: str, metadata):
+    def store_figure(
+        self,
+        tenant_id: str,
+        document_id: str,
+        figure_id: str,
+        data: bytes,
+        *,
+        content_type: str,
+        metadata,
+    ):
         self.stored.append((tenant_id, document_id, figure_id, data))
         return f"mineru/{tenant_id}/{document_id}/{figure_id}.png"
 
@@ -56,7 +65,9 @@ def test_figure_extraction_records_storage(tmp_path):
     storage = _RecordingFigureStorage()
     processor = MineruPostProcessor(figure_storage=storage)
 
-    document = processor.build_document(parsed, MineruRequest("tenant", "doc-fig", b"raw"), {"source": "integration-test"})
+    document = processor.build_document(
+        parsed, MineruRequest("tenant", "doc-fig", b"raw"), {"source": "integration-test"}
+    )
 
     assert storage.stored, "figure bytes should be stored"
     assert storage.generated, "figure URLs should be generated"

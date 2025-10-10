@@ -174,6 +174,7 @@ class JobLedgerEntry:
 # STAGE IMPLEMENTATIONS
 # ==============================================================================
 
+
 class JobLedgerError(RuntimeError):
     """Raised when ledger operations fail due to invalid state or operations."""
 
@@ -444,4 +445,3 @@ class JobLedger:
 # ==============================================================================
 
 __all__ = ["JobLedger", "JobLedgerEntry", "JobLedgerError", "JobTransition"]
-

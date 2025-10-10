@@ -48,11 +48,17 @@ class ABTestRunner:
             metrics_b = evaluate_query(results_b, judgments)
             improvements.append(metrics_b["ndcg@10"] - metrics_a["ndcg@10"])
         mean = sum(improvements) / max(len(improvements), 1)
-        variance = sum((value - mean) ** 2 for value in improvements) / max(len(improvements) - 1, 1)
+        variance = sum((value - mean) ** 2 for value in improvements) / max(
+            len(improvements) - 1, 1
+        )
         stderr = math.sqrt(variance / max(len(improvements), 1))
-        confidence = max(0.0, min(1.0, 0.5 * (1 + math.erf(mean / (stderr * math.sqrt(2))))) if stderr else 1.0)
+        confidence = max(
+            0.0, min(1.0, 0.5 * (1 + math.erf(mean / (stderr * math.sqrt(2))))) if stderr else 1.0
+        )
         metrics = {"mean_ndcg@10_delta": mean, "stderr": stderr}
-        return ABTestOutcome(variant_a=variant_a, variant_b=variant_b, metrics=metrics, confidence=confidence)
+        return ABTestOutcome(
+            variant_a=variant_a, variant_b=variant_b, metrics=metrics, confidence=confidence
+        )
 
 
 __all__ = ["ABTestOutcome", "ABTestRunner", "ExperimentConfig"]

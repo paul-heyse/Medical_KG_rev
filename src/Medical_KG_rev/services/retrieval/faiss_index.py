@@ -24,7 +24,9 @@ def _json_default(value: Any) -> Any:
         return list(value)
     if isinstance(value, bytes):
         return value.decode("utf-8")
-    return value if isinstance(value, (str, int, float, bool, type(None), list, dict)) else str(value)
+    return (
+        value if isinstance(value, (str, int, float, bool, type(None), list, dict)) else str(value)
+    )
 
 
 class FAISSIndex:
@@ -108,7 +110,9 @@ class FAISSIndex:
             )
         internal_id = self._next_internal_id
         self._next_internal_id += 1
-        self._cpu_index.add_with_ids(array.reshape(1, -1), np.asarray([internal_id], dtype=np.int64))
+        self._cpu_index.add_with_ids(
+            array.reshape(1, -1), np.asarray([internal_id], dtype=np.int64)
+        )
         self._id_to_internal[vector_id] = internal_id
         self._internal_to_id[internal_id] = vector_id
         meta_dict = dict(metadata or {})
@@ -167,7 +171,9 @@ class FAISSIndex:
             "metric": self.metric,
         }
         metadata_path = target.with_suffix(target.suffix + _METADATA_SUFFIX)
-        metadata_path.write_text(json.dumps(metadata_payload, default=_json_default), encoding="utf-8")
+        metadata_path.write_text(
+            json.dumps(metadata_payload, default=_json_default), encoding="utf-8"
+        )
 
     @classmethod
     def load(
@@ -203,13 +209,17 @@ class FAISSIndex:
                 for key, value in (payload.get("id_to_internal", {}) or {}).items()
             }
             instance._id_to_internal = id_to_internal
-            instance._internal_to_id = {internal: vector_id for vector_id, internal in id_to_internal.items()}
+            instance._internal_to_id = {
+                internal: vector_id for vector_id, internal in id_to_internal.items()
+            }
             metadata_payload = payload.get("metadata", {}) or {}
             instance._metadata = {
                 str(key): dict(value) if isinstance(value, Mapping) else dict(value)
                 for key, value in metadata_payload.items()
             }
-            instance._next_internal_id = int(payload.get("next_id", max(id_to_internal.values(), default=0) + 1))
+            instance._next_internal_id = int(
+                payload.get("next_id", max(id_to_internal.values(), default=0) + 1)
+            )
             instance.metric = str(payload.get("metric", instance.metric))
         else:  # pragma: no cover - defensive for manual migrations
             raise FileNotFoundError(f"Missing metadata file for FAISS index at {metadata_path}")

@@ -112,9 +112,7 @@ class SlidingWindowSegmenter(Segmenter):
                 if previous.metadata or window.metadata:
                     combined_metadata = {**(previous.metadata or {})}
                     combined_metadata.update(window.metadata or {})
-                merged.append(
-                    Segment(contexts=combined_contexts, metadata=combined_metadata)
-                )
+                merged.append(Segment(contexts=combined_contexts, metadata=combined_metadata))
             else:
                 merged.append(window)
         return merged
@@ -177,9 +175,7 @@ class SectionSegmenter(Segmenter):
         flush_text_segments()
         return results
 
-    def _merge_small_tail(
-        self, spans: list[list[BlockContext]]
-    ) -> list[list[BlockContext]]:
+    def _merge_small_tail(self, spans: list[list[BlockContext]]) -> list[list[BlockContext]]:
         if not spans:
             return []
         if len(spans) == 1:
@@ -236,9 +232,7 @@ class LayoutSegmenter(Segmenter):
                 if whitespace_ratio >= self.whitespace_threshold:
                     should_flush = True
             if should_flush and accumulator.contexts:
-                segment = accumulator.flush(
-                    metadata={"heading_level": last_heading_level}
-                )
+                segment = accumulator.flush(metadata={"heading_level": last_heading_level})
                 if segment:
                     segments.append(segment)
             accumulator.add(context)
@@ -257,4 +251,3 @@ class LayoutSegmenter(Segmenter):
         if tail:
             segments.append(tail)
         return segments
-

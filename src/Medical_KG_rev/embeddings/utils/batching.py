@@ -39,7 +39,9 @@ def paired_batches(
     """Yield aligned batches from two sequences of equal length."""
     if len(left) != len(right):
         raise ValueError("Sequences must be equal length")
-    for left_batch, right_batch in zip(batched(left, batch_size), batched(right, batch_size), strict=True):
+    for left_batch, right_batch in zip(
+        batched(left, batch_size), batched(right, batch_size), strict=True
+    ):
         yield left_batch, right_batch
 
 

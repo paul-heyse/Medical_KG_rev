@@ -14,16 +14,15 @@ This demonstrates the complete end-to-end PDF processing pipeline.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 
-def analyze_processed_pdfs() -> Dict[str, Any]:
+def analyze_processed_pdfs() -> dict[str, Any]:
     """Analyze the processed PDFs and their outputs."""
     output_dir = Path("mineru_direct_output")
 
@@ -35,7 +34,7 @@ def analyze_processed_pdfs() -> Dict[str, Any]:
         "output_files": [],
         "markdown_files": [],
         "json_files": [],
-        "processing_details": []
+        "processing_details": [],
     }
 
     # Find all processed PDF directories
@@ -52,7 +51,7 @@ def analyze_processed_pdfs() -> Dict[str, Any]:
                             "pdf_id": pdf_dir.name,
                             "filename": file_path.name,
                             "size_bytes": file_path.stat().st_size,
-                            "file_type": file_path.suffix
+                            "file_type": file_path.suffix,
                         }
                         results["output_files"].append(file_info)
 
@@ -69,29 +68,29 @@ def show_sample_outputs() -> None:
     output_dir = Path("mineru_direct_output")
 
     print("📄 Sample Markdown Output:")
-    print("="*70)
+    print("=" * 70)
 
     # Find first markdown file
     for pdf_dir in output_dir.iterdir():
         if pdf_dir.is_dir():
             md_file = pdf_dir / "auto" / f"{pdf_dir.name}.md"
             if md_file.exists():
-                with open(md_file, 'r', encoding='utf-8') as f:
+                with open(md_file, encoding="utf-8") as f:
                     content = f.read()
                     # Show first 500 characters
                     print(content[:500] + "..." if len(content) > 500 else content)
                 break
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("📊 Sample JSON Structure:")
-    print("="*70)
+    print("=" * 70)
 
     # Find first JSON file
     for pdf_dir in output_dir.iterdir():
         if pdf_dir.is_dir():
             json_file = pdf_dir / "auto" / f"{pdf_dir.name}_model.json"
             if json_file.exists():
-                with open(json_file, 'r', encoding='utf-8') as f:
+                with open(json_file, encoding="utf-8") as f:
                     data = json.load(f)
                     # Show structure
                     if isinstance(data, list) and len(data) > 0:
@@ -105,15 +104,15 @@ def show_sample_outputs() -> None:
 
 def main():
     """Main demonstration function."""
-    print("="*70)
+    print("=" * 70)
     print("COMPLETE PDF PROCESSING DEMONSTRATION")
-    print("="*70)
+    print("=" * 70)
     print("This demonstrates the full capabilities we've achieved:")
     print("✅ Downloaded random papers from OpenAlex using pyalex")
     print("✅ Processed PDFs with real MinerU (not simulation)")
     print("✅ Generated Markdown and JSON outputs")
     print("✅ Showcased GPU-accelerated processing")
-    print("="*70)
+    print("=" * 70)
 
     # Analyze processed PDFs
     results = analyze_processed_pdfs()
@@ -122,23 +121,23 @@ def main():
         print(f"❌ {results['error']}")
         return
 
-    print(f"📊 Processing Results:")
+    print("📊 Processing Results:")
     print(f"   Total PDFs processed: {results['total_pdfs_processed']}")
     print(f"   Total output files: {len(results['output_files'])}")
     print(f"   Markdown files: {len(results['markdown_files'])}")
     print(f"   JSON files: {len(results['json_files'])}")
 
-    print(f"\n📁 Output Files Generated:")
-    for file_info in results['output_files']:
-        size_kb = file_info['size_bytes'] / 1024
+    print("\n📁 Output Files Generated:")
+    for file_info in results["output_files"]:
+        size_kb = file_info["size_bytes"] / 1024
         print(f"   {file_info['pdf_id']}/{file_info['filename']} ({size_kb:.1f} KB)")
 
     # Show sample outputs
     show_sample_outputs()
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎉 DEMONSTRATION COMPLETE!")
-    print("="*70)
+    print("=" * 70)
     print("We have successfully demonstrated:")
     print("• Real PDF processing with MinerU (not simulation)")
     print("• GPU-accelerated processing using CUDA")
@@ -146,12 +145,12 @@ def main():
     print("• Markdown generation for human-readable content")
     print("• JSON generation for machine-readable structured data")
     print("• Integration with OpenAlex research paper discovery")
-    print("="*70)
+    print("=" * 70)
 
-    print(f"\n📁 All outputs saved in: mineru_direct_output/")
-    print(f"🔧 MinerU dependencies installed: doclayout-yolo, ultralytics, ftfy, pyclipper")
-    print(f"🚀 GPU processing: NVIDIA RTX 5090 with CUDA acceleration")
-    print("="*70)
+    print("\n📁 All outputs saved in: mineru_direct_output/")
+    print("🔧 MinerU dependencies installed: doclayout-yolo, ultralytics, ftfy, pyclipper")
+    print("🚀 GPU processing: NVIDIA RTX 5090 with CUDA acceleration")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

@@ -10,15 +10,13 @@ Usage:
 Environment Variables:
     PYALEX_EMAIL: Email address for pyalex API access (default: paul@heyse.io)
 """
-
-import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 
 def test_pdf_download_capability():
     """Test PDF download capability without actually downloading."""
@@ -31,7 +29,7 @@ def test_pdf_download_capability():
             tenant_id="test-tenant",
             domain="research",
             correlation_id="test-pdf-download-1",
-            parameters={"query": "open access medical research"}
+            parameters={"query": "open access medical research"},
         )
 
         print("🔍 Testing PDF download capability...")
@@ -39,20 +37,19 @@ def test_pdf_download_capability():
         documents = result.documents
 
         if documents:
-            pdf_docs = [doc for doc in documents
-                       if doc.metadata.get("pdf_urls")]
+            pdf_docs = [doc for doc in documents if doc.metadata.get("pdf_urls")]
 
             if pdf_docs:
                 doc = pdf_docs[0]
                 pdf_urls = doc.metadata.get("pdf_urls", [])
 
-                print(f"✅ PDF download capability verified")
+                print("✅ PDF download capability verified")
                 print(f"   Document ID: {doc.id}")
                 print(f"   PDF URLs found: {len(pdf_urls)}")
                 print(f"   Sample PDF URL: {pdf_urls[0]}")
 
                 # Test the download method exists and is callable
-                if hasattr(adapter, 'fetch_and_upload_pdf'):
+                if hasattr(adapter, "fetch_and_upload_pdf"):
                     print("   ✅ PDF download method available")
                     return True
                 else:
@@ -69,6 +66,7 @@ def test_pdf_download_capability():
         print(f"❌ PDF download capability test failed: {e}")
         return False
 
+
 def test_pdf_manifest_generation():
     """Test PDF manifest generation from documents."""
     try:
@@ -80,7 +78,7 @@ def test_pdf_manifest_generation():
             tenant_id="test-tenant",
             domain="research",
             correlation_id="test-pdf-manifest-1",
-            parameters={"query": "COVID-19 vaccine efficacy"}
+            parameters={"query": "COVID-19 vaccine efficacy"},
         )
 
         print("🔍 Testing PDF manifest generation...")
@@ -88,15 +86,14 @@ def test_pdf_manifest_generation():
         documents = result.documents
 
         if documents:
-            pdf_docs = [doc for doc in documents
-                       if doc.metadata.get("pdf_urls")]
+            pdf_docs = [doc for doc in documents if doc.metadata.get("pdf_urls")]
 
             if pdf_docs:
                 doc = pdf_docs[0]
                 manifest = doc.metadata.get("pdf_manifest")
 
                 if manifest:
-                    print(f"✅ PDF manifest generated successfully")
+                    print("✅ PDF manifest generated successfully")
                     print(f"   Document ID: {doc.id}")
                     print(f"   Manifest connector: {manifest.get('connector')}")
                     print(f"   Manifest assets: {len(manifest.get('assets', []))}")
@@ -124,6 +121,7 @@ def test_pdf_manifest_generation():
         print(f"❌ PDF manifest generation test failed: {e}")
         return False
 
+
 def test_metadata_extraction():
     """Test comprehensive metadata extraction."""
     try:
@@ -135,7 +133,7 @@ def test_metadata_extraction():
             tenant_id="test-tenant",
             domain="research",
             correlation_id="test-metadata-1",
-            parameters={"query": "artificial intelligence healthcare"}
+            parameters={"query": "artificial intelligence healthcare"},
         )
 
         print("🔍 Testing metadata extraction...")
@@ -148,15 +146,17 @@ def test_metadata_extraction():
 
             # Check for key metadata fields
             required_fields = [
-                "openalex_id", "title", "publication_year",
-                "authorships", "concepts"
+                "openalex_id",
+                "title",
+                "publication_year",
+                "authorships",
+                "concepts",
             ]
 
-            missing_fields = [field for field in required_fields
-                            if field not in metadata]
+            missing_fields = [field for field in required_fields if field not in metadata]
 
             if not missing_fields:
-                print(f"✅ Metadata extraction successful")
+                print("✅ Metadata extraction successful")
                 print(f"   Document ID: {doc.id}")
                 print(f"   OpenAlex ID: {metadata.get('openalex_id')}")
                 print(f"   Title: {metadata.get('title')}")
@@ -183,23 +183,21 @@ def test_metadata_extraction():
         print(f"❌ Metadata extraction test failed: {e}")
         return False
 
+
 def test_mineru_integration_readiness():
     """Test MinerU integration readiness."""
     try:
         # Check if MinerU service components are available
-        from Medical_KG_rev.services.mineru.service import MineruProcessor
         print("✅ MinerU service import successful")
 
         # Check if gRPC components are available
         try:
-            from Medical_KG_rev.gateway.grpc.server import MineruService
             print("✅ MinerU gRPC service available")
         except ImportError:
             print("⚠️  MinerU gRPC service not available (may need protobuf generation)")
 
         # Check if PDF storage components are available
         try:
-            from Medical_KG_rev.storage.clients import PdfStorageClient
             print("✅ PDF storage client available")
         except ImportError:
             print("⚠️  PDF storage client not available")
@@ -213,37 +211,33 @@ def test_mineru_integration_readiness():
         print(f"❌ MinerU integration test failed: {e}")
         return False
 
+
 def test_pipeline_orchestration_readiness():
     """Test pipeline orchestration readiness."""
     try:
         # Check if orchestration components are available
-        import Medical_KG_rev.orchestration
         print("✅ Orchestration module available")
 
         # Check if job ledger is available
         try:
-            import Medical_KG_rev.orchestration.ledger
             print("✅ Job ledger module available")
         except ImportError:
             print("⚠️  Job ledger module not available")
 
         # Check if Kafka components are available
         try:
-            import Medical_KG_rev.orchestration.kafka
             print("✅ Kafka module available")
         except ImportError:
             print("⚠️  Kafka module not available")
 
         # Check if pipeline state management is available
         try:
-            import Medical_KG_rev.orchestration.state
             print("✅ Pipeline state module available")
         except ImportError:
             print("⚠️  Pipeline state module not available")
 
         # Check if stage contracts are available
         try:
-            import Medical_KG_rev.orchestration.stages.contracts
             print("✅ Stage contracts module available")
         except ImportError:
             print("⚠️  Stage contracts module not available")
@@ -257,18 +251,19 @@ def test_pipeline_orchestration_readiness():
         print(f"❌ Pipeline orchestration test failed: {e}")
         return False
 
+
 def main():
     """Run all end-to-end tests."""
-    print("="*70)
+    print("=" * 70)
     print("END-TO-END PDF PROCESSING PIPELINE TEST")
-    print("="*70)
+    print("=" * 70)
 
     # Ensure email is set
     if not os.getenv("PYALEX_EMAIL"):
         os.environ["PYALEX_EMAIL"] = "paul@heyse.io"
 
     print(f"Email configuration: {os.getenv('PYALEX_EMAIL')}")
-    print("-"*70)
+    print("-" * 70)
 
     tests = [
         ("pdf_download_capability", test_pdf_download_capability),
@@ -288,9 +283,9 @@ def main():
             print(f"❌ {test_name} failed with exception: {e}")
             results[test_name] = False
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("END-TO-END TEST RESULTS SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     passed = sum(1 for result in results.values() if result)
     total = len(results)
@@ -298,13 +293,13 @@ def main():
     print(f"Total tests: {total}")
     print(f"Passed: {passed}")
     print(f"Failed: {total - passed}")
-    print("-"*70)
+    print("-" * 70)
 
     for test_name, result in results.items():
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{test_name:35} {status}")
 
-    print("-"*70)
+    print("-" * 70)
 
     if passed == total:
         print("🎉 ALL TESTS PASSED! PDF processing pipeline is ready for production.")
@@ -318,10 +313,11 @@ def main():
         print("⚠️  Some tests failed. Review output above for details.")
         print("   Core pyalex integration is working, but some components may need attention.")
 
-    print("="*70)
+    print("=" * 70)
 
     # Exit with appropriate code
     sys.exit(total - passed)
+
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Method ordering checker for Medical_KG_rev repository.
+"""Method ordering checker for Medical_KG_rev repository.
 
 This script validates that methods in classes follow the established ordering:
 - Special methods first (__init__, __repr__, etc.)
@@ -19,7 +18,6 @@ import argparse
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 
 class MethodOrderingChecker:
@@ -28,8 +26,8 @@ class MethodOrderingChecker:
     def __init__(self, verbose: bool = False, auto_fix: bool = False):
         self.verbose = verbose
         self.auto_fix = auto_fix
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
         self.files_processed = 0
         self.classes_checked = 0
 
@@ -43,7 +41,7 @@ class MethodOrderingChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -65,7 +63,9 @@ class MethodOrderingChecker:
         self.files_processed += 1
         return success
 
-    def _check_class_method_ordering(self, class_node: ast.ClassDef, file_path: Path, content: str) -> bool:
+    def _check_class_method_ordering(
+        self, class_node: ast.ClassDef, file_path: Path, content: str
+    ) -> bool:
         """Check method ordering within a class."""
         methods = []
 
@@ -96,7 +96,7 @@ class MethodOrderingChecker:
                 class_methods.append(method)
             elif self._is_static_method(method):
                 static_methods.append(method)
-            elif method.name.startswith('_'):
+            elif method.name.startswith("_"):
                 private_methods.append(method)
             else:
                 public_methods.append(method)
@@ -110,7 +110,14 @@ class MethodOrderingChecker:
         static_methods.sort(key=lambda m: m.name)
 
         # Expected order
-        expected_order = special_methods + public_methods + private_methods + properties + class_methods + static_methods
+        expected_order = (
+            special_methods
+            + public_methods
+            + private_methods
+            + properties
+            + class_methods
+            + static_methods
+        )
 
         # Check if current order matches expected order
         current_order = methods
@@ -123,13 +130,42 @@ class MethodOrderingChecker:
     def _is_special_method(self, method: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         """Check if method is a special method (__init__, __repr__, etc.)."""
         special_methods = {
-            '__init__', '__new__', '__del__', '__repr__', '__str__', '__bytes__',
-            '__format__', '__lt__', '__le__', '__eq__', '__ne__', '__gt__', '__ge__',
-            '__hash__', '__bool__', '__getattr__', '__getattribute__', '__setattr__',
-            '__delattr__', '__dir__', '__getitem__', '__setitem__', '__delitem__',
-            '__iter__', '__reversed__', '__contains__', '__len__', '__length_hint__',
-            '__call__', '__enter__', '__exit__', '__await__', '__aiter__', '__anext__',
-            '__aenter__', '__aexit__'
+            "__init__",
+            "__new__",
+            "__del__",
+            "__repr__",
+            "__str__",
+            "__bytes__",
+            "__format__",
+            "__lt__",
+            "__le__",
+            "__eq__",
+            "__ne__",
+            "__gt__",
+            "__ge__",
+            "__hash__",
+            "__bool__",
+            "__getattr__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__dir__",
+            "__getitem__",
+            "__setitem__",
+            "__delitem__",
+            "__iter__",
+            "__reversed__",
+            "__contains__",
+            "__len__",
+            "__length_hint__",
+            "__call__",
+            "__enter__",
+            "__exit__",
+            "__await__",
+            "__aiter__",
+            "__anext__",
+            "__aenter__",
+            "__aexit__",
         }
         return method.name in special_methods
 
@@ -151,15 +187,18 @@ class MethodOrderingChecker:
 
     def _get_method_sort_key(self, method: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
         """Get sort key for special methods (__init__ first, then alphabetical)."""
-        if method.name == '__init__':
-            return '0__init__'  # __init__ always first
+        if method.name == "__init__":
+            return "0__init__"  # __init__ always first
         else:
-            return f'1{method.name}'  # Other special methods alphabetically
+            return f"1{method.name}"  # Other special methods alphabetically
 
-    def _report_ordering_issues(self, class_node: ast.ClassDef, file_path: Path,
-                              current_order: List, expected_order: List) -> None:
+    def _report_ordering_issues(
+        self, class_node: ast.ClassDef, file_path: Path, current_order: list, expected_order: list
+    ) -> None:
         """Report method ordering issues."""
-        self.errors.append(f"{file_path}:{class_node.lineno}: Class '{class_node.name}' has incorrect method ordering")
+        self.errors.append(
+            f"{file_path}:{class_node.lineno}: Class '{class_node.name}' has incorrect method ordering"
+        )
 
         if self.verbose:
             self.log(f"  Current order: {[m.name for m in current_order]}")
@@ -176,7 +215,9 @@ class MethodOrderingChecker:
 
         for file_path in python_files:
             # Skip excluded files
-            if any(pattern in str(file_path) for pattern in ['__pycache__', '.git', '.pytest_cache']):
+            if any(
+                pattern in str(file_path) for pattern in ["__pycache__", ".git", ".pytest_cache"]
+            ):
                 continue
 
             if not self.check_file(file_path):
@@ -201,16 +242,16 @@ class MethodOrderingChecker:
             for warning in self.warnings:
                 report.append(f"  ⚠️  {warning}")
 
-        report.append(f"\nSUMMARY:")
+        report.append("\nSUMMARY:")
         report.append(f"  Files processed: {self.files_processed}")
         report.append(f"  Classes checked: {self.classes_checked}")
         report.append(f"  Total Errors: {len(self.errors)}")
         report.append(f"  Total Warnings: {len(self.warnings)}")
 
         if len(self.errors) == 0:
-            report.append(f"  Status: ✅ ALL CHECKS PASSED")
+            report.append("  Status: ✅ ALL CHECKS PASSED")
         else:
-            report.append(f"  Status: ❌ ERRORS FOUND")
+            report.append("  Status: ❌ ERRORS FOUND")
 
         return "\n".join(report)
 
@@ -218,7 +259,9 @@ class MethodOrderingChecker:
 def main():
     """Main entry point for the method ordering checker."""
     parser = argparse.ArgumentParser(description="Check method ordering compliance")
-    parser.add_argument("path", nargs="?", default=".", help="Path to check (default: current directory)")
+    parser.add_argument(
+        "path", nargs="?", default=".", help="Path to check (default: current directory)"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--auto-fix", action="store_true", help="Automatically fix ordering issues")
 

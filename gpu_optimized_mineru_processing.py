@@ -16,13 +16,12 @@ Features:
 """
 
 import json
-import os
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -31,7 +30,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 class GPUOptimizedMineruProcessor:
     """GPU-optimized MinerU processor with monitoring."""
 
-    def __init__(self, input_dir: str = "random_papers_output/pdfs", output_dir: str = "gpu_optimized_output"):
+    def __init__(
+        self, input_dir: str = "random_papers_output/pdfs", output_dir: str = "gpu_optimized_output"
+    ):
         """Initialize the GPU-optimized processor."""
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
@@ -56,7 +57,7 @@ class GPUOptimizedMineruProcessor:
             "processing_errors": 0,
             "processing_details": [],
             "gpu_utilization": [],
-            "processing_times": []
+            "processing_times": [],
         }
 
     def gpu_warmup(self) -> bool:
@@ -108,22 +109,25 @@ class GPUOptimizedMineruProcessor:
             while self.monitoring_active:
                 try:
                     result = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,temperature.gpu,power.draw",
-                         "--format=csv,noheader,nounits"],
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=utilization.gpu,memory.used,temperature.gpu,power.draw",
+                            "--format=csv,noheader,nounits",
+                        ],
                         capture_output=True,
                         text=True,
-                        timeout=5
+                        timeout=5,
                     )
 
                     if result.returncode == 0:
-                        parts = [p.strip() for p in result.stdout.strip().split(',')]
+                        parts = [p.strip() for p in result.stdout.strip().split(",")]
                         if len(parts) >= 4:
                             metric = {
                                 "timestamp": time.time(),
                                 "utilization_percent": int(parts[0]),
                                 "memory_used_mb": int(parts[1]),
                                 "temperature_c": int(parts[2]),
-                                "power_draw_w": float(parts[3]) if parts[3] != 'N/A' else 0
+                                "power_draw_w": float(parts[3]) if parts[3] != "N/A" else 0,
                             }
                             self.gpu_metrics.append(metric)
 
@@ -135,10 +139,10 @@ class GPUOptimizedMineruProcessor:
         self.monitor_thread.start()
         print("📊 GPU monitoring started")
 
-    def stop_gpu_monitoring(self) -> Dict[str, Any]:
+    def stop_gpu_monitoring(self) -> dict[str, Any]:
         """Stop GPU monitoring and return summary."""
         self.monitoring_active = False
-        if hasattr(self, 'monitor_thread'):
+        if hasattr(self, "monitor_thread"):
             self.monitor_thread.join()
 
         if not self.gpu_metrics:
@@ -164,13 +168,13 @@ class GPUOptimizedMineruProcessor:
             "min_temperature_c": min(temperatures),
             "avg_power_w": sum(powers) / len(powers) if powers else 0,
             "max_power_w": max(powers) if powers else 0,
-            "min_power_w": min(powers) if powers else 0
+            "min_power_w": min(powers) if powers else 0,
         }
 
         print("📊 GPU monitoring stopped")
         return summary
 
-    def process_pdf_with_gpu_optimization(self, pdf_path: Path) -> Dict[str, Any]:
+    def process_pdf_with_gpu_optimization(self, pdf_path: Path) -> dict[str, Any]:
         """Process a PDF with GPU optimization."""
         try:
             print(f"🔄 Processing PDF with GPU optimization: {pdf_path.name}")
@@ -185,13 +189,20 @@ class GPUOptimizedMineruProcessor:
             original_argv = sys.argv.copy()
             sys.argv = [
                 "mineru",
-                "--path", str(pdf_path),
-                "--output", str(self.output_dir),
-                "--method", "auto",
-                "--backend", "pipeline",
-                "--device", "cuda",
-                "--formula", "true",
-                "--table", "true"
+                "--path",
+                str(pdf_path),
+                "--output",
+                str(self.output_dir),
+                "--method",
+                "auto",
+                "--backend",
+                "pipeline",
+                "--device",
+                "cuda",
+                "--formula",
+                "true",
+                "--table",
+                "true",
             ]
 
             start_time = time.time()
@@ -213,11 +224,13 @@ class GPUOptimizedMineruProcessor:
                     if auto_dir.exists():
                         for file_path in auto_dir.iterdir():
                             if file_path.is_file():
-                                output_files.append({
-                                    "path": str(file_path),
-                                    "size_bytes": file_path.stat().st_size,
-                                    "type": file_path.suffix
-                                })
+                                output_files.append(
+                                    {
+                                        "path": str(file_path),
+                                        "size_bytes": file_path.stat().st_size,
+                                        "type": file_path.suffix,
+                                    }
+                                )
 
             # Generate results
             result = {
@@ -225,16 +238,24 @@ class GPUOptimizedMineruProcessor:
                 "processing_time_seconds": processing_time,
                 "output_files": output_files,
                 "gpu_metrics": gpu_summary,
-                "success": True
+                "success": True,
             }
 
             print(f"✅ Processed: {pdf_path.name} ({processing_time:.2f}s)")
             if "error" not in gpu_summary:
-                print(f"   GPU utilization: {gpu_summary['avg_utilization_percent']:.1f}% avg, {gpu_summary['max_utilization_percent']:.1f}% max")
-                print(f"   GPU memory: {gpu_summary['avg_memory_mb']:.1f} MB avg, {gpu_summary['max_memory_mb']:.1f} MB max")
-                print(f"   GPU temperature: {gpu_summary['avg_temperature_c']:.1f}°C avg, {gpu_summary['max_temperature_c']:.1f}°C max")
-                if gpu_summary['avg_power_w'] > 0:
-                    print(f"   GPU power: {gpu_summary['avg_power_w']:.1f}W avg, {gpu_summary['max_power_w']:.1f}W max")
+                print(
+                    f"   GPU utilization: {gpu_summary['avg_utilization_percent']:.1f}% avg, {gpu_summary['max_utilization_percent']:.1f}% max"
+                )
+                print(
+                    f"   GPU memory: {gpu_summary['avg_memory_mb']:.1f} MB avg, {gpu_summary['max_memory_mb']:.1f} MB max"
+                )
+                print(
+                    f"   GPU temperature: {gpu_summary['avg_temperature_c']:.1f}°C avg, {gpu_summary['max_temperature_c']:.1f}°C max"
+                )
+                if gpu_summary["avg_power_w"] > 0:
+                    print(
+                        f"   GPU power: {gpu_summary['avg_power_w']:.1f}W avg, {gpu_summary['max_power_w']:.1f}W max"
+                    )
             print(f"   Output files: {len(output_files)}")
 
             return result
@@ -245,20 +266,16 @@ class GPUOptimizedMineruProcessor:
                 self.stop_gpu_monitoring()
 
             print(f"❌ Error processing {pdf_path.name}: {e}")
-            return {
-                "pdf_file": str(pdf_path),
-                "error": str(e),
-                "success": False
-            }
+            return {"pdf_file": str(pdf_path), "error": str(e), "success": False}
 
     def process_all_pdfs(self) -> None:
         """Process all PDFs with GPU optimization."""
-        print("="*70)
+        print("=" * 70)
         print("GPU-OPTIMIZED MINERU PROCESSING")
-        print("="*70)
+        print("=" * 70)
         print(f"Input directory: {self.input_dir}")
         print(f"Output directory: {self.output_dir}")
-        print("-"*70)
+        print("-" * 70)
 
         # Step 1: GPU warmup
         if not self.gpu_warmup():
@@ -297,11 +314,9 @@ class GPUOptimizedMineruProcessor:
             except Exception as e:
                 print(f"❌ Unexpected error processing {pdf_path.name}: {e}")
                 self.results["processing_errors"] += 1
-                self.results["processing_details"].append({
-                    "pdf_file": str(pdf_path),
-                    "error": str(e),
-                    "success": False
-                })
+                self.results["processing_details"].append(
+                    {"pdf_file": str(pdf_path), "error": str(e), "success": False}
+                )
 
         # Step 4: Generate summary report
         self.generate_summary_report()
@@ -311,8 +326,14 @@ class GPUOptimizedMineruProcessor:
         report_file = self.reports_dir / "gpu_optimized_summary.json"
 
         # Calculate overall statistics
-        total_processing_time = sum(self.results["processing_times"]) if self.results["processing_times"] else 0
-        avg_processing_time = total_processing_time / len(self.results["processing_times"]) if self.results["processing_times"] else 0
+        total_processing_time = (
+            sum(self.results["processing_times"]) if self.results["processing_times"] else 0
+        )
+        avg_processing_time = (
+            total_processing_time / len(self.results["processing_times"])
+            if self.results["processing_times"]
+            else 0
+        )
 
         # Calculate GPU statistics
         gpu_stats = {}
@@ -337,7 +358,7 @@ class GPUOptimizedMineruProcessor:
                 "avg_temperature_c": sum(all_temperatures) / len(all_temperatures),
                 "max_temperature_c": max(all_temperatures),
                 "avg_power_w": sum(all_powers) / len(all_powers) if all_powers else 0,
-                "max_power_w": max(all_powers) if all_powers else 0
+                "max_power_w": max(all_powers) if all_powers else 0,
             }
 
         summary = {
@@ -350,11 +371,15 @@ class GPUOptimizedMineruProcessor:
                 "pdfs_found": self.results["pdfs_found"],
                 "pdfs_processed": self.results["pdfs_processed"],
                 "processing_errors": self.results["processing_errors"],
-                "success_rate": self.results["pdfs_processed"] / self.results["pdfs_found"] if self.results["pdfs_found"] > 0 else 0,
+                "success_rate": (
+                    self.results["pdfs_processed"] / self.results["pdfs_found"]
+                    if self.results["pdfs_found"] > 0
+                    else 0
+                ),
                 "total_processing_time_seconds": total_processing_time,
                 "avg_processing_time_seconds": avg_processing_time,
-                "gpu_statistics": gpu_stats
-            }
+                "gpu_statistics": gpu_stats,
+            },
         }
 
         # Save report
@@ -362,9 +387,9 @@ class GPUOptimizedMineruProcessor:
             json.dump(summary, f, indent=2)
 
         # Print summary
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("GPU-OPTIMIZED PROCESSING SUMMARY")
-        print("="*70)
+        print("=" * 70)
         print(f"PDFs found: {self.results['pdfs_found']}")
         print(f"PDFs processed: {self.results['pdfs_processed']}")
         print(f"Processing errors: {self.results['processing_errors']}")
@@ -378,20 +403,20 @@ class GPUOptimizedMineruProcessor:
             print(f"Average processing time: {avg_processing_time:.2f}s per PDF")
 
         if gpu_stats:
-            print(f"\nGPU Performance:")
+            print("\nGPU Performance:")
             print(f"   Average utilization: {gpu_stats['avg_utilization_percent']:.1f}%")
             print(f"   Maximum utilization: {gpu_stats['max_utilization_percent']:.1f}%")
             print(f"   Average memory usage: {gpu_stats['avg_memory_mb']:.1f} MB")
             print(f"   Maximum memory usage: {gpu_stats['max_memory_mb']:.1f} MB")
             print(f"   Average temperature: {gpu_stats['avg_temperature_c']:.1f}°C")
             print(f"   Maximum temperature: {gpu_stats['max_temperature_c']:.1f}°C")
-            if gpu_stats['avg_power_w'] > 0:
+            if gpu_stats["avg_power_w"] > 0:
                 print(f"   Average power draw: {gpu_stats['avg_power_w']:.1f}W")
                 print(f"   Maximum power draw: {gpu_stats['max_power_w']:.1f}W")
 
         print(f"\n📁 Results saved to: {self.output_dir}")
         print(f"📊 Summary report: {report_file}")
-        print("="*70)
+        print("=" * 70)
 
 
 def main():

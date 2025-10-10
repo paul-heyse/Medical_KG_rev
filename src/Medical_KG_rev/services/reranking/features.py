@@ -114,9 +114,11 @@ def _derive_interaction_feature(features: MutableMapping[str, float]) -> None:
     lexical = features.get("bm25_score", 0.0)
     dense = features.get("dense_score", 0.0)
     overlap = features.get("query_document_overlap", 0.0)
-    features["lexical_semantic_interaction"] = mean([lexical, dense, overlap]) if any(
-        value for value in (lexical, dense, overlap)
-    ) else 0.0
+    features["lexical_semantic_interaction"] = (
+        mean([lexical, dense, overlap])
+        if any(value for value in (lexical, dense, overlap))
+        else 0.0
+    )
 
 
 @dataclass(slots=True)

@@ -13,12 +13,10 @@ Usage:
 Environment Variables:
     PYALEX_EMAIL: Email address for pyalex API access (default: paul@heyse.io)
 """
-
-import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -30,7 +28,9 @@ from Medical_KG_rev.services.mineru.types import MineruRequest
 class RealPDFProcessor:
     """Process real PDFs with MinerU."""
 
-    def __init__(self, input_dir: str = "random_papers_output/pdfs", output_dir: str = "real_pdf_output"):
+    def __init__(
+        self, input_dir: str = "random_papers_output/pdfs", output_dir: str = "real_pdf_output"
+    ):
         """Initialize the processor."""
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
@@ -52,10 +52,10 @@ class RealPDFProcessor:
             "pdfs_found": 0,
             "pdfs_processed": 0,
             "processing_errors": 0,
-            "processing_details": []
+            "processing_details": [],
         }
 
-    def find_pdfs(self) -> List[Path]:
+    def find_pdfs(self) -> list[Path]:
         """Find PDF files in the input directory."""
         if not self.input_dir.exists():
             print(f"❌ Input directory not found: {self.input_dir}")
@@ -70,7 +70,7 @@ class RealPDFProcessor:
 
         return pdfs
 
-    def process_pdf_with_mineru(self, pdf_path: Path) -> Dict[str, Any]:
+    def process_pdf_with_mineru(self, pdf_path: Path) -> dict[str, Any]:
         """Process a PDF using MinerU."""
         try:
             print(f"🔄 Processing PDF: {pdf_path.name}")
@@ -84,9 +84,7 @@ class RealPDFProcessor:
 
             # Create MinerU request
             request = MineruRequest(
-                tenant_id="real-pdf-test",
-                document_id=doc_id,
-                content=pdf_content
+                tenant_id="real-pdf-test", document_id=doc_id, content=pdf_content
             )
 
             # Process with MinerU
@@ -120,7 +118,7 @@ class RealPDFProcessor:
                 "markdown_file": str(markdown_file),
                 "json_file": str(json_file),
                 "worker_id": response.metadata.worker_id if response.metadata else None,
-                "success": True
+                "success": True,
             }
 
             print(f"✅ Processed: {pdf_path.name} ({processing_time:.2f}s)")
@@ -134,11 +132,7 @@ class RealPDFProcessor:
 
         except Exception as e:
             print(f"❌ Error processing {pdf_path.name}: {e}")
-            return {
-                "pdf_file": str(pdf_path),
-                "error": str(e),
-                "success": False
-            }
+            return {"pdf_file": str(pdf_path), "error": str(e), "success": False}
 
     def generate_markdown(self, response, pdf_path: Path) -> str:
         """Generate Markdown content from MinerU response."""
@@ -199,10 +193,9 @@ class RealPDFProcessor:
         import json
 
         if not response.document:
-            return json.dumps({
-                "error": f"Processing failed for {pdf_path.name}",
-                "success": False
-            }, indent=2)
+            return json.dumps(
+                {"error": f"Processing failed for {pdf_path.name}", "success": False}, indent=2
+            )
 
         doc = response.document
 
@@ -219,7 +212,7 @@ class RealPDFProcessor:
                     "bbox": block.bbox,
                     "confidence": block.confidence,
                     "reading_order": block.reading_order,
-                    "metadata": block.metadata
+                    "metadata": block.metadata,
                 }
                 for block in doc.blocks
             ],
@@ -236,10 +229,10 @@ class RealPDFProcessor:
                             "column": cell.column,
                             "content": cell.content,
                             "rowspan": cell.rowspan,
-                            "colspan": cell.colspan
+                            "colspan": cell.colspan,
                         }
                         for cell in table.cells
-                    ]
+                    ],
                 }
                 for table in doc.tables
             ],
@@ -249,7 +242,7 @@ class RealPDFProcessor:
                     "page": figure.page,
                     "title": figure.title,
                     "bbox": figure.bbox,
-                    "metadata": figure.metadata
+                    "metadata": figure.metadata,
                 }
                 for figure in doc.figures
             ],
@@ -259,7 +252,7 @@ class RealPDFProcessor:
                     "page": equation.page,
                     "latex": equation.latex,
                     "bbox": equation.bbox,
-                    "metadata": equation.metadata
+                    "metadata": equation.metadata,
                 }
                 for equation in doc.equations
             ],
@@ -267,28 +260,40 @@ class RealPDFProcessor:
             "provenance": doc.provenance,
             "processing_metadata": {
                 "worker_id": response.metadata.worker_id if response.metadata else None,
-                "processing_time_ms": response.metadata.processing_time_ms if response.metadata else None,
+                "processing_time_ms": (
+                    response.metadata.processing_time_ms if response.metadata else None
+                ),
                 "gpu_utilization": response.metadata.gpu_utilization if response.metadata else None,
                 "mineru_version": response.metadata.mineru_version if response.metadata else None,
                 "model_names": response.metadata.model_names if response.metadata else {},
                 "gpu_id": response.metadata.gpu_id if response.metadata else None,
-                "started_at": response.metadata.started_at.isoformat() if response.metadata and response.metadata.started_at else None,
-                "completed_at": response.metadata.completed_at.isoformat() if response.metadata and response.metadata.completed_at else None,
-                "duration_seconds": response.metadata.duration_seconds if response.metadata else None,
+                "started_at": (
+                    response.metadata.started_at.isoformat()
+                    if response.metadata and response.metadata.started_at
+                    else None
+                ),
+                "completed_at": (
+                    response.metadata.completed_at.isoformat()
+                    if response.metadata and response.metadata.completed_at
+                    else None
+                ),
+                "duration_seconds": (
+                    response.metadata.duration_seconds if response.metadata else None
+                ),
             },
-            "success": True
+            "success": True,
         }
 
         return json.dumps(json_data, indent=2, default=str)
 
     def process_all_pdfs(self) -> None:
         """Process all PDFs in the input directory."""
-        print("="*70)
+        print("=" * 70)
         print("REAL PDF PROCESSING WITH MINERU")
-        print("="*70)
+        print("=" * 70)
         print(f"Input directory: {self.input_dir}")
         print(f"Output directory: {self.output_dir}")
-        print("-"*70)
+        print("-" * 70)
 
         # Find PDFs
         pdfs = self.find_pdfs()
@@ -311,11 +316,9 @@ class RealPDFProcessor:
             except Exception as e:
                 print(f"❌ Unexpected error processing {pdf_path.name}: {e}")
                 self.results["processing_errors"] += 1
-                self.results["processing_details"].append({
-                    "pdf_file": str(pdf_path),
-                    "error": str(e),
-                    "success": False
-                })
+                self.results["processing_details"].append(
+                    {"pdf_file": str(pdf_path), "error": str(e), "success": False}
+                )
 
         # Generate summary report
         self.generate_summary_report()
@@ -332,8 +335,8 @@ class RealPDFProcessor:
             "success_rate": {
                 "pdfs_found": self.results["pdfs_found"],
                 "pdfs_processed": self.results["pdfs_processed"],
-                "processing_errors": self.results["processing_errors"]
-            }
+                "processing_errors": self.results["processing_errors"],
+            },
         }
 
         # Calculate success rate
@@ -344,13 +347,14 @@ class RealPDFProcessor:
 
         # Save report
         import json
+
         with open(report_file, "w") as f:
             json.dump(summary, f, indent=2)
 
         # Print summary
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("PROCESSING SUMMARY")
-        print("="*70)
+        print("=" * 70)
         print(f"PDFs found: {self.results['pdfs_found']}")
         print(f"PDFs processed: {self.results['pdfs_processed']}")
         print(f"Processing errors: {self.results['processing_errors']}")
@@ -361,7 +365,7 @@ class RealPDFProcessor:
 
         print(f"\n📁 Results saved to: {self.output_dir}")
         print(f"📊 Summary report: {report_file}")
-        print("="*70)
+        print("=" * 70)
 
 
 def main():

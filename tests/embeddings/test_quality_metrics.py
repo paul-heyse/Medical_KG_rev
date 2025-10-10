@@ -3,7 +3,7 @@ import types
 import pytest
 
 from Medical_KG_rev.embeddings.utils.normalization import normalize_batch
-from Medical_KG_rev.embeddings.utils.tokenization import TokenLimitExceededError, TokenizerCache
+from Medical_KG_rev.embeddings.utils.tokenization import TokenizerCache, TokenLimitExceededError
 from Medical_KG_rev.services.embedding.service import BatchController
 
 
@@ -29,7 +29,9 @@ def test_tokenizer_cache_reuses_wrapper(monkeypatch: pytest.MonkeyPatch) -> None
         "Medical_KG_rev.embeddings.utils.tokenization.logger",
         types.SimpleNamespace(debug=lambda *args, **kwargs: None, error=lambda *a, **k: None),
     )
-    monkeypatch.setattr("Medical_KG_rev.embeddings.utils.tokenization._TokenizerWrapper", StubWrapper)
+    monkeypatch.setattr(
+        "Medical_KG_rev.embeddings.utils.tokenization._TokenizerWrapper", StubWrapper
+    )
     cache.ensure_within_limit(model_id="demo", texts=["a b", "c"], max_tokens=10)
     cache.ensure_within_limit(model_id="demo", texts=["d"], max_tokens=10)
     assert counts == ["a b", "c", "d"]
@@ -49,7 +51,9 @@ def test_tokenizer_cache_raises_on_exceed(monkeypatch: pytest.MonkeyPatch) -> No
         "Medical_KG_rev.embeddings.utils.tokenization.logger",
         types.SimpleNamespace(error=lambda *args, **kwargs: None, debug=lambda *a, **k: None),
     )
-    monkeypatch.setattr("Medical_KG_rev.embeddings.utils.tokenization._TokenizerWrapper", StubWrapper)
+    monkeypatch.setattr(
+        "Medical_KG_rev.embeddings.utils.tokenization._TokenizerWrapper", StubWrapper
+    )
     with pytest.raises(TokenLimitExceededError):
         cache.ensure_within_limit(model_id="demo", texts=["long text"], max_tokens=10)
 

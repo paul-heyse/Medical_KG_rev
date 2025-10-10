@@ -1,22 +1,22 @@
+from Medical_KG_rev.services.reranking import RerankResult
 from Medical_KG_rev.services.reranking.pipeline.cache import (
     RedisCacheBackend,
     RerankCacheManager,
 )
-from Medical_KG_rev.services.reranking import RerankResult
 
 
 class FakeRedis:
     def __init__(self) -> None:
         self.store = {}
 
-    def get(self, key: str):  # noqa: D401 - simple fake
+    def get(self, key: str):
         return self.store.get(key)
 
-    def setex(self, key: str, ttl: int, value: str) -> None:  # noqa: ARG002
+    def setex(self, key: str, ttl: int, value: str) -> None:
         self.store[key] = value
 
     def scan_iter(self, match: str):
-        return [key for key in self.store if key.startswith(match.split('*')[0])]
+        return [key for key in self.store if key.startswith(match.split("*")[0])]
 
     def delete(self, *keys: str) -> None:
         for key in keys:

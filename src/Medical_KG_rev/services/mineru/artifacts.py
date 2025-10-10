@@ -65,6 +65,7 @@ from Medical_KG_rev.models.table import Table
 # DATA MODELS
 # ==============================================================================
 
+
 @dataclass(slots=True)
 class ArtifactCollection(Generic[ArtifactType]):
     """Container that provides fast lookups for artefacts by identifier.
@@ -272,6 +273,7 @@ class MineruArtifacts:
 # FACTORY FUNCTIONS
 # ==============================================================================
 
+
 def build_artifacts(
     *,
     tables: Iterable[Table],
@@ -338,4 +340,3 @@ __all__ = [
     "MineruArtifacts",
     "build_artifacts",
 ]
-

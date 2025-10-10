@@ -18,7 +18,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -62,10 +62,10 @@ class RandomPaperSimulationDemo:
             "pdfs_downloaded": 0,
             "pdfs_processed": 0,
             "processing_errors": 0,
-            "processing_details": []
+            "processing_details": [],
         }
 
-    def fetch_random_papers(self) -> List[Dict[str, Any]]:
+    def fetch_random_papers(self) -> list[dict[str, Any]]:
         """Fetch random papers from OpenAlex."""
         print(f"🔍 Fetching {self.sample_size} random papers from OpenAlex...")
 
@@ -75,7 +75,7 @@ class RandomPaperSimulationDemo:
                 tenant_id="demo-papers",
                 domain="research",
                 correlation_id="demo-fetch-1",
-                parameters={"query": "machine learning medical diagnosis"}
+                parameters={"query": "machine learning medical diagnosis"},
             )
 
             result = self.adapter.run(context)
@@ -83,7 +83,7 @@ class RandomPaperSimulationDemo:
 
             if documents:
                 # Take first N documents as our "random" sample
-                selected_docs = documents[:self.sample_size]
+                selected_docs = documents[: self.sample_size]
 
                 # Convert documents to paper format
                 papers = []
@@ -97,8 +97,12 @@ class RandomPaperSimulationDemo:
                         "authorships": doc.metadata.get("authorships", []),
                         "publication_year": doc.metadata.get("publication_year"),
                         "is_open_access": doc.metadata.get("is_open_access", False),
-                        "abstract": doc.sections[0].blocks[0].text if doc.sections and doc.sections[0].blocks else "",
-                        "document": doc
+                        "abstract": (
+                            doc.sections[0].blocks[0].text
+                            if doc.sections and doc.sections[0].blocks
+                            else ""
+                        ),
+                        "document": doc,
                     }
                     papers.append(paper)
 
@@ -113,7 +117,7 @@ class RandomPaperSimulationDemo:
             print(f"❌ Error fetching papers: {e}")
             return []
 
-    def download_pdf(self, paper: Dict[str, Any]) -> Optional[Path]:
+    def download_pdf(self, paper: dict[str, Any]) -> Path | None:
         """Download PDF for a paper if available."""
         pdf_urls = paper.get("pdf_urls", [])
         if not pdf_urls:
@@ -129,10 +133,7 @@ class RandomPaperSimulationDemo:
             print(f"📥 Downloading PDF: {pdf_filename}")
 
             # Use requests to download the PDF
-            headers = {
-                "User-Agent": f"Medical_KG_rev/1.0 ({self.email})",
-                "From": self.email
-            }
+            headers = {"User-Agent": f"Medical_KG_rev/1.0 ({self.email})", "From": self.email}
 
             response = requests.get(pdf_url, headers=headers, timeout=30)
             response.raise_for_status()
@@ -148,7 +149,7 @@ class RandomPaperSimulationDemo:
             print(f"❌ Failed to download PDF for {paper_id}: {e}")
             return None
 
-    def simulate_pdf_processing(self, pdf_path: Path, paper: Dict[str, Any]) -> Dict[str, Any]:
+    def simulate_pdf_processing(self, pdf_path: Path, paper: dict[str, Any]) -> dict[str, Any]:
         """Simulate PDF processing using MinerU with text content."""
         try:
             print(f"🔄 Simulating PDF processing: {pdf_path.name}")
@@ -191,16 +192,14 @@ class RandomPaperSimulationDemo:
             1. Smith, J. et al. (2023). Machine Learning in Medicine.
             2. Johnson, A. et al. (2022). AI Applications in Healthcare.
             3. Brown, M. et al. (2021). Deep Learning for Medical Diagnosis.
-            """.encode('utf-8')
+            """.encode()
 
             # Create a clean document ID for MinerU
             clean_doc_id = pdf_path.stem
 
             # Create MinerU request
             request = MineruRequest(
-                tenant_id="demo-papers",
-                document_id=clean_doc_id,
-                content=simulated_content
+                tenant_id="demo-papers", document_id=clean_doc_id, content=simulated_content
             )
 
             # Process with MinerU
@@ -225,22 +224,31 @@ class RandomPaperSimulationDemo:
                 "equations": len(response.document.equations) if response.document else 0,
                 "processing_metadata": {
                     "worker_id": response.metadata.worker_id if response.metadata else None,
-                    "processing_time_ms": response.metadata.processing_time_ms if response.metadata else None,
-                    "gpu_utilization": response.metadata.gpu_utilization if response.metadata else None,
+                    "processing_time_ms": (
+                        response.metadata.processing_time_ms if response.metadata else None
+                    ),
+                    "gpu_utilization": (
+                        response.metadata.gpu_utilization if response.metadata else None
+                    ),
                 },
                 "sample_blocks": [
                     {
-                        "text": block.text[:200] + "..." if block.text and len(block.text) > 200 else block.text,
+                        "text": (
+                            block.text[:200] + "..."
+                            if block.text and len(block.text) > 200
+                            else block.text
+                        ),
                         "page": block.page,
-                        "kind": block.kind
+                        "kind": block.kind,
                     }
                     for block in (response.document.blocks[:3] if response.document else [])
                 ],
-                "success": True
+                "success": True,
             }
 
             # Save to JSON file
             import json
+
             with open(output_file, "w") as f:
                 json.dump(processed_data, f, indent=2)
 
@@ -257,18 +265,18 @@ class RandomPaperSimulationDemo:
                 "paper_id": paper["id"],
                 "title": paper["title"],
                 "error": str(e),
-                "success": False
+                "success": False,
             }
 
     def process_all_papers(self) -> None:
         """Main processing workflow."""
-        print("="*70)
+        print("=" * 70)
         print("RANDOM PAPERS DOWNLOAD AND SIMULATION DEMO")
-        print("="*70)
+        print("=" * 70)
         print(f"Sample size: {self.sample_size}")
         print(f"Output directory: {self.output_dir}")
         print(f"Email: {self.email}")
-        print("-"*70)
+        print("-" * 70)
 
         # Step 1: Fetch papers
         papers = self.fetch_random_papers()
@@ -287,7 +295,7 @@ class RandomPaperSimulationDemo:
             return
 
         # Step 3: Download PDFs
-        print(f"\n📥 Downloading PDFs...")
+        print("\n📥 Downloading PDFs...")
         downloaded_pdfs = []
         for paper in papers_with_pdfs:
             pdf_path = self.download_pdf(paper)
@@ -302,7 +310,7 @@ class RandomPaperSimulationDemo:
             return
 
         # Step 4: Simulate PDF processing with MinerU
-        print(f"\n🔄 Simulating PDF processing with MinerU...")
+        print("\n🔄 Simulating PDF processing with MinerU...")
         for pdf_path, paper in downloaded_pdfs:
             try:
                 result = self.simulate_pdf_processing(pdf_path, paper)
@@ -316,12 +324,14 @@ class RandomPaperSimulationDemo:
             except Exception as e:
                 print(f"❌ Unexpected error processing {pdf_path.name}: {e}")
                 self.results["processing_errors"] += 1
-                self.results["processing_details"].append({
-                    "paper_id": paper["id"],
-                    "title": paper["title"],
-                    "error": str(e),
-                    "success": False
-                })
+                self.results["processing_details"].append(
+                    {
+                        "paper_id": paper["id"],
+                        "title": paper["title"],
+                        "error": str(e),
+                        "success": False,
+                    }
+                )
 
         # Step 5: Generate summary report
         self.generate_summary_report()
@@ -341,8 +351,8 @@ class RandomPaperSimulationDemo:
                 "papers_with_pdfs": self.results["papers_with_pdfs"],
                 "pdfs_downloaded": self.results["pdfs_downloaded"],
                 "pdfs_processed": self.results["pdfs_processed"],
-                "processing_errors": self.results["processing_errors"]
-            }
+                "processing_errors": self.results["processing_errors"],
+            },
         }
 
         # Calculate success rates
@@ -358,13 +368,14 @@ class RandomPaperSimulationDemo:
 
         # Save report
         import json
+
         with open(report_file, "w") as f:
             json.dump(summary, f, indent=2)
 
         # Print summary
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("DEMO SUMMARY")
-        print("="*70)
+        print("=" * 70)
         print(f"Papers fetched: {self.results['papers_fetched']}")
         print(f"Papers with PDFs: {self.results['papers_with_pdfs']}")
         print(f"PDFs downloaded: {self.results['pdfs_downloaded']}")
@@ -381,7 +392,7 @@ class RandomPaperSimulationDemo:
 
         print(f"\n📁 Results saved to: {self.output_dir}")
         print(f"📊 Summary report: {report_file}")
-        print("="*70)
+        print("=" * 70)
 
 
 def main():

@@ -6,9 +6,8 @@ from Medical_KG_rev.gateway.app import create_app
 from Medical_KG_rev.gateway.models import EmbeddingMetadata, EmbeddingResponse, EmbeddingVector
 from Medical_KG_rev.gateway.services import get_gateway_service
 
-
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
 
 def _prepare_stub_response() -> EmbeddingResponse:

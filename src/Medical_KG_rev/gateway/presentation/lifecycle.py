@@ -77,6 +77,7 @@ _CURRENT_LIFECYCLE: ContextVar[RequestLifecycle | None] = ContextVar(
 # LIFECYCLE MODELS
 # ==============================================================================
 
+
 @dataclass(slots=True)
 class RequestLifecycle:
     """Tracks request timing, correlation identifiers, and response metadata."""
@@ -148,6 +149,7 @@ class RequestLifecycle:
 # LIFECYCLE MANAGEMENT FUNCTIONS
 # ==============================================================================
 
+
 def current_lifecycle() -> RequestLifecycle | None:
     """Return the lifecycle bound to the current context, if any.
 
@@ -184,6 +186,7 @@ def pop_lifecycle(token: Token) -> None:
 # ==============================================================================
 # MIDDLEWARE IMPLEMENTATION
 # ==============================================================================
+
 
 class RequestLifecycleMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware that binds lifecycle information to each request."""

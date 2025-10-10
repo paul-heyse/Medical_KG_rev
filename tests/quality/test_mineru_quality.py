@@ -17,7 +17,16 @@ class _FigureStorageStub:
         self.keys: list[str] = []
         self.urls: list[str] = []
 
-    def store_figure(self, tenant_id: str, document_id: str, figure_id: str, data: bytes, *, content_type: str, metadata):
+    def store_figure(
+        self,
+        tenant_id: str,
+        document_id: str,
+        figure_id: str,
+        data: bytes,
+        *,
+        content_type: str,
+        metadata,
+    ):
         key = f"mineru/{tenant_id}/{document_id}/{figure_id}.png"
         self.keys.append(key)
         return key
@@ -105,7 +114,9 @@ def mineru_document(tmp_path):
     )
     storage = _FigureStorageStub()
     processor = MineruPostProcessor(figure_storage=storage)
-    document = processor.build_document(parsed, MineruRequest("tenant", "doc-quality", b"raw"), {"source": "quality-test"})
+    document = processor.build_document(
+        parsed, MineruRequest("tenant", "doc-quality", b"raw"), {"source": "quality-test"}
+    )
     return document, storage
 
 

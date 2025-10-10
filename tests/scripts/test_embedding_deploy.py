@@ -14,7 +14,7 @@ def test_deploy_invokes_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("scripts.embedding.deploy.shutil.which", lambda _: ".kubectl")
 
-    def fake_run(command, check):  # noqa: D401 - mimic subprocess.run
+    def fake_run(command, check):
         executed["command"] = command
         executed["check"] = check
 

@@ -163,9 +163,11 @@ except Exception:  # pragma: no cover - fallback to stdlib logging
         """
         return _FallbackLogger(name)
 
+
 try:  # pragma: no cover - metrics import may pull optional deps
     from Medical_KG_rev.observability.metrics import MINERU_VLLM_CIRCUIT_BREAKER_STATE
 except Exception:  # pragma: no cover - fallback gauge when metrics unavailable
+
     class _FallbackGauge:
         """Fallback gauge implementation for environments without metrics.
 
@@ -199,6 +201,7 @@ logger = get_logger(__name__)
 # ==============================================================================
 # DATA MODELS
 # ==============================================================================
+
 
 class CircuitState(Enum):
     """Enumeration of supported circuit breaker states.
@@ -238,12 +241,11 @@ class CircuitBreakerOpenError(Exception):
 
     """
 
-    pass
-
 
 # ==============================================================================
 # CIRCUIT BREAKER IMPLEMENTATION
 # ==============================================================================
+
 
 class CircuitBreaker:
     """Asynchronous circuit breaker guarding vLLM client invocations.

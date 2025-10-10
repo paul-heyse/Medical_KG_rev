@@ -553,12 +553,8 @@ class FeatureFlagSettings(BaseModel):
 
     def is_enabled(self, name: str) -> bool:
         lowered = name.lower()
-        if lowered.startswith("pdf_processing_backend:"):
-            backend = lowered.split(":", 1)[1]
-            return backend == self.pdf_processing_backend
-        if lowered.startswith("retrieval_backend:"):
-            backend = lowered.split(":", 1)[1]
-            return backend == self.retrieval_backend
+        if lowered == "pdf_processing_backend:docling_vlm":
+            return self.pdf_processing_backend == "docling_vlm"
         return self.flags.get(lowered, False)
 
 

@@ -8,14 +8,6 @@ from .docling_config import (
     DEFAULT_MODEL_PATH as DEFAULT_DOCLING_MODEL_PATH,
     DoclingVLMConfig,
 )
-from .retrieval_config import (
-    DEFAULT_RETRIEVAL_CONFIG_PATH,
-    BM25Config,
-    FusionConfig,
-    Qwen3Config,
-    RetrievalConfig,
-    SPLADEConfig,
-)
 from .domains import DomainConfig, DomainRegistry
 from .pyserini_config import (
     DEFAULT_PYSERINI_CONFIG,
@@ -45,12 +37,6 @@ __all__ = [
     "DEFAULT_DOCLING_MODEL_NAME",
     "DEFAULT_DOCLING_MODEL_PATH",
     "DoclingVLMConfig",
-    "DEFAULT_RETRIEVAL_CONFIG_PATH",
-    "BM25Config",
-    "FusionConfig",
-    "Qwen3Config",
-    "RetrievalConfig",
-    "SPLADEConfig",
     "DomainConfig",
     "DomainRegistry",
     "PyseriniConfig",

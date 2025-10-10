@@ -146,108 +146,52 @@ The Services layer provides core business logic for embedding, chunking, retriev
         - run_evaluation
         - generate_report
 
-## MinerU GPU Services
+## Docling VLM Service
 
-### MinerU Service
+### Docling Processor
 
-::: Medical_KG_rev.services.mineru.service
+::: Medical_KG_rev.services.parsing.docling_vlm_service
     options:
       show_root_heading: true
       members:
-        - MinerUService
-        - MinerURequest
-        - MinerUResponse
-        - MinerUError
+        - DoclingVLMService
+        - DoclingVLMResult
 
-### MinerU Types
+### Docling Metrics
 
-::: Medical_KG_rev.services.mineru.types
+::: Medical_KG_rev.services.parsing.metrics
+    options:
+      show_root_heading: false
+      members:
+        - DOCLING_PROCESSING_SECONDS
+        - DOCLING_GPU_MEMORY_MB
+        - DOCLING_MODEL_LOAD_SECONDS
+        - DOCLING_BATCH_SIZE
+        - DOCLING_RETRIES_TOTAL
+        - DOCLING_SUCCESS_TOTAL
+
+### Docling Exceptions
+
+::: Medical_KG_rev.services.parsing.exceptions
     options:
       show_root_heading: true
       members:
-        - MinerUConfig
-        - MinerUResult
-        - MinerUArtifact
+        - DoclingVLMError
+        - DoclingModelLoadError
+        - DoclingProcessingError
+        - DoclingProcessingTimeoutError
+        - DoclingModelUnavailableError
+        - DoclingOutOfMemoryError
+        - TimeoutContext
 
-### CLI Wrapper
+### Docling Output Parsing
 
-::: Medical_KG_rev.services.mineru.cli_wrapper
+::: Medical_KG_rev.services.parsing.docling
     options:
       show_root_heading: true
       members:
-        - MinerUCLI
-        - MinerUCommand
-        - execute_command
-
-### vLLM Client
-
-::: Medical_KG_rev.services.mineru.vllm_client
-    options:
-      show_root_heading: true
-      members:
-        - VLLMClient
-        - VLLMConfig
-        - VLLMError
-
-### Circuit Breaker
-
-::: Medical_KG_rev.services.mineru.circuit_breaker
-    options:
-      show_root_heading: true
-      members:
-        - CircuitBreaker
-        - CircuitState
-        - CircuitConfig
-
-### Artifacts Management
-
-::: Medical_KG_rev.services.mineru.artifacts
-    options:
-      show_root_heading: true
-      members:
-        - ArtifactManager
-        - Artifact
-        - create_artifact
-
-### Metrics Collection
-
-::: Medical_KG_rev.services.mineru.metrics
-    options:
-      show_root_heading: true
-      members:
-        - MinerUMetrics
-        - record_processing_time
-        - record_gpu_usage
-
-### Output Parsing
-
-::: Medical_KG_rev.services.mineru.output_parser
-    options:
-      show_root_heading: true
-      members:
-        - OutputParser
-        - ParseResult
-        - parse_output
-
-### Pipeline Orchestration
-
-::: Medical_KG_rev.services.mineru.pipeline
-    options:
-      show_root_heading: true
-      members:
-        - MinerUPipeline
-        - PipelineStage
-        - execute_pipeline
-
-### Post-processing
-
-::: Medical_KG_rev.services.mineru.postprocessor
-    options:
-      show_root_heading: true
-      members:
-        - PostProcessor
-        - PostProcessResult
-        - process_output
+        - DoclingParser
+        - DoclingVLMOutputParser
 
 ## Health Services
 
@@ -326,24 +270,21 @@ for result in results:
     print(f"Content: {result.content[:200]}...")
 ```
 
-### MinerU Service Usage
+### Docling VLM Service Usage
 
 ```python
-from Medical_KG_rev.services.mineru.service import MinerUService
+from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMService
 
-# Initialize service
-service = MinerUService(
-    vllm_endpoint="http://localhost:8001",
-    model_name="qwen2.5-7b-instruct"
-)
+# Initialize service (auto-loads configuration from Settings)
+service = DoclingVLMService(eager=True)
 
 # Process PDF
 pdf_path = "/path/to/document.pdf"
-result = await service.process_pdf(pdf_path)
+result = service.process_pdf(pdf_path, document_id="demo-doc")
 
 # Get structured output
-structured_data = result.structured_output
-print(f"Extracted {len(structured_data)} sections")
+print(result.metadata["docling_vlm"])
+print(f"Extracted {len(result.tables)} tables and {len(result.figures)} figures")
 ```
 
 ## Configuration
@@ -375,12 +316,13 @@ RETRIEVAL_CONFIG = {
     "fusion_method": "rrf"
 }
 
-# MinerU configuration
-MINERU_CONFIG = {
-    "vllm_endpoint": "http://localhost:8001",
-    "model_name": "qwen2.5-7b-instruct",
-    "temperature": 0.1,
-    "max_tokens": 4096
+# Docling VLM configuration
+DOCLING_VLM_CONFIG = {
+    "model_path": "/models/gemma3-12b",
+    "batch_size": 8,
+    "timeout_seconds": 300,
+    "retry_attempts": 3,
+    "gpu_memory_fraction": 0.95,
 }
 ```
 
@@ -390,13 +332,15 @@ MINERU_CONFIG = {
 - `EMBEDDING_BATCH_SIZE`: Batch size for embedding processing
 - `CHUNKING_PROFILE`: Default chunking profile
 - `VECTOR_STORE_TYPE`: Vector store backend (faiss, qdrant, etc.)
-- `MINERU_VLLM_ENDPOINT`: vLLM server endpoint
-- `MINERU_MODEL_NAME`: MinerU model name
+- `DOCLING_VLM_MODEL_PATH`: Location of Gemma3 weights
+- `DOCLING_VLM_BATCH_SIZE`: Batch size for Docling inference
+- `DOCLING_VLM_TIMEOUT_SECONDS`: Processing timeout per document
+- `PDF_PROCESSING_BACKEND`: Feature flag toggling `docling_vlm` vs archived `mineru`
 
 ## Performance Considerations
 
 - **Batch Processing**: Services support batch processing for efficiency
-- **GPU Acceleration**: MinerU and embedding services utilize GPU when available
+- **GPU Acceleration**: Docling VLM and embedding services utilize GPU when available
 - **Caching**: Embedding and retrieval results are cached to improve performance
 - **Async Operations**: All I/O operations are asynchronous
 - **Connection Pooling**: External service connections are pooled

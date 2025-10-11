@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 
+
 class QueryValidationError(ValueError):
     """Raised when a query fails validation."""
 

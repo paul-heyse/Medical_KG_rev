@@ -13,378 +13,52 @@ import base64
 import copy
 import json as _json
 import time
-import zlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from importlib import util as importlib_util
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
-import structlog
-from prometheus_client import Counter, Histogram
-
-if importlib_util.find_spec("pydantic") is not None:
-    from pydantic import BaseModel  # type: ignore[import]
-
-    PYDANTIC_AVAILABLE = True
-else:  # pragma: no cover - fallback for lightweight environments
-    PYDANTIC_AVAILABLE = False
-
-    class ValidationError(ValueError):
-        """Fallback validation error when Pydantic is unavailable."""
-
-    class BaseModel:  # type: ignore[override]
-        model_config: dict[str, Any] = {}
-
-        def __init__(self, **data: Any) -> None:
-            for key, value in data.items():
-                setattr(self, key, value)
-
-        def model_copy(
-            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
-        ) -> BaseModel:
-            payload = self.model_dump(mode="python")
-            if update:
-                payload.update(update)
-            return self.__class__(**payload)
-
-        def model_dump(
-            self, mode: str = "python"
-        ) -> dict[str, Any]:  # pragma: no cover - trivial shim
-            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> BaseModel:
-            return cls(**dict(payload))
-
-    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
-        if default_factory is not None:
-            return default_factory()
-        return default
-
-    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
-        return dict(kwargs)
-
-
-if PYDANTIC_AVAILABLE:
-    from Medical_KG_rev.adapters.plugins.models import AdapterRequest  # type: ignore[import]
-else:  # pragma: no cover - fallback for lightweight test environments
-
-    @dataclass(slots=True)
-    class AdapterRequest:
-        tenant_id: str
-        correlation_id: str | None = None
-        domain: str | None = None
-        parameters: dict[str, Any] = field(default_factory=dict)
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> AdapterRequest:
-            return cls(
-                tenant_id=str(payload.get("tenant_id", "")),
-                correlation_id=payload.get("correlation_id"),
-                domain=payload.get("domain"),
-                parameters=dict(payload.get("parameters", {})),
-            )
-
-        def model_copy(self, *, deep: bool = False) -> AdapterRequest:
-            return AdapterRequest(
-                tenant_id=self.tenant_id,
-                correlation_id=self.correlation_id,
-                domain=self.domain,
-                parameters=copy.deepcopy(self.parameters) if deep else dict(self.parameters),
-            )
-
-        def model_dump(
-            self, mode: str = "json"
-        ) -> dict[str, Any]:  # pragma: no cover - simple shim
-            return {
-                "tenant_id": self.tenant_id,
-                "correlation_id": self.correlation_id,
-                "domain": self.domain,
-                "parameters": copy.deepcopy(self.parameters),
-            }
-
-
-if PYDANTIC_AVAILABLE:
-    from Medical_KG_rev.chunking.models import Chunk  # type: ignore[import]
-else:  # pragma: no cover - fallback shim
-
-    @dataclass(slots=True)
-    class Chunk:
-        chunk_id: str
-        doc_id: str
-        tenant_id: str
-        body: str
-        title_path: tuple[str, ...]
-        section: str
-        start_char: int
-        end_char: int
-        granularity: str
-        chunker: str
-        chunker_version: str
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> Chunk:
-            return cls(
-                chunk_id=str(payload.get("chunk_id")),
-                doc_id=str(payload.get("doc_id")),
-                tenant_id=str(payload.get("tenant_id", "")),
-                body=str(payload.get("body", "")),
-                title_path=tuple(payload.get("title_path", ())),
-                section=str(payload.get("section", "")),
-                start_char=int(payload.get("start_char", 0)),
-                end_char=int(payload.get("end_char", 0)),
-                granularity=str(payload.get("granularity", "")),
-                chunker=str(payload.get("chunker", "")),
-                chunker_version=str(payload.get("chunker_version", "")),
-            )
-
-        def model_dump(self, mode: str = "json") -> dict[str, Any]:
-            return asdict(self)
-
-
-if PYDANTIC_AVAILABLE:
-    from Medical_KG_rev.models.entities import Claim, Entity  # type: ignore[import]
-else:  # pragma: no cover - fallback shim
-
-    @dataclass(slots=True)
-    class Entity:
-        id: str
-        type: str
-        text: str
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> Entity:
-            return cls(
-                id=str(payload.get("id", "")),
-                type=str(payload.get("type", "")),
-                text=str(payload.get("text", "")),
-            )
-
-        def model_dump(self, mode: str = "json") -> dict[str, Any]:
-            return asdict(self)
-
-    @dataclass(slots=True)
-    class Claim:
-        id: str
-        statement: str
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> Claim:
-            return cls(id=str(payload.get("id", "")), statement=str(payload.get("statement", "")))
-
-        def model_dump(self, mode: str = "json") -> dict[str, Any]:
-            return asdict(self)
-
-
-if PYDANTIC_AVAILABLE:
-    from Medical_KG_rev.models.ir import Document  # type: ignore[import]
-else:  # pragma: no cover - fallback shim
-
-    @dataclass(slots=True)
-    class Document:
-        id: str
-        source: str
-        sections: tuple[Any, ...] = ()
-        metadata: dict[str, Any] = field(default_factory=dict)
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> Document:
-            return cls(
-                id=str(payload.get("id", "")),
-                source=str(payload.get("source", "")),
-                sections=tuple(payload.get("sections", ())),
-                metadata=dict(payload.get("metadata", {})),
-            )
-
-        def model_dump(self, mode: str = "json") -> dict[str, Any]:
-            return {
-                "id": self.id,
-                "source": self.source,
-                "sections": list(self.sections),
-                "metadata": copy.deepcopy(self.metadata),
-            }
-
-
-from dataclasses import dataclass, field
-
-import orjson
+from attrs import asdict as attr_asdict  # type: ignore[import]
 from attrs import define
+from attrs import define as attr_define  # type: ignore[import]
+from attrs import field as attr_field  # type: ignore[import]
 from attrs import field as attrs_field
+from pydantic import BaseModel, ConfigDict, Field  # type: ignore[import]
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
+from prometheus_client import Counter, Histogram
+
+# Check if Pydantic is available
+PYDANTIC_AVAILABLE = True
+
+# Import embedding contracts for typed stage support
+try:
+    from Medical_KG_rev.orchestration.stages.embedding.contracts import EmbeddingResult
+except ImportError:  # pragma: no cover - optional dependency
+    EmbeddingResult = None  # type: ignore[assignment]
+import zlib
+
+import orjson
+import orjson as _orjson  # type: ignore[import]
+import structlog
+from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore[import]
+
 from Medical_KG_rev.adapters.plugins.models import AdapterRequest
-from Medical_KG_rev.chunking.models import Chunk
-from Medical_KG_rev.models.entities import Claim, Entity
-from Medical_KG_rev.models.ir import Document
+from Medical_KG_rev.chunking.models import Chunk  # type: ignore[import]
+from Medical_KG_rev.models.entities import Claim, Entity  # type: ignore[import]
+from Medical_KG_rev.models.ir import Document  # type: ignore[import]
 from Medical_KG_rev.observability.metrics import PIPELINE_STATE_SERIALISATIONS
-from Medical_KG_rev.orchestration.state import (
-    PipelineStateCache,
-    PipelineStateModel,
-    dumps_json,
-    dumps_orjson,
-    encode_base64,
-    record_stage_metrics,
-    serialise_payload,
-)
 
-RawPayload = dict[str, Any]
-
-
-_state_logger = structlog.get_logger("Medical_KG_rev.pipeline_state")
-
-_STATE_MUTATIONS = Counter(
-    "orchestration_pipeline_state_mutations_total",
-    "Total number of mutating operations executed against PipelineState",
-    labelnames=("operation",),
-)
-_STATE_SERIALISATION_LATENCY = Histogram(
-    "orchestration_pipeline_state_serialisation_seconds",
-    "Latency of PipelineState serialisation operations",
-    labelnames=("format",),
-    buckets=(
-        0.0005,
-        0.001,
-        0.002,
-        0.005,
-        0.01,
-        0.02,
-        0.05,
-        0.1,
-        0.2,
-    ),
-)
-_STATE_DEPENDENCY_FAILURES = Counter(
-    "orchestration_pipeline_state_dependency_failures_total",
-    "Number of times a stage attempted to execute without satisfying dependencies",
-    labelnames=("stage_type",),
-)
-
-
-if importlib_util.find_spec("orjson") is not None:
-    import orjson as _orjson  # type: ignore[import]
-
-    ORJSON_AVAILABLE = True
-else:  # pragma: no cover - fallback path for minimal environments
-    ORJSON_AVAILABLE = False
-
-    class _OrjsonShim:
-        JSONDecodeError = ValueError
-
-        @staticmethod
-        def dumps(payload: Any) -> bytes:
-            return _json.dumps(payload).encode("utf-8")
-
-        @staticmethod
-        def loads(data: Any) -> Any:
-            if isinstance(data, (bytes, bytearray)):
-                return _json.loads(bytes(data).decode("utf-8"))
-            return _json.loads(data)
-
-    _orjson = _OrjsonShim()
-
-
-if importlib_util.find_spec("pydantic") is not None:
-    from pydantic import BaseModel, ConfigDict, Field, ValidationError  # type: ignore[import]
-
-    PYDANTIC_AVAILABLE = True
-else:  # pragma: no cover - fallback for lightweight environments
-    PYDANTIC_AVAILABLE = False
-
-    class ValidationError(ValueError):
-        """Fallback validation error when Pydantic is unavailable."""
-
-    class BaseModel:  # type: ignore[override]
-        """Minimal shim providing the interface we rely on for tests."""
-
-        model_config: dict[str, Any] = {}
-
-        def __init__(self, **data: Any) -> None:
-            for key, value in data.items():
-                setattr(self, key, value)
-
-        def model_copy(
-            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
-        ) -> BaseModel:
-            payload = self.model_dump(mode="python")
-            if update:
-                payload.update(update)
-            return self.__class__(**payload)
-
-        def model_dump(
-            self, mode: str = "python"
-        ) -> dict[str, Any]:  # pragma: no cover - trivial shim
-            return {k: copy.deepcopy(v) for k, v in self.__dict__.items() if not k.startswith("_")}
-
-        @classmethod
-        def model_validate(cls, payload: Mapping[str, Any]) -> BaseModel:
-            return cls(**dict(payload))
-
-    def Field(*, default: Any | None = None, default_factory: Callable[[], Any] | None = None) -> Any:  # type: ignore[override]
-        if default_factory is not None:
-            return default_factory()
-        return default
-
-    def ConfigDict(**kwargs: Any) -> dict[str, Any]:  # type: ignore[override]
-        return dict(kwargs)
-
-
-if importlib_util.find_spec("attrs") is not None:
-    from attrs import asdict as attr_asdict  # type: ignore[import]
-    from attrs import define as attr_define  # type: ignore[import]
-    from attrs import field as attr_field  # type: ignore[import]
-else:  # pragma: no cover - fallback for environments without attrs
-    attr_asdict = asdict
-
-    def attr_define(*, slots: bool = False):  # type: ignore[override]
-        def _decorator(cls):
-            return dataclass(cls, slots=slots)
-
-        return _decorator
-
-    def attr_field(*, default: Any | None = None, factory: Callable[[], Any] | None = None):  # type: ignore[override]
-        if factory is not None:
-            return field(default_factory=factory)
-        return field(default=default)
-
-
-if importlib_util.find_spec("tenacity") is not None:
-    from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore[import]
-else:  # pragma: no cover - fallback for environments without tenacity
-
-    def stop_after_attempt(count: int) -> int:
-        return max(1, int(count))
-
-    def wait_exponential(**_: Any) -> None:  # pragma: no cover - compatibility shim
-        return None
-
-    def retry_if_exception_type(
-        exc_type: type[BaseException],
-    ) -> type[BaseException]:  # pragma: no cover - shim
-        return exc_type
-
-    def retry(
-        *,
-        reraise: bool | None = None,
-        stop: Any | None = None,
-        wait: Any | None = None,
-        retry: Any | None = None,
-    ):
-        max_attempts = stop if isinstance(stop, int) else 1
-
-        def _decorator(func):
-            def _wrapped(*args, **kwargs):
-                attempts = 0
-                while True:
-                    try:
-                        attempts += 1
-                        return func(*args, **kwargs)
-                    except Exception:  # pragma: no cover - simple retry shim
-                        if attempts >= max_attempts:
-                            raise
-
-            return _wrapped
-
-        return _decorator
+try:
+    from Medical_KG_rev.orchestration.state import (
+        retry,
+        stop_after_attempt,
+        wait_exponential,
+    )
+except ImportError as exc:  # pragma: no cover - fallback for environments without tenacity
+    raise ImportError(
+        "tenacity-based orchestration state helpers are required; fallback shims are disabled"
+    ) from exc
 
 
 @attr_define(slots=True)
@@ -897,6 +571,7 @@ class PipelineState:
     document: Document | None = None
     chunks: tuple[Chunk, ...] = ()
     embedding_batch: EmbeddingBatch | None = None
+    embedding_result: EmbeddingResult | None = None  # NEW
     entities: tuple[Entity, ...] = ()
     claims: tuple[Claim, ...] = ()
     index_receipt: IndexReceipt | None = None
@@ -932,7 +607,7 @@ class PipelineState:
         "pdf-gate": ("pdf-download",),
         "pdf-vlm-process": ("pdf-download",),
     }
-    _SERIALISATION_CACHE: ClassVar[PipelineStateCache] = PipelineStateCache(ttl_seconds=120.0)
+    _SERIALISATION_CACHE: ClassVar[_StateCache] = _StateCache()
 
     def __post_init__(self) -> None:
         if PYDANTIC_AVAILABLE:
@@ -1199,6 +874,21 @@ class PipelineState:
         if self.embedding_batch is None:
             raise ValueError("PipelineState does not contain embedding results")
         return self.embedding_batch
+
+    def set_embedding_result(self, result: EmbeddingResult) -> None:
+        """Set typed embedding result."""
+        self.embedding_result = result
+        self._mark_dirty()
+
+    def require_embedding_result(self) -> EmbeddingResult:
+        """Get embedding result or raise."""
+        if self.embedding_result is None:
+            raise ValueError("PipelineState does not contain embedding result")
+        return self.embedding_result
+
+    def has_embedding_result(self) -> bool:
+        """Check if embedding result exists."""
+        return self.embedding_result is not None
 
     def set_entities_and_claims(
         self,
@@ -2213,72 +1903,80 @@ class PipelineState:
 class IngestStage(Protocol):
     """Fetch raw payloads from the configured adapter."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> list[RawPayload]: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[RawPayload]:
+        ...
 
 
 @runtime_checkable
 class ParseStage(Protocol):
     """Transform raw payloads into the canonical IR document."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> Document: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document:
+        ...
 
 
 @runtime_checkable
 class ChunkStage(Protocol):
     """Split an IR document into retrieval-ready chunks."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> list[Chunk]: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[Chunk]:
+        ...
 
 
 @runtime_checkable
 class EmbedStage(Protocol):
     """Generate dense and/or sparse embeddings for a batch of chunks."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> EmbeddingBatch: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> EmbeddingBatch:
+        ...
 
 
 @runtime_checkable
 class IndexStage(Protocol):
     """Persist embeddings into the vector and lexical indices."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> IndexReceipt: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> IndexReceipt:
+        ...
 
 
 @runtime_checkable
 class ExtractStage(Protocol):
     """Run extraction models over the IR document."""
 
-    def execute(
-        self, ctx: StageContext, state: PipelineState
-    ) -> tuple[list[Entity], list[Claim]]: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> tuple[list[Entity], list[Claim]]:
+        ...
 
 
 @runtime_checkable
 class KGStage(Protocol):
     """Write extracted entities and claims into the knowledge graph."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> GraphWriteReceipt: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> GraphWriteReceipt:
+        ...
 
 
 @runtime_checkable
 class DownloadStage(Protocol):
     """Download raw assets required for downstream processing."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> list[DownloadArtifact]:
+        ...
 
 
 @runtime_checkable
 class GateStage(Protocol):
     """Enforce conditional progression based on external readiness signals."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision:
+        ...
 
 
 @runtime_checkable
 class VlmProcessingStage(Protocol):
     """Process downloaded PDFs into the Document IR using a VLM backend."""
 
-    def execute(self, ctx: StageContext, state: PipelineState) -> Document | None: ...
+    def execute(self, ctx: StageContext, state: PipelineState) -> Document | None:
+        ...
 
 
 __all__ = [

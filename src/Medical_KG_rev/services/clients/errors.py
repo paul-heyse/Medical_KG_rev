@@ -11,6 +11,7 @@ class ServiceError(Exception):
         """Initialize service error.
 
         Args:
+        ----
             message: Error message
             details: Additional error details
 
@@ -58,5 +59,11 @@ class ServiceValidationError(ServiceError):
 
 class ServiceInternalError(ServiceError):
     """Raised when service has internal error."""
+
+    pass
+
+
+class Qwen3ServiceUnavailableError(ServiceUnavailableError):
+    """Raised when Qwen3 service is unavailable."""
 
     pass

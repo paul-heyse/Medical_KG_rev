@@ -1,29 +1,11 @@
 """Vector storage service abstractions."""
 
-from .errors import (
-    BackendUnavailableError,
-    DimensionMismatchError,
-    InvalidNamespaceConfigError,
-    NamespaceNotFoundError,
-    ResourceExhaustedError,
-    ScopeError,
-    VectorStoreError,
-)
-from .models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    NamespaceConfig,
-    RebuildReport,
-    SnapshotInfo,
-    UpsertResult,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from .errors import HttpClient
+from .models import HttpClient
 from .registry import NamespaceRegistry
 from .service import VectorStoreService
 from .types import VectorStorePort
+
 
 __all__ = [
     "BackendUnavailableError",

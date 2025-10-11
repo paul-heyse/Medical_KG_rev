@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from Medical_KG_rev.services.embedding.namespace.registry import EmbeddingNamespaceRegistry
+from Medical_KG_rev.services.embedding.namespace.registry import (
+    EmbeddingNamespaceRegistry,
+)
 
 
 @dataclass(frozen=True)

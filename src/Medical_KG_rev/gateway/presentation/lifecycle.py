@@ -31,32 +31,33 @@ Performance Characteristics:
     - Context variable access is optimized
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.presentation.lifecycle import RequestLifecycle
     >>> lifecycle = RequestLifecycle(method="GET", path="/api/test")
     >>> lifecycle.complete(200)
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
 from collections.abc import Mapping
-from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from time import perf_counter
 from uuid import uuid4
 
+from contextvars import ContextVar, Token
 from fastapi import Request
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from Medical_KG_rev.observability.metrics import (
-    GPU_SERVICE_CALL_DURATION_SECONDS as REQUEST_LATENCY,
-)
-from Medical_KG_rev.observability.metrics import GPU_SERVICE_CALLS_TOTAL as REQUEST_COUNTER
+from Medical_KG_rev.config.settings import get_settings
+from Medical_KG_rev.observability.metrics import HttpClient
+from Medical_KG_rev.observability.metrics import HttpClient
+from Medical_KG_rev.observability.metrics_migration import get_migration_helper
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
     get_correlation_id,
@@ -101,8 +102,32 @@ class RequestLifecycle:
             return
         self.status_code = status_code
         self.finished_at = perf_counter()
-        REQUEST_COUNTER.labels(self.method, self.path, str(status_code)).inc()
-        REQUEST_LATENCY.labels(self.method, self.path).observe(self.duration_seconds)
+
+        # Use migration helper for domain-specific metrics
+        settings = get_settings()
+        helper = get_migration_helper(settings)
+
+        # Determine protocol based on path
+        protocol = "REST"  # Default for gateway requests
+        if "/graphql" in self.path:
+            protocol = "GraphQL"
+        elif "/soap" in self.path:
+            protocol = "SOAP"
+        elif "/odata" in self.path:
+            protocol = "OData"
+
+        helper.record_external_api_call(
+            protocol=protocol,
+            endpoint=self.path,
+            method=self.method,
+            status_code=status_code,
+            duration_seconds=self.duration_seconds,
+        )
+
+        # Fallback to legacy metrics if feature flag is disabled
+        if not settings.feature_flags.domain_specific_metric_registries:
+            REQUEST_COUNTER.labels(self.method, self.path, str(status_code)).inc()
+            REQUEST_LATENCY.labels(self.method, self.path).observe(self.duration_seconds)
 
     def fail(self, exc: BaseException, *, status_code: int = 500) -> None:
         """Record an error outcome for the request."""
@@ -156,7 +181,8 @@ class RequestLifecycle:
 def current_lifecycle() -> RequestLifecycle | None:
     """Return the lifecycle bound to the current context, if any.
 
-    Returns:
+    Returns
+    -------
         Current request lifecycle instance or None if not set.
 
     """
@@ -167,9 +193,11 @@ def push_lifecycle(lifecycle: RequestLifecycle) -> Token:
     """Bind a lifecycle object to the current context.
 
     Args:
+    ----
         lifecycle: Request lifecycle instance to bind.
 
     Returns:
+    -------
         Token for restoring the previous context.
 
     """
@@ -180,6 +208,7 @@ def pop_lifecycle(token: Token) -> None:
     """Reset the context variable token captured via :func:`push_lifecycle`.
 
     Args:
+    ----
         token: Token returned by push_lifecycle.
 
     """

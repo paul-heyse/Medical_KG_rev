@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from .namespace import NamespaceManager
 from .ports import BaseEmbedder, EmbedderConfig
 
+
 EmbedderFactoryCallable = Callable[[EmbedderConfig], BaseEmbedder]
 
 

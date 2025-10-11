@@ -2,14 +2,7 @@
 
 from .ab_test import ABTestResult, ABTestRunner
 from .ci import enforce_recall_threshold
-from .metrics import (
-    average_precision,
-    evaluate_ranking,
-    mean_reciprocal_rank,
-    ndcg_at_k,
-    precision_at_k,
-    recall_at_k,
-)
+from .metrics import HttpClient
 from .runner import EvaluationConfig, EvaluationResult, EvaluationRunner, MetricSummary
 from .test_sets import (
     QueryJudgment,

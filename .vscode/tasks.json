@@ -9,4 +9,3 @@
     { "label": "Codex: exec (non-interactive)", "type": "shell", "command": "./scripts/codex.sh exec \"fix the CI failure\"" }
   ]
 }
-

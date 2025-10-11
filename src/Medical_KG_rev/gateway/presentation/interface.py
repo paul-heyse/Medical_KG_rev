@@ -26,6 +26,7 @@ Performance Characteristics:
     - No runtime overhead for protocol compliance
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.presentation.interface import ResponsePresenter
     >>> class JSONPresenter:
     ...     def success(self, data, *, status_code=200, meta=None):
@@ -33,16 +34,17 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any, Protocol
 
 from fastapi import Response
+
 
 # ==============================================================================
 # PRESENTATION PROTOCOLS

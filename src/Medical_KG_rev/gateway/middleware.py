@@ -33,27 +33,29 @@ Performance Characteristics:
     - Minimal overhead for pass-through operations
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.middleware import CachingMiddleware
     >>> app.add_middleware(CachingMiddleware, policies={...})
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
-import hashlib
-import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+import hashlib
+import time
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+
 
 # ==============================================================================
 # CACHE MODELS

@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import Request
 
 
+
 @dataclass(slots=True)
 class ODataParams:
     select: list[str] | None = None

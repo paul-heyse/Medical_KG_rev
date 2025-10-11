@@ -6,13 +6,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import structlog
+
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import (
-    record_cache_hit_rate,
-    record_gpu_memory_alert,
-    record_latency_alert,
-    record_reranking_error,
-    record_reranking_operation,
+    RERANKING_ERRORS_TOTAL,
+    RERANKING_LATENCY_SECONDS,
+    RERANKING_REQUESTS_TOTAL,
 )
 
 from .errors import CircuitBreakerOpenError, RerankingError

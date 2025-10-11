@@ -5,13 +5,15 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
-from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse, urlunparse
+
+from types import MappingProxyType
 
 from Medical_KG_rev.adapters.base import AdapterContext
 from Medical_KG_rev.adapters.interfaces.pdf import PdfAssetManifest, PdfManifest
 from Medical_KG_rev.models import Document
+
 
 
 class PdfManifestMixin:
@@ -45,14 +47,17 @@ class PdfManifestMixin:
     ) -> Sequence[Document]:
         """Attach manifest metadata to the provided documents in place."""
         urls = list(manifest.pdf_urls())
+        updated_documents = []
         for document in documents:
             metadata = dict(document.metadata)
             metadata["pdf_manifest"] = manifest.as_metadata()
             if urls:
                 metadata.setdefault("pdf_urls", urls)
                 metadata.setdefault("document_type", "pdf")
-            document.metadata = metadata
-        return documents
+            # Create a new document with updated metadata since Document is frozen
+            updated_document = document.model_copy(update={"metadata": metadata})
+            updated_documents.append(updated_document)
+        return updated_documents
 
     def iter_pdf_candidates(
         self,

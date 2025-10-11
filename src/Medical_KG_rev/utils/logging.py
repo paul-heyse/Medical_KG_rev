@@ -1,4 +1,30 @@
-"""Logging helpers with OpenTelemetry integration."""
+"""Logging configuration helpers with OpenTelemetry and Structlog integration.
+
+Key Responsibilities:
+    - Configure standard library logging with JSON formatting and field scrubbing
+    - Integrate Structlog, OpenTelemetry tracing, and correlation IDs
+    - Expose helpers for binding request correlation identifiers
+
+Collaborators:
+    - Upstream: Gateway and service entry-points call configuration helpers
+    - Downstream: Relies on ``logging``, ``structlog``, and OpenTelemetry SDKs
+
+Side Effects:
+    - Configures global logging handlers and tracing providers
+    - Binds correlation IDs via context variables
+
+Thread Safety:
+    - Logging configuration should be invoked once during process startup
+    - Correlation ID helpers rely on ``contextvars`` and are safe for async use
+
+Performance Characteristics:
+    - JSON formatting introduces minimal serialization overhead
+    - Tracing exporters may add network latency depending on configuration
+"""
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 
 from __future__ import annotations
 
@@ -7,68 +33,51 @@ import logging
 import sys
 from collections.abc import Iterable
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING
+from typing import Any, Callable
 from urllib.parse import urlparse
 
-try:  # Optional structlog dependency
-    import structlog
-except Exception:  # pragma: no cover - structlog may not be installed in lightweight envs
-    structlog = None  # type: ignore
+import structlog
+from opentelemetry import trace
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+    SpanExporter,
+)
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
-try:  # Optional OpenTelemetry dependency
-    from opentelemetry import trace
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import (
-        BatchSpanProcessor,
-        ConsoleSpanExporter,
-    )
-    from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-except Exception:  # pragma: no cover - tracing optional in lightweight environments
-    trace = None  # type: ignore
-    Resource = None  # type: ignore
-    TracerProvider = None  # type: ignore
-    BatchSpanProcessor = None  # type: ignore
-    ConsoleSpanExporter = None  # type: ignore
-    TraceIdRatioBased = None  # type: ignore
+from Medical_KG_rev.config import TelemetrySettings
+from Medical_KG_rev.config.settings import LoggingSettings
 
-try:  # Optional Jaeger exporter dependency
-    from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-except Exception:  # pragma: no cover - Jaeger exporter optional
-    JaegerExporter = None  # type: ignore
-
-try:  # Optional OTLP exporter dependency
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-except Exception:  # pragma: no cover - OTLP exporter optional
-    OTLPSpanExporter = None  # type: ignore
-
-try:  # pragma: no cover - optional settings dependency
-    from Medical_KG_rev.config import TelemetrySettings
-except Exception:  # pragma: no cover - fallback for lightweight environments
-
-    class TelemetrySettings:  # type: ignore[override]
-        """Fallback telemetry settings used when the config package is minimal."""
-
-        sample_ratio: float = 1.0
-        exporter: str = "console"
-        endpoint: str | None = None
-
-
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from Medical_KG_rev.config.settings import LoggingSettings
-
+# ==============================================================================
+# CONTEXT VARIABLES
+# ==============================================================================
 
 _correlation_id: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+
+# ==============================================================================
+# FORMATTERS
+# ==============================================================================
 
 
 class JsonFormatter(logging.Formatter):
     """Formats log records as single line JSON objects."""
 
     def __init__(self, *, scrub_fields: Iterable[str] | None = None) -> None:
+        """Initialise formatter with optional sensitive field scrubbing.
+
+        Args:
+            scrub_fields: Iterable of field names (case-insensitive) whose values
+                should be replaced with ``***`` in log output.
+        """
         super().__init__(datefmt="%Y-%m-%dT%H:%M:%S%z")
         self._scrub_fields = {field.lower() for field in scrub_fields or ()}
 
     def _scrub(self, value: object) -> object:
+        """Recursively scrub values in dictionaries and lists."""
         if isinstance(value, dict):
             return {
                 k: self._scrub(v) if k.lower() not in self._scrub_fields else "***"
@@ -78,8 +87,9 @@ class JsonFormatter(logging.Formatter):
             return [self._scrub(item) for item in value]
         return value
 
-    def format(self, record: logging.LogRecord) -> str:  # type: ignore[override]
-        payload = {
+    def format(self, record: logging.LogRecord) -> str:
+        """Serialise a log record into a JSON string."""
+        payload: dict[str, Any] = {
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -127,10 +137,26 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, sort_keys=True)
 
 
-def _structlog_scrubber(scrub_fields: Iterable[str] | None):
+# ==============================================================================
+# STRUCTLOG PROCESSORS
+# ==============================================================================
+
+
+def _structlog_scrubber(
+    scrub_fields: Iterable[str] | None,
+) -> Callable[[Any, str, dict[str, Any]], dict[str, Any]]:
+    """Create a Structlog processor that scrubs sensitive fields.
+
+    Args:
+        scrub_fields: Iterable of field names to obfuscate.
+
+    Returns:
+        Structlog processor that replaces configured fields with ``***`` and
+        injects the correlation ID when present.
+    """
     lower_fields = {field.lower() for field in scrub_fields or ()}
 
-    def processor(_, __, event_dict):  # type: ignore[override]
+    def processor(_: Any, __: str, event_dict: dict[str, Any]) -> dict[str, Any]:
         correlation_id = _correlation_id.get()
         if correlation_id:
             event_dict.setdefault("correlation_id", correlation_id)
@@ -147,7 +173,18 @@ def configure_logging(
     *,
     settings: LoggingSettings | None = None,
 ) -> None:
-    """Configure global logging for the application."""
+    """Configure global logging for the application.
+
+    Args:
+        level: Optional logging level or level name. When ``settings`` is
+            provided this argument is ignored.
+        settings: Optional logging settings object providing level and scrub
+            configuration.
+
+    Note:
+        Calling this function reconfigures the root logger and should therefore
+        happen once during application startup.
+    """
     scrub_fields: Iterable[str] | None = None
     if settings is not None:
         level = settings.level
@@ -167,7 +204,8 @@ def configure_logging(
     root_logger = logging.getLogger()
     preserved_handlers: list[logging.Handler] = []
     for existing in root_logger.handlers:
-        module = getattr(existing.__class__, "__module__", "")
+        module_attr = getattr(existing.__class__, "__module__", "")
+        module: str = module_attr if isinstance(module_attr, str) else ""
         if module.startswith("_pytest."):
             existing.setFormatter(JsonFormatter(scrub_fields=scrub_fields))
             preserved_handlers.append(existing)
@@ -179,7 +217,7 @@ def configure_logging(
     )
 
     if structlog:
-        processors = [
+        processors: list[Any] = [
             structlog.contextvars.merge_contextvars,
             structlog.stdlib.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
@@ -194,21 +232,26 @@ def configure_logging(
         )
 
 
-def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
-    """Configure OpenTelemetry tracing provider."""
-    if trace is None or TracerProvider is None or Resource is None or TraceIdRatioBased is None:
-        logging.getLogger(__name__).warning(
-            "telemetry.opentelemetry.unavailable",
-            message="OpenTelemetry not installed; tracing disabled",
-        )
-        return
+# ==============================================================================
+# CONFIGURATION HELPERS
+# ==============================================================================
 
+
+def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
+    """Configure OpenTelemetry tracing provider.
+
+    Args:
+        service_name: Name reported to tracing backends.
+        telemetry: Telemetry settings describing exporter type, endpoint, and
+            sampling configuration.
+    """
     resource = Resource(attributes={"service.name": service_name})
     sampler = TraceIdRatioBased(telemetry.sample_ratio)
     provider = TracerProvider(resource=resource, sampler=sampler)
 
-    exporter = ConsoleSpanExporter() if ConsoleSpanExporter is not None else None
-    if telemetry.exporter.lower() == "jaeger" and JaegerExporter is not None:
+    exporter: SpanExporter | None = None
+    target = telemetry.exporter.lower()
+    if target == "jaeger" and JaegerExporter is not None:
         host = "localhost"
         port = 6831
         if telemetry.endpoint:
@@ -216,28 +259,42 @@ def configure_tracing(service_name: str, telemetry: TelemetrySettings) -> None:
             host = parsed.hostname or telemetry.endpoint
             port = parsed.port or port
         exporter = JaegerExporter(agent_host_name=host, agent_port=port)
-    elif telemetry.exporter.lower() == "otlp" and OTLPSpanExporter is not None:
-        if telemetry.endpoint:
-            exporter = OTLPSpanExporter(endpoint=telemetry.endpoint)
-        else:  # pragma: no cover - default constructor handles env based config
-            exporter = OTLPSpanExporter()
+    elif target == "otlp" and OTLPSpanExporter is not None:
+        exporter = OTLPSpanExporter(endpoint=telemetry.endpoint) if telemetry.endpoint else OTLPSpanExporter()
+    else:
+        exporter = ConsoleSpanExporter()
 
-    if exporter is not None and BatchSpanProcessor is not None:
-        processor = BatchSpanProcessor(exporter)
-        provider.add_span_processor(processor)
+    if exporter is not None:
+        provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
 
 
-def bind_correlation_id(value: str) -> Token:
-    """Bind a correlation identifier to the current execution context."""
+# ==============================================================================
+# CORRELATION ID HELPERS
+# ==============================================================================
+
+
+def bind_correlation_id(value: str) -> Token[str | None]:
+    """Bind a correlation identifier to the current execution context.
+
+    Args:
+        value: Correlation identifier to associate with the current context.
+
+    Returns:
+        Context variable token that can be used to restore the previous value.
+    """
     token = _correlation_id.set(value)
     if structlog:
         structlog.contextvars.bind_contextvars(correlation_id=value)
     return token
 
 
-def reset_correlation_id(token: Token | None) -> None:
-    """Reset the correlation identifier context."""
+def reset_correlation_id(token: Token[str | None] | None) -> None:
+    """Reset the correlation identifier context.
+
+    Args:
+        token: Token returned by :func:`bind_correlation_id` or ``None``.
+    """
     if token is not None:
         _correlation_id.reset(token)
     if structlog:
@@ -253,5 +310,5 @@ def get_correlation_id() -> str | None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Helper to fetch configured logger."""
+    """Return a configured logger with the given name."""
     return logging.getLogger(name)

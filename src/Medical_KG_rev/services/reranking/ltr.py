@@ -4,31 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from math import exp
+import numpy as np
+import onnxruntime as ort
+import xgboost
 
-try:  # pragma: no cover - optional dependency
-    import numpy as np
-except Exception:  # pragma: no cover - numpy optional
-    np = None  # type: ignore
-
-try:  # pragma: no cover - optional dependency
-    import onnxruntime as ort
-except Exception:  # pragma: no cover - onnxruntime optional
-    ort = None  # type: ignore
-
-try:  # pragma: no cover - optional dependency
-    import xgboost
-except Exception:  # pragma: no cover - xgboost optional
-    xgboost = None  # type: ignore
-
-from .base import BaseReranker, BatchScore
+from .base import BaseReranker
 from .features import FeaturePipeline, FeatureVector
 from .models import QueryDocumentPair
 from .utils import clamp
-
-
-def _sigmoid(value: float) -> float:
-    return 1.0 / (1.0 + exp(-value))
 
 
 def _bounded(value: float) -> float:
@@ -51,11 +34,11 @@ class LambdaMARTModel:
         if not self.feature_order and vectors:
             self.feature_order = list(vectors[0].values.keys())
         features = [vector.as_ordered(self.feature_order) for vector in vectors]
-        if self.booster is not None and xgboost is not None:
-            dmatrix = xgboost.DMatrix(features, feature_names=list(self.feature_order))
-            predictions = self.booster.predict(dmatrix)
-            return [clamp(float(value)) for value in predictions.tolist()]
-        return [self._fallback_score(vector) for vector in vectors]
+        if self.booster is None or xgboost is None:
+            raise RuntimeError("LambdaMART booster is required for scoring; fallback disabled")
+        dmatrix = xgboost.DMatrix(features, feature_names=list(self.feature_order))
+        predictions = self.booster.predict(dmatrix)
+        return [clamp(float(value)) for value in predictions.tolist()]
 
     def score_with_contributions(
         self, vectors: Sequence[FeatureVector]
@@ -71,12 +54,6 @@ class LambdaMARTModel:
             breakdown["score"] = score
             contributions.append(breakdown)
         return scores, contributions
-
-    def _fallback_score(self, vector: FeatureVector) -> float:
-        value = self.intercept
-        for feature, weight in self.coefficients.items():
-            value += float(vector.values.get(feature, 0.0)) * weight
-        return clamp(_sigmoid(value))
 
 
 @dataclass(slots=True)

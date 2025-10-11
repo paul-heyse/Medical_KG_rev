@@ -33,6 +33,7 @@ Performance Characteristics:
     - Efficient context passing and result aggregation
 
 Example:
+-------
     >>> from Medical_KG_rev.adapters.base import BaseAdapter, AdapterContext
     >>> class MyAdapter(BaseAdapter):
     ...     def fetch(self, context): return []
@@ -43,12 +44,11 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -92,6 +92,7 @@ class BaseAdapter(ABC):
         """Initialize adapter with given name.
 
         Args:
+        ----
             name: Unique identifier for this adapter instance.
 
         """
@@ -102,9 +103,11 @@ class BaseAdapter(ABC):
         """Fetch raw payloads from external systems.
 
         Args:
+        ----
             context: Adapter context with tenant and domain information.
 
         Returns:
+        -------
             Iterable of raw payload dictionaries from external systems.
 
         """
@@ -116,10 +119,12 @@ class BaseAdapter(ABC):
         """Transform payloads into domain documents.
 
         Args:
+        ----
             payloads: Raw payloads from external systems.
             context: Adapter context with tenant and domain information.
 
         Returns:
+        -------
             Sequence of parsed domain documents.
 
         """
@@ -128,10 +133,12 @@ class BaseAdapter(ABC):
         """Validate documents, returning warnings if applicable.
 
         Args:
+        ----
             documents: Documents to validate.
             context: Adapter context with tenant and domain information.
 
         Returns:
+        -------
             Sequence of validation warning messages.
 
         """
@@ -148,6 +155,7 @@ class BaseAdapter(ABC):
         """Persist documents to downstream storage.
 
         Args:
+        ----
             documents: Documents to persist.
             context: Adapter context with tenant and domain information.
 
@@ -157,9 +165,11 @@ class BaseAdapter(ABC):
         """Execute the full adapter lifecycle.
 
         Args:
+        ----
             context: Adapter context with tenant and domain information.
 
         Returns:
+        -------
             Adapter result containing documents and warnings.
 
         """

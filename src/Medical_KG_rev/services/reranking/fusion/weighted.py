@@ -8,6 +8,7 @@ from ..models import FusionResponse, ScoredDocument
 from .normalization import apply_normalization
 
 
+
 def weighted(
     ranked_lists: Mapping[str, Sequence[ScoredDocument]],
     *,

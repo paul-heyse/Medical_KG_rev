@@ -13,6 +13,7 @@ from ..services import GatewayService
 from .loaders import GraphQLLoaders
 
 
+
 @dataclass(slots=True)
 class GraphQLContext(BaseContext):
     service: GatewayService

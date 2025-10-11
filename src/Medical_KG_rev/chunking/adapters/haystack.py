@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from haystack import Document as HaystackDocument  # type: ignore
+from haystack.components.preprocessors import DocumentSplitter  # type: ignore
+
 from Medical_KG_rev.models.ir import Document
 
 from ..assembly import ChunkAssembler
@@ -15,60 +18,32 @@ from ..tokenization import TokenCounter, default_token_counter
 from .mapping import OffsetMapper
 
 
-def _create_preprocessor(**kwargs):
-    try:  # pragma: no cover - optional dependency
-        from haystack.components.preprocessors import DocumentSplitter  # type: ignore
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise ChunkerConfigurationError(
-            "haystack-ai must be installed to use HaystackPreprocessorChunker"
-        ) from exc
-    return DocumentSplitter(**kwargs)
-
-
 class HaystackPreprocessorChunker(BaseChunker):
-    name = "haystack.preprocessor"
-    version = "v1"
+    """Chunker that uses Haystack's DocumentSplitter component."""
 
     def __init__(
         self,
-        *,
-        split_length: int = 200,
-        split_overlap: int = 20,
-        split_by: str = "word",
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
         token_counter: TokenCounter | None = None,
-        preprocessor: object | None = None,
     ) -> None:
-        self.counter = token_counter or default_token_counter()
-        self.preprocessor = preprocessor or _create_preprocessor(
-            split_length=split_length,
-            split_overlap=split_overlap,
-            split_by=split_by,
-            respect_sentence_boundary=True,
-        )
-        self.split_by = split_by
-        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
+        """Initialize the Haystack preprocessor chunker."""
+        super().__init__()
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.token_counter = token_counter or default_token_counter()
 
-    def chunk(
-        self,
-        document: Document,
-        *,
-        tenant_id: str,
-        granularity: Granularity | None = None,
-        blocks: Iterable | None = None,
-    ) -> list[Chunk]:
-        contexts = [ctx for ctx in self.normalizer.iter_block_contexts(document) if ctx.text]
-        if not contexts:
-            return []
-        mapper = OffsetMapper(contexts, token_counter=self.counter)
-
-        # Convert our Document to Haystack Document format
-        try:  # pragma: no cover - optional dependency
-            from haystack import Document as HaystackDocument  # type: ignore
-        except Exception as exc:  # pragma: no cover - optional dependency
+    def chunk(self, document: Document) -> Iterable[Chunk]:
+        """Chunk a document using Haystack's DocumentSplitter."""
+        try:
+            from haystack.components.preprocessors import DocumentSplitter
+        except ImportError as exc:  # pragma: no cover - optional dependency
             raise ChunkerConfigurationError(
                 "haystack-ai must be installed to use HaystackPreprocessorChunker"
             ) from exc
 
+        # Convert to Haystack document format
+        mapper = OffsetMapper(document)
         haystack_doc = HaystackDocument(content=mapper.aggregated_text)
         result = self.preprocessor.run(documents=[haystack_doc])
         docs = result["documents"]

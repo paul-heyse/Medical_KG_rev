@@ -1,14 +1,8 @@
 """Scope definitions shared across authentication and authorization flows."""
 
+
+
 from __future__ import annotations
-
-# ============================================================================
-# IMPORTS
-# ============================================================================
-
-
-# (No additional imports required; section present for consistency.)
-
 
 # ============================================================================
 # SCOPE CONSTANTS

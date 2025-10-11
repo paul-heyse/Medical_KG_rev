@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
+import re
 
 import structlog
+
 
 logger = structlog.get_logger(__name__)
 

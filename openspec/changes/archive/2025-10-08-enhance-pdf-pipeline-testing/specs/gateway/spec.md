@@ -22,4 +22,3 @@
 - AND the item metadata is not flagged as a PDF
 - WHEN the gateway resolves the pipeline
 - THEN the generic `auto` topology MUST be selected
-

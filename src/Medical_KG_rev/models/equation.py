@@ -5,6 +5,7 @@ from pydantic import Field
 from .artifact import StructuredArtifact
 
 
+
 class Equation(StructuredArtifact):
     """Structured representation of an extracted equation."""
 

@@ -17,6 +17,7 @@ Performance:
     Interface definitions only - no performance characteristics.
 
 Example:
+-------
     >>> class MyObjectStore(ObjectStore):
     ...     async def put(self, key: str, data: bytes) -> None:
     ...         # Implementation
@@ -24,15 +25,16 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
+
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -48,7 +50,8 @@ from typing import Any
 class ObjectMetadata:
     """Metadata returned by object store operations.
 
-    Attributes:
+    Attributes
+    ----------
         content_type: MIME type of the stored object.
         size: Size of the object in bytes.
 
@@ -79,11 +82,13 @@ class ObjectStore(ABC):
         """Store data with the given key.
 
         Args:
+        ----
             key: Unique identifier for the data.
             data: Binary data to store.
             metadata: Optional metadata for the object.
 
         Raises:
+        ------
             StorageError: If the operation fails.
 
         """
@@ -94,12 +99,15 @@ class ObjectStore(ABC):
         """Retrieve data by key.
 
         Args:
+        ----
             key: Unique identifier for the data.
 
         Returns:
+        -------
             Binary data stored under the key.
 
         Raises:
+        ------
             StorageError: If the operation fails.
 
         """
@@ -110,9 +118,11 @@ class ObjectStore(ABC):
         """Delete data by key.
 
         Args:
+        ----
             key: Unique identifier for the data.
 
         Raises:
+        ------
             StorageError: If the operation fails.
 
         """
@@ -131,10 +141,12 @@ class LedgerStore(ABC):
         """Record state for a job.
 
         Args:
+        ----
             job_id: Unique identifier for the job.
             state: State data to store.
 
         Raises:
+        ------
             StorageError: If the operation fails.
 
         """
@@ -145,12 +157,15 @@ class LedgerStore(ABC):
         """Retrieve state for a job.
 
         Args:
+        ----
             job_id: Unique identifier for the job.
 
         Returns:
+        -------
             State data if found, None otherwise.
 
         Raises:
+        ------
             StorageError: If the operation fails.
 
         """
@@ -168,9 +183,11 @@ class CacheBackend(ABC):
         """Retrieve cached value.
 
         Args:
+        ----
             key: Cache key.
 
         Returns:
+        -------
             Cached value if found, None otherwise.
 
         """
@@ -181,6 +198,7 @@ class CacheBackend(ABC):
         """Store value in cache.
 
         Args:
+        ----
             key: Cache key.
             value: Value to cache.
             ttl: Time to live in seconds.
@@ -193,6 +211,7 @@ class CacheBackend(ABC):
         """Delete cached value.
 
         Args:
+        ----
             key: Cache key.
 
         """

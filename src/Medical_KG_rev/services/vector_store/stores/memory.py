@@ -2,32 +2,19 @@
 
 from __future__ import annotations
 
-import json
-import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Final
+import json
+import time
 
 import numpy as np
 
-from ..errors import (
-    BackendUnavailableError,
-    DimensionMismatchError,
-    NamespaceNotFoundError,
-    ResourceExhaustedError,
-)
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..errors import HttpClient
+from ..models import HttpClient
 from ..types import VectorStorePort
+
 
 _MAX_VECTORS_PER_NAMESPACE: Final[int] = 50_000
 

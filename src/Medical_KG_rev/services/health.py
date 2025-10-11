@@ -30,6 +30,7 @@ Performance Characteristics:
     - Minimal memory overhead for result caching
 
 Example:
+-------
     >>> from Medical_KG_rev.services.health import HealthService, success, failure
     >>> def database_check():
     ...     try:
@@ -43,15 +44,16 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+
 
 # ==============================================================================
 # DATA MODELS
@@ -66,10 +68,12 @@ class CheckResult:
     and optional detail information for debugging and monitoring.
 
     Attributes:
+    ----------
         status: Health check status ("ok", "error", "degraded")
         detail: Optional detailed message explaining the status
 
     Example:
+    -------
         >>> result = CheckResult(status="ok", detail="All systems operational")
         >>> print(f"Status: {result.status}, Detail: {result.detail}")
 
@@ -115,6 +119,7 @@ class HealthService:
     and provides standardized health status reporting.
 
     Attributes:
+    ----------
         checks: Mapping of check names to health check functions
         version: Service version string for identification
         started_at: Timestamp when the service was started
@@ -134,6 +139,7 @@ class HealthService:
         - Health checks executed on demand for readiness probe
 
     Example:
+    -------
         >>> checks = {
         ...     "database": lambda: success("DB healthy"),
         ...     "cache": lambda: success("Cache healthy")
@@ -155,9 +161,11 @@ class HealthService:
         rounded to 3 decimal places for precision.
 
         Returns:
+        -------
             Uptime in seconds as a float value.
 
         Example:
+        -------
             >>> service = HealthService({}, version="1.0.0")
             >>> import time
             >>> time.sleep(1.5)
@@ -176,6 +184,7 @@ class HealthService:
         whether the service is running and responsive.
 
         Returns:
+        -------
             Dictionary containing liveness information:
                 - status: Always "ok" for liveness probe
                 - version: Service version string
@@ -183,10 +192,12 @@ class HealthService:
                 - timestamp: Current UTC timestamp in ISO format
 
         Note:
+        ----
             Liveness probe does not check dependencies, only service
             availability. Use readiness() for dependency health checks.
 
         Example:
+        -------
             >>> service = HealthService({}, version="1.0.0")
             >>> liveness = service.liveness()
             >>> assert liveness["status"] == "ok"
@@ -209,6 +220,7 @@ class HealthService:
         detailed status for each component plus overall status.
 
         Returns:
+        -------
             Dictionary containing readiness information:
                 - status: Overall status ("ok", "degraded", "error")
                 - version: Service version string
@@ -217,10 +229,12 @@ class HealthService:
                 - checks: Dictionary of individual check results
 
         Note:
+        ----
             Status precedence: "error" > "degraded" > "ok"
             Individual check failures are caught and reported as errors.
 
         Example:
+        -------
             >>> def failing_check():
             ...     return CheckResult(status="error", detail="Component down")
             >>> service = HealthService({"component": failing_check}, version="1.0.0")
@@ -263,13 +277,16 @@ def success(detail: str = "") -> CheckResult:
     "ok" status and optional detail message.
 
     Args:
+    ----
         detail: Optional success message describing the check outcome.
             Defaults to empty string.
 
     Returns:
+    -------
         CheckResult with status "ok" and provided detail.
 
     Example:
+    -------
         >>> result = success("Database connection healthy")
         >>> assert result.status == "ok"
         >>> assert result.detail == "Database connection healthy"
@@ -285,12 +302,15 @@ def failure(detail: str) -> CheckResult:
     "error" status and required detail message explaining the failure.
 
     Args:
+    ----
         detail: Required failure message describing what went wrong.
 
     Returns:
+    -------
         CheckResult with status "error" and provided detail.
 
     Example:
+    -------
         >>> result = failure("Database connection timeout")
         >>> assert result.status == "error"
         >>> assert result.detail == "Database connection timeout"

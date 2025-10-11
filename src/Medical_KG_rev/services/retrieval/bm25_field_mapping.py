@@ -4,11 +4,12 @@ This module implements field mapping from chunk structure to BM25 fields
 with appropriate boosts and medical terminology handling.
 """
 
+from typing import Any
 import logging
 import re
-from typing import Any
 
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ class BM25FieldMapper:
         """Initialize BM25 field mapper.
 
         Args:
+        ----
             config: Field mapping configuration
 
         """
@@ -98,9 +100,11 @@ class BM25FieldMapper:
         """Extract title from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Title text
 
         """
@@ -120,9 +124,11 @@ class BM25FieldMapper:
         """Extract section headers from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Section headers text
 
         """
@@ -141,9 +147,11 @@ class BM25FieldMapper:
         """Extract paragraph text from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Paragraph text
 
         """
@@ -157,9 +165,11 @@ class BM25FieldMapper:
         """Extract caption text from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Caption text
 
         """
@@ -181,9 +191,11 @@ class BM25FieldMapper:
         """Extract table text from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Table text
 
         """
@@ -217,9 +229,11 @@ class BM25FieldMapper:
         """Extract footnote text from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Footnote text
 
         """
@@ -241,9 +255,11 @@ class BM25FieldMapper:
         """Extract references text from chunk structure.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             References text
 
         """
@@ -265,9 +281,11 @@ class BM25FieldMapper:
         """Preserve medical terms in text.
 
         Args:
+        ----
             text: Input text
 
         Returns:
+        -------
             Text with preserved medical terms
 
         """
@@ -291,10 +309,12 @@ class BM25FieldMapper:
         """Restore medical terms in text.
 
         Args:
+        ----
             text: Processed text with placeholders
             placeholders: Dictionary mapping placeholders to original terms
 
         Returns:
+        -------
             Text with restored medical terms
 
         """
@@ -307,9 +327,11 @@ class BM25FieldMapper:
         """Map chunk structure to BM25 fields.
 
         Args:
+        ----
             chunk: Chunk structure
 
         Returns:
+        -------
             Dictionary mapping field names to field text
 
         """
@@ -371,7 +393,8 @@ class BM25FieldMapper:
     def get_field_boosts(self) -> dict[str, float]:
         """Get field boost factors.
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping field names to boost factors
 
         """
@@ -389,9 +412,11 @@ class BM25FieldMapper:
         """Validate field mapping.
 
         Args:
+        ----
             fields: Field mapping to validate
 
         Returns:
+        -------
             List of validation error messages
 
         """
@@ -424,9 +449,11 @@ class BM25FieldMapper:
         """Get mapping statistics.
 
         Args:
+        ----
             fields: Field mapping to analyze
 
         Returns:
+        -------
             Dictionary with mapping statistics
 
         """

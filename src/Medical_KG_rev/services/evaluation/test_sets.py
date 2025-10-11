@@ -30,7 +30,8 @@ Performance:
 - Lazy loading of test set data
 - Optimized statistical computations
 
-Examples:
+Examples
+--------
     # Load a test set
     manager = TestSetManager()
     test_set = manager.load("medical_queries")
@@ -43,21 +44,22 @@ Examples:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-from __future__ import annotations
-
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from importlib import resources
-from importlib.abc import Traversable
 from pathlib import Path
 from random import Random
 
+from importlib import resources
+from importlib.abc import Traversable
 import yaml
+
 
 # ==============================================================================
 # TYPE DEFINITIONS & CONSTANTS
@@ -84,7 +86,8 @@ class QueryType(str, Enum):
     Thread Safety:
         Enum values are immutable and thread-safe.
 
-    Examples:
+    Examples
+    --------
         query_type = QueryType.EXACT_TERM
         if query_type == QueryType.COMPLEX_CLINICAL:
             # Handle complex clinical query
@@ -104,7 +107,8 @@ class QueryJudgment:
     relevance judgments for evaluation purposes. It provides
     methods for accessing relevance information and validation.
 
-    Attributes:
+    Attributes
+    ----------
         query_id: Unique identifier for the query
         query_text: The query text
         query_type: Type of query for stratification
@@ -114,7 +118,8 @@ class QueryJudgment:
     Thread Safety:
         Immutable dataclass, thread-safe.
 
-    Examples:
+    Examples
+    --------
         judgment = QueryJudgment(
             query_id="q1",
             query_text="diabetes treatment",
@@ -134,10 +139,12 @@ class QueryJudgment:
     def as_relevance_mapping(self) -> dict[str, float]:
         """Convert relevant documents to a mapping.
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping document IDs to relevance grades
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -146,10 +153,12 @@ class QueryJudgment:
     def has_relevant_document(self) -> bool:
         """Check if the query has any relevant documents.
 
-        Returns:
+        Returns
+        -------
             True if any document has relevance grade > 0
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -164,7 +173,8 @@ class TestSet:
     queries, relevance judgments, and metadata. It provides methods
     for stratification, splitting, validation, and serialization.
 
-    Attributes:
+    Attributes
+    ----------
         name: Name of the test set
         version: Version identifier
         queries: Tuple of query judgments
@@ -173,7 +183,8 @@ class TestSet:
     Thread Safety:
         Immutable dataclass, thread-safe.
 
-    Examples:
+    Examples
+    --------
         test_set = TestSet(
             name="medical_queries",
             version="1.0",
@@ -191,10 +202,12 @@ class TestSet:
     def stratify(self) -> dict[QueryType, tuple[QueryJudgment, ...]]:
         """Stratify queries by type.
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping query types to query tuples
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -207,13 +220,16 @@ class TestSet:
         """Return (evaluation, hold-out) splits preserving stratification.
 
         Args:
+        ----
             holdout_ratio: Fraction of queries to reserve for holdout
             seed: Random seed for reproducible splits
 
         Returns:
+        -------
             Tuple of (evaluation_set, holdout_set)
 
         Raises:
+        ------
             ValueError: If holdout_ratio is not between 0 and 1
 
         """
@@ -236,10 +252,12 @@ class TestSet:
     def to_payload(self) -> dict[str, object]:
         """Convert the test set to a serializable payload.
 
-        Returns:
+        Returns
+        -------
             Dictionary representation suitable for serialization
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -263,7 +281,8 @@ class TestSet:
     def ensure_quality(self) -> None:
         """Validate schema constraints defined in the specification.
 
-        Raises:
+        Raises
+        ------
             ValueError: If the test set fails quality validation
 
         """
@@ -286,10 +305,12 @@ class TestSet:
     def describe(self) -> dict[str, float]:
         """Generate descriptive statistics for the test set.
 
-        Returns:
+        Returns
+        -------
             Dictionary mapping query types to counts
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -307,7 +328,8 @@ class TestSetManager:
     test sets from both filesystem and packaged resources. It supports
     version validation, quality checking, and efficient caching.
 
-    Attributes:
+    Attributes
+    ----------
         root: Optional filesystem root for test sets
         _resource_root: Packaged resource root for test sets
         _cache: Cache of loaded test sets
@@ -319,7 +341,8 @@ class TestSetManager:
         Efficient caching prevents repeated file I/O.
         Lazy loading of test set data.
 
-    Examples:
+    Examples
+    --------
         # Load from packaged resources
         manager = TestSetManager()
         test_set = manager.load("medical_queries")
@@ -334,9 +357,11 @@ class TestSetManager:
         """Initialize the test set manager.
 
         Args:
+        ----
             root: Optional filesystem root for test sets
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -352,12 +377,15 @@ class TestSetManager:
         """Resolve the path to a test set file.
 
         Args:
+        ----
             name: Name of the test set
 
         Returns:
+        -------
             Path or Traversable object for the test set file
 
         Raises:
+        ------
             FileNotFoundError: If the test set is not found
 
         """
@@ -379,12 +407,15 @@ class TestSetManager:
         """Load YAML data from a file location.
 
         Args:
+        ----
             location: Path or Traversable object
 
         Returns:
+        -------
             Parsed YAML data as dictionary
 
         Raises:
+        ------
             YAMLError: If YAML parsing fails
             IOError: If file reading fails
 
@@ -400,13 +431,16 @@ class TestSetManager:
         """Load a test set from storage.
 
         Args:
+        ----
             name: Name of the test set to load
             expected_version: Optional expected version for validation
 
         Returns:
+        -------
             Loaded and validated test set
 
         Raises:
+        ------
             FileNotFoundError: If the test set is not found
             ValueError: If version validation fails
             ValueError: If quality validation fails
@@ -440,14 +474,17 @@ class TestSetManager:
         """Create a new version of a dataset replacing the cached entry.
 
         Args:
+        ----
             name: Name of the test set
             new_queries: New query data to replace existing queries
             version: Version identifier for the new dataset
 
         Returns:
+        -------
             New test set with updated queries
 
         Raises:
+        ------
             RuntimeError: If manager was initialized without filesystem root
             ValueError: If quality validation fails
             IOError: If file writing fails
@@ -480,12 +517,15 @@ def _parse_queries(values: Iterable[Mapping[str, object]]) -> list[QueryJudgment
     """Parse query data from raw payloads.
 
     Args:
+    ----
         values: Iterable of query payload dictionaries
 
     Returns:
+    -------
         List of parsed QueryJudgment objects
 
     Raises:
+    ------
         ValueError: If query data is invalid
 
     """
@@ -517,14 +557,17 @@ def build_test_set(name: str, queries: Sequence[Mapping[str, object]], *, versio
     """Build a test set from query data.
 
     Args:
+    ----
         name: Name of the test set
         queries: Sequence of query payload dictionaries
         version: Version identifier
 
     Returns:
+    -------
         Validated test set
 
     Raises:
+    ------
         ValueError: If quality validation fails
 
     """
@@ -537,13 +580,16 @@ def cohens_kappa(labels_a: Sequence[object], labels_b: Sequence[object]) -> floa
     """Compute Cohen's kappa for two annotator label sequences.
 
     Args:
+    ----
         labels_a: First annotator's labels
         labels_b: Second annotator's labels
 
     Returns:
+    -------
         Cohen's kappa coefficient (0-1)
 
     Raises:
+    ------
         ValueError: If sequences have different lengths
 
     """

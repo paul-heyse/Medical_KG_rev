@@ -13,6 +13,7 @@ from .models import Chunk
 from .pipeline import MultiGranularityPipeline
 
 
+
 @dataclass(slots=True, frozen=True)
 class ChunkerPlan:
     """Definition of a compiled chunking plan."""

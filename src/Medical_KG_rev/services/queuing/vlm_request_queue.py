@@ -4,14 +4,15 @@ This module provides a comprehensive request queuing system for VLM processing,
 ensuring efficient handling of requests under high load conditions.
 """
 
-import asyncio
-import time
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+import asyncio
+import time
+import uuid
 
 import structlog
+
 
 logger = structlog.get_logger(__name__)
 
@@ -183,7 +184,7 @@ class VLMRequestQueue:
         priority: RequestPriority = RequestPriority.NORMAL,
         timeout: float | None = None,
         max_retries: int | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Submit a request to the queue."""
         if not self.is_running:
@@ -201,7 +202,7 @@ class VLMRequestQueue:
             priority=priority,
             timeout=timeout or self.config.default_timeout,
             max_retries=max_retries or self.config.max_retries,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Add to queue based on strategy
@@ -215,7 +216,7 @@ class VLMRequestQueue:
             "Request submitted",
             request_id=request_id,
             priority=priority.value,
-            queue_size=self.queue.qsize()
+            queue_size=self.queue.qsize(),
         )
 
         return request_id
@@ -256,7 +257,7 @@ class VLMRequestQueue:
                 logger.info(
                     "Processing request",
                     request_id=request.request_id,
-                    priority=request.priority.value
+                    priority=request.priority.value,
                 )
 
                 # Process the request
@@ -282,7 +283,7 @@ class VLMRequestQueue:
                 logger.info(
                     "Request completed",
                     request_id=request.request_id,
-                    processing_time=processing_time
+                    processing_time=processing_time,
                 )
 
             except asyncio.CancelledError:
@@ -320,7 +321,7 @@ class VLMRequestQueue:
                         "Request failed, retrying",
                         request_id=request.request_id,
                         error=str(e),
-                        retry_count=request.retry_count
+                        retry_count=request.retry_count,
                     )
                 else:
                     # Max retries exceeded
@@ -334,7 +335,7 @@ class VLMRequestQueue:
                         "Request failed after max retries",
                         request_id=request.request_id,
                         error=str(e),
-                        retry_count=request.retry_count
+                        retry_count=request.retry_count,
                     )
 
     def _update_average_processing_time(self, processing_time: float) -> None:
@@ -345,8 +346,7 @@ class VLMRequestQueue:
             # Exponential moving average
             alpha = 0.1
             self.metrics.average_processing_time = (
-                alpha * processing_time +
-                (1 - alpha) * self.metrics.average_processing_time
+                alpha * processing_time + (1 - alpha) * self.metrics.average_processing_time
             )
 
     async def _health_check_loop(self) -> None:
@@ -371,9 +371,7 @@ class VLMRequestQueue:
                     self.metrics.processing_requests -= 1
 
                     logger.warning(
-                        "Request timed out",
-                        request_id=request.request_id,
-                        timeout=request.timeout
+                        "Request timed out", request_id=request.request_id, timeout=request.timeout
                     )
 
                 await asyncio.sleep(self.config.health_check_interval)
@@ -393,7 +391,8 @@ class VLMRequestQueue:
 
                 # Clean up old completed requests
                 old_completed = [
-                    req_id for req_id, req in self.completed_requests.items()
+                    req_id
+                    for req_id, req in self.completed_requests.items()
                     if req.completed_at and req.completed_at < cutoff_time
                 ]
                 for req_id in old_completed:
@@ -401,7 +400,8 @@ class VLMRequestQueue:
 
                 # Clean up old failed requests
                 old_failed = [
-                    req_id for req_id, req in self.failed_requests.items()
+                    req_id
+                    for req_id, req in self.failed_requests.items()
                     if req.completed_at and req.completed_at < cutoff_time
                 ]
                 for req_id in old_failed:
@@ -409,7 +409,8 @@ class VLMRequestQueue:
 
                 # Clean up old request history
                 self.request_history = [
-                    req for req in self.request_history
+                    req
+                    for req in self.request_history
                     if req.completed_at and req.completed_at > cutoff_time
                 ]
 
@@ -417,7 +418,7 @@ class VLMRequestQueue:
                     logger.info(
                         "Cleaned up old requests",
                         completed_removed=len(old_completed),
-                        failed_removed=len(old_failed)
+                        failed_removed=len(old_failed),
                     )
 
                 await asyncio.sleep(self.config.cleanup_interval)
@@ -441,51 +442,52 @@ class VLMRequestQueue:
 
                 # Calculate error rate
                 total_processed = (
-                    self.metrics.completed_requests +
-                    self.metrics.failed_requests +
-                    self.metrics.cancelled_requests +
-                    self.metrics.timeout_requests
+                    self.metrics.completed_requests
+                    + self.metrics.failed_requests
+                    + self.metrics.cancelled_requests
+                    + self.metrics.timeout_requests
                 )
                 if total_processed > 0:
                     self.metrics.error_rate = (
-                        (self.metrics.failed_requests +
-                         self.metrics.cancelled_requests +
-                         self.metrics.timeout_requests) / total_processed
-                    )
+                        self.metrics.failed_requests
+                        + self.metrics.cancelled_requests
+                        + self.metrics.timeout_requests
+                    ) / total_processed
 
                 # Calculate throughput (requests per minute)
                 if self.metrics.completed_requests > 0:
                     elapsed_time = time.time() - self.metrics.timestamp
                     if elapsed_time > 0:
-                        self.metrics.throughput = (
-                            self.metrics.completed_requests / (elapsed_time / 60)
+                        self.metrics.throughput = self.metrics.completed_requests / (
+                            elapsed_time / 60
                         )
 
                 # Update timestamp
                 self.metrics.timestamp = time.time()
 
                 # Store metrics history
-                self.metrics_history.append(QueueMetrics(
-                    total_requests=self.metrics.total_requests,
-                    pending_requests=self.metrics.pending_requests,
-                    processing_requests=self.metrics.processing_requests,
-                    completed_requests=self.metrics.completed_requests,
-                    failed_requests=self.metrics.failed_requests,
-                    cancelled_requests=self.metrics.cancelled_requests,
-                    timeout_requests=self.metrics.timeout_requests,
-                    average_processing_time=self.metrics.average_processing_time,
-                    average_wait_time=self.metrics.average_wait_time,
-                    queue_utilization=self.metrics.queue_utilization,
-                    error_rate=self.metrics.error_rate,
-                    throughput=self.metrics.throughput,
-                    timestamp=self.metrics.timestamp
-                ))
+                self.metrics_history.append(
+                    QueueMetrics(
+                        total_requests=self.metrics.total_requests,
+                        pending_requests=self.metrics.pending_requests,
+                        processing_requests=self.metrics.processing_requests,
+                        completed_requests=self.metrics.completed_requests,
+                        failed_requests=self.metrics.failed_requests,
+                        cancelled_requests=self.metrics.cancelled_requests,
+                        timeout_requests=self.metrics.timeout_requests,
+                        average_processing_time=self.metrics.average_processing_time,
+                        average_wait_time=self.metrics.average_wait_time,
+                        queue_utilization=self.metrics.queue_utilization,
+                        error_rate=self.metrics.error_rate,
+                        throughput=self.metrics.throughput,
+                        timestamp=self.metrics.timestamp,
+                    )
+                )
 
                 # Keep only recent metrics
                 cutoff_time = time.time() - 3600  # 1 hour
                 self.metrics_history = [
-                    m for m in self.metrics_history
-                    if m.timestamp > cutoff_time
+                    m for m in self.metrics_history if m.timestamp > cutoff_time
                 ]
 
                 await asyncio.sleep(30)  # Update every 30 seconds
@@ -509,7 +511,7 @@ class VLMRequestQueue:
                 "started_at": request.started_at,
                 "processing_time": time.time() - request.started_at if request.started_at else None,
                 "retry_count": request.retry_count,
-                "metadata": request.metadata
+                "metadata": request.metadata,
             }
 
         # Check completed requests
@@ -522,11 +524,13 @@ class VLMRequestQueue:
                 "created_at": request.created_at,
                 "started_at": request.started_at,
                 "completed_at": request.completed_at,
-                "processing_time": request.completed_at - request.started_at if request.started_at and request.completed_at else None,
+                "processing_time": request.completed_at - request.started_at
+                if request.started_at and request.completed_at
+                else None,
                 "retry_count": request.retry_count,
                 "metadata": request.metadata,
                 "result": request.result,
-                "error": request.error
+                "error": request.error,
             }
 
         # Check failed requests
@@ -539,10 +543,12 @@ class VLMRequestQueue:
                 "created_at": request.created_at,
                 "started_at": request.started_at,
                 "completed_at": request.completed_at,
-                "processing_time": request.completed_at - request.started_at if request.started_at and request.completed_at else None,
+                "processing_time": request.completed_at - request.started_at
+                if request.started_at and request.completed_at
+                else None,
                 "retry_count": request.retry_count,
                 "metadata": request.metadata,
-                "error": request.error
+                "error": request.error,
             }
 
         return {"request_id": request_id, "status": "not_found"}
@@ -599,8 +605,8 @@ class VLMRequestQueue:
                 "average_processing_time": self.metrics.average_processing_time,
                 "queue_utilization": self.metrics.queue_utilization,
                 "error_rate": self.metrics.error_rate,
-                "throughput": self.metrics.throughput
-            }
+                "throughput": self.metrics.throughput,
+            },
         }
 
     def get_metrics_history(self) -> list[dict[str, Any]]:
@@ -618,7 +624,7 @@ class VLMRequestQueue:
                 "average_processing_time": m.average_processing_time,
                 "queue_utilization": m.queue_utilization,
                 "error_rate": m.error_rate,
-                "throughput": m.throughput
+                "throughput": m.throughput,
             }
             for m in self.metrics_history
         ]

@@ -1,4 +1,20 @@
-"""Sparse retrieval utilities for OpenSearch-backed adapters."""
+"""Sparse retrieval utilities for OpenSearch-backed adapters.
+
+Key Responsibilities:
+    - Provide lightweight BM25-style retrieval for testing scenarios.
+    - Support indexation of sparse documents with filterable fields.
+
+Collaborators:
+    - Upstream: Retrieval components simulating sparse search behavior.
+    - Downstream: None; results consumed by tests and local workflows.
+
+Thread Safety:
+    - Not thread-safe: Uses mutable in-memory indices.
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
@@ -9,12 +25,23 @@ from math import log
 from typing import Any
 
 
+
 def _tokenise(text: str) -> list[str]:
+    """Tokenize text into lowercase whitespace-separated tokens."""
     return [token for token in text.lower().split() if token]
 
 
 @dataclass(slots=True)
 class SparseDocument:
+    """Sparse document representation stored by :class:`BM25Retriever`.
+
+    Attributes:
+        doc_id: Identifier of the document.
+        text: Raw text used for BM25 scoring.
+        fields: Additional metadata fields persisted with the document.
+        rank_features: Precomputed feature values such as boosts.
+    """
+
     doc_id: str
     text: str
     fields: Mapping[str, str] = field(default_factory=dict)
@@ -25,6 +52,7 @@ class BM25Retriever:
     """Simplified BM25 retriever supporting filterable fields."""
 
     def __init__(self, *, k1: float = 1.2, b: float = 0.75) -> None:
+        """Create a new BM25 retriever with the specified parameters."""
         self._k1 = k1
         self._b = b
         self._documents: dict[str, SparseDocument] = {}
@@ -32,6 +60,7 @@ class BM25Retriever:
         self._avg_len = 0.0
 
     def index_documents(self, documents: Iterable[SparseDocument]) -> None:
+        """Index documents, updating internal postings lists and averages."""
         docs = list(documents)
         if not docs:
             return
@@ -50,6 +79,16 @@ class BM25Retriever:
         top_k: int = 10,
         filters: Mapping[str, Any] | None = None,
     ) -> list[tuple[str, float, SparseDocument]]:
+        """Search indexed documents using BM25 scoring.
+
+        Args:
+            query: Query string to evaluate.
+            top_k: Maximum number of results to return.
+            filters: Optional field filters applied before scoring.
+
+        Returns:
+            List of tuples containing document id, score, and document object.
+        """
         if not self._documents:
             return []
         query_terms = Counter(_tokenise(query))
@@ -67,12 +106,14 @@ class BM25Retriever:
         return results[:top_k]
 
     def _passes_filters(self, document: SparseDocument, filters: Mapping[str, Any]) -> bool:
+        """Return whether a document satisfies the provided filters."""
         for key, expected in filters.items():
             if document.fields.get(key) != expected:
                 return False
         return True
 
     def _score(self, tokens: Counter[str], query_terms: Counter[str]) -> float:
+        """Compute a BM25 score for a tokenized document."""
         score = 0.0
         doc_len = sum(tokens.values())
         for term, qf in query_terms.items():
@@ -94,10 +135,12 @@ class BM25FRetriever(BM25Retriever):
     """Multi-field BM25 implementation applying field boosts."""
 
     def __init__(self, *, boosts: Mapping[str, float] | None = None) -> None:
+        """Initialise the multi-field retriever with optional field boosts."""
         super().__init__()
         self._boosts = dict(boosts or {})
 
     def index_documents(self, documents: Iterable[SparseDocument]) -> None:  # type: ignore[override]
+        """Index documents with field-level boosts applied."""
         weighted_docs: list[SparseDocument] = []
         for document in documents:
             text = document.text
@@ -115,9 +158,11 @@ class SPLADEDocWriter:
         self._features: dict[str, Mapping[str, float]] = {}
 
     def write(self, doc_id: str, terms: Mapping[str, float]) -> None:
+        """Persist SPLADE term weights for a document."""
         self._features[doc_id] = dict(terms)
 
     def features_for(self, doc_id: str) -> Mapping[str, float]:
+        """Return stored SPLADE term weights for a document."""
         return self._features.get(doc_id, {})
 
 
@@ -125,6 +170,7 @@ class SPLADEQueryEncoder:
     """Encodes queries into sparse term-weight dictionaries."""
 
     def encode(self, query: str) -> Mapping[str, float]:
+        """Convert a query string into normalized term weights."""
         counts = Counter(_tokenise(query))
         total = sum(counts.values()) or 1
         return {term: freq / total for term, freq in counts.items()}

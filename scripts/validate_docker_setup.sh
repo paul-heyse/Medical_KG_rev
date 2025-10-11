@@ -190,4 +190,3 @@ else
     info "Please fix the errors above before starting services"
     exit 1
 fi
-

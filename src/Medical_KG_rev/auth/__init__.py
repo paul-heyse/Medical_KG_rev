@@ -8,9 +8,6 @@ structures without pulling optional dependencies.
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
 import importlib.util
 from collections.abc import Callable
 from typing import Any
@@ -18,27 +15,18 @@ from typing import Any
 from .context import SecurityContext
 from .scopes import Scopes
 
-# ============================================================================
-# EXPORTS
-# ============================================================================
+__all__ = ["SecurityContext", "Scopes"]
 
-__all__ = ["Scopes", "SecurityContext"]
-
-
-# ============================================================================
-# OPTIONAL FASTAPI INTEGRATION
-# ============================================================================
-
-if importlib.util.find_spec("fastapi") is not None:
-    from .dependencies import get_security_context, secure_endpoint  # type: ignore
-
+try:
+    from .dependencies import get_security_context, secure_endpoint
     __all__.extend(["get_security_context", "secure_endpoint"])
-else:  # pragma: no cover - optional dependency fallback
+except ImportError:  # pragma: no cover - optional dependency fallback
 
     def get_security_context(*args: Any, **kwargs: Any) -> SecurityContext:
         """Placeholder that signals FastAPI is required for authentication hooks.
 
-        Raises:
+        Raises
+        ------
             RuntimeError: Always raised because FastAPI is unavailable.
 
         """
@@ -49,7 +37,8 @@ else:  # pragma: no cover - optional dependency fallback
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Placeholder that signals FastAPI is required to secure endpoints.
 
-        Raises:
+        Raises
+        ------
             RuntimeError: Always raised because FastAPI is unavailable.
 
         """

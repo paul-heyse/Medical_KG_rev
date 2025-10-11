@@ -12,13 +12,8 @@ from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from Medical_KG_rev.observability.metrics import set_chunking_circuit_state
 
 from .configuration import DEFAULT_CONFIG_PATH, ChunkerSettings, ChunkingConfig
-from .exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    TokenizerMismatchError,
-)
+
+# from .exceptions import HttpClient  # Not implemented
 from .factory import ChunkerFactory
 from .models import Chunk, Granularity
 from .runtime import ChunkerSession, ChunkingRuntime
@@ -194,6 +189,8 @@ class ChunkingService:
                 self._session_cache[plan_key] = session
             try:
                 chunks = session.chunk(document, tenant_id=tenant_id)
+            except MemoryError:
+                raise
             except (ChunkerConfigurationError, InvalidDocumentError, ChunkingUnavailableError):
                 raise
             except Exception as exc:  # pragma: no cover - defensive fallback

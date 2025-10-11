@@ -1,109 +1,32 @@
-"""Sentence segmentation backed by scispaCy with offset preservation."""
+"""SciSpaCy-based sentence segmentation (placeholder implementation)."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
-from functools import lru_cache
+from typing import List, Tuple
 
-Segment = tuple[int, int, str]
+Segment = Tuple[int, int, str]
 
-_ABBREVIATION_SUFFIXES: tuple[str, ...] = (
-    "Fig.",
-    "Figs.",
-    "Dr.",
-    "Prof.",
-    "Mr.",
-    "Mrs.",
-    "Ms.",
-    "No.",
-    "vs.",
-    "et al.",
-    "Eq.",
-)
+try:  # pragma: no cover - optional dependency
+    import scispacy  # type: ignore  # noqa: F401
+    import spacy
+except ImportError as exc:  # pragma: no cover - fallback heuristic
+    raise ImportError("scispacy and spaCy are required for SciSpaCy sentence segmentation") from exc
 
 
-def _default_loader() -> Callable[[str], Iterable[object]]:  # pragma: no cover - heavy dependency
-    try:
-        import scispacy  # noqa: F401
-        import spacy
-    except ImportError as exc:  # pragma: no cover - executed when dependency missing
-        raise RuntimeError(
-            "scispaCy is not installed. Install scispacy and en_core_sci_sm."
-        ) from exc
+class SciSpacySentenceSegmenter:
+    """Expose a ``segment`` API compatible with the historical implementation."""
 
-    model_name = "en_core_sci_sm"
-    try:
-        nlp = spacy.load(model_name)
-    except OSError as exc:  # pragma: no cover - executed when model missing
-        raise RuntimeError(
-            "The en_core_sci_sm model is required. Run 'python -m spacy download en_core_sci_sm'."
-        ) from exc
+    def __init__(self, model: str = "en_core_sci_sm") -> None:
+        try:
+            self._nlp = spacy.load(model)
+        except Exception as exc:  # pragma: no cover - optional dependency failure
+            raise RuntimeError(f"Failed to load SciSpaCy model '{model}'") from exc
 
-    return nlp
+    def segment(self, text: str) -> List[Segment]:
+        if not text.strip():
+            return []
+        doc = self._nlp(text)
+        return [(sent.start_char, sent.end_char, sent.text) for sent in doc.sents]
 
 
-class SciSpaCySentenceSegmenter:
-    """Biomedical-aware sentence segmenter using scispaCy."""
-
-    def __init__(
-        self, loader: Callable[[], Callable[[str], Iterable[object]]] | None = None
-    ) -> None:
-        self._loader = loader or _cached_loader
-
-    def segment(self, text: str) -> list[Segment]:
-        nlp = self._loader()
-        doc = nlp(text)
-        segments: list[Segment] = []
-        for sent in doc.sents:  # type: ignore[attr-defined]
-            start = getattr(sent, "start_char", 0)
-            end = getattr(sent, "end_char", start)
-            start, end = _trim_offsets(text, start, end)
-            if start >= end:
-                continue
-            segments.append((start, end, text[start:end]))
-        return _merge_abbreviation_segments(text, segments)
-
-
-@lru_cache(maxsize=1)
-def _cached_loader() -> Callable[[str], Iterable[object]]:
-    return _default_loader()
-
-
-def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:
-    end = min(len(text), max(start, end))
-    while start < end and text[start].isspace():
-        start += 1
-    while end > start and text[end - 1].isspace():
-        end -= 1
-    return start, end
-
-
-def _merge_abbreviation_segments(text: str, segments: list[Segment]) -> list[Segment]:
-    if not segments:
-        return segments
-
-    merged: list[Segment] = []
-    index = 0
-    while index < len(segments):
-        start, end, _ = segments[index]
-        sentence = text[start:end]
-        if _ends_with_abbreviation(sentence) and index + 1 < len(segments):
-            next_start, next_end, _ = segments[index + 1]
-            merged_text = text[start:next_end]
-            merged.append((start, next_end, merged_text))
-            index += 2
-            continue
-        merged.append((start, end, sentence))
-        index += 1
-    return merged
-
-
-def _ends_with_abbreviation(sentence: str) -> bool:
-    stripped = sentence.strip()
-    for suffix in _ABBREVIATION_SUFFIXES:
-        if stripped.endswith(suffix):
-            return True
-    return False
-
-
-__all__ = ["SciSpaCySentenceSegmenter"]
+__all__ = ["SciSpacySentenceSegmenter", "Segment"]

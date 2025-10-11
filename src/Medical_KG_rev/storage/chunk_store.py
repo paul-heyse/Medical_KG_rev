@@ -4,18 +4,15 @@ This module implements a chunk store database for storing processed document
 chunks with comprehensive metadata and analytics capabilities.
 """
 
-import logging
-import time
 from pathlib import Path
 from typing import Any
-
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
-from pydantic import BaseModel, Field
+import logging
+import time
 
 from prometheus_client import Counter, Histogram
+from pydantic import BaseModel, Field
+import duckdb
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +80,7 @@ class ChunkStore:
         """Initialize chunk store database.
 
         Args:
+        ----
             config: Configuration for chunk store
 
         """
@@ -225,6 +223,7 @@ class ChunkStore:
         """Add a chunk to the store.
 
         Args:
+        ----
             chunk: Chunk record to add
 
         """
@@ -306,9 +305,11 @@ class ChunkStore:
         """Get a chunk from the store.
 
         Args:
+        ----
             chunk_id: Chunk identifier
 
         Returns:
+        -------
             Chunk record if found, None otherwise
 
         """
@@ -372,9 +373,11 @@ class ChunkStore:
         """Get all chunks for a document.
 
         Args:
+        ----
             doc_id: Document identifier
 
         Returns:
+        -------
             List of chunk records
 
         """
@@ -443,9 +446,11 @@ class ChunkStore:
         """Remove a chunk from the store.
 
         Args:
+        ----
             chunk_id: Chunk identifier
 
         Returns:
+        -------
             True if chunk was removed, False if not found
 
         """
@@ -504,7 +509,8 @@ class ChunkStore:
     def get_store_stats(self) -> dict[str, Any]:
         """Get store statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with store statistics
 
         """
@@ -549,6 +555,7 @@ class ChunkStore:
         """Validate chunk data.
 
         Args:
+        ----
             chunk: Chunk record to validate
 
         """
@@ -588,7 +595,8 @@ class ChunkStore:
     def health_check(self) -> dict[str, Any]:
         """Check chunk store health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

@@ -6,21 +6,22 @@ This stage processes chunks from the chunk store and generates:
 - Qwen3 embeddings from contextualized text
 """
 
-import logging
 from pathlib import Path
 from typing import Any
+import logging
 
 from pydantic import BaseModel, Field
 
 from Medical_KG_rev.config.retrieval_config import BM25Config, Qwen3Config, SPLADEConfig
 from Medical_KG_rev.pipeline.stages import FeaturesStage
 from Medical_KG_rev.services.retrieval.bm25_field_mapping import BM25FieldMapper
-from Medical_KG_rev.services.retrieval.qwen3_contextualized import Qwen3ContextualizedProcessor
+from Medical_KG_rev.services.retrieval.qwen3_contextualized import HttpClient
 from Medical_KG_rev.services.retrieval.qwen3_service import Qwen3Service
 from Medical_KG_rev.services.retrieval.splade_aggregation import SPLADEAggregator
 from Medical_KG_rev.services.retrieval.splade_segmentation import SPLADESegmenter
 from Medical_KG_rev.storage.chunk_store import ChunkStore
 from Medical_KG_rev.storage.manifest_manager import ManifestManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class FeaturesStageImpl(FeaturesStage):
         """Initialize the Features stage.
 
         Args:
+        ----
             config: Configuration for the Features stage
 
         """
@@ -92,10 +94,12 @@ class FeaturesStageImpl(FeaturesStage):
         """Process chunks to generate retrieval features.
 
         Args:
+        ----
             chunk_ids: Optional list of specific chunk IDs to process.
                       If None, processes all chunks in the store.
 
         Returns:
+        -------
             Dictionary with processing results and statistics
 
         """
@@ -147,9 +151,11 @@ class FeaturesStageImpl(FeaturesStage):
         """Process a batch of chunks to generate features.
 
         Args:
+        ----
             chunks: List of chunks to process
 
         Returns:
+        -------
             Dictionary with batch processing results
 
         """
@@ -195,9 +201,11 @@ class FeaturesStageImpl(FeaturesStage):
         """Generate SPLADE vector for a chunk.
 
         Args:
+        ----
             chunk: Chunk to process
 
         Returns:
+        -------
             SPLADE vector dictionary or None if generation fails
 
         """
@@ -234,9 +242,11 @@ class FeaturesStageImpl(FeaturesStage):
         """Generate Qwen3 embedding for a chunk.
 
         Args:
+        ----
             chunk: Chunk to process
 
         Returns:
+        -------
             Qwen3 embedding vector or None if generation fails
 
         """
@@ -264,6 +274,7 @@ class FeaturesStageImpl(FeaturesStage):
         """Update chunk store with generated features.
 
         Args:
+        ----
             chunks: List of chunks with generated features
 
         """
@@ -285,6 +296,7 @@ class FeaturesStageImpl(FeaturesStage):
         """Update overall results with batch results.
 
         Args:
+        ----
             results: Overall results dictionary to update
             batch_results: Batch results to merge
 
@@ -298,7 +310,8 @@ class FeaturesStageImpl(FeaturesStage):
     def create_manifest(self) -> dict[str, Any]:
         """Create manifest for the Features stage.
 
-        Returns:
+        Returns
+        -------
             Manifest dictionary with stage information
 
         """
@@ -325,9 +338,11 @@ class FeaturesStageImpl(FeaturesStage):
         """Validate the Features stage manifest.
 
         Args:
+        ----
             manifest_path: Path to the manifest file
 
         Returns:
+        -------
             True if manifest is valid, False otherwise
 
         """
@@ -354,7 +369,8 @@ class FeaturesStageImpl(FeaturesStage):
     def health_check(self) -> dict[str, Any]:
         """Perform health check for the Features stage.
 
-        Returns:
+        Returns
+        -------
             Health check results
 
         """

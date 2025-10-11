@@ -6,9 +6,9 @@ This stage builds:
 - Qwen3 vectors to FAISS/Qdrant backend
 """
 
-import logging
 from pathlib import Path
 from typing import Any
+import logging
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,7 @@ from Medical_KG_rev.services.vector_store.stores.qwen3_index import Qwen3Index
 from Medical_KG_rev.services.vector_store.stores.splade_index import SPLADEImpactIndex
 from Medical_KG_rev.storage.chunk_store import ChunkStore
 from Medical_KG_rev.storage.manifest_manager import ManifestManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class IndexStageImpl(IndexStage):
         """Initialize the Index stage.
 
         Args:
+        ----
             config: Configuration for the Index stage
 
         """
@@ -107,10 +109,12 @@ class IndexStageImpl(IndexStage):
         """Build all retrieval indexes from chunk store data.
 
         Args:
+        ----
             chunk_ids: Optional list of specific chunk IDs to index.
                       If None, indexes all chunks in the store.
 
         Returns:
+        -------
             Dictionary with indexing results and statistics
 
         """
@@ -176,9 +180,11 @@ class IndexStageImpl(IndexStage):
         """Build BM25 index from chunks.
 
         Args:
+        ----
             chunks: List of chunks to index
 
         Returns:
+        -------
             Dictionary with BM25 indexing results
 
         """
@@ -226,9 +232,11 @@ class IndexStageImpl(IndexStage):
         """Build SPLADE index from chunks.
 
         Args:
+        ----
             chunks: List of chunks to index
 
         Returns:
+        -------
             Dictionary with SPLADE indexing results
 
         """
@@ -276,9 +284,11 @@ class IndexStageImpl(IndexStage):
         """Build Qwen3 index from chunks.
 
         Args:
+        ----
             chunks: List of chunks to index
 
         Returns:
+        -------
             Dictionary with Qwen3 indexing results
 
         """
@@ -325,7 +335,8 @@ class IndexStageImpl(IndexStage):
     def validate_indexes(self) -> dict[str, Any]:
         """Validate all built indexes.
 
-        Returns:
+        Returns
+        -------
             Dictionary with validation results
 
         """
@@ -366,7 +377,8 @@ class IndexStageImpl(IndexStage):
     def create_manifest(self) -> dict[str, Any]:
         """Create manifest for the Index stage.
 
-        Returns:
+        Returns
+        -------
             Manifest dictionary with stage information
 
         """
@@ -398,9 +410,11 @@ class IndexStageImpl(IndexStage):
         """Validate the Index stage manifest.
 
         Args:
+        ----
             manifest_path: Path to the manifest file
 
         Returns:
+        -------
             True if manifest is valid, False otherwise
 
         """
@@ -427,7 +441,8 @@ class IndexStageImpl(IndexStage):
     def health_check(self) -> dict[str, Any]:
         """Perform health check for the Index stage.
 
-        Returns:
+        Returns
+        -------
             Health check results
 
         """

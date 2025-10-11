@@ -21,6 +21,7 @@ class AutoScalingDeployer:
         """Initialize auto-scaling deployer.
 
         Args:
+        ----
             namespace: Kubernetes namespace
 
         """
@@ -31,10 +32,12 @@ class AutoScalingDeployer:
         """Run a command and return the result.
 
         Args:
+        ----
             cmd: Command to run
             check: Whether to check for errors
 
         Returns:
+        -------
             Completed process
 
         """
@@ -173,7 +176,8 @@ class AutoScalingDeployer:
     def get_deployment_status(self) -> dict[str, Any]:
         """Get status of the auto-scaling deployment.
 
-        Returns:
+        Returns
+        -------
             Dictionary with deployment status
 
         """

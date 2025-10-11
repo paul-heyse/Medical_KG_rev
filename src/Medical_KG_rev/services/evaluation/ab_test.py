@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import sqrt
-
-try:
-    from scipy.special import betainc
-except ImportError:
-    # Fallback for environments without scipy
-    def betainc(a: float, b: float, x: float) -> float:
-        return 0.5  # Simplified fallback
-
-
-from collections.abc import Sequence
 from statistics import mean, stdev
+
+from scipy.special import betainc
+
 
 
 @dataclass(slots=True)

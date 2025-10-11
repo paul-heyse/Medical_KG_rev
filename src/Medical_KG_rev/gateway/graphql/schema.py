@@ -6,39 +6,19 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from typing import Any
 
-import strawberry
 from fastapi import Request
 from strawberry import ID
 from strawberry.fastapi import GraphQLRouter
 from strawberry.scalars import JSON
 from strawberry.types import Info
+import strawberry
 
 from Medical_KG_rev.auth.scopes import Scopes
 
-from ..models import (
-    AdapterHealthView,
-    AdapterMetadataView,
-    ChunkRequest,
-    DocumentChunk,
-    DocumentSummary,
-    EmbeddingOptions,
-    EmbeddingResponse,
-    EmbeddingVector,
-    EmbedRequest,
-    EntityLinkRequest,
-    ExtractionRequest,
-    IngestionRequest,
-    KnowledgeGraphWriteRequest,
-    NamespaceInfo,
-    OperationStatus,
-    Pagination,
-    RetrievalResult,
-    RetrieveRequest,
-    SearchArguments,
-    build_batch_result,
-)
+from ..models import HttpClient
 from ..services import GatewayService, get_gateway_service
 from .context import GraphQLContext, build_context
+
 
 
 def _operation_status_to_type(status: OperationStatus) -> OperationStatusType:

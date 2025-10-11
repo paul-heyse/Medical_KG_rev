@@ -6,6 +6,7 @@ import hashlib
 import secrets
 
 
+
 def hash_content(content: str) -> str:
     """Return a stable 12 character hash for the provided content."""
     digest = hashlib.sha256(content.encode("utf-8")).hexdigest()

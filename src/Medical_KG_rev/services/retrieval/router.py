@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+
 
 
 @dataclass(slots=True, frozen=True)

@@ -7,6 +7,7 @@ from typing import Any
 from Medical_KG_rev.utils.errors import ProblemDetail
 
 
+
 class StageFailure(RuntimeError):
     """Wrap a stage failure with retry metadata and RFC 7807 details."""
 

@@ -2,18 +2,9 @@
 
 from __future__ import annotations
 
-from .port import (
-    CHUNKER_REGISTRY,
-    Chunk,
-    ChunkerPort,
-    ChunkerRegistrationError,
-    UnknownChunkerError,
-    chunk_document,
-    get_chunker,
-    register_chunker,
-    reset_registry,
-)
+from .port import HttpClient
 from .registry import register_defaults
+
 
 __all__ = [
     "CHUNKER_REGISTRY",

@@ -27,6 +27,7 @@ Performance Characteristics:
     - Efficient numpy operations for batch processing
 
 Example:
+-------
     >>> from Medical_KG_rev.services.evaluation.metrics import precision_at_k
     >>> relevances = [1.0, 0.0, 1.0, 0.0, 0.0]
     >>> precision = precision_at_k(relevances, k=3)
@@ -34,18 +35,19 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from statistics import mean
 
-import numpy as np
 from sklearn.metrics import ndcg_score
+import numpy as np
+
 
 # ==============================================================================
 # METRIC FUNCTIONS
@@ -56,6 +58,7 @@ def recall_at_k(relevances: Sequence[float], total_relevant: int, k: int) -> flo
     """Return Recall@K for the given ranking.
 
     Args:
+    ----
         relevances: Ordered sequence of graded relevance scores.
         total_relevant: Number of relevant documents for the query.
         k: Rank cutoff.

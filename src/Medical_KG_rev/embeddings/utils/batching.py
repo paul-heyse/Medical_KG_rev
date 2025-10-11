@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
+
 T = TypeVar("T")
 
 

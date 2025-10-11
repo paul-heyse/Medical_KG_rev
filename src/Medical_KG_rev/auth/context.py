@@ -7,12 +7,10 @@ emit telemetry, and scope rate limiting decisions.
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import datetime
+
 
 # ============================================================================
 # DATA MODELS
@@ -24,6 +22,7 @@ class SecurityContext:
     """Represents the authenticated principal for the current request.
 
     Attributes:
+    ----------
         subject: Subject identifier from the authentication token.
         tenant_id: Tenant associated with the request.
         scopes: Granted scope set used for authorization decisions.
@@ -34,6 +33,7 @@ class SecurityContext:
         key_id: Identifier for API-key based authentication.
 
     Example:
+    -------
         >>> context = SecurityContext(
         ...     subject="user:42",
         ...     tenant_id="tenant-a",
@@ -57,9 +57,11 @@ class SecurityContext:
         """Return ``True`` when the provided scope is authorized.
 
         Args:
+        ----
             scope: Scope string to evaluate.
 
         Returns:
+        -------
             ``True`` if the context includes the scope or a wildcard.
 
         """
@@ -69,7 +71,8 @@ class SecurityContext:
     def identity(self) -> str:
         """Return the canonical identifier used for logging and rate limiting.
 
-        Returns:
+        Returns
+        -------
             Stable identifier string combining subject or key ID.
 
         """
@@ -79,9 +82,11 @@ class SecurityContext:
         """Return a new context with the provided scopes merged in.
 
         Args:
+        ----
             *extra_scopes: Additional scopes to grant on the derived context.
 
         Returns:
+        -------
             A new :class:`SecurityContext` instance containing the merged scope
             set while preserving other metadata.
 

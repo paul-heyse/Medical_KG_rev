@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from datetime import datetime
 from typing import Protocol
+import json
+
+try:  # pragma: no cover - optional dependency
+    import redis  # type: ignore
+except ImportError:  # pragma: no cover - falls back to in-memory cache
+    redis = None  # type: ignore[assignment]
 
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
-
-try:  # pragma: no cover - optional dependency during tests
-    import redis
-except Exception:  # pragma: no cover - handled by NullEmbeddingCache fallback
-    redis = None  # type: ignore[assignment]
 
 
 def _serialize(record: EmbeddingRecord) -> str:
@@ -49,11 +49,14 @@ def _deserialize(payload: str) -> EmbeddingRecord:
 class EmbeddingCache(Protocol):
     """Simple protocol describing cache operations."""
 
-    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None: ...
+    def get(self, namespace: str, embedding_id: str) -> EmbeddingRecord | None:
+        ...
 
-    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None: ...
+    def set(self, record: EmbeddingRecord, *, ttl: int | None = None) -> None:
+        ...
 
-    def invalidate_namespace(self, namespace: str) -> None: ...
+    def invalidate_namespace(self, namespace: str) -> None:
+        ...
 
 
 class NullEmbeddingCache:
@@ -121,8 +124,8 @@ class RedisEmbeddingCache:
 
 
 __all__ = [
-    "EmbeddingCache",
-    "InMemoryEmbeddingCache",
-    "NullEmbeddingCache",
-    "RedisEmbeddingCache",
+"EmbeddingCache",
+"InMemoryEmbeddingCache",
+"NullEmbeddingCache",
+"RedisEmbeddingCache",
 ]

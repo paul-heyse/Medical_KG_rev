@@ -1,28 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 import json
 import logging
 import sqlite3
 import time
-from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field
-from pathlib import Path
 
 import faiss
 import numpy as np
 
-from ..errors import DimensionMismatchError, InvalidNamespaceConfigError, NamespaceNotFoundError
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..errors import HttpClient
+from ..models import HttpClient
 from ..types import VectorStorePort
+
 
 LOGGER = logging.getLogger(__name__)
 

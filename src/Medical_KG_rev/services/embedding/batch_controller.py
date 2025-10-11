@@ -12,6 +12,7 @@ from typing import Final
 
 import structlog
 
+
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_WINDOW: Final[int] = 10
@@ -29,6 +30,7 @@ class BatchController:
         """Initialize the batch controller.
 
         Args:
+        ----
             window: Number of recent operations to track per namespace
         """
         self.window = window
@@ -46,12 +48,14 @@ class BatchController:
         """Choose optimal batch size for embedding operations.
 
         Args:
+        ----
             namespace: Namespace identifier
             default: Default batch size
             pending: Number of pending operations
             candidates: Available batch size candidates
 
         Returns:
+        -------
             Selected batch size
         """
         # Check for override first
@@ -79,6 +83,7 @@ class BatchController:
         """Set a reduced batch size override for a namespace.
 
         Args:
+        ----
             namespace: Namespace identifier
             size: Override batch size
         """
@@ -89,6 +94,7 @@ class BatchController:
         """Record a successful batch operation.
 
         Args:
+        ----
             namespace: Namespace identifier
             size: Batch size used
             duration: Operation duration in seconds
@@ -97,7 +103,7 @@ class BatchController:
 
         # Keep only recent history
         if len(self.history[namespace]) > self.window:
-            self.history[namespace] = self.history[namespace][-self.window:]
+            self.history[namespace] = self.history[namespace][-self.window :]
 
         logger.debug(
             "batch_controller.success",
@@ -110,6 +116,7 @@ class BatchController:
         """Record a failed batch operation.
 
         Args:
+        ----
             namespace: Namespace identifier
             size: Batch size that failed
             error: Error description
@@ -131,6 +138,7 @@ class BatchController:
         """Clear batch size override for a namespace.
 
         Args:
+        ----
             namespace: Namespace identifier
         """
         if namespace in self.overrides:
@@ -141,9 +149,11 @@ class BatchController:
         """Get statistics for a namespace.
 
         Args:
+        ----
             namespace: Namespace identifier
 
         Returns:
+        -------
             Statistics dictionary
         """
         if not self.history[namespace]:

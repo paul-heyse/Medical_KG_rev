@@ -30,6 +30,7 @@ Performance Characteristics:
     - Response parsing: O(n) where n is response size
 
 Example:
+-------
     >>> adapter = RxNormAdapter()
     >>> context = AdapterContext(
     ...     tenant_id="tenant1",
@@ -41,19 +42,17 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
 from Medical_KG_rev.models import Block, BlockType, Document, Section
 from Medical_KG_rev.utils.http_client import (
-    BackoffStrategy,
     CircuitBreakerConfig,
     HttpClient,
     RateLimitConfig,
@@ -106,7 +105,7 @@ class ResilientHTTPAdapter(BaseAdapter):
 
     def _get_json(self, path: str, *, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Make a GET request and return JSON response."""
-        response = self._client.get(path, params=params)
+        response = self._client.request("GET", path, params=params)
         response.raise_for_status()
         return response.json()
 
@@ -221,6 +220,12 @@ class RxNormAdapter(ResilientHTTPAdapter):
             )
         return documents
 
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover - passthrough
+        """Persistence is handled by downstream ingestion pipeline; adapters simply return documents."""
+        return None
+
 
 class ICD11Adapter(ResilientHTTPAdapter):
     """Adapter for ICD-11 terminology search."""
@@ -285,6 +290,12 @@ class ICD11Adapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover - passthrough
+        """Persistence is handled by downstream ingestion pipeline; adapters simply return documents."""
+        return None
 
 
 class MeSHAdapter(ResilientHTTPAdapter):
@@ -351,6 +362,12 @@ class MeSHAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover - passthrough
+        """Persistence is handled by downstream ingestion pipeline; adapters simply return documents."""
+        return None
 
 
 class ChEMBLAdapter(ResilientHTTPAdapter):
@@ -423,6 +440,12 @@ class ChEMBLAdapter(ResilientHTTPAdapter):
                 )
             )
         return documents
+
+    def write(
+        self, documents: Sequence[Document], context: AdapterContext
+    ) -> None:  # pragma: no cover - passthrough
+        """Persistence is handled by downstream ingestion pipeline; adapters simply return documents."""
+        return None
 
 
 # ==============================================================================

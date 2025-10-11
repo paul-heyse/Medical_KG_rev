@@ -2,4 +2,5 @@
 
 from .intent_classifier import IntentClassification, IntentClassifier, QueryIntent
 
+
 __all__ = ["IntentClassification", "IntentClassifier", "QueryIntent"]

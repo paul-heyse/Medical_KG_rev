@@ -4,19 +4,19 @@ This module provides caching decorators and utilities for gRPC service calls
 to improve performance and reduce latency.
 """
 
+from collections.abc import Callable
+from typing import Any, TypeVar
 import functools
 import hashlib
 import json
 import logging
 import time
-from collections.abc import Callable
-from typing import Any, TypeVar
-
-from pydantic import BaseModel, Field
 
 from prometheus_client import Counter, Histogram
+from pydantic import BaseModel, Field
 
 from .cache_manager import CacheConfig, ServiceCacheManager, create_cache_manager
+
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +188,7 @@ def cached_operation(
     """Decorator for caching service operations.
 
     Args:
+    ----
         service_name: Name of the service
         operation_name: Name of the operation
         cache_config: Cache configuration

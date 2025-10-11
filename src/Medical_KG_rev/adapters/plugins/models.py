@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field, PositiveInt, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 AdapterDomainLiteral = tuple[str, ...]
 
 

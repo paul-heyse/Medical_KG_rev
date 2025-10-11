@@ -4,6 +4,15 @@ This template shows the required structure and content for decorator
 docstrings in the Medical_KG_rev pipeline codebase.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any, TypeVar
+
+StageResult = TypeVar("StageResult")
+T = TypeVar("T")
+Chunk = TypeVar("Chunk")
+
 # Example decorator docstring structure:
 
 """[One-line summary: 'Decorator that adds functionality'].
@@ -50,7 +59,7 @@ def stage_plugin(
     description: str = "",
     dependencies: list[str] | None = None,
 ) -> Callable[[Callable[..., StageResult]], Callable[..., StageResult]]:
-    """Decorator for registering orchestration stage plugins.
+    """Register an orchestration stage plugin.
 
     Registers a function as an orchestration stage plugin that can be
     discovered and executed by the plugin manager. The decorator adds
@@ -71,28 +80,26 @@ def stage_plugin(
         Use this decorator on functions that implement orchestration
         stages. The function must accept StageContext and return StageResult.
 
-    Parameters
-    ----------
-        name: Unique name for the stage plugin. Used for discovery
-            and configuration. Must be unique across all plugins.
-        version: Version string for the stage plugin. Used for
-            compatibility checking and plugin management.
-        description: Human-readable description of what the stage does.
-            Used in documentation and error messages.
-        dependencies: List of other stage names that this stage depends on.
-            Used for dependency resolution and execution ordering.
+    Args:
+    ----
+        name: Unique identifier for the stage plugin used during discovery.
+        version: Semantic version string that enables compatibility checks.
+        description: Human-readable explanation of the stage behavior.
+        dependencies: Optional list of stage names that must execute first.
 
-    Returns
+    Returns:
     -------
-        Callable: Decorator function that returns the original function
-            with added metadata and registration.
+        Callable[..., StageResult]: Decorator that returns the original function
+            with added metadata and registration hooks.
 
     Note:
+    ----
         Thread safety: Safe to use in multi-threaded environments
         Performance: Minimal overhead, registration happens at import time
         Side effects: Registers stage in global registry
 
     Example:
+    -------
         >>> @stage_plugin(
         ...     name="metadata_extraction",
         ...     version="1.0.0",
@@ -117,7 +124,7 @@ def track_metrics(
     operation: str,
     labels: dict[str, str] | None = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator for tracking operation metrics automatically.
+    """Track operation metrics automatically.
 
     Automatically tracks metrics for decorated functions including
     execution time, success/failure rates, and custom labels.
@@ -137,24 +144,26 @@ def track_metrics(
         Use this decorator on functions that represent significant
         operations that should be monitored and tracked.
 
-    Parameters
-    ----------
-        operation: Name of the operation for metrics labeling.
-            Used as the 'operation' label in Prometheus metrics.
-        labels: Additional labels to include in metrics.
-            Useful for adding context like tenant_id, model_name, etc.
+    Args:
+    ----
+        operation: Name of the operation for metrics labeling. Used as the
+            'operation' label in Prometheus metrics.
+        labels: Additional labels to include in metrics. Useful for adding
+            context like tenant_id, model_name, or stage.
 
-    Returns
+    Returns:
     -------
-        Callable: Decorator function that returns the original function
-            with added metrics tracking.
+        Callable[[Callable[..., T]], Callable[..., T]]: Decorator that wraps the
+            original callable with metrics instrumentation.
 
     Note:
+    ----
         Thread safety: Safe to use in multi-threaded environments
         Performance: Minimal overhead, metrics emission is async
         Side effects: Emits Prometheus metrics
 
     Example:
+    -------
         >>> @track_metrics(
         ...     operation="chunking",
         ...     labels={"strategy": "section", "model": "biobert"}
@@ -177,7 +186,7 @@ def validate_request(
     schema: dict[str, Any],
     strict: bool = True,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator for validating function arguments against JSON schema.
+    """Validate function arguments against a JSON schema.
 
     Validates function arguments against a JSON schema before execution.
     Raises ValidationError if arguments don't match the schema.
@@ -196,24 +205,26 @@ def validate_request(
         Use this decorator on functions that accept structured
         input data that should be validated.
 
-    Parameters
-    ----------
-        schema: JSON schema for validating function arguments.
-            Must be a valid JSON schema object.
-        strict: Whether to use strict validation mode.
-            Strict mode disallows additional properties not in schema.
+    Args:
+    ----
+        schema: JSON schema for validating function arguments. Must be a valid
+            JSON schema object.
+        strict: Whether to use strict validation mode. Strict mode disallows
+            additional properties not present in the schema.
 
-    Returns
+    Returns:
     -------
-        Callable: Decorator function that returns the original function
-            with added validation.
+        Callable[[Callable[..., T]], Callable[..., T]]: Decorator that returns
+            the original function with automatic validation.
 
     Note:
+    ----
         Thread safety: Safe to use in multi-threaded environments
         Performance: Validation overhead depends on schema complexity
         Side effects: May raise ValidationError for invalid input
 
     Example:
+    -------
         >>> schema = {
         ...     "type": "object",
         ...     "properties": {

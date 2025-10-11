@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import structlog
+
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import record_pipeline_stage
 
@@ -13,6 +14,7 @@ from ..fusion.service import FusionService
 from ..models import PipelineSettings, ScoredDocument
 from ..rerank_engine import RerankingEngine
 from .runtime import PipelineRuntime
+
 
 logger = structlog.get_logger(__name__)
 

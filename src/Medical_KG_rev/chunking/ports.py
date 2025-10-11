@@ -10,6 +10,7 @@ from Medical_KG_rev.models.ir import Block, Document
 from .models import Chunk, Granularity
 
 
+
 class BaseChunker(Protocol):
     """Protocol all chunkers must follow."""
 
@@ -33,4 +34,5 @@ class BaseChunker(Protocol):
 class SupportsSentenceSplitting(Protocol):
     """Protocol for sentence splitting adapters."""
 
-    def split(self, text: str) -> Iterable[str]: ...
+    def split(self, text: str) -> Iterable[str]:
+        ...

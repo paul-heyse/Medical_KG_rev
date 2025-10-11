@@ -8,7 +8,7 @@ from typing import Any
 
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .errors import RerankingError, UnknownRerankerError
-from .late_interaction import ColbertIndexReranker, ColBERTReranker, QdrantColBERTReranker
+from .late_interaction import ColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
 from .models import RerankerConfig

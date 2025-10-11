@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
+
 class OpenAccessMetadataMixin:
     """Mixin providing open access metadata utilities."""
 

@@ -1,9 +1,10 @@
 """Chunk model for document processing."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
+
 
 
 class Chunk(BaseModel):
@@ -15,11 +16,10 @@ class Chunk(BaseModel):
     start_offset: int = Field(..., description="Start offset in the original document")
     end_offset: int = Field(..., description="End offset in the original document")
     chunk_index: int = Field(..., description="Index of this chunk within the document")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
 
     class Config:
         """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
+        json_encoders = {datetime: lambda v: v.isoformat()}

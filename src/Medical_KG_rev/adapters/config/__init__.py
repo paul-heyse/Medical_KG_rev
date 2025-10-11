@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from pathlib import Path
 
+
 _BASE_DIR = Path(__file__).resolve().parent
 
 

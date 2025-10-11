@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import asyncio
 
-try:
-    from redis.asyncio import Redis
-except Exception:  # pragma: no cover - optional dependency
-    Redis = None  # type: ignore
+from redis.asyncio import Redis
 
 from .base import CacheBackend
+
 
 
 class InMemoryCache(CacheBackend):

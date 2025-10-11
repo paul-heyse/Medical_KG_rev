@@ -8,10 +8,11 @@ This module provides table structure preservation capabilities including:
 - Table schema preservation for rendering
 """
 
-import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class TableFidelityPreserver:
         """Initialize the table fidelity preserver.
 
         Args:
+        ----
             preserve_structure: Whether to preserve table structure
             include_captions: Whether to include captions in table chunks
 
@@ -129,9 +131,11 @@ class TableFidelityPreserver:
         """Preserve table structure during processing.
 
         Args:
+        ----
             table_data: Raw table data from document processing
 
         Returns:
+        -------
             TableChunk with preserved structure
 
         """
@@ -165,8 +169,7 @@ class TableFidelityPreserver:
 
         except Exception as e:
             logger.error(f"Error preserving table structure: {e}")
-            # Return minimal table chunk
-            return self._create_fallback_table_chunk(table_data)
+            raise
 
     def _extract_table_schema(self, table_data: dict[str, Any]) -> TableSchema:
         """Extract table schema from raw data."""
@@ -346,37 +349,15 @@ class TableFidelityPreserver:
             "original_format": table_data.get("format", "unknown"),
         }
 
-    def _create_fallback_table_chunk(self, table_data: dict[str, Any]) -> TableChunk:
-        """Create fallback table chunk when preservation fails."""
-        # Create minimal schema
-        schema = TableSchema(
-            headers=[],
-            rows=0,
-            cols=0,
-            structure_type=TableStructureType.SIMPLE,
-            caption=None,
-            footnotes=[],
-        )
-
-        # Create minimal content
-        content = table_data.get("text", "Table content unavailable")
-
-        return TableChunk(
-            chunk_id=f"fallback_table_{hash(content)}",
-            table_schema=schema,
-            flattened_content=content,
-            contextualized_content=content,
-            machine_content=content,
-            preservation_metadata={"fallback": True, "error": "preservation_failed"},
-        )
-
     def validate_table_preservation(self, chunk: TableChunk) -> bool:
         """Validate table preservation quality.
 
         Args:
+        ----
             chunk: TableChunk to validate
 
         Returns:
+        -------
             True if validation passes, False otherwise
 
         """
@@ -415,11 +396,13 @@ def preserve_table_fidelity(
     """Convenience function for table fidelity preservation.
 
     Args:
+    ----
         table_data: Raw table data
         preserve_structure: Whether to preserve structure
         include_captions: Whether to include captions
 
     Returns:
+    -------
         TableChunk with preserved structure
 
     """

@@ -117,4 +117,3 @@ validation during configuration loading instead of during runtime execution.
   access to the same configuration volume as the webserver and gateway.
 - CloudEvents and OpenLineage emission hooks live alongside the Dagster jobs
   and reuse the resilience policy loader for consistent telemetry metadata.
-

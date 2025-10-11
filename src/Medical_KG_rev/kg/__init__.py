@@ -5,6 +5,7 @@ from .neo4j_client import Neo4jClient
 from .schema import GRAPH_SCHEMA, NodeSchema, RelationshipSchema
 from .shacl import ShaclValidator, ValidationError
 
+
 __all__ = [
     "GRAPH_SCHEMA",
     "CypherTemplates",

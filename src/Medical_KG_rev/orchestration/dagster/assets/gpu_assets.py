@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from dagster import AssetExecutionContext, asset, get_dagster_logger
+from dagster import asset, get_dagster_logger
 from pydantic import BaseModel
 
 from Medical_KG_rev.observability.service_metrics import collect_service_metrics
-from Medical_KG_rev.orchestration.dagster.resources.gpu_services import GPUServiceResource
+from Medical_KG_rev.orchestration.dagster.resources.gpu_services import (
+    GPUServiceResource,
+)
 
 
 class ChunkedDocument(BaseModel):

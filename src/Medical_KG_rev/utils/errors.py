@@ -1,206 +1,92 @@
-"""Error utilities implementing RFC 7807 problem details.
+"""Problem detail helpers for consistent error reporting across services.
 
-This module provides error handling utilities that implement the RFC 7807
-Problem Details for HTTP APIs specification. It includes both Pydantic-based
-and lightweight dataclass implementations for maximum compatibility.
+Key Responsibilities:
+    - Provide RFC 7807 compliant data structures and helpers used by gateway and
+      service layers when returning errors
+    - Supply a base exception that carries problem details for translation to
+      API responses
 
-The module defines:
-- ProblemDetail: RFC 7807 compliant problem details object
-- FoundationError: Base exception with embedded problem details
+Collaborators:
+    - Upstream: Service implementations raise ``FoundationError`` when they need
+      structured error payloads
+    - Downstream: Gateway response mappers serialise :class:`ProblemDetail`
+      instances into HTTP responses
 
-Architecture:
-- Supports both Pydantic and dataclass implementations
-- Automatic fallback when Pydantic is unavailable
-- RFC 7807 compliant error structure
-- Clean serialization for HTTP responses
+Side Effects:
+    - None; helpers are pure data containers
 
 Thread Safety:
-- ProblemDetail instances are immutable and thread-safe
-- FoundationError instances are thread-safe
+    - Thread-safe; dataclasses are immutable aside from standard attribute
+      mutation semantics
 
-Performance:
-- Lightweight implementation with minimal overhead
-- Optional Pydantic dependency for enhanced validation
-
-Examples:
-    # Using ProblemDetail directly
-    problem = ProblemDetail(
-        title="Validation Error",
-        status=400,
-        detail="Invalid input format"
-    )
-    response = problem.to_response()
-
-    # Using FoundationError
-    try:
-        raise FoundationError("Invalid request", status=400)
-    except FoundationError as e:
-        response = e.problem.to_response()
-
+Performance Characteristics:
+    - O(1) operations that only touch small dictionaries
 """
 
-# IMPORTS
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Mapping
 
-# TYPE DEFINITIONS & CONSTANTS
-_PYDANTIC_AVAILABLE = importlib.util.find_spec("pydantic") is not None
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
 
-# PROBLEM DETAILS IMPLEMENTATION
-if _PYDANTIC_AVAILABLE:
-    from pydantic import BaseModel, Field  # type: ignore
-
-    class ProblemDetail(BaseModel):
-        """Representation of RFC 7807 problem details object.
-
-        This class provides a Pydantic-based implementation of RFC 7807
-        problem details, offering automatic validation and serialization.
-
-        Attributes:
-            type: URI identifying the problem type
-            title: Human-readable summary of the problem
-            status: HTTP status code
-            detail: Human-readable explanation of the problem
-            instance: URI identifying the specific occurrence
-            extra: Additional context about the problem
-
-        Thread Safety:
-            Immutable model, thread-safe.
-
-        Examples:
-            problem = ProblemDetail(
-                title="Validation Error",
-                status=400,
-                detail="Invalid input format",
-                type="https://example.com/errors/validation"
-            )
-
-        """
-
-        type: str = Field(default="about:blank")
-        title: str
-        status: int
-        detail: str | None = None
-        instance: str | None = None
-        extra: dict[str, Any] = Field(default_factory=dict)
-
-        def to_response(self) -> dict[str, Any]:
-            """Convert the problem detail to HTTP response format.
-
-            Returns:
-                Dictionary suitable for HTTP response serialization
-
-            Raises:
-                None: This method never raises exceptions.
-
-            """
-            data = self.model_dump()
-            payload = {key: value for key, value in data.items() if value is not None}
-            if payload.get("extra") == {}:
-                payload.pop("extra", None)
-            return payload
-
-else:  # pragma: no cover - optional dependency fallback
-
-    @dataclass(slots=True)
-    class ProblemDetail:
-        """Lightweight problem details implementation without pydantic.
-
-        This class provides a dataclass-based implementation of RFC 7807
-        problem details for environments where Pydantic is not available.
-
-        Attributes:
-            title: Human-readable summary of the problem
-            status: HTTP status code
-            type: URI identifying the problem type
-            detail: Human-readable explanation of the problem
-            instance: URI identifying the specific occurrence
-            extra: Additional context about the problem
-
-        Thread Safety:
-            Immutable dataclass, thread-safe.
-
-        Examples:
-            problem = ProblemDetail(
-                title="Validation Error",
-                status=400,
-                detail="Invalid input format"
-            )
-
-        """
-
-        title: str
-        status: int
-        type: str = "about:blank"
-        detail: str | None = None
-        instance: str | None = None
-        extra: dict[str, Any] = field(default_factory=dict)
-
-        def model_dump(self) -> dict[str, Any]:
-            """Convert the problem detail to dictionary format.
-
-            Returns:
-                Dictionary representation of the problem detail
-
-            Raises:
-                None: This method never raises exceptions.
-
-            """
-            return asdict(self)
-
-        def to_response(self) -> dict[str, Any]:
-            """Convert the problem detail to HTTP response format.
-
-            Returns:
-                Dictionary suitable for HTTP response serialization
-
-            Raises:
-                None: This method never raises exceptions.
-
-            """
-            data = self.model_dump()
-            payload = {key: value for key, value in data.items() if value is not None}
-            if payload.get("extra") == {}:
-                payload.pop("extra", None)
-            return payload
+__all__ = ["ProblemDetail", "FoundationError"]
 
 
-# EXCEPTION CLASSES
+@dataclass(slots=True)
+class ProblemDetail:
+    """Lightweight problem details object compliant with RFC 7807."""
+
+    title: str
+    status: int
+    detail: str | None = None
+    type: str = "about:blank"
+    instance: str | None = None
+    extra: Mapping[str, Any] = field(default_factory=dict)
+
+    def model_dump(self) -> dict[str, Any]:
+        """Return a dictionary representation with optional fields dropped."""
+        payload = {key: value for key, value in asdict(self).items() if value is not None}
+        if not payload.get("extra"):
+            payload.pop("extra", None)
+        return payload
+
+    def to_response(self) -> dict[str, Any]:
+        """Alias for model_dump used by existing call-sites."""
+        return self.model_dump()
+
+
 class FoundationError(RuntimeError):
-    """Base exception for foundation utilities.
+    """Base exception that carries a :class:`ProblemDetail` instance."""
 
-    This exception class provides a base for foundation utility errors,
-    automatically embedding RFC 7807 problem details for consistent
-    error handling across the application.
-
-    Attributes:
-        problem: RFC 7807 problem details object
-
-    Thread Safety:
-        Thread-safe exception class.
-
-    Examples:
-        try:
-            raise FoundationError("Invalid configuration", status=400)
-        except FoundationError as e:
-            response = e.problem.to_response()
-
-    """
-
-    def __init__(self, message: str, *, status: int = 500, detail: str | None = None) -> None:
-        """Initialize the foundation error with problem details.
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int = 500,
+        detail: str | None = None,
+        type: str = "about:blank",
+        instance: str | None = None,
+        extra: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Initialise the exception with structured problem detail attributes.
 
         Args:
-            message: Error message
-            status: HTTP status code
-            detail: Optional detailed error message
-
-        Raises:
-            None: Initialization always succeeds.
-
+            message: Human readable error summary.
+            status: HTTP status code associated with the problem.
+            detail: Optional detailed description of the failure.
+            type: Problem type URI, defaults to ``about:blank``.
+            instance: Optional URI reference identifying the specific occurrence.
+            extra: Additional attributes included in the serialized payload.
         """
         super().__init__(message)
-        self.problem = ProblemDetail(title=message, status=status, detail=detail)
+        self.problem = ProblemDetail(
+            title=message,
+            status=status,
+            detail=detail,
+            type=type,
+            instance=instance,
+            extra=extra or {},
+        )

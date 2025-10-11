@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any
 
 
+
 class FusionStrategy(str, Enum):
     """Supported fusion algorithms."""
 

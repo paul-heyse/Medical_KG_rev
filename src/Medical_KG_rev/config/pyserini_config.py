@@ -7,12 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:  # pragma: no cover - optional dependency
-    import yaml
-except ModuleNotFoundError:  # pragma: no cover
-    yaml = None  # type: ignore[assignment]
+import yaml
 
-try:  # pragma: no cover - optional dependency
+try:
     from pydantic import BaseModel, Field
 except ModuleNotFoundError:  # pragma: no cover
     BaseModel = None  # type: ignore[assignment]

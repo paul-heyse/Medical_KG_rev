@@ -4,25 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from .stores.external import (
-    AnnoyIndex,
-    ChromaStore,
-    DiskANNStore,
-    DuckDBVSSStore,
-    HNSWLibIndex,
-    LanceDBStore,
-    NMSLibIndex,
-    PgvectorStore,
-    ScaNNIndex,
-    VespaStore,
-    WeaviateStore,
-)
+from .stores.external import HttpClient
 from .stores.faiss import FaissVectorStore
 from .stores.memory import InMemoryVectorStore
 from .stores.milvus import MilvusVectorStore
 from .stores.opensearch import OpenSearchKNNStore
 from .stores.qdrant import QdrantVectorStore
 from .types import VectorStorePort
+
 
 _SUPPORTED_DRIVERS = {
     "memory": InMemoryVectorStore,

@@ -10,6 +10,7 @@ information about the open access status of academic papers.
 
 from .adapter import UnpaywallAdapter
 
+
 # ==============================================================================
 # EXPORTS
 # ==============================================================================

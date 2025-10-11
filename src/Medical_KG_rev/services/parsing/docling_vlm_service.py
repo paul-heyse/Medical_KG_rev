@@ -8,15 +8,16 @@ This module provides Docling Vision-Language Model integration including:
 - Performance monitoring and metrics for VLM processing
 """
 
-import asyncio
-import logging
-import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+import asyncio
+import logging
+import time
 
 import httpx
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +36,26 @@ class VLMProcessingStatus(Enum):
 class DoclingVLMResult:
     """Result from Docling VLM processing."""
 
-    pdf_path: str
-    status: VLMProcessingStatus
-    text_content: str
-    tables: list[dict[str, Any]]
-    figures: list[dict[str, Any]]
-    metadata: dict[str, Any]
-    processing_time: float
+    pdf_path: str | None = None
+    status: VLMProcessingStatus = VLMProcessingStatus.COMPLETED
+    text_content: str = ""
+    tables: list[dict[str, Any]] = field(default_factory=list)
+    figures: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    processing_time: float = 0.0
     error_message: str | None = None
     model_version: str | None = None
     gpu_memory_used: float | None = None
+    document_id: str | None = None
+    text: str | None = None
+
+    def __post_init__(self) -> None:
+        # Maintain backwards compatibility with older tests/fixtures that only provided a `text`
+        # payload while the new implementation prefers `text_content`.
+        if not self.text_content and self.text:
+            self.text_content = self.text
+        elif self.text_content and not self.text:
+            self.text = self.text_content
 
 
 @dataclass
@@ -75,6 +86,7 @@ class DoclingVLMService:
         """Initialize the Docling VLM service.
 
         Args:
+        ----
             config: Configuration for the VLM service
 
         """
@@ -137,9 +149,11 @@ class DoclingVLMService:
         """Process a single PDF using Docling VLM.
 
         Args:
+        ----
             pdf_path: Path to the PDF file
 
         Returns:
+        -------
             DoclingVLMResult with processing results
 
         """
@@ -177,9 +191,11 @@ class DoclingVLMService:
         """Process multiple PDFs in batch.
 
         Args:
+        ----
             pdf_paths: List of PDF file paths
 
         Returns:
+        -------
             List of DoclingVLMResult objects
 
         """
@@ -288,7 +304,8 @@ class DoclingVLMService:
     async def health_check(self) -> dict[str, Any]:
         """Check VLM service health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """
@@ -345,6 +362,7 @@ class DoclingVLMServiceManager:
         """Initialize the VLM service manager.
 
         Args:
+        ----
             configs: List of VLM service configurations
 
         """
@@ -369,9 +387,11 @@ class DoclingVLMServiceManager:
         """Process PDF using available VLM service.
 
         Args:
+        ----
             pdf_path: Path to PDF file
 
         Returns:
+        -------
             DoclingVLMResult
 
         """
@@ -435,9 +455,11 @@ def create_docling_vlm_service(config: DoclingVLMConfig) -> DoclingVLMService:
     """Create Docling VLM service instance.
 
     Args:
+    ----
         config: VLM service configuration
 
     Returns:
+    -------
         DoclingVLMService instance
 
     """
@@ -448,9 +470,11 @@ def create_docling_vlm_service_manager(configs: list[DoclingVLMConfig]) -> Docli
     """Create Docling VLM service manager.
 
     Args:
+    ----
         configs: List of VLM service configurations
 
     Returns:
+    -------
         DoclingVLMServiceManager instance
 
     """

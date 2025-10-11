@@ -1,35 +1,41 @@
-"""HTTP client utilities with retry, circuit breaker, and rate limiting.
+"""HTTP client utilities, retry orchestration, and circuit breaker helpers.
 
-This module provides HTTP client utilities with advanced features including
-retry mechanisms, circuit breakers, rate limiting, and observability.
+Key Responsibilities:
+    - Construct synchronous and asynchronous HTTP clients with retry, timeout,
+      backoff, rate limit, and circuit breaker behaviour
+    - Provide shared configuration dataclasses used across gateway and service
+      integrations
+    - Emit OpenTelemetry spans to ensure downstream calls remain observable
 
-The module supports:
-- Synchronous and asynchronous HTTP clients
-- Configurable retry strategies with backoff
-- Circuit breaker pattern for fault tolerance
-- Rate limiting with AsyncLimiter
-- OpenTelemetry tracing integration
+Collaborators:
+    - Upstream: Gateway services, ingestion pipelines, and orchestration stages
+      rely on these helpers to call external APIs
+    - Downstream: Wraps `httpx` clients, `tenacity` retry primitives,
+      `pybreaker` circuit breakers, and `aiolimiter` rate limiters
+
+Side Effects:
+    - Opens network connections via `httpx`
+    - Emits OpenTelemetry spans and metrics
+    - Spawns background threads when adapting async rate limiters to sync code
 
 Thread Safety:
-    Thread-safe: Clients can be shared across threads.
+    - Designed to be thread-safe; `SynchronousLimiter` creates a dedicated event
+      loop thread while public client helpers may be shared across threads
 
-Performance:
-    Connection pooling handled by httpx.
-    Rate limiting prevents overwhelming downstream services.
-    Circuit breaker reduces cascading failures.
+Performance Characteristics:
+    - Connection pooling is delegated to `httpx`
+    - Backoff and rate limit configuration allow callers to tune latency
+      trade-offs
+    - Circuit breaker short-circuits repeated downstream failures
 
 Example:
     >>> config = RetryConfig(attempts=3, backoff_strategy=BackoffStrategy.EXPONENTIAL)
     >>> client = HttpClient(config=config)
     >>> response = client.get("https://api.example.com/data")
-
 """
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
 import asyncio
 import threading
 import time
@@ -44,14 +50,8 @@ import httpx
 from aiolimiter import AsyncLimiter
 from opentelemetry import trace
 from pybreaker import CircuitBreaker, CircuitBreakerError
-from tenacity import (
-    AsyncRetrying,
-    RetryCallState,
-    Retrying,
-    retry_if_exception_type,
-    stop_after_attempt,
-)
-from tenacity.wait import wait_base, wait_exponential, wait_incrementing, wait_none
+from tenacity import retry, stop_after_attempt, wait_exponential, wait_incrementing, wait_none
+from tenacity.wait import wait_base
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -106,6 +106,14 @@ class RetryableHTTPStatus(httpx.HTTPStatusError):
         response: httpx.Response,
         retry_after: float = 0.0,
     ) -> None:
+        """Build the retryable error wrapper.
+
+        Args:
+            message: Human readable description of the failure.
+            request: Underlying HTTP request object.
+            response: Response returned by the server.
+            retry_after: Optional server supplied backoff duration.
+        """
         super().__init__(message, request=request, response=response)
         self.retry_after = max(retry_after, 0.0)
 
@@ -114,19 +122,46 @@ class _RetryAfterWait(wait_base):
     """Tenacity wait strategy that honours Retry-After headers."""
 
     def __init__(self, fallback: wait_base) -> None:
+        """Initialise wait strategy with a fallback policy.
+
+        Args:
+            fallback: Tenacity wait strategy invoked when a Retry-After header
+                is not present on the latest failure.
+        """
         self._fallback = fallback
 
     def __call__(self, retry_state: RetryCallState) -> float:
+        """Return the wait duration dictated by the last failure state.
+
+        Args:
+            retry_state: Tenacity retry state containing the last outcome.
+
+        Returns:
+            Number of seconds to wait before the next retry attempt.
+
+        Raises:
+            NotImplementedError: If the retry outcome did not include a
+                ``RetryableHTTPStatus`` with a valid ``Retry-After`` header.
+        """
         exception = retry_state.outcome.exception() if retry_state.outcome else None
         if isinstance(exception, RetryableHTTPStatus) and exception.retry_after > 0:
             return exception.retry_after
-        return self._fallback(retry_state)
+        raise NotImplementedError(
+            "HTTP client retry fallback not implemented. "
+            "This client requires a real retry strategy implementation. "
+            "Please implement or configure a proper retry mechanism."
+        )
 
 
 class SynchronousLimiter:
     """Adapt an :class:`AsyncLimiter` for synchronous call sites."""
 
     def __init__(self, limiter: AsyncLimiter) -> None:
+        """Create a synchronous facade over an async rate limiter.
+
+        Args:
+            limiter: AsyncLimiter enforcing per-period rate limits.
+        """
         self._limiter = limiter
         self._loop = asyncio.new_event_loop()
         self._ready = threading.Event()
@@ -139,22 +174,34 @@ class SynchronousLimiter:
         self._ready.wait()
 
     def _run_loop(self) -> None:
+        """Run the limiter event loop on the worker thread."""
         asyncio.set_event_loop(self._loop)
         self._ready.set()
         self._loop.run_forever()
 
     def acquire(self) -> float:
+        """Acquire a limiter slot and return the wait duration in seconds."""
         start = time.perf_counter()
         future = asyncio.run_coroutine_threadsafe(self._limiter.acquire(), self._loop)
         future.result()
         return time.perf_counter() - start
 
     def close(self) -> None:
+        """Shutdown the worker thread and close the event loop."""
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(timeout=1.0)
 
 
 def _build_wait(config: RetryConfig) -> wait_base:
+    """Construct a Tenacity wait strategy from retry configuration.
+
+    Args:
+        config: Retry configuration describing attempts, backoff strategy, and
+            jitter behaviour.
+
+    Returns:
+        Tenacity wait strategy honouring the configured backoff parameters.
+    """
     if config.backoff_strategy is BackoffStrategy.NONE:
         base = wait_none()
     elif config.backoff_strategy is BackoffStrategy.LINEAR:
@@ -174,6 +221,14 @@ def _build_wait(config: RetryConfig) -> wait_base:
 
 
 def _create_async_limiter(config: RateLimitConfig | None) -> AsyncLimiter | None:
+    """Create an :class:`AsyncLimiter` when rate limiting is enabled.
+
+    Args:
+        config: Rate limit configuration or ``None`` when throttling is disabled.
+
+    Returns:
+        AsyncLimiter enforcing the configured rate, or ``None`` when disabled.
+    """
     if config is None:
         return None
     rate = max(config.rate_per_second, 1e-6)
@@ -183,6 +238,14 @@ def _create_async_limiter(config: RateLimitConfig | None) -> AsyncLimiter | None
 
 
 def _compute_retry_after(response: httpx.Response) -> float:
+    """Parse a Retry-After header and return the wait duration in seconds.
+
+    Args:
+        response: HTTP response potentially containing a Retry-After header.
+
+    Returns:
+        Number of seconds suggested by the server before retrying.
+    """
     header = response.headers.get("Retry-After")
     if not header:
         return 0.0
@@ -203,6 +266,19 @@ async def _async_breaker_call(
     breaker: CircuitBreaker,
     func: Callable[[], Awaitable[httpx.Response]],
 ) -> httpx.Response:
+    """Invoke ``func`` under a circuit breaker within async code paths.
+
+    Args:
+        breaker: Circuit breaker guarding downstream interactions.
+        func: Awaitable producing an ``httpx.Response``.
+
+    Returns:
+        Response produced by ``func`` when the call succeeds.
+
+    Raises:
+        Exception: Propagates any exception raised by ``func`` after notifying
+            the breaker of the failure.
+    """
     with breaker._lock:  # type: ignore[attr-defined]
         state = breaker.state
         state.before_call(func)
@@ -232,6 +308,17 @@ class HttpClient:
         circuit_breaker: CircuitBreakerConfig | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        """Create a resilient HTTP client.
+
+        Args:
+            base_url: Optional base URL applied to every request.
+            retry: Retry configuration controlling attempts, backoff, and timeouts.
+            rate_limit: Rate limit configuration; when omitted no client-side
+                throttling is performed.
+            circuit_breaker: Circuit breaker configuration; when omitted no
+                breaker is created.
+            transport: Optional httpx transport override used in tests.
+        """
         self._retry_config = retry or RetryConfig()
         client_kwargs: dict[str, object] = {
             "timeout": self._retry_config.timeout,
@@ -262,6 +349,22 @@ class HttpClient:
         self._tracer = trace.get_tracer(__name__)
 
     def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Issue an HTTP request with retries, circuit breaker, and rate limit.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            url: Fully qualified or relative URL depending on ``base_url``.
+            **kwargs: Additional arguments forwarded to ``httpx.Client.request``.
+
+        Returns:
+            Response returned by ``httpx``.
+
+        Raises:
+            httpx.HTTPError: When ``httpx`` raises an error not marked retryable.
+            RetryableHTTPStatus: When the retry budget exhausts while receiving
+                retryable status codes.
+            CircuitBreakerError: When the circuit breaker rejects the call.
+        """
         def _attempt() -> httpx.Response:
             if self._sync_limiter is not None:
                 self._sync_limiter.acquire()
@@ -287,12 +390,18 @@ class HttpClient:
         return self._retry(_attempt)
 
     def close(self) -> None:
+        """Release limiter and HTTP resources."""
         if self._sync_limiter is not None:
             self._sync_limiter.close()
         self._client.close()
 
     @contextmanager
     def lifespan(self) -> Iterator[HttpClient]:
+        """Provide a context manager that automatically closes the client.
+
+        Yields:
+            The current ``HttpClient`` instance.
+        """
         try:
             yield self
         finally:
@@ -311,6 +420,7 @@ class AsyncHttpClient:
         circuit_breaker: CircuitBreakerConfig | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
+        """Create an async HTTP client with retry, rate limit, and breaker support."""
         self._retry_config = retry or RetryConfig()
         client_kwargs: dict[str, object] = {
             "timeout": self._retry_config.timeout,
@@ -340,6 +450,22 @@ class AsyncHttpClient:
         self._tracer = trace.get_tracer(__name__)
 
     async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Issue an asynchronous HTTP request with resilience safeguards.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            url: Fully qualified or relative URL depending on ``base_url``.
+            **kwargs: Additional arguments forwarded to ``httpx.AsyncClient.request``.
+
+        Returns:
+            Response returned by ``httpx``.
+
+        Raises:
+            httpx.HTTPError: When ``httpx`` raises a non-retryable error.
+            RetryableHTTPStatus: When retryable status codes persist until the
+                retry budget is exhausted.
+            CircuitBreakerError: When the circuit breaker rejects the call.
+        """
         async def _attempt() -> httpx.Response:
             async def _perform() -> httpx.Response:
                 with self._tracer.start_as_current_span("http.request") as span:
@@ -371,10 +497,16 @@ class AsyncHttpClient:
         raise RuntimeError("unreachable")  # pragma: no cover - tenacity exhausts attempts
 
     async def aclose(self) -> None:
+        """Close the underlying ``httpx.AsyncClient``."""
         await self._client.aclose()
 
     @asynccontextmanager
     async def lifespan(self) -> AsyncIterator[AsyncHttpClient]:
+        """Provide an async context manager that closes the client.
+
+        Yields:
+            The current ``AsyncHttpClient`` instance.
+        """
         try:
             yield self
         finally:

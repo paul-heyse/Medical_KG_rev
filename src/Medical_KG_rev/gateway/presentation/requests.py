@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from ...auth import SecurityContext
 
+
 TModel = TypeVar("TModel", bound=BaseModel)
 
 

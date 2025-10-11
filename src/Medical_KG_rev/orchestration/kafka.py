@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import heapq
-import time
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+import time
+
+import heapq
+
 
 
 @dataclass(order=True)

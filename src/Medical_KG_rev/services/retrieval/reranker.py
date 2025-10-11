@@ -1,4 +1,20 @@
-"""Compatibility wrapper around the new reranking engine."""
+"""Compatibility wrapper around the new reranking engine.
+
+Key Responsibilities:
+    - Preserve the historical gateway-facing reranker interface.
+    - Delegate batching, caching, and circuit breaking to the new engine.
+
+Collaborators:
+    - Downstream: :class:`RerankingEngine` for actual reranking execution.
+    - Upstream: Retrieval service and gateway invoking rerank operations.
+
+Thread Safety:
+    - Not thread-safe: Holds mutable engine state per instance.
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
@@ -18,7 +34,14 @@ from Medical_KG_rev.services.reranking import (
 
 @dataclass(slots=True)
 class CrossEncoderReranker:
-    """Thin adapter preserving the historical API used by the gateway."""
+    """Thin adapter preserving the historical API used by the gateway.
+
+    Attributes:
+        reranker_id: Identifier of the underlying reranker model.
+        batch_size: Maximum batch size for reranking operations.
+        cache_ttl: TTL for reranker cache entries in seconds.
+        _engine: Internal :class:`RerankingEngine` instance.
+    """
 
     reranker_id: str = "cross_encoder:bge"
     batch_size: int = 32
@@ -26,6 +49,7 @@ class CrossEncoderReranker:
     _engine: RerankingEngine = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        """Instantiate the underlying reranking engine and supporting services."""
         self._engine = RerankingEngine(
             factory=RerankerFactory(),
             cache=RerankCacheManager(ttl_seconds=self.cache_ttl),
@@ -42,6 +66,18 @@ class CrossEncoderReranker:
         top_k: int = 10,
         context: SecurityContext | None = None,
     ) -> tuple[list[Mapping[str, object]], MutableMapping[str, object]]:
+        """Rerank candidate documents using the configured cross-encoder.
+
+        Args:
+            query: User query string.
+            candidates: Iterable of candidate documents with metadata.
+            text_field: Field containing the text to rerank.
+            top_k: Number of top results to retain.
+            context: Optional security context for policy enforcement.
+
+        Returns:
+            Tuple containing reranked documents and metadata describing the run.
+        """
         items = [dict(candidate) for candidate in candidates]
         if not items:
             return [], {"model": self.reranker_id, "evaluated": 0, "applied": False}

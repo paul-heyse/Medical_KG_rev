@@ -30,6 +30,7 @@ Performance Characteristics:
     - Response parsing: O(n) where n is response size
 
 Example:
+-------
     >>> adapter = UnpaywallAdapter()
     >>> context = AdapterContext(
     ...     tenant_id="tenant1",
@@ -41,13 +42,13 @@ Example:
 
 """
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
-
 from __future__ import annotations
 
 import os
+
+# ==============================================================================
+# IMPORTS
+# ==============================================================================
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
@@ -55,13 +56,7 @@ from Medical_KG_rev.adapters.base import AdapterContext, BaseAdapter
 from Medical_KG_rev.adapters.mixins import PdfManifestMixin
 from Medical_KG_rev.config.settings import ConnectorPdfSettings, get_settings
 from Medical_KG_rev.models import Block, BlockType, Document, Section
-from Medical_KG_rev.utils.http_client import (
-    BackoffStrategy,
-    CircuitBreakerConfig,
-    HttpClient,
-    RateLimitConfig,
-    RetryConfig,
-)
+from Medical_KG_rev.utils.http_client import HttpClient, RetryConfig
 from Medical_KG_rev.utils.identifiers import build_document_id
 from Medical_KG_rev.utils.validation import validate_doi
 
@@ -272,8 +267,10 @@ class UnpaywallAdapter(PdfManifestMixin, ResilientHTTPAdapter):
                     assets=pdf_assets,
                     polite_headers=self._polite_headers,
                 )
-                self.attach_manifest_to_documents([document], manifest)
-            documents.append(document)
+                updated_documents = self.attach_manifest_to_documents([document], manifest)
+                documents.extend(updated_documents)
+            else:
+                documents.append(document)
         return documents
 
     def polite_headers(self) -> Mapping[str, str]:

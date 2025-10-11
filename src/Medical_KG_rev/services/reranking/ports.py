@@ -8,6 +8,7 @@ from typing import Protocol
 from .models import NormalizationStrategy, QueryDocumentPair, RerankingResponse
 
 
+
 class RerankerPort(Protocol):
     """Protocol every reranker implementation must follow."""
 

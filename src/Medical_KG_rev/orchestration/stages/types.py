@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -12,10 +12,10 @@ class PipelineContext:
 
     tenant_id: str
     operation: str
-    data: Dict[str, Any]
-    metadata: Optional[Dict[str, Any]] = None
+    data: dict[str, Any]
+    metadata: Optional[dict[str, Any]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -26,10 +26,10 @@ class PipelineState:
 
     stage: str
     data: Any
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     status: str = "pending"
 
-    def update(self, **kwargs) -> PipelineState:
+    def update(self, **kwargs: Any) -> PipelineState:
         """Update pipeline state."""
         for key, value in kwargs.items():
             if hasattr(self, key):

@@ -7,17 +7,23 @@ classes (StagePlugin, StagePluginManager) are imported from the sibling plugins.
 from .builtin import CoreStagePlugin, PdfTwoPhasePlugin
 
 
+
 # Define minimal versions of framework classes locally to avoid circular dependencies
 class StagePluginBuildError(Exception):
     """Raised when a stage plugin fails to build."""
+
     pass
+
 
 class StagePluginLookupError(Exception):
     """Raised when a stage plugin cannot be found."""
+
     pass
+
 
 class StagePlugin:
     """Base class for stage plugins."""
+
     def __init__(self, plugin_name: str, dependencies: tuple[str, ...] = ()):
         self.name = plugin_name
         self.dependencies = dependencies
@@ -37,14 +43,13 @@ class StagePlugin:
     def create_registration(self, stage_type: str, builder, capabilities: tuple[str, ...]):
         """Create a stage plugin registration."""
         return StagePluginRegistration(
-            stage_type=stage_type,
-            builder=builder,
-            capabilities=capabilities
+            stage_type=stage_type, builder=builder, capabilities=capabilities
         )
 
 
 class StagePluginManager:
     """Minimal stage plugin manager to avoid circular dependencies."""
+
     def __init__(self, resources):
         self.resources = resources
         self._plugins = {}
@@ -93,15 +98,15 @@ class StagePluginManager:
         for plugin in self._plugins.values():
             registrations = plugin.registrations(self.resources)
             for registration in registrations:
-                descriptions.append({
-                    "name": f"{plugin.name}.{registration.stage_type}",
-                    "status": "initialized"
-                })
+                descriptions.append(
+                    {"name": f"{plugin.name}.{registration.stage_type}", "status": "initialized"}
+                )
         return descriptions
 
 
 class StagePluginHealth:
     """Stage plugin health status."""
+
     def __init__(self, status: str, detail: str, timestamp: float):
         self.status = status
         self.detail = detail
@@ -110,6 +115,7 @@ class StagePluginHealth:
 
 class StagePluginRegistration:
     """Stage plugin registration."""
+
     def __init__(self, stage_type: str, builder, capabilities: tuple[str, ...]):
         self.stage_type = stage_type
         self.builder = builder
@@ -118,9 +124,11 @@ class StagePluginRegistration:
 
 class StagePluginResources:
     """Resources available to stage plugins."""
+
     def __init__(self, adapter_manager, pipeline_resource):
         self.adapter_manager = adapter_manager
         self.pipeline_resource = pipeline_resource
+
 
 __all__ = [
     "CoreStagePlugin",

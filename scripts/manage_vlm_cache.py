@@ -27,6 +27,7 @@ try:
 except ImportError:
     # Fallback for development
     import sys
+
     sys.path.append(str(Path(__file__).parent.parent))
     from src.Medical_KG_rev.services.caching.vlm_cache import (
         CacheConfig,
@@ -95,9 +96,7 @@ def clear() -> None:
 
     async def _clear():
         with Progress(
-            SpinnerColumn(),
-            TextColumn("Clearing cache..."),
-            console=console
+            SpinnerColumn(), TextColumn("Clearing cache..."), console=console
         ) as progress:
             task = progress.add_task("Clearing", total=None)
 
@@ -112,7 +111,7 @@ def clear() -> None:
 @app.command()
 def invalidate(
     pdf_path: str = typer.Argument(..., help="Path to PDF file"),
-    level: str = typer.Option("doctags_result", help="Cache level to invalidate")
+    level: str = typer.Option("doctags_result", help="Cache level to invalidate"),
 ) -> None:
     """Invalidate cached value for a specific PDF."""
     cache = get_vlm_cache()
@@ -133,10 +132,7 @@ def invalidate(
 
             # Invalidate cache
             success = await cache.invalidate(
-                pdf_content=pdf_content,
-                config={},
-                options={},
-                level=cache_level
+                pdf_content=pdf_content, config={}, options={}, level=cache_level
             )
 
             if success:
@@ -157,7 +153,7 @@ def invalidate(
 @app.command()
 def test(
     pdf_path: str = typer.Argument(..., help="Path to PDF file"),
-    iterations: int = typer.Option(5, help="Number of test iterations")
+    iterations: int = typer.Option(5, help="Number of test iterations"),
 ) -> None:
     """Test cache performance with a PDF file."""
     cache = get_vlm_cache()
@@ -183,7 +179,7 @@ def test(
                     pdf_content=pdf_content,
                     config={"test": True},
                     options={"iteration": i},
-                    level=CacheLevel.DOCTAGS_RESULT
+                    level=CacheLevel.DOCTAGS_RESULT,
                 )
 
                 get_time = time.time() - start_time
@@ -202,7 +198,7 @@ def test(
                         options={"iteration": i},
                         level=CacheLevel.DOCTAGS_RESULT,
                         value={"processed": True, "iteration": i},
-                        ttl_seconds=60
+                        ttl_seconds=60,
                     )
 
                     console.print(f"Iteration {i+1}: [bold red]MISS[/bold red] ({get_time:.3f}s)")
@@ -222,7 +218,7 @@ def test(
 
             # Show final cache stats
             stats = cache.get_stats()
-            console.print(f"\n[bold blue]Final cache stats:[/bold blue]")
+            console.print("\n[bold blue]Final cache stats:[/bold blue]")
             console.print(f"Hits: {stats.hits}")
             console.print(f"Misses: {stats.misses}")
             console.print(f"Hit rate: {stats.hit_rate:.2%}")
@@ -247,7 +243,7 @@ def configure(
     redis_url: Optional[str] = typer.Option(None, help="Redis URL"),
     cache_directory: Optional[str] = typer.Option(None, help="Cache directory"),
     compression: Optional[bool] = typer.Option(None, help="Enable/disable compression"),
-    encryption: Optional[bool] = typer.Option(None, help="Enable/disable encryption")
+    encryption: Optional[bool] = typer.Option(None, help="Enable/disable encryption"),
 ) -> None:
     """Configure cache settings."""
     # Get current config
@@ -260,12 +256,20 @@ def configure(
         strategy=CacheStrategy(strategy) if strategy else current_config.strategy,
         max_size=max_size if max_size is not None else current_config.max_size,
         ttl_seconds=ttl_seconds if ttl_seconds is not None else current_config.ttl_seconds,
-        memory_limit_mb=memory_limit_mb if memory_limit_mb is not None else current_config.memory_limit_mb,
+        memory_limit_mb=memory_limit_mb
+        if memory_limit_mb is not None
+        else current_config.memory_limit_mb,
         redis_url=redis_url if redis_url is not None else current_config.redis_url,
-        cache_directory=cache_directory if cache_directory is not None else current_config.cache_directory,
-        compression_enabled=compression if compression is not None else current_config.compression_enabled,
-        encryption_enabled=encryption if encryption is not None else current_config.encryption_enabled,
-        encryption_key=current_config.encryption_key
+        cache_directory=cache_directory
+        if cache_directory is not None
+        else current_config.cache_directory,
+        compression_enabled=compression
+        if compression is not None
+        else current_config.compression_enabled,
+        encryption_enabled=encryption
+        if encryption is not None
+        else current_config.encryption_enabled,
+        encryption_key=current_config.encryption_key,
     )
 
     # Create new cache instance with updated config
@@ -273,6 +277,7 @@ def configure(
 
     # Update global cache instance
     import src.Medical_KG_rev.services.caching.vlm_cache as vlm_cache_module
+
     vlm_cache_module._vlm_cache = new_cache
 
     console.print("[bold green]Cache configuration updated![/bold green]")
@@ -296,17 +301,12 @@ def configure(
 
 
 @app.command()
-def export(
-    output_file: str = typer.Option("vlm_cache_data.json", help="Output file path")
-) -> None:
+def export(output_file: str = typer.Option("vlm_cache_data.json", help="Output file path")) -> None:
     """Export cache data to JSON file."""
     cache = get_vlm_cache()
     cache_info = cache.get_cache_info()
 
-    export_data = {
-        "cache_info": cache_info,
-        "export_timestamp": time.time()
-    }
+    export_data = {"cache_info": cache_info, "export_timestamp": time.time()}
 
     with open(output_file, "w") as f:
         json.dump(export_data, f, indent=2)
@@ -317,7 +317,7 @@ def export(
 @app.command()
 def monitor(
     duration: int = typer.Option(60, help="Monitoring duration in seconds"),
-    interval: int = typer.Option(5, help="Update interval in seconds")
+    interval: int = typer.Option(5, help="Update interval in seconds"),
 ) -> None:
     """Monitor cache performance in real-time."""
     cache = get_vlm_cache()
@@ -329,11 +329,7 @@ def monitor(
         start_time = time.time()
         initial_stats = cache.get_stats()
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("Monitoring..."),
-            console=console
-        ) as progress:
+        with Progress(SpinnerColumn(), TextColumn("Monitoring..."), console=console) as progress:
             task = progress.add_task("Monitoring", total=duration)
 
             while time.time() - start_time < duration:

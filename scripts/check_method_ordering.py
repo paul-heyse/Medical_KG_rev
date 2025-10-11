@@ -41,7 +41,7 @@ class MethodOrderingChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -70,7 +70,7 @@ class MethodOrderingChecker:
         methods = []
 
         for node in class_node.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 methods.append(node)
             elif isinstance(node, ast.ClassDef):
                 # Nested class - skip for now
@@ -257,7 +257,7 @@ class MethodOrderingChecker:
 
 
 def main():
-    """Main entry point for the method ordering checker."""
+    """Run the method ordering checker."""
     parser = argparse.ArgumentParser(description="Check method ordering compliance")
     parser.add_argument(
         "path", nargs="?", default=".", help="Path to check (default: current directory)"
@@ -270,10 +270,7 @@ def main():
     checker = MethodOrderingChecker(verbose=args.verbose, auto_fix=args.auto_fix)
     path = Path(args.path)
 
-    if path.is_file():
-        success = checker.check_file(path)
-    else:
-        success = checker.check_directory(path)
+    success = checker.check_file(path) if path.is_file() else checker.check_directory(path)
 
     # Generate and print report
     report = checker.generate_report()

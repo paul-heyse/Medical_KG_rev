@@ -9,13 +9,12 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
 
@@ -37,21 +36,25 @@ except ImportError as e:
     sys.exit(1)
 
 app = typer.Typer(
-    name="manage-vlm-gpu-memory",
-    help="Manage VLM GPU memory optimization",
-    rich_markup_mode="rich"
+    name="manage-vlm-gpu-memory", help="Manage VLM GPU memory optimization", rich_markup_mode="rich"
 )
 console = Console()
 
 
-def display_memory_status(status: Dict[str, Any]) -> None:
+def display_memory_status(status: dict[str, Any]) -> None:
     """Display memory status in a formatted table."""
     table = Table(title="GPU Memory Status")
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="green")
 
     # Status
-    status_color = "red" if status["status"] in ["critical", "oom"] else "yellow" if status["status"] == "warning" else "green"
+    status_color = (
+        "red"
+        if status["status"] in ["critical", "oom"]
+        else "yellow"
+        if status["status"] == "warning"
+        else "green"
+    )
     table.add_row("Status", Text(status["status"].upper(), style=status_color))
 
     # GPU availability
@@ -87,7 +90,7 @@ def display_memory_status(status: Dict[str, Any]) -> None:
     console.print(table)
 
 
-def display_optimization_history(history: List[Dict[str, Any]]) -> None:
+def display_optimization_history(history: list[dict[str, Any]]) -> None:
     """Display optimization history in a formatted table."""
     if not history:
         console.print("No optimization history available")
@@ -111,7 +114,7 @@ def display_optimization_history(history: List[Dict[str, Any]]) -> None:
             f"{entry['memory_freed_mb']} MB",
             str(entry["new_batch_size"]),
             "Yes" if entry["gc_performed"] else "No",
-            entry["error_message"] or "-"
+            entry["error_message"] or "-",
         )
 
     console.print(table)
@@ -131,7 +134,7 @@ def status() -> None:
 @app.command()
 def monitor(
     duration: int = typer.Option(60, "--duration", "-d", help="Monitoring duration in seconds"),
-    interval: int = typer.Option(5, "--interval", "-i", help="Update interval in seconds")
+    interval: int = typer.Option(5, "--interval", "-i", help="Update interval in seconds"),
 ) -> None:
     """Monitor GPU memory usage in real-time."""
     console.print(Panel("Real-time GPU Memory Monitoring", style="bold blue"))
@@ -142,9 +145,7 @@ def monitor(
         start_time = asyncio.get_event_loop().time()
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task("Monitoring GPU memory...", total=None)
 
@@ -178,9 +179,7 @@ def optimize() -> None:
 
     async def run_optimization() -> None:
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task("Optimizing memory...", total=None)
 
@@ -189,23 +188,23 @@ def optimize() -> None:
             progress.stop()
 
             if result.success:
-                console.print(f"✓ Optimization completed successfully", style="green")
+                console.print("✓ Optimization completed successfully", style="green")
                 console.print(f"Action taken: {result.action_taken}")
                 console.print(f"Memory freed: {result.memory_freed_mb} MB")
                 console.print(f"New batch size: {result.new_batch_size}")
                 console.print(f"GC performed: {'Yes' if result.gc_performed else 'No'}")
-                console.print(f"Fragmentation reduced: {'Yes' if result.fragmentation_reduced else 'No'}")
+                console.print(
+                    f"Fragmentation reduced: {'Yes' if result.fragmentation_reduced else 'No'}"
+                )
             else:
-                console.print(f"✗ Optimization failed", style="red")
+                console.print("✗ Optimization failed", style="red")
                 console.print(f"Error: {result.error_message}")
 
     asyncio.run(run_optimization())
 
 
 @app.command()
-def set_batch_size(
-    batch_size: int = typer.Argument(..., help="New batch size")
-) -> None:
+def set_batch_size(batch_size: int = typer.Argument(..., help="New batch size")) -> None:
     """Set the batch size manually."""
     console.print(Panel("Setting Batch Size", style="bold blue"))
 
@@ -272,13 +271,23 @@ def stop_monitoring() -> None:
 @app.command()
 def configure(
     strategy: str = typer.Option("balanced", "--strategy", "-s", help="Optimization strategy"),
-    warning_threshold: float = typer.Option(0.8, "--warning-threshold", "-w", help="Warning threshold (0.0-1.0)"),
-    critical_threshold: float = typer.Option(0.9, "--critical-threshold", "-c", help="Critical threshold (0.0-1.0)"),
-    oom_threshold: float = typer.Option(0.95, "--oom-threshold", "-o", help="OOM threshold (0.0-1.0)"),
+    warning_threshold: float = typer.Option(
+        0.8, "--warning-threshold", "-w", help="Warning threshold (0.0-1.0)"
+    ),
+    critical_threshold: float = typer.Option(
+        0.9, "--critical-threshold", "-c", help="Critical threshold (0.0-1.0)"
+    ),
+    oom_threshold: float = typer.Option(
+        0.95, "--oom-threshold", "-o", help="OOM threshold (0.0-1.0)"
+    ),
     max_batch_size: int = typer.Option(16, "--max-batch-size", "-m", help="Maximum batch size"),
     min_batch_size: int = typer.Option(1, "--min-batch-size", "-n", help="Minimum batch size"),
-    monitoring_interval: int = typer.Option(5, "--monitoring-interval", "-i", help="Monitoring interval in seconds"),
-    optimization_interval: int = typer.Option(60, "--optimization-interval", "-p", help="Optimization interval in seconds")
+    monitoring_interval: int = typer.Option(
+        5, "--monitoring-interval", "-i", help="Monitoring interval in seconds"
+    ),
+    optimization_interval: int = typer.Option(
+        60, "--optimization-interval", "-p", help="Optimization interval in seconds"
+    ),
 ) -> None:
     """Configure memory optimization settings."""
     console.print(Panel("Configuring Memory Optimization", style="bold blue"))
@@ -314,7 +323,9 @@ def configure(
 
     # Validate batch sizes
     if min_batch_size > max_batch_size:
-        console.print("✗ Minimum batch size must be less than or equal to maximum batch size", style="red")
+        console.print(
+            "✗ Minimum batch size must be less than or equal to maximum batch size", style="red"
+        )
         return
 
     # Create new configuration
@@ -326,7 +337,7 @@ def configure(
         max_batch_size=max_batch_size,
         min_batch_size=min_batch_size,
         monitoring_interval=monitoring_interval,
-        optimization_interval=optimization_interval
+        optimization_interval=optimization_interval,
     )
 
     # Create new optimizer with configuration
@@ -355,7 +366,9 @@ def history() -> None:
 
 @app.command()
 def export_config(
-    output_file: str = typer.Option("vlm_memory_config.json", "--output", "-o", help="Output file path")
+    output_file: str = typer.Option(
+        "vlm_memory_config.json", "--output", "-o", help="Output file path"
+    ),
 ) -> None:
     """Export current configuration to JSON file."""
     console.print(Panel("Exporting Configuration", style="bold blue"))
@@ -377,11 +390,11 @@ def export_config(
         "min_batch_size": config.min_batch_size,
         "memory_reserve_mb": config.memory_reserve_mb,
         "gc_threshold": config.gc_threshold,
-        "fragmentation_threshold": config.fragmentation_threshold
+        "fragmentation_threshold": config.fragmentation_threshold,
     }
 
     try:
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(config_dict, f, indent=2)
 
         console.print(f"✓ Configuration exported to {output_file}", style="green")
@@ -390,14 +403,12 @@ def export_config(
 
 
 @app.command()
-def import_config(
-    input_file: str = typer.Argument(..., help="Input file path")
-) -> None:
+def import_config(input_file: str = typer.Argument(..., help="Input file path")) -> None:
     """Import configuration from JSON file."""
     console.print(Panel("Importing Configuration", style="bold blue"))
 
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             config_dict = json.load(f)
 
         # Create configuration from dict
@@ -415,7 +426,7 @@ def import_config(
             min_batch_size=config_dict.get("min_batch_size", 1),
             memory_reserve_mb=config_dict.get("memory_reserve_mb", 1024),
             gc_threshold=config_dict.get("gc_threshold", 0.85),
-            fragmentation_threshold=config_dict.get("fragmentation_threshold", 0.3)
+            fragmentation_threshold=config_dict.get("fragmentation_threshold", 0.3),
         )
 
         # Create new optimizer with imported configuration
@@ -439,7 +450,9 @@ def import_config(
 @app.command()
 def benchmark(
     duration: int = typer.Option(300, "--duration", "-d", help="Benchmark duration in seconds"),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output file for results")
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output file for results"
+    ),
 ) -> None:
     """Run a benchmark to test memory optimization performance."""
     console.print(Panel("Running Memory Optimization Benchmark", style="bold blue"))
@@ -451,9 +464,7 @@ def benchmark(
         benchmark_data = []
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task("Running benchmark...", total=duration)
 
@@ -465,14 +476,16 @@ def benchmark(
                 result = await optimizer.optimize_memory()
 
                 # Record benchmark data
-                benchmark_data.append({
-                    "timestamp": asyncio.get_event_loop().time() - start_time,
-                    "memory_usage_percent": status_info.get("memory_usage_percent", 0.0),
-                    "batch_size": status_info["current_batch_size"],
-                    "optimization_success": result.success,
-                    "action_taken": result.action_taken,
-                    "memory_freed_mb": result.memory_freed_mb
-                })
+                benchmark_data.append(
+                    {
+                        "timestamp": asyncio.get_event_loop().time() - start_time,
+                        "memory_usage_percent": status_info.get("memory_usage_percent", 0.0),
+                        "batch_size": status_info["current_batch_size"],
+                        "optimization_success": result.success,
+                        "action_taken": result.action_taken,
+                        "memory_freed_mb": result.memory_freed_mb,
+                    }
+                )
 
                 await asyncio.sleep(10)  # Sample every 10 seconds
 
@@ -481,7 +494,9 @@ def benchmark(
         # Calculate benchmark results
         total_optimizations = len(benchmark_data)
         successful_optimizations = sum(1 for d in benchmark_data if d["optimization_success"])
-        avg_memory_usage = sum(d["memory_usage_percent"] for d in benchmark_data) / len(benchmark_data)
+        avg_memory_usage = sum(d["memory_usage_percent"] for d in benchmark_data) / len(
+            benchmark_data
+        )
         total_memory_freed = sum(d["memory_freed_mb"] for d in benchmark_data)
 
         console.print("✓ Benchmark completed", style="green")
@@ -495,7 +510,7 @@ def benchmark(
         # Export results if requested
         if output_file:
             try:
-                with open(output_file, 'w') as f:
+                with open(output_file, "w") as f:
                     json.dump(benchmark_data, f, indent=2)
                 console.print(f"✓ Benchmark results exported to {output_file}", style="green")
             except Exception as e:

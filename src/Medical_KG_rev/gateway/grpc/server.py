@@ -3,58 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from typing import Any
 
 import grpc
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-_grpc_health_spec = None
-try:
-    _grpc_health_spec = importlib.util.find_spec("grpc_health")
-except ModuleNotFoundError:  # pragma: no cover - optional dependency missing
-    _grpc_health_spec = None
-
-if _grpc_health_spec is not None:
-    from grpc_health.v1 import health, health_pb2, health_pb2_grpc
-else:  # pragma: no cover - fallback when grpc-health not installed
-
-    class _StubHealth:
-        class HealthServicer:  # type: ignore[too-many-ancestors]
-            def __init__(self) -> None:
-                self._statuses = {}
-
-            async def Watch(self, request, context):  # pragma: no cover - stub
-                return None
-
-            def set(self, service: str, status: str) -> None:
-                self._statuses[service] = status
-
-    class _StubHealthPb2:
-        class HealthCheckResponse:  # pragma: no cover - stub
-            SERVING = "SERVING"
-
-    class _StubHealthGrpc:
-        @staticmethod
-        def add_HealthServicer_to_server(*args, **kwargs):  # pragma: no cover - stub
-            return None
-
-    health = _StubHealth()
-    health_pb2 = _StubHealthPb2()
-    health_pb2_grpc = _StubHealthGrpc()
-
-from ...auth.scopes import Scopes
-from ..models import (
-    ChunkRequest,
+from Medical_KG_rev.auth.scopes import Scopes
+from Medical_KG_rev.gateway.models import (
     EmbeddingOptions,
     EmbedRequest,
     ExtractionRequest,
     IngestionRequest,
 )
-from ..services import GatewayService, get_gateway_service
+from Medical_KG_rev.gateway.services import GatewayService, get_gateway_service
 
-try:  # pragma: no cover - generated modules may be missing in CI
+# Proto imports - handle missing generated files gracefully
+try:
     from Medical_KG_rev.proto.gen import (
         embedding_pb2,
         embedding_pb2_grpc,
@@ -69,196 +34,251 @@ except ImportError:  # pragma: no cover - generation happens in CI
     ingestion_pb2 = ingestion_pb2_grpc = None
 
 
-
-
 class EmbeddingService(
     embedding_pb2_grpc.EmbeddingServiceServicer if embedding_pb2_grpc else object
 ):
+    """gRPC service for embedding operations."""
+
     def __init__(self, service: GatewayService) -> None:
+        """Initialize the embedding service."""
         self.service = service
 
-    async def Embed(self, request, context):  # type: ignore[override]
-        embed_request = EmbedRequest(
-            tenant_id=request.tenant_id,
-            texts=list(request.inputs),
-            namespace=request.namespace,
-            options=EmbeddingOptions(normalize=request.normalize),
-        )
-        result = self.service.embed(embed_request)
-        if embedding_pb2 is None:
+    async def Embed(
+        self,
+        request: Any,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
+        """Handle embedding requests."""
+        if not embedding_pb2:
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            context.set_details("Embedding service not available")
             return None
-        response = embedding_pb2.EmbedResponse()
-        response.namespace = result.namespace
-        if result.metadata:
-            response.metadata.provider = result.metadata.provider
-            if result.metadata.dimension is not None:
-                response.metadata.dimension = int(result.metadata.dimension)
-            response.metadata.duration_ms = float(result.metadata.duration_ms)
-            response.metadata.model = result.metadata.model
-        for vector in result.embeddings:
-            message = response.embeddings.add()
-            message.id = vector.id
-            message.model = vector.model
-            message.namespace = vector.namespace
-            message.kind = vector.kind
-            message.dimension = int(vector.dimension)
-            if vector.vector:
-                message.values.extend(vector.vector)
-            if vector.terms:
-                message.terms.update(vector.terms)
-            for key, value in vector.metadata.items():
-                message.metadata[key] = str(value)
-        return response
 
-    async def ListNamespaces(self, request, context):  # type: ignore[override]
-        if embedding_pb2 is None:
-            return None
-        namespaces = self.service.list_namespaces(
-            tenant_id=request.tenant_id,
-            scope=Scopes.EMBED_READ,
-        )
-        response = embedding_pb2.ListNamespacesResponse()
-        for item in namespaces:
-            proto = response.namespaces.add()
-            proto.id = item.id
-            proto.provider = item.provider
-            proto.kind = item.kind
-            if item.dimension is not None:
-                proto.dimension = int(item.dimension)
-            if item.max_tokens is not None:
-                proto.max_tokens = int(item.max_tokens)
-            proto.enabled = bool(item.enabled)
-            proto.allowed_tenants.extend(item.allowed_tenants)
-            proto.allowed_scopes.extend(item.allowed_scopes)
-        return response
+        try:
+            # Convert gRPC request to gateway model
+            embed_request = EmbedRequest(
+                tenant_id=request.tenant_id,
+                namespace=request.namespace,
+                texts=list(request.texts),
+                model=request.model,
+                options=EmbeddingOptions(
+                    normalize=request.options.normalize if request.options else False,
+                    return_metadata=request.options.return_metadata if request.options else False,
+                ),
+            )
 
-    async def ValidateTexts(self, request, context):  # type: ignore[override]
-        if embedding_pb2 is None:
+            # Process embedding
+            response = await self.service.embed_text(embed_request)
+
+            # Convert response to gRPC format
+            return embedding_pb2.EmbedResponse(
+                vectors=[
+                    embedding_pb2.EmbeddingVector(
+                        id=vector.id,
+                        model=vector.model,
+                        values=vector.values,
+                        metadata=vector.metadata,
+                    )
+                    for vector in response.vectors
+                ],
+                processing_time=response.processing_time,
+                model_used=response.model_used,
+                namespace_used=response.namespace_used,
+            )
+
+        except Exception as exc:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Embedding failed: {exc}")
             return None
-        result = self.service.validate_namespace_texts(
-            tenant_id=request.tenant_id,
-            namespace=request.namespace,
-            texts=list(request.texts),
-        )
-        response = embedding_pb2.ValidateTextsResponse()
-        response.namespace = result.namespace
-        response.valid = result.valid
-        for entry in result.results:
-            proto = response.results.add()
-            proto.text_index = entry.text_index
-            proto.token_count = entry.token_count
-            proto.exceeds_budget = entry.exceeds_budget
-            if entry.warning:
-                proto.warning = entry.warning
-        return response
 
 
 class ExtractionService(
     extraction_pb2_grpc.ExtractionServiceServicer if extraction_pb2_grpc else object
 ):
+    """gRPC service for extraction operations."""
+
     def __init__(self, service: GatewayService) -> None:
+        """Initialize the extraction service."""
         self.service = service
 
-    async def Extract(self, request, context):  # type: ignore[override]
-        extraction_request = ExtractionRequest(
-            tenant_id=request.tenant_id,
-            document_id=request.document_id,
-            options={},
-        )
-        result = self.service.extract(request.kind, extraction_request)
-        if extraction_pb2 is None:
+    async def Extract(
+        self,
+        request: Any,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
+        """Handle extraction requests."""
+        if not extraction_pb2:
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            context.set_details("Extraction service not available")
             return None
-        response = extraction_pb2.ExtractionResponse()
-        for item in result.results:
-            response.results.add(
-                kind=result.kind, document_id=result.document_id, value=item.get("value", "")
+
+        try:
+            # Convert gRPC request to gateway model
+            extraction_request = ExtractionRequest(
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+                content=request.content,
+                extraction_type=request.extraction_type,
+                options=request.options,
             )
-        return response
+
+            # Process extraction
+            response = await self.service.extract_entities(extraction_request)
+
+            # Convert response to gRPC format
+            return extraction_pb2.ExtractionResponse(
+                entities=[
+                    extraction_pb2.Entity(
+                        id=entity.id,
+                        type=entity.type,
+                        text=entity.text,
+                        confidence=entity.confidence,
+                        metadata=entity.metadata,
+                    )
+                    for entity in response.entities
+                ],
+                processing_time=response.processing_time,
+                extraction_type=response.extraction_type,
+            )
+
+        except Exception as exc:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Extraction failed: {exc}")
+            return None
 
 
 class IngestionService(
     ingestion_pb2_grpc.IngestionServiceServicer if ingestion_pb2_grpc else object
 ):
+    """gRPC service for ingestion operations."""
+
     def __init__(self, service: GatewayService) -> None:
+        """Initialize the ingestion service."""
         self.service = service
 
-    async def Submit(self, request, context):  # type: ignore[override]
-        options_payload: dict[str, Any] | None = None
-        if hasattr(request, "options") and request.HasField("options"):
-            opts = request.options
-            options_payload = {
-                "preserve_tables_html": opts.preserve_tables_html,
-                "sentence_splitter": opts.sentence_splitter,
-                "custom_token_budget": int(opts.custom_token_budget),
-                **dict(opts.metadata),
-            }
-        ingestion_request = IngestionRequest(
-            tenant_id=request.tenant_id,
-            items=[{"id": item_id} for item_id in request.item_ids],
-            metadata={"dataset": request.dataset},
-            profile=request.chunking_profile or None,
-            chunking_options=options_payload,
-        )
-        if options_payload:
-            ingestion_request.metadata.setdefault("chunking_options", options_payload)
-        result = self.service.ingest(request.dataset, ingestion_request)
-        if ingestion_pb2 is None:
+    async def Ingest(
+        self,
+        request: Any,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
+        """Handle ingestion requests."""
+        if not ingestion_pb2:
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            context.set_details("Ingestion service not available")
             return None
-        response = ingestion_pb2.IngestionJobResponse()
-        for status in result.operations:
-            response.operations.add(
-                job_id=status.job_id, status=status.status, message=status.message or ""
+
+        try:
+            # Convert gRPC request to gateway model
+            ingestion_request = IngestionRequest(
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+                content=request.content,
+                content_type=request.content_type,
+                metadata=request.metadata,
             )
-        estimated_chunks = 0
-        for status in result.operations:
-            count = status.metadata.get("chunks") if isinstance(status.metadata, Mapping) else None
-            if isinstance(count, int):
-                estimated_chunks += count
-        response.estimated_chunks = max(0, estimated_chunks)
-        response.profile_used = ingestion_request.profile or ""
-        return response
+
+            # Process ingestion
+            response = await self.service.ingest_document(ingestion_request)
+
+            # Convert response to gRPC format
+            return ingestion_pb2.IngestionResponse(
+                document_id=response.document_id,
+                status=response.status,
+                processing_time=response.processing_time,
+                metadata=response.metadata,
+            )
+
+        except Exception as exc:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Ingestion failed: {exc}")
+            return None
 
 
-class GatewayGrpcServer:
-    """Wrapper that registers all gateway services with a grpc.aio server."""
+class HealthService(health_pb2_grpc.HealthServicer):
+    """gRPC health check service."""
 
-    def __init__(self, service: GatewayService | None = None) -> None:
-        self.service = service or get_gateway_service()
-        self._server: grpc.aio.Server | None = None
+    def __init__(self) -> None:
+        """Initialize the health service."""
+        self._status = health_pb2.HealthCheckResponse.SERVING
 
-    async def start(self, host: str = "0.0.0.0", port: int = 50051) -> None:
-        self._server = grpc.aio.server()
+    async def Check(
+        self,
+        request: health_pb2.HealthCheckRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> health_pb2.HealthCheckResponse:
+        """Check service health."""
+        return health_pb2.HealthCheckResponse(status=self._status)
+
+    async def Watch(
+        self,
+        request: health_pb2.HealthCheckRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> None:
+        """Watch service health."""
+        # Simple implementation - just send current status
+        yield health_pb2.HealthCheckResponse(status=self._status)
+
+
+class GRPCServer:
+    """gRPC server for gateway services."""
+
+    def __init__(self, port: int = 50051) -> None:
+        """Initialize the gRPC server."""
+        self.port = port
+        self.server = grpc.aio.server()
+        self.gateway_service = get_gateway_service()
+
+    def add_services(self) -> None:
+        """Add services to the gRPC server."""
+        # Add embedding service
         if embedding_pb2_grpc:
             embedding_pb2_grpc.add_EmbeddingServiceServicer_to_server(
-                EmbeddingService(self.service), self._server
+                EmbeddingService(self.gateway_service), self.server
             )
+
+        # Add extraction service
         if extraction_pb2_grpc:
             extraction_pb2_grpc.add_ExtractionServiceServicer_to_server(
-                ExtractionService(self.service), self._server
+                ExtractionService(self.gateway_service), self.server
             )
+
+        # Add ingestion service
         if ingestion_pb2_grpc:
             ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(
-                IngestionService(self.service), self._server
+                IngestionService(self.gateway_service), self.server
             )
 
-        health_servicer = health.HealthServicer()
-        health_pb2_grpc.add_HealthServicer_to_server(health_servicer, self._server)
-        health_servicer.set("GatewayService", health_pb2.HealthCheckResponse.SERVING)
+        # Add health service
+        health_pb2_grpc.add_HealthServicer_to_server(HealthService(), self.server)
 
-        self._server.add_insecure_port(f"{host}:{port}")
-        await self._server.start()
+    async def start(self) -> None:
+        """Start the gRPC server."""
+        self.add_services()
 
-    async def wait_for_termination(self) -> None:
-        if self._server is None:
-            return
-        await self._server.wait_for_termination()
+        listen_addr = f"[::]:{self.port}"
+        self.server.add_insecure_port(listen_addr)
+
+        await self.server.start()
+        print(f"gRPC server started on {listen_addr}")
+
+    async def stop(self) -> None:
+        """Stop the gRPC server."""
+        await self.server.stop(grace=5.0)
+
+    async def serve(self) -> None:
+        """Serve the gRPC server."""
+        await self.start()
+        try:
+            await self.server.wait_for_termination()
+        except KeyboardInterrupt:
+            await self.stop()
 
 
-async def serve() -> None:
-    server = GatewayGrpcServer()
-    await server.start()
-    await server.wait_for_termination()
+async def main() -> None:
+    """Main function to run the gRPC server."""
+    server = GRPCServer()
+    await server.serve()
 
 
-if __name__ == "__main__":  # pragma: no cover - manual invocation helper
-    asyncio.run(serve())
+if __name__ == "__main__":
+    asyncio.run(main())

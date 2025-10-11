@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Histogram
 
+
 _STAGE_DURATION = Histogram(
     "pipeline_stage_duration_seconds",
     "Duration of pipeline stages",

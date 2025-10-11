@@ -10,6 +10,7 @@ from ..segmentation import Segment, SlidingWindowSegmenter
 from ..tokenization import TokenCounter
 
 
+
 class SlidingWindowChunker(ContextualChunker):
     name = "sliding_window"
     version = "v1"

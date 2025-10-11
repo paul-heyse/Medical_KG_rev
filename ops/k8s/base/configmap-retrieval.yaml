@@ -10,7 +10,7 @@ data:
     # Controls which components are executed by the HybridSearchCoordinator and
     # establishes deterministic timeouts, caching behaviour, and optional query
     # expansion synonyms shared across tenants.
-    
+
     defaults:
       enable_splade: true
       enable_dense: true
@@ -21,7 +21,7 @@ data:
         - bm25
         - splade
         - dense
-    
+
     components:
       bm25:
         timeout_ms: 300
@@ -29,7 +29,7 @@ data:
         timeout_ms: 300
       dense:
         timeout_ms: 300
-    
+
     synonyms:
       diabetes:
         - dm
@@ -42,12 +42,12 @@ data:
     # callers to set the rerank flag explicitly. Other tenants participate in the
     # experiment defined below.
     default_enabled: false
-    
+
     # Explicit tenant defaults.
     tenants:
       oncology: true
       cardiology: false
-    
+
     # Deterministic A/B experiment split controlling optional reranking.
     experiment:
       rerank_ratio: 0.1

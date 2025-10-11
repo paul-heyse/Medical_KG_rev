@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from importlib import import_module
 from typing import Literal
+
+from importlib import import_module
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..utils.normalization import normalize_batch
 from ..utils.offsets import batch_offsets
 from ..utils.records import RecordBuilder
+
 
 Strategy = Literal["batch", "per_text", "single"]
 

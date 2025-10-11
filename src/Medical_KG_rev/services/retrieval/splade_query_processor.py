@@ -1,11 +1,37 @@
-"""SPLADE Query Processor
+"""Generate SPLADE sparse query vectors for hybrid retrieval.
 
-This module implements SPLADE query processing with sparse vector generation,
-query segmentation, and impact scoring for learned sparse retrieval.
+This module orchestrates query segmentation, sparse vector generation, and
+post-processing required by SPLADE-based sparse retrieval.
+
+Key Responsibilities:
+    - Segment queries when they exceed service token limits.
+    - Request sparse vectors from the SPLADE service and aggregate segments.
+    - Apply sparsity controls and compute impact scores.
+
+Collaborators:
+    - Upstream: Retrieval service components passing raw query strings.
+    - Downstream: SPLADE gRPC service for encoding and query scoring.
+
+Side Effects:
+    - Emits structured logging for observability.
+    - Raises `FallbackNotAllowedError` when SPLADE dependencies fail.
+
+Thread Safety:
+    - Thread-safe: Holds only configuration references and service clients.
+
+Performance Characteristics:
+    - Runtime dominated by SPLADE RPC latency; local processing is linear in
+      the number of segments.
 """
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 import logging
 from typing import Any
+
+from Medical_KG_rev.utils.fallbacks import fallback_unavailable
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +39,7 @@ from Medical_KG_rev.services.retrieval.splade_aggregation import SPLADEAggregato
 from Medical_KG_rev.services.retrieval.splade_segmentation import SPLADESegmenter
 from Medical_KG_rev.services.retrieval.splade_service import SPLADEService
 from Medical_KG_rev.services.retrieval.splade_sparsity import SPLADESparsityController
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +71,18 @@ class SPLADEQueryResult(BaseModel):
 
 
 class SPLADEQueryProcessor:
-    """SPLADE query processor for learned sparse retrieval.
+    """Coordinate SPLADE query preprocessing and sparse-vector generation.
 
-    This processor handles query preprocessing, segmentation, sparse vector
-    generation, and impact scoring for SPLADE-based retrieval.
+    Attributes:
+        splade_service: Client used to generate sparse SPLADE embeddings.
+        segmenter: Helper that splits long queries into manageable segments.
+        aggregator: Aggregation helper for combining segment vectors.
+        sparsity_controller: Applies sparsity thresholds and truncation.
+        max_query_length: Maximum token length before segmentation occurs.
+        enable_query_expansion: Flag enabling optional normalization logic.
+
+    Thread Safety:
+        - Thread-safe: Relies on stateless helpers and gRPC clients.
     """
 
     def __init__(
@@ -62,13 +97,12 @@ class SPLADEQueryProcessor:
         """Initialize the SPLADE query processor.
 
         Args:
-            splade_service: SPLADE service for model operations
-            segmenter: Query segmenter for long queries
-            aggregator: Vector aggregator for segment combination
-            sparsity_controller: Sparsity controller for vector optimization
-            max_query_length: Maximum query length in tokens
-            enable_query_expansion: Enable query expansion
-
+            splade_service: SPLADE service client for sparse vector generation.
+            segmenter: Component that splits long queries into segments.
+            aggregator: Component that merges segment vectors into one.
+            sparsity_controller: Applies thresholding and pruning to vectors.
+            max_query_length: Maximum number of tokens before segmentation.
+            enable_query_expansion: Whether to normalize/simplify queries.
         """
         self.splade_service = splade_service
         self.segmenter = segmenter
@@ -80,14 +114,13 @@ class SPLADEQueryProcessor:
         logger.info("SPLADEQueryProcessor initialized")
 
     def process_query(self, query_text: str) -> SPLADEQuery:
-        """Process a query for SPLADE retrieval.
+        """Produce a sparse SPLADE representation for a query string.
 
         Args:
-            query_text: Raw query text
+            query_text: Raw natural-language query from the caller.
 
         Returns:
-            Processed SPLADE query with sparse vector representation
-
+            A `SPLADEQuery` containing processed segments and sparse vectors.
         """
         logger.info(f"Processing SPLADE query: '{query_text[:100]}...'")
 
@@ -137,7 +170,14 @@ class SPLADEQueryProcessor:
             raise
 
     def _preprocess_query(self, query_text: str) -> str:
-        """Preprocess query text for SPLADE processing."""
+        """Normalize query text ahead of segmentation.
+
+        Args:
+            query_text: Raw query string from the caller.
+
+        Returns:
+            Lowercased and whitespace-normalized query text.
+        """
         # Convert to lowercase
         processed = query_text.lower()
 
@@ -154,7 +194,14 @@ class SPLADEQueryProcessor:
         return processed
 
     def _segment_query(self, query_text: str) -> list[str]:
-        """Segment query into manageable pieces."""
+        """Segment long queries into SPLADE-friendly chunks.
+
+        Args:
+            query_text: Normalized query string.
+
+        Returns:
+            A list of query segments to process individually.
+        """
         # Check if query needs segmentation
         token_count = self._count_tokens(query_text)
 
@@ -170,7 +217,15 @@ class SPLADEQueryProcessor:
         return segments
 
     def _generate_segment_vector(self, segment: str) -> dict[int, float] | None:
-        """Generate sparse vector for a query segment."""
+        """Request a sparse vector for a single query segment.
+
+        Args:
+            segment: Query fragment produced by the segmenter.
+
+        Returns:
+            Sparse vector encoded by the SPLADE service, or ``None`` when the
+            service returns no data.
+        """
         try:
             # Use SPLADE service to encode segment
             result = self.splade_service.process_batch([segment])
@@ -183,11 +238,10 @@ class SPLADEQueryProcessor:
             return None
 
         except Exception as e:
-            logger.error(f"Failed to generate segment vector: {e}")
-            return None
+            fallback_unavailable("SPLADE segment vector generation", e)
 
     def _aggregate_vectors(self, segment_vectors: list[dict[int, float]]) -> dict[int, float]:
-        """Aggregate multiple segment vectors into a single vector."""
+        """Combine vectors from many segments into a single sparse vector."""
         if not segment_vectors:
             return {}
 
@@ -199,41 +253,18 @@ class SPLADEQueryProcessor:
             aggregated = self.aggregator.aggregate_splade_segments(segment_vectors)
             return aggregated
         except Exception as e:
-            logger.error(f"Failed to aggregate vectors: {e}")
-            # Fallback to simple max aggregation
-            return self._simple_max_aggregation(segment_vectors)
-
-    def _simple_max_aggregation(self, vectors: list[dict[int, float]]) -> dict[int, float]:
-        """Simple max aggregation as fallback."""
-        aggregated = {}
-
-        for vector in vectors:
-            for term_id, score in vector.items():
-                if term_id in aggregated:
-                    aggregated[term_id] = max(aggregated[term_id], score)
-                else:
-                    aggregated[term_id] = score
-
-        return aggregated
+            fallback_unavailable("SPLADE aggregation", e)
 
     def _apply_sparsity_control(self, vector: dict[int, float]) -> dict[int, float]:
-        """Apply sparsity control to the vector."""
+        """Apply thresholding and pruning to a sparse vector."""
         try:
             controlled = self.sparsity_controller.apply_sparsity_threshold(vector)
             return controlled
         except Exception as e:
-            logger.error(f"Failed to apply sparsity control: {e}")
-            # Fallback to simple thresholding
-            return self._simple_sparsity_control(vector)
-
-    def _simple_sparsity_control(
-        self, vector: dict[int, float], threshold: float = 0.1
-    ) -> dict[int, float]:
-        """Simple sparsity control as fallback."""
-        return {term_id: score for term_id, score in vector.items() if score >= threshold}
+            fallback_unavailable("SPLADE sparsity control", e)
 
     def _extract_impact_scores(self, sparse_vector: dict[int, float]) -> dict[int, float]:
-        """Extract impact scores from sparse vector."""
+        """Derive term impact scores from the sparse vector."""
         # For SPLADE, impact scores are the same as vector values
         # but we can apply additional processing here
         impact_scores = {}
@@ -324,10 +355,12 @@ class SPLADEQueryProcessor:
         """Score a SPLADE query against a chunk vector.
 
         Args:
+        ----
             splade_query: Processed SPLADE query
             chunk_vector: Chunk's sparse vector
 
         Returns:
+        -------
             Similarity score
 
         """

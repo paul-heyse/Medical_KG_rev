@@ -15,4 +15,3 @@
 - THEN it MUST include a gate named `pdf_ir_ready` that resumes stage `chunk`
 - AND the gate condition MUST watch the `pdf_ir_ready` ledger field with timeout `900` seconds and poll interval `10.0` seconds
 - AND the topology stages MUST include `download` and `gate_pdf_ir_ready` to enforce MinerU gating semantics
-

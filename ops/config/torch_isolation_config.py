@@ -30,7 +30,7 @@ class ServiceConfig(BaseModel):
     )
 
     @validator("resources")
-    def validate_resources(cls, v):
+    def validate_resources(cls, v):  # noqa: N805  # Pydantic validator expects cls signature
         """Validate resource requirements."""
         if v:
             # Validate CPU format (e.g., "1000m", "1")
@@ -124,7 +124,7 @@ class DeploymentConfig(BaseModel):
     )
 
     @validator("strategy")
-    def validate_strategy(cls, v):
+    def validate_strategy(cls, v):  # noqa: N805  # Pydantic validator expects cls signature
         """Validate deployment strategy."""
         valid_strategies = ["blue_green", "rolling", "recreate"]
         if v not in valid_strategies:
@@ -132,7 +132,7 @@ class DeploymentConfig(BaseModel):
         return v
 
     @validator("environment")
-    def validate_environment(cls, v):
+    def validate_environment(cls, v):  # noqa: N805  # Pydantic validator expects cls signature
         """Validate environment."""
         valid_environments = ["development", "staging", "production"]
         if v not in valid_environments:
@@ -173,7 +173,7 @@ class TorchIsolationConfig(BaseModel):
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-        with open(config_path) as f:
+        with config_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         return cls(**data)
@@ -212,7 +212,7 @@ class TorchIsolationConfig(BaseModel):
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, "w") as f:
+        with output_path.open("w", encoding="utf-8") as f:
             yaml.dump(self.dict(), f, default_flow_style=False, indent=2)
 
     def get_service_config(self, service_name: str) -> ServiceConfig | None:
@@ -343,12 +343,11 @@ class TorchIsolationConfig(BaseModel):
             errors.append(f"Gateway configuration error: {e}")
 
         # Validate monitoring configuration
-        if self.monitoring.enabled:
-            if not self.monitoring.prometheus:
-                errors.append("Monitoring is enabled but Prometheus configuration is missing")
+        if self.monitoring.enabled and not self.monitoring.prometheus:
+            errors.append("Monitoring is enabled but Prometheus configuration is missing")
 
-            if not self.monitoring.grafana:
-                errors.append("Monitoring is enabled but Grafana configuration is missing")
+        if self.monitoring.enabled and not self.monitoring.grafana:
+            errors.append("Monitoring is enabled but Grafana configuration is missing")
 
         # Validate security configuration
         if self.security.mtls.get("enabled", False):
@@ -363,9 +362,11 @@ class TorchIsolationConfig(BaseModel):
                     errors.append(f"mTLS is enabled but {path_key} is missing")
 
         # Validate storage configuration
-        if self.storage.persistent_volumes.get("enabled", False):
-            if not self.storage.persistent_volumes.get("storage_class"):
-                errors.append("Persistent volumes are enabled but storage class is missing")
+        if (
+            self.storage.persistent_volumes.get("enabled", False)
+            and not self.storage.persistent_volumes.get("storage_class")
+        ):
+            errors.append("Persistent volumes are enabled but storage class is missing")
 
         return errors
 
@@ -476,10 +477,7 @@ def validate_config(config: TorchIsolationConfig) -> bool:
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
-    else:
-        config_path = None
+    config_path = sys.argv[1] if len(sys.argv) > 1 else None
 
     config = load_config(config_path)
     config = config.apply_environment_overrides()

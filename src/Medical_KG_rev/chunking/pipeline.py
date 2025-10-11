@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Iterable, Sequence
+import asyncio
+
 from concurrent.futures import ThreadPoolExecutor
 
 from Medical_KG_rev.models.ir import Document
@@ -12,6 +13,7 @@ from .base import ContextualChunker
 from .models import Chunk, Granularity
 from .ports import BaseChunker
 from .provenance import BlockContext
+
 
 
 class MultiGranularityPipeline:

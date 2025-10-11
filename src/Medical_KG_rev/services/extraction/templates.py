@@ -1,4 +1,31 @@
-"""Structured extraction templates for domain specific results."""
+"""Structured extraction templates for domain specific results.
+
+Key Responsibilities:
+    - Define Pydantic models for structured entity extraction
+    - Provide validation for extracted spans and entities
+    - Support domain-specific extraction templates (medical, legal, etc.)
+    - Enable type-safe extraction result processing
+
+Collaborators:
+    - Upstream: Extraction services use these templates for result validation
+    - Downstream: Application layers consume validated extraction results
+
+Side Effects:
+    - None: Pure data models with validation
+
+Thread Safety:
+    - Thread-safe: Pydantic models are immutable
+
+Performance Characteristics:
+    - O(1) model instantiation and validation
+    - O(n) text verification where n is span length
+    - Efficient JSON serialization with Pydantic
+
+Example:
+    >>> span = Span(text="patient", start=10, end=17)
+    >>> span.verify("The patient was admitted")
+    >>> # Validates that the span matches the source text
+"""
 
 from __future__ import annotations
 
@@ -7,22 +34,56 @@ from collections.abc import Iterable, Mapping, Sequence
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 
+
 class TemplateValidationError(ValueError):
-    """Raised when extracted data violates template constraints."""
+    """Raised when extracted data violates template constraints.
+
+    This exception is raised when validation fails during template-based
+    extraction result processing.
+    """
 
 
 class Span(BaseModel):
+    """Text span with position information for entity extraction.
+
+    Represents a contiguous segment of text extracted from a document,
+    with validation to ensure the span boundaries are consistent.
+
+    Attributes:
+        text: The actual text content of the span.
+        start: Starting character position in the source text.
+        end: Ending character position in the source text (exclusive).
+    """
     text: str = Field(min_length=1)
     start: int = Field(ge=0)
     end: int = Field(gt=0)
 
     @model_validator(mode="after")
     def validate_range(cls, values: Span) -> Span:  # type: ignore[override]
+        """Validate that span end is greater than start.
+
+        Args:
+            values: The span instance to validate.
+
+        Returns:
+            The validated span instance.
+
+        Raises:
+            ValueError: If span end is not greater than start.
+        """
         if values.end <= values.start:
             raise ValueError("Span end must be greater than start")
         return values
 
     def verify(self, source_text: str) -> None:
+        """Verify that the span matches the source text at the specified position.
+
+        Args:
+            source_text: The original text from which the span was extracted.
+
+        Raises:
+            TemplateValidationError: If the span doesn't match the source text.
+        """
         snippet = source_text[self.start : self.end]
         if snippet == self.text:
             return

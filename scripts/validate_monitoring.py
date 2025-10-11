@@ -118,9 +118,8 @@ def validate_all(
     custom_metrics_adapter_url: str = typer.Option(
         "http://localhost:8081", "--custom-metrics-url", help="Custom metrics adapter URL"
     ),
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for validation results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for validation results"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Request timeout in seconds"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
@@ -183,9 +182,8 @@ def validate_prometheus(
     prometheus_url: str = typer.Option(
         "http://localhost:9090", "--prometheus-url", help="Prometheus URL"
     ),
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for validation results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for validation results"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Request timeout in seconds"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
@@ -240,9 +238,8 @@ def validate_prometheus(
 @app.command()
 def validate_grafana(
     grafana_url: str = typer.Option("http://localhost:3000", "--grafana-url", help="Grafana URL"),
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for validation results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for validation results"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Request timeout in seconds"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
@@ -299,9 +296,8 @@ def validate_services(
     service_urls: str = typer.Option(
         "", "--service-urls", help="Comma-separated service URLs (name:url format)"
     ),
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for validation results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for validation results"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Request timeout in seconds"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
@@ -411,7 +407,9 @@ def print_validation_results(results: list, verbose: bool) -> None:
             status_icon = (
                 "✅"
                 if result.status == ValidationStatus.PASS
-                else "❌" if result.status == ValidationStatus.FAIL else "⚠️"
+                else "❌"
+                if result.status == ValidationStatus.FAIL
+                else "⚠️"
             )
             component = (
                 result.component.value
@@ -497,7 +495,9 @@ def generate_report(
                 status_icon = (
                     "✅"
                     if result["status"] == "PASS"
-                    else "❌" if result["status"] == "FAIL" else "⚠️"
+                    else "❌"
+                    if result["status"] == "FAIL"
+                    else "⚠️"
                 )
                 report_lines.extend(
                     [

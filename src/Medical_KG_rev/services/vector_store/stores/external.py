@@ -9,19 +9,11 @@ from typing import Any
 
 import numpy as np
 
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..models import HttpClient
 from ..types import VectorStorePort
 from .memory import InMemoryVectorStore
 from .opensearch import OpenSearchKNNStore
+
 
 
 @dataclass(slots=True)

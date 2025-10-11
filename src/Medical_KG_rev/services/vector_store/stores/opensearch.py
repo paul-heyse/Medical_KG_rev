@@ -2,29 +2,21 @@
 
 from __future__ import annotations
 
-import json
-import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import json
+import time
 
 import numpy as np
 
 from ..errors import BackendUnavailableError, NamespaceNotFoundError
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..models import HttpClient
 from ..types import VectorStorePort
 from .memory import InMemoryVectorStore
+
 
 _SPECIAL_FILTER_KEYS = {"lexical_query", "mode", "vector_weight"}
 

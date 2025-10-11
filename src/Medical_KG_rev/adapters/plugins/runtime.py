@@ -8,13 +8,9 @@ from typing import Any
 
 from .domains.metadata import DomainAdapterMetadata
 from .errors import AdapterPluginError
-from .models import (
-    AdapterMetadata,
-    AdapterRequest,
-    AdapterResponse,
-    ValidationOutcome,
-)
+from .models import AdapterMetadata, AdapterRequest, AdapterResponse, ValidationOutcome
 from .pipeline import AdapterExecutionContext, AdapterExecutionMetrics, AdapterPipeline
+
 
 
 @dataclass(slots=True)

@@ -1,19 +1,45 @@
-"""Result Fusion and Ranking
+"""Fuse retrieval results from lexical, sparse, and dense components.
 
-This module implements result fusion strategies for combining results from
-multiple retrieval methods (BM25, SPLADE, Qwen3) with various ranking algorithms.
+Key Responsibilities:
+    - Provide configurable result fusion strategies (RRF, weighted, comb methods).
+    - Normalize and threshold scores across heterogeneous retrieval outputs.
+    - Produce ranked `FusionResult` objects with contribution metadata.
+
+Collaborators:
+    - Upstream: Retrieval components producing method-specific results.
+    - Downstream: Rerankers, gateways, or orchestration pipelines consuming fused rankings.
+
+Side Effects:
+    - Emits structured logs; otherwise pure in-memory processing.
+
+Thread Safety:
+    - Thread-safe: Does not maintain mutable shared state beyond configuration.
 """
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+
 logger = logging.getLogger(__name__)
 
 
 class FusionResult(BaseModel):
-    """Fused result from multiple retrieval methods."""
+    """Single retrieval result after fusion across multiple methods.
+
+    Attributes:
+        chunk_id: Unique identifier of the retrieved chunk.
+        fused_score: Combined relevance score after fusion.
+        individual_scores: Scores contributed by each retrieval strategy.
+        rank: Final ranking position assigned post-fusion.
+        method_contributions: Per-method contribution values (e.g., RRF weights).
+        metadata: Additional metadata associated with the chunk.
+    """
 
     chunk_id: str = Field(..., description="Chunk identifier")
     fused_score: float = Field(..., description="Fused relevance score")
@@ -26,7 +52,7 @@ class FusionResult(BaseModel):
 
 
 class FusionConfig(BaseModel):
-    """Configuration for result fusion."""
+    """Configuration options controlling result fusion behavior."""
 
     fusion_method: str = Field(
         default="rrf", description="Fusion method (rrf, weighted, comb_sum, comb_max)"
@@ -41,18 +67,17 @@ class FusionConfig(BaseModel):
 
 
 class ResultFusion:
-    """Result fusion and ranking system for hybrid retrieval.
+    """Combine retrieval method outputs into a unified ranking.
 
-    This class implements various fusion strategies to combine results from
-    multiple retrieval methods into a unified ranking.
+    Attributes:
+        config: :class:`FusionConfig` controlling fusion behavior.
     """
 
     def __init__(self, config: FusionConfig):
         """Initialize the result fusion system.
 
         Args:
-            config: Fusion configuration
-
+            config: Fusion configuration describing algorithms and weights.
         """
         self.config = config
 
@@ -74,12 +99,11 @@ class ResultFusion:
         """Fuse results from multiple retrieval methods.
 
         Args:
-            method_results: Dictionary of method -> list of (chunk_id, score) tuples
-            k: Number of results to return
+            method_results: Mapping of method name to pairs of ``(chunk_id, score)``.
+            k: Maximum number of fused results to return.
 
         Returns:
-            List of fused results sorted by fused score
-
+            List of :class:`FusionResult` objects sorted by fused score.
         """
         logger.info(f"Fusing results from {len(method_results)} methods")
 
@@ -121,7 +145,7 @@ class ResultFusion:
         self,
         method_results: dict[str, list[tuple[str, float]]],
     ) -> dict[str, list[tuple[str, float]]]:
-        """Normalize scores within each method."""
+        """Normalize scores within each method to the ``[0, 1]`` range."""
         normalized_results = {}
 
         for method, results in method_results.items():

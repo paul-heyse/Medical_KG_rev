@@ -8,22 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import structlog
-
-logger = structlog.get_logger(__name__)
-
-_YAML_AVAILABLE = importlib.util.find_spec("yaml") is not None
-
-if _YAML_AVAILABLE:  # pragma: no cover - exercised in environments with PyYAML
+try:
     from yaml import safe_load as _safe_load  # type: ignore
-else:  # pragma: no cover - optional dependency fallback
-
-    def _safe_load(_: str) -> Mapping[str, Any]:
-        logger.warning(
-            "config.yaml.unavailable",
-            message="PyYAML not installed; using empty domain registry",
-        )
-        return {}
+except Exception as exc:  # pragma: no cover - optional dependency fallback
+    raise ImportError("PyYAML is required to load domain configurations") from exc
 
 
 class _YamlFacade:

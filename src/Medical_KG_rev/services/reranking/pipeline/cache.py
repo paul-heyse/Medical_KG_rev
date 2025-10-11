@@ -11,6 +11,7 @@ from typing import Any, Protocol
 from ..models import CacheMetrics, RerankResult
 
 
+
 @dataclass(slots=True)
 class CacheEntry:
     value: RerankResult
@@ -18,11 +19,14 @@ class CacheEntry:
 
 
 class CacheBackend(Protocol):
-    def get(self, key: str) -> RerankResult | None: ...
+    def get(self, key: str) -> RerankResult | None:
+        ...
 
-    def set(self, key: str, value: RerankResult, ttl: int) -> None: ...
+    def set(self, key: str, value: RerankResult, ttl: int) -> None:
+        ...
 
-    def invalidate(self, pattern: str) -> None: ...
+    def invalidate(self, pattern: str) -> None:
+        ...
 
 
 class RedisCacheBackend:

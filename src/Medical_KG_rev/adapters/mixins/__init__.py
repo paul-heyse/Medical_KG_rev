@@ -7,6 +7,7 @@ from .pagination import PaginationMixin
 from .pdf_manifest import PdfManifestMixin
 from .storage_helpers import StorageHelperMixin
 
+
 __all__ = [
     "DOINormalizationMixin",
     "HTTPWrapperMixin",

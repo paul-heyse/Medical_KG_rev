@@ -6,18 +6,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from Medical_KG_rev.chunking.exceptions import HttpClient
 from Medical_KG_rev.observability.metrics import record_chunking_failure
 from Medical_KG_rev.services.retrieval.chunking_command import ChunkCommand
 
 from .models import ProblemDetail
+
 
 ChunkingSeverity = Literal["client", "server", "transient"]
 

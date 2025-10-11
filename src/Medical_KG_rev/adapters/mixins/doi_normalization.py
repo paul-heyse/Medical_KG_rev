@@ -7,6 +7,7 @@ import re
 from Medical_KG_rev.utils.validation import validate_doi
 
 
+
 class DOINormalizationMixin:
     """Mixin providing DOI normalization utilities."""
 

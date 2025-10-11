@@ -19,6 +19,7 @@ Performance:
     Memory usage scales linearly with active job count.
 
 Example:
+-------
     >>> ledger = JobLedger()
     >>> job = ledger.create(
     ...     job_id="job-123",
@@ -32,16 +33,15 @@ Example:
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
-import builtins
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 
+import builtins
+
 from Medical_KG_rev.observability.metrics import update_job_status_metrics
+
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -65,7 +65,8 @@ ALLOWED_TRANSITIONS = {
 class JobTransition:
     """Represents a state transition in job lifecycle.
 
-    Attributes:
+    Attributes
+    ----------
         from_status: Previous job status.
         to_status: New job status.
         stage: Processing stage where transition occurred.
@@ -85,7 +86,8 @@ class JobTransition:
 class JobLedgerEntry:
     """Complete job state record with lifecycle tracking.
 
-    Attributes:
+    Attributes
+    ----------
         job_id: Unique job identifier.
         doc_key: Document key for idempotency.
         tenant_id: Tenant identifier.
@@ -134,7 +136,8 @@ class JobLedgerEntry:
     def is_terminal(self) -> bool:
         """Check if job is in a terminal state.
 
-        Returns:
+        Returns
+        -------
             True if job status is completed, failed, or cancelled.
 
         """
@@ -143,7 +146,8 @@ class JobLedgerEntry:
     def snapshot(self) -> JobLedgerEntry:
         """Return a copy suitable for external consumption.
 
-        Returns:
+        Returns
+        -------
             Deep copy of the job entry with immutable collections.
 
         """

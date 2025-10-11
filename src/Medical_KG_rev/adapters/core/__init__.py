@@ -10,6 +10,7 @@ which aggregates open access research papers from repositories worldwide.
 
 from .adapter import COREAdapter
 
+
 # ==============================================================================
 # EXPORTS
 # ==============================================================================

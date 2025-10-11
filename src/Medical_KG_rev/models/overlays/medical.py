@@ -10,6 +10,7 @@ from pydantic import Field, field_validator
 from ..ir import Document, IRBaseModel
 
 
+
 class ResearchStudy(IRBaseModel):
     """Subset of the FHIR ResearchStudy resource used by the platform."""
 

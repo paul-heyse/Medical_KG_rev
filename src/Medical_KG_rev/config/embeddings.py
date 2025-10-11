@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import importlib.util
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import os
 
-if importlib.util.find_spec("yaml") is not None:  # pragma: no cover - depends on PyYAML
-    from yaml import safe_load as _safe_load  # type: ignore
-else:  # pragma: no cover - fallback when PyYAML unavailable
-
-    def _safe_load(_: str) -> dict[str, Any]:
-        return {}
-
+from yaml import safe_load as _safe_load  # type: ignore
+import importlib.util
 
 from Medical_KG_rev.embeddings.ports import EmbedderConfig, EmbeddingKind
+
 
 DEFAULT_EMBEDDING_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embeddings.yaml"
 

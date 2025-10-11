@@ -4,16 +4,17 @@ This module implements Qwen3 vector storage using FAISS index with
 IVF configuration for scale and efficient similarity search.
 """
 
+from pathlib import Path
+from typing import Any
 import json
 import logging
 import time
-from pathlib import Path
-from typing import Any
 
+from prometheus_client import Counter, Histogram
 import numpy as np
 
 from Medical_KG_rev.services.retrieval.qwen3_service import Qwen3Embedding
-from prometheus_client import Counter, Histogram
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class Qwen3IndexManifest:
         """Initialize Qwen3 index manifest.
 
         Args:
+        ----
             index_path: Path to the index directory
             embedding_dimension: Dimension of embedding vectors
             model_name: Name of the Qwen3 model
@@ -131,6 +133,7 @@ class Qwen3Index:
         """Initialize Qwen3 index.
 
         Args:
+        ----
             index_path: Path to the index directory
             embedding_dimension: Dimension of embedding vectors
             model_name: Name of the Qwen3 model
@@ -205,6 +208,7 @@ class Qwen3Index:
         """Add a Qwen3 vector to the index.
 
         Args:
+        ----
             embedding: Qwen3 embedding to add
 
         """
@@ -279,9 +283,11 @@ class Qwen3Index:
         """Get a Qwen3 vector from the index.
 
         Args:
+        ----
             chunk_id: Vector identifier
 
         Returns:
+        -------
             Qwen3 embedding if found, None otherwise
 
         """
@@ -341,10 +347,12 @@ class Qwen3Index:
         """Search for similar vectors using cosine similarity.
 
         Args:
+        ----
             query_vector: Query vector
             top_k: Number of top results to return
 
         Returns:
+        -------
             List of (chunk_id, score) tuples sorted by score
 
         """
@@ -430,7 +438,8 @@ class Qwen3Index:
     def get_all_vectors(self) -> list[Qwen3Embedding]:
         """Get all vectors from the index.
 
-        Returns:
+        Returns
+        -------
             List of Qwen3 embeddings
 
         """
@@ -494,9 +503,11 @@ class Qwen3Index:
         """Remove a vector from the index.
 
         Args:
+        ----
             chunk_id: Vector identifier
 
         Returns:
+        -------
             True if vector was removed, False if not found
 
         """
@@ -622,7 +633,8 @@ class Qwen3Index:
     def get_index_stats(self) -> dict[str, Any]:
         """Get index statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with index statistics
 
         """
@@ -639,7 +651,8 @@ class Qwen3Index:
     def validate_index(self) -> list[str]:
         """Validate index integrity.
 
-        Returns:
+        Returns
+        -------
             List of validation error messages
 
         """
@@ -733,7 +746,8 @@ class Qwen3Index:
     def health_check(self) -> dict[str, Any]:
         """Check Qwen3 index health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

@@ -12,6 +12,7 @@ from Medical_KG_rev.models.ir import BlockType
 from .provenance import BlockContext
 
 
+
 @dataclass(slots=True)
 class Segment:
     """A contiguous span of block contexts to assemble into a chunk."""

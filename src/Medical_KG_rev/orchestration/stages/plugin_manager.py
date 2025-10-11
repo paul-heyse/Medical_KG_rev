@@ -1,244 +1,256 @@
-"""Stage plugin infrastructure for Dagster orchestration."""
+"""Stage plugin manager for orchestration pipeline."""
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 import pluggy
-from attrs import define, field
-from pydantic import BaseModel, ConfigDict, ValidationError
-from tenacity import (  # type: ignore
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
 import structlog
+
 from Medical_KG_rev.observability.metrics import (
     STAGE_PLUGIN_FAILURES,
     STAGE_PLUGIN_HEALTH,
     STAGE_PLUGIN_REGISTRATIONS,
 )
+from Medical_KG_rev.orchestration.stages.plugins import (
+    StagePlugin,
+    StagePluginHealth,
+    StagePluginRegistration,
+)
 
 logger = structlog.get_logger(__name__)
 
 
-PLUGIN_NAMESPACE = "medical_kg_stage_plugins"
-
-
-hookspec = pluggy.HookspecMarker(PLUGIN_NAMESPACE)
-hookimpl = pluggy.HookimplMarker(PLUGIN_NAMESPACE)
-
-
-class StagePluginError(RuntimeError):
-    """Base class for stage plugin errors."""
-
-
-class StagePluginNotAvailable(StagePluginError):
-    """Raised when no plugin can satisfy the requested stage type."""
-
-
-class StagePluginLoadError(StagePluginError):
-    """Raised when plugin discovery or validation fails."""
-
-
-class StagePluginExecutionError(StagePluginError):
-    """Raised when plugin execution fails even after retries."""
-
-
-class StagePluginMetadata(BaseModel):
-    """Structured description of a registered stage plugin."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    version: str
-    stage_types: tuple[str, ...]
-    description: str | None = None
-
-
-@define(slots=True)
-class StagePluginContext:
-    """Resources made available to plugins during stage construction."""
-
-    resources: Mapping[str, Any]
-
-    def require(self, key: str) -> Any:
-        try:
-            return self.resources[key]
-        except KeyError as exc:  # pragma: no cover - defensive guard
-            raise StagePluginLoadError(f"Missing resource '{key}' for stage plugin") from exc
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get resource with optional default value."""
-        return self.resources.get(key, default)
-
-
-@define(slots=True)
-class StagePlugin:
-    """Base class for stage plugins."""
-
-    metadata: StagePluginMetadata
-
-    def initialise(self, context: StagePluginContext) -> None:
-        """Called once when the plugin is registered."""
-
-    def health_check(self, context: StagePluginContext) -> None:
-        """Validate plugin health. Raises to mark plugin unhealthy."""
-
-    def cleanup(self, context: StagePluginContext) -> None:
-        """Cleanup resources during manager shutdown."""
-
-    def create_stage(self, definition: Any, context: StagePluginContext) -> object:
-        """Instantiate a stage implementation for the provided definition."""
-        raise NotImplementedError
-
-
-class StagePluginSpec:
-    """pluggy hook specification for third-party plugins."""
-
-    @hookspec
-    def stage_plugins(self) -> Iterable[StagePlugin]:  # pragma: no cover - hook specification
-        """Return an iterable of StagePlugin instances to register."""
-
-
-@define(slots=True)
 class StagePluginManager:
-    """Coordinate registration, health checking, and stage creation."""
+    """Manages stage plugins for the orchestration pipeline."""
 
-    context: StagePluginContext
-    namespace: str = PLUGIN_NAMESPACE
-    _plugin_manager: pluggy.PluginManager = field(
-        factory=lambda: pluggy.PluginManager(PLUGIN_NAMESPACE), init=False
-    )
-    _registry: dict[str, StagePlugin] = field(factory=dict, init=False)
-    _stage_index: dict[str, list[str]] = field(factory=lambda: defaultdict(list), init=False)
-    _loaded: bool = field(default=False, init=False)
+    def __init__(self) -> None:
+        """Initialize the plugin manager."""
+        self.logger = logger
+        self._plugins: dict[str, StagePlugin] = {}
+        self._registrations: dict[str, StagePluginRegistration] = {}
+        self._plugin_hook = pluggy.PluginManager("stage_plugin")
+        self._initialized = False
 
-    def __attrs_post_init__(self) -> None:
-        self._plugin_manager.add_hookspecs(StagePluginSpec)
-
-    def load_entrypoints(self) -> None:
-        """Discover and register plugins declared via entry points."""
-        if self._loaded:
-            return
-        discovered_count = self._plugin_manager.load_setuptools_entrypoints(self.namespace)
-        logger.debug(
-            "orchestration.stage_plugins.entrypoints: namespace=%s discovered_count=%s",
-            self.namespace,
-            discovered_count,
-        )
-        for hook in self._plugin_manager.hook.stage_plugins():  # type: ignore[attr-defined]
-            for candidate in hook:
-                self.register(candidate)
-        self._loaded = True
-
-    def register(self, plugin: StagePlugin) -> None:
-        """Register a StagePlugin instance and index stage types."""
-        metadata = plugin.metadata
+    def register_plugin(self, plugin: StagePlugin) -> None:
+        """Register a stage plugin."""
         try:
-            metadata = StagePluginMetadata.model_validate(metadata.model_dump())
-        except ValidationError as exc:  # pragma: no cover - defensive guard
-            raise StagePluginLoadError(str(exc)) from exc
+            self._plugins[plugin.name] = plugin
+            self._plugin_hook.register(plugin)
 
-        plugin.initialise(self.context)
-        for stage_type in metadata.stage_types:
-            canonical = stage_type.lower().strip()
-            self._registry[metadata.name] = plugin
-            self._stage_index[canonical].append(metadata.name)
-            STAGE_PLUGIN_REGISTRATIONS.labels(plugin=metadata.name, stage_type=canonical).inc()
-        logger.info(
-            "orchestration.stage_plugins.registered: plugin=%s version=%s stage_types=%s",
-            metadata.name,
-            metadata.version,
-            list(metadata.stage_types),
-        )
-        self._refresh_health(plugin)
+            # Get registrations from plugin
+            registrations = plugin.registrations(None)
+            for registration in registrations:
+                self._registrations[registration.stage_type] = registration
 
-    def _refresh_health(self, plugin: StagePlugin) -> None:
-        try:
-            plugin.health_check(self.context)
+            self.logger.info(f"Registered stage plugin: {plugin.name}")
+
         except Exception as exc:
-            metadata = plugin.metadata
-            STAGE_PLUGIN_FAILURES.labels(plugin=metadata.name, stage_type="__health__").inc()
-            STAGE_PLUGIN_HEALTH.labels(plugin=metadata.name).set(0)
-            logger.warning(
-                "orchestration.stage_plugins.unhealthy: plugin=%s error=%s",
-                metadata.name,
-                str(exc),
-            )
-        else:
-            STAGE_PLUGIN_HEALTH.labels(plugin=plugin.metadata.name).set(1)
+            self.logger.error(f"Failed to register plugin {plugin.name}: {exc}")
+            raise exc
 
-    def available_stage_types(self) -> list[str]:
-        return sorted(self._stage_index)
+    def unregister_plugin(self, plugin_name: str) -> None:
+        """Unregister a stage plugin."""
+        try:
+            if plugin_name in self._plugins:
+                plugin = self._plugins[plugin_name]
+                self._plugin_hook.unregister(plugin)
 
-    def iter_plugins(self) -> Iterable[StagePlugin]:
-        return self._registry.values()
+                # Remove registrations
+                registrations = plugin.registrations(None)
+                for registration in registrations:
+                    if registration.stage_type in self._registrations:
+                        del self._registrations[registration.stage_type]
 
-    def get(self, name: str) -> StagePlugin | None:
-        return self._registry.get(name)
+                del self._plugins[plugin_name]
+                self.logger.info(f"Unregistered stage plugin: {plugin_name}")
+            else:
+                self.logger.warning(f"Plugin not found: {plugin_name}")
+
+        except Exception as exc:
+            self.logger.error(f"Failed to unregister plugin {plugin_name}: {exc}")
+            raise exc
+
+    def get_plugin(self, plugin_name: str) -> StagePlugin | None:
+        """Get a registered plugin by name."""
+        return self._plugins.get(plugin_name)
+
+    def list_plugins(self) -> list[str]:
+        """List all registered plugin names."""
+        return list(self._plugins.keys())
+
+    def get_registration(self, stage_type: str) -> StagePluginRegistration | None:
+        """Get stage registration by type."""
+        return self._registrations.get(stage_type)
+
+    def list_stage_types(self) -> list[str]:
+        """List all registered stage types."""
+        return list(self._registrations.keys())
+
+    def create_stage(self, stage_type: str, config: dict[str, Any]) -> Any:
+        """Create a stage instance."""
+        try:
+            registration = self.get_registration(stage_type)
+            if not registration:
+                raise ValueError(f"Stage type not found: {stage_type}")
+
+            # Create stage using builder
+            stage = registration.builder(config)
+
+            self.logger.info(f"Created stage: {stage_type}")
+            return stage
+
+        except Exception as exc:
+            self.logger.error(f"Failed to create stage {stage_type}: {exc}")
+            raise exc
+
+    def health_check(self) -> dict[str, StagePluginHealth]:
+        """Check health of all registered plugins."""
+        health_status = {}
+
+        for plugin_name, plugin in self._plugins.items():
+            try:
+                health = plugin.health_check()
+                health_status[plugin_name] = health
+
+                # Record health metric
+                STAGE_PLUGIN_HEALTH.labels(
+                    plugin_name=plugin_name,
+                    status=health.status,
+                ).set(1.0 if health.status == "ok" else 0.0)
+
+            except Exception as exc:
+                self.logger.error(f"Health check failed for plugin {plugin_name}: {exc}")
+                health_status[plugin_name] = StagePluginHealth(
+                    status="error",
+                    detail=f"Health check failed: {exc}",
+                    timestamp=0.0,
+                )
+
+                # Record failure metric
+                STAGE_PLUGIN_FAILURES.labels(
+                    plugin_name=plugin_name,
+                    error_type="health_check_failed",
+                ).inc()
+
+        return health_status
+
+    def get_plugin_capabilities(self, plugin_name: str) -> list[str]:
+        """Get capabilities of a plugin."""
+        plugin = self.get_plugin(plugin_name)
+        if not plugin:
+            return []
+
+        capabilities = []
+        registrations = plugin.registrations(None)
+        for registration in registrations:
+            capabilities.extend(registration.capabilities)
+
+        return list(set(capabilities))  # Remove duplicates
+
+    def get_stage_capabilities(self, stage_type: str) -> list[str]:
+        """Get capabilities of a stage type."""
+        registration = self.get_registration(stage_type)
+        if not registration:
+            return []
+
+        return list(registration.capabilities)
+
+    def validate_stage_config(self, stage_type: str, config: dict[str, Any]) -> bool:
+        """Validate stage configuration."""
+        try:
+            registration = self.get_registration(stage_type)
+            if not registration:
+                return False
+
+            # Try to create stage to validate config
+            registration.builder(config)
+            return True
+
+        except Exception as exc:
+            self.logger.warning(f"Stage config validation failed for {stage_type}: {exc}")
+            return False
+
+    def initialize(self) -> None:
+        """Initialize the plugin manager."""
+        if self._initialized:
+            return
+
+        try:
+            # Register built-in plugins
+            self._register_builtin_plugins()
+
+            # Initialize plugins
+            for plugin in self._plugins.values():
+                if hasattr(plugin, 'initialize'):
+                    plugin.initialize()
+
+            self._initialized = True
+            self.logger.info("Stage plugin manager initialized")
+
+        except Exception as exc:
+            self.logger.error(f"Failed to initialize plugin manager: {exc}")
+            raise exc
+
+    def _register_builtin_plugins(self) -> None:
+        """Register built-in plugins."""
+        try:
+            from .plugins.builtin import get_builtin_plugins
+
+            plugins = get_builtin_plugins()
+            for plugin in plugins:
+                self.register_plugin(plugin)
+
+        except ImportError:
+            self.logger.warning("Built-in plugins not available")
 
     def shutdown(self) -> None:
-        for plugin in list(self._registry.values()):
-            try:
-                plugin.cleanup(self.context)
-            except Exception as exc:  # pragma: no cover - defensive guard
-                logger.warning(
-                    "orchestration.stage_plugins.cleanup_failed: plugin=%s error=%s",
-                    plugin.metadata.name,
-                    str(exc),
-                )
+        """Shutdown the plugin manager."""
+        try:
+            # Cleanup plugins
+            for plugin in self._plugins.values():
+                if hasattr(plugin, 'cleanup'):
+                    plugin.cleanup()
 
-    @retry(  # type: ignore[misc]
-        retry=retry_if_exception_type(StagePluginExecutionError),
-        wait=wait_exponential(multiplier=0.2, min=0.2, max=2.0),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
-    def create_stage(self, definition: Any) -> object:
-        """Instantiate a stage for the given definition using registered plugins."""
-        stage_type = str(getattr(definition, "stage_type", "")).lower()
-        if stage_type not in self._stage_index:
-            raise StagePluginNotAvailable(f"No stage plugin registered for '{stage_type}'")
+            # Clear registrations
+            self._registrations.clear()
+            self._plugins.clear()
 
-        for plugin_name in self._stage_index[stage_type]:
-            plugin = self._registry[plugin_name]
-            try:
-                stage = plugin.create_stage(definition, self.context)
-            except Exception as exc:
-                STAGE_PLUGIN_FAILURES.labels(plugin=plugin_name, stage_type=stage_type).inc()
-                logger.error(
-                    "orchestration.stage_plugins.create_failed: plugin=%s stage_type=%s error=%s",
-                    plugin_name,
-                    stage_type,
-                    str(exc),
-                )
-                raise StagePluginExecutionError(str(exc)) from exc
-            if stage is not None:
-                logger.debug(
-                    "orchestration.stage_plugins.created: plugin=%s stage_type=%s",
-                    plugin_name,
-                    stage_type,
-                )
-                return stage
+            self._initialized = False
+            self.logger.info("Stage plugin manager shutdown")
 
-        raise StagePluginNotAvailable(f"Registered plugins declined stage type '{stage_type}'")
+        except Exception as exc:
+            self.logger.error(f"Failed to shutdown plugin manager: {exc}")
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get plugin manager statistics."""
+        return {
+            "plugin_count": len(self._plugins),
+            "stage_type_count": len(self._registrations),
+            "initialized": self._initialized,
+            "plugins": list(self._plugins.keys()),
+            "stage_types": list(self._registrations.keys()),
+        }
 
 
-__all__ = [
-    "StagePlugin",
-    "StagePluginContext",
-    "StagePluginError",
-    "StagePluginExecutionError",
-    "StagePluginLoadError",
-    "StagePluginManager",
-    "StagePluginMetadata",
-    "StagePluginNotAvailable",
-    "StagePluginSpec",
-    "hookimpl",
-    "hookspec",
-]
+# Global plugin manager instance
+_plugin_manager: StagePluginManager | None = None
+
+
+def get_plugin_manager() -> StagePluginManager:
+    """Get the global plugin manager instance."""
+    global _plugin_manager
+
+    if _plugin_manager is None:
+        _plugin_manager = StagePluginManager()
+        _plugin_manager.initialize()
+
+    return _plugin_manager
+
+
+def create_plugin_manager() -> StagePluginManager:
+    """Create a new plugin manager instance."""
+    return StagePluginManager()

@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:  # pragma: no cover - optional dependency used at runtime only
+try:
     import yaml
-except Exception:  # pragma: no cover - graceful fallback when PyYAML missing
-    yaml = None  # type: ignore[assignment]
+except Exception as exc:  # pragma: no cover - graceful fallback when PyYAML missing
+    raise ImportError("PyYAML is required to load retrieval configuration") from exc
 
 DEFAULT_RETRIEVAL_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "retrieval.yaml"
 

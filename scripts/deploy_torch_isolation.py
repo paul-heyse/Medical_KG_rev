@@ -16,7 +16,13 @@ import typer
 import yaml
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 # Add src to path for imports
@@ -317,7 +323,6 @@ class TorchIsolationDeployer:
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-
             for service in services:
                 if service not in self.manifest_paths:
                     console.print(f"⚠️  Unknown service: {service}", style="yellow")
@@ -553,9 +558,7 @@ def rollback(
 
 
 @app.command()
-def status(
-    config_path: str | None = typer.Option(None, help="Path to deployment configuration")
-):
+def status(config_path: str | None = typer.Option(None, help="Path to deployment configuration")):
     """Get deployment status."""
 
     async def _status():

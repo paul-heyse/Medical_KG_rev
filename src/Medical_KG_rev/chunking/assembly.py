@@ -11,6 +11,7 @@ from .provenance import BlockContext, make_chunk_id
 from .tokenization import TokenCounter, default_token_counter
 
 
+
 class ChunkAssembler:
     """Helper that turns block contexts into Chunk objects."""
 

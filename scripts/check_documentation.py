@@ -80,7 +80,7 @@ class DocumentationChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -158,18 +158,23 @@ class DocumentationChecker:
     def _check_docstrings(self, tree: ast.AST, file_path: Path):
         """Check docstrings for classes and functions."""
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if not ast.get_docstring(node):
-                    if not node.name.startswith("_"):  # Skip private methods
-                        self.warnings.append(f"{file_path}: {node.name} missing docstring")
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+                and not ast.get_docstring(node)
+                and not node.name.startswith("_")
+            ):
+                self.warnings.append(f"{file_path}: {node.name} missing docstring")
 
     def _check_type_hints(self, tree: ast.AST, file_path: Path):
         """Check for type hints on function definitions."""
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if not node.name.startswith("_"):  # Skip private methods
-                    if not node.returns and not node.name.startswith("test_"):
-                        self.warnings.append(f"{file_path}: {node.name} missing return type hint")
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and not node.name.startswith("_")
+                and not node.name.startswith("test_")
+                and not node.returns
+            ):
+                self.warnings.append(f"{file_path}: {node.name} missing return type hint")
 
     def _check_imports(self, content: str, file_path: Path):
         """Check import organization."""
@@ -244,7 +249,7 @@ class DocumentationChecker:
 
 
 def main():
-    """Main entry point for the documentation checker."""
+    """Run the documentation checker."""
     parser = argparse.ArgumentParser(description="Check documentation compliance")
     parser.add_argument(
         "path", nargs="?", default=".", help="Path to check (default: current directory)"

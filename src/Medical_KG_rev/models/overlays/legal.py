@@ -10,6 +10,7 @@ from pydantic import Field, field_validator
 from ..ir import Document, IRBaseModel
 
 
+
 class LegalReference(IRBaseModel):
     """Represents a citation to a legal authority."""
 

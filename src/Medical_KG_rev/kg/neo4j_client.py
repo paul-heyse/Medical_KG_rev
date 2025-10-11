@@ -20,17 +20,18 @@ Performance:
     Transaction batching supported via with_transaction.
 
 Example:
+-------
     >>> client = Neo4jClient(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     >>> with client.with_transaction() as tx:
     ...     client.create_node(tx, "Document", {"document_id": "doc1"})
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
@@ -40,6 +41,7 @@ from typing import Any
 from .cypher_templates import CypherTemplates
 from .schema import GRAPH_SCHEMA
 from .shacl import ShaclValidator
+
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -69,6 +71,7 @@ class Neo4jClient:
     session management and validation.
 
     Attributes:
+    ----------
         driver: Neo4j driver instance for database connections
         templates: CypherTemplates instance for query generation
         validator: ShaclValidator instance for graph structure validation
@@ -83,6 +86,7 @@ class Neo4jClient:
         - Session management is per-operation to avoid conflicts
 
     Example:
+    -------
         >>> client = Neo4jClient(driver=neo4j_driver)
         >>> result = client.merge_node("Document", {"document_id": "doc1", "title": "Test"})
         >>> client.link("Document", "Entity", "MENTIONS", "doc1", "entity1")
@@ -101,14 +105,17 @@ class Neo4jClient:
         when the context manager exits, preventing resource leaks.
 
         Yields:
+        ------
             Neo4j session instance for database operations
 
         Note:
+        ----
             This is a private method used internally for session management.
             External code should use the public methods that handle sessions
             automatically.
 
         Example:
+        -------
             >>> with client._session() as session:
             ...     result = session.run("MATCH (n) RETURN count(n)")
 
@@ -128,20 +135,25 @@ class Neo4jClient:
         the result data. The session is automatically created and cleaned up.
 
         Args:
+        ----
             query: Cypher query string to execute
             parameters: Optional mapping of query parameters
 
         Returns:
+        -------
             Iterable of result records as dictionaries
 
         Raises:
+        ------
             Neo4jError: If the query execution fails
 
         Note:
+        ----
             This method is suitable for write operations (CREATE, MERGE, DELETE).
             For read operations, consider using the driver's read methods directly.
 
         Example:
+        -------
             >>> result = client.write(
             ...     "CREATE (n:Document {document_id: $id})",
             ...     {"id": "doc1"}
@@ -158,21 +170,26 @@ class Neo4jClient:
         query using templates, and executes it with proper session management.
 
         Args:
+        ----
             label: Node label (e.g., "Document", "Entity")
             properties: Node properties including the primary key
 
         Returns:
+        -------
             Iterable of result records from the MERGE operation
 
         Raises:
+        ------
             ValidationError: If node properties don't match schema requirements
             Neo4jError: If the database operation fails
 
         Note:
+        ----
             The primary key property must be present in properties.
             Validation ensures the node conforms to the defined schema.
 
         Example:
+        -------
             >>> result = client.merge_node(
             ...     "Document",
             ...     {"document_id": "doc1", "title": "Test Document"}
@@ -198,6 +215,7 @@ class Neo4jClient:
         between two nodes using their primary keys.
 
         Args:
+        ----
             start_label: Label of the start node
             end_label: Label of the end node
             rel_type: Relationship type (e.g., "MENTIONS", "SUPPORTS")
@@ -206,16 +224,20 @@ class Neo4jClient:
             properties: Optional relationship properties
 
         Returns:
+        -------
             Iterable of result records from the MERGE operation
 
         Raises:
+        ------
             Neo4jError: If the database operation fails
 
         Note:
+        ----
             Both nodes must exist in the database before creating the relationship.
             The relationship will be created if it doesn't exist, or updated if it does.
 
         Example:
+        -------
             >>> result = client.link(
             ...     "Document", "Entity", "MENTIONS",
             ...     "doc1", "entity1",
@@ -240,20 +262,25 @@ class Neo4jClient:
         operations atomically with automatic rollback on failure.
 
         Args:
+        ----
             func: Function to execute within the transaction.
                 Receives a transaction object as its only argument.
 
         Returns:
+        -------
             Return value of the executed function
 
         Raises:
+        ------
             Neo4jError: If the transaction fails and is rolled back
 
         Note:
+        ----
             The transaction is automatically committed if the function
             completes successfully, or rolled back if an exception occurs.
 
         Example:
+        -------
             >>> def create_document_and_entity(tx):
             ...     tx.run("CREATE (d:Document {id: 'doc1'})")
             ...     tx.run("CREATE (e:Entity {id: 'entity1'})")

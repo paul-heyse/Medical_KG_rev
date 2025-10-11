@@ -24,7 +24,8 @@ Performance:
 - Lightweight exception definitions with minimal overhead.
 - Problem detail generation is fast and stateless.
 
-Examples:
+Examples
+--------
     try:
         reranker.rank(pairs)
     except InvalidPairFormatError as e:
@@ -32,12 +33,13 @@ Examples:
 
 """
 
-# IMPORTS
 from __future__ import annotations
 
+# IMPORTS
 from typing import Any
 
 from Medical_KG_rev.utils.errors import ProblemDetail
+
 
 
 # EXCEPTION CLASSES
@@ -48,7 +50,8 @@ class RerankingError(RuntimeError):
     errors, automatically generating RFC 7807 problem details for
     consistent API error responses.
 
-    Attributes:
+    Attributes
+    ----------
         title: Error title
         status: HTTP status code
         detail: Optional error detail
@@ -58,7 +61,8 @@ class RerankingError(RuntimeError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         error = RerankingError(
             title="Reranking failed",
             status=500,
@@ -80,6 +84,7 @@ class RerankingError(RuntimeError):
         """Initialize the reranking error.
 
         Args:
+        ----
             title: Error title
             status: HTTP status code
             detail: Optional error detail
@@ -87,6 +92,7 @@ class RerankingError(RuntimeError):
             extra: Additional error context
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -100,10 +106,12 @@ class RerankingError(RuntimeError):
     def to_problem(self) -> ProblemDetail:
         """Convert the error to an RFC 7807 problem detail.
 
-        Returns:
+        Returns
+        -------
             ProblemDetail object suitable for API responses
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """
@@ -125,7 +133,8 @@ class InvalidPairFormatError(RerankingError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             validate_pairs(pairs)
         except InvalidPairFormatError as e:
@@ -137,9 +146,11 @@ class InvalidPairFormatError(RerankingError):
         """Initialize the invalid pair format error.
 
         Args:
+        ----
             detail: Detailed error message
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -155,7 +166,8 @@ class UnknownRerankerError(RerankingError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             get_reranker("unknown-id")
         except UnknownRerankerError as e:
@@ -167,10 +179,12 @@ class UnknownRerankerError(RerankingError):
         """Initialize the unknown reranker error.
 
         Args:
+        ----
             reranker_id: The unknown reranker ID
             available: List of available reranker IDs
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -191,7 +205,8 @@ class GPUUnavailableError(RerankingError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             gpu_reranker.rank(pairs)
         except GPUUnavailableError as e:
@@ -203,9 +218,11 @@ class GPUUnavailableError(RerankingError):
         """Initialize the GPU unavailable error.
 
         Args:
+        ----
             reranker_id: The reranker ID requiring GPU
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -226,7 +243,8 @@ class CircuitBreakerOpenError(RerankingError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             reranker.rank(pairs)
         except CircuitBreakerOpenError as e:
@@ -238,9 +256,11 @@ class CircuitBreakerOpenError(RerankingError):
         """Initialize the circuit breaker open error.
 
         Args:
+        ----
             reranker_id: The reranker ID with open circuit breaker
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """

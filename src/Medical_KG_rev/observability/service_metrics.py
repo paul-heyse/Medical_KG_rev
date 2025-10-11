@@ -186,27 +186,11 @@ class ServiceMetrics:
     def get_service_health_summary(self) -> dict[str, Any]:
         """Get service health summary."""
         # This would typically query the metrics backend
-        # For now, return a placeholder structure
-        return {
-            "gpu_services": {
-                "status": "healthy",
-                "response_time_p95": 45.2,
-                "error_rate": 0.001,
-                "gpu_utilization": 75.3,
-            },
-            "embedding_services": {
-                "status": "healthy",
-                "response_time_p95": 123.7,
-                "error_rate": 0.0005,
-                "gpu_utilization": 68.9,
-            },
-            "reranking_services": {
-                "status": "healthy",
-                "response_time_p95": 89.4,
-                "error_rate": 0.0008,
-                "gpu_utilization": 71.2,
-            },
-        }
+        raise NotImplementedError(
+            "Service metrics placeholder structure removed. "
+            "This service requires a real metrics backend implementation. "
+            "Please implement or configure a proper metrics backend."
+        )
 
 
 # Global metrics instance

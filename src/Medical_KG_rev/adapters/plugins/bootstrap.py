@@ -11,6 +11,7 @@ from .domains.biomedical import register_biomedical_plugins
 from .domains.financial import FinancialNewsAdapterPlugin
 from .domains.legal import LegalPrecedentAdapterPlugin
 
+
 _MANAGER: AdapterPluginManager | None = None
 
 

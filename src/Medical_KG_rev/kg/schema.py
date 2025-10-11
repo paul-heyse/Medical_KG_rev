@@ -25,14 +25,15 @@ Performance Characteristics:
     - Minimal memory footprint with frozen dataclasses
 """
 
+from __future__ import annotations
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+
 
 # ============================================================================
 # SCHEMA DATA MODELS
@@ -48,6 +49,7 @@ class NodeSchema:
     the primary key field.
 
     Attributes:
+    ----------
         label: The node label used in Cypher queries (e.g., "Document", "Entity")
         key: The primary key property name for this node type
         properties: Mapping of property names to requirement levels
@@ -59,6 +61,7 @@ class NodeSchema:
         - properties mapping is immutable after creation
 
     Example:
+    -------
         >>> schema = NodeSchema(
         ...     label="Document",
         ...     key="document_id",
@@ -77,14 +80,17 @@ class NodeSchema:
         """Yield all required property names for this node schema.
 
         Returns:
+        -------
             Iterable of property names that are marked as "required",
             including the primary key.
 
         Note:
+        ----
             The primary key is always required regardless of the
             properties mapping.
 
         Example:
+        -------
             >>> schema = NodeSchema(
             ...     label="Entity",
             ...     key="entity_id",
@@ -109,6 +115,7 @@ class RelationshipSchema:
     and optional properties.
 
     Attributes:
+    ----------
         type: The relationship type used in Cypher queries (e.g., "MENTIONS")
         start_label: The label of the start node for this relationship
         end_label: The label of the end node for this relationship
@@ -121,6 +128,7 @@ class RelationshipSchema:
         - properties mapping is immutable after creation
 
     Example:
+    -------
         >>> schema = RelationshipSchema(
         ...     type="MENTIONS",
         ...     start_label="Document",

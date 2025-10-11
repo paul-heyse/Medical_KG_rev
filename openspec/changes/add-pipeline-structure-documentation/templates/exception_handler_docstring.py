@@ -4,6 +4,74 @@ This template shows how to document exception handling blocks with inline
 comments explaining the error translation strategy.
 """
 
+from __future__ import annotations
+
+import time
+from typing import TYPE_CHECKING, Any
+
+try:
+    from Medical_KG_rev.chunking.exceptions import (
+        ChunkerConfigurationError,
+        ChunkingFailedError,
+        ChunkingUnavailableError,
+        InvalidDocumentError,
+        ProfileNotFoundError,
+        TokenizerMismatchError,
+    )
+except ImportError:  # pragma: no cover - placeholders for documentation templates
+
+    class ProfileNotFoundError(Exception):
+        """Placeholder for profile lookup failures."""
+
+    class TokenizerMismatchError(Exception):
+        """Placeholder for tokenizer mismatch failures."""
+
+    class ChunkingFailedError(Exception):
+        """Placeholder for generic chunking failures."""
+
+    class InvalidDocumentError(Exception):
+        """Placeholder for invalid document failures."""
+
+    class ChunkerConfigurationError(Exception):
+        """Placeholder for configuration errors."""
+
+    class ChunkingUnavailableError(Exception):
+        """Placeholder for service availability failures."""
+
+
+try:
+    from Medical_KG_rev.services.chunking.profiles.loader import (
+        MineruGpuUnavailableError,
+    )
+except ImportError:  # pragma: no cover - placeholders for documentation templates
+
+    class MineruGpuUnavailableError(Exception):
+        """Placeholder for GPU unavailability errors."""
+
+
+try:
+    from Medical_KG_rev.services.chunking.service import MineruOutOfMemoryError
+except ImportError:  # pragma: no cover - placeholders for documentation templates
+
+    class MineruOutOfMemoryError(Exception):
+        """Placeholder for Mineru out-of-memory errors."""
+
+
+if TYPE_CHECKING:
+    from Medical_KG_rev.gateway.chunking_errors import CoordinatorError
+    from Medical_KG_rev.gateway.coordinators.chunking import (
+        ChunkingRequest,
+        ChunkingResult,
+    )
+    from Medical_KG_rev.gateway.models import DocumentChunk
+    from Medical_KG_rev.services.retrieval.chunking import ChunkCommand
+else:  # pragma: no cover - runtime placeholders for documentation templates
+    CoordinatorError = Exception
+    ChunkingRequest = Any
+    ChunkingResult = Any
+    ChunkCommand = Any
+    DocumentChunk = Any
+
 # Example exception handling with documentation:
 
 
@@ -30,50 +98,50 @@ def _execute(self, request: ChunkingRequest, **kwargs) -> ChunkingResult:
     except ProfileNotFoundError as exc:
         # Profile specified in request does not exist in config/chunking/profiles/
         # This is a client error (400) - user provided invalid profile name
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except TokenizerMismatchError as exc:
         # Embedding model tokenizer doesn't match chunking tokenizer
         # This is a server configuration error (500) - system misconfiguration
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except ChunkingFailedError as exc:
         # Chunking process failed due to document content or processing error
         # This is a server error (500) - chunking library failure
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except InvalidDocumentError as exc:
         # Document content is invalid or cannot be processed
         # This is a client error (400) - user provided invalid document
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except ChunkerConfigurationError as exc:
         # Chunker configuration is invalid or missing required parameters
         # This is a client error (422) - invalid configuration provided
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except ChunkingUnavailableError as exc:
         # Chunking service is temporarily unavailable (e.g., MinerU down)
         # This is a service unavailable error (503) - retry with backoff
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except MineruOutOfMemoryError as exc:
         # MinerU GPU ran out of memory during processing
         # This is a service unavailable error (503) - retry after cooldown
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except MineruGpuUnavailableError as exc:
         # MinerU GPU is not available for processing
         # This is a service unavailable error (503) - retry after cooldown
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except MemoryError as exc:
         # System ran out of memory during chunking operation
         # This is a service unavailable error (503) - retry after 60s
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except TimeoutError as exc:
         # Chunking operation timed out
         # This is a service unavailable error (503) - retry after 30s
-        raise self._translate_error(job_id, command, exc)
+        raise self._translate_error(job_id, command, exc) from exc
     except RuntimeError as exc:
         # Check for GPU-specific runtime errors
         message = str(exc)
         if "GPU semantic checks" in message:
             # GPU semantic chunking failed due to GPU unavailability
             # This is a service unavailable error (503) - retry after cooldown
-            raise self._translate_error(job_id, command, exc)
+            raise self._translate_error(job_id, command, exc) from exc
         # Re-raise unexpected runtime errors
         self._lifecycle.mark_failed(
             job_id, reason=message or "Runtime error during chunking", stage="chunk"
@@ -125,17 +193,21 @@ def _translate_error(
     It ensures consistent error responses across all protocol handlers.
 
     Args:
-        job_id: Job identifier for correlation and logging
-        command: ChunkCommand that failed for context extraction
-        exc: Exception to translate to coordinator error
+    ----
+        self: Chunking coordinator translating the exception context.
+        job_id: Identifier used for lifecycle tracking and correlation.
+        command: ChunkCommand that failed and provides translation context.
+        exc: Exception instance raised by chunking operations.
 
     Returns:
+    -------
         CoordinatorError: Standardized error with ProblemDetail containing
-            HTTP status code, error message, and retry information
+            HTTP status code, error message, and retry information.
 
     Note:
-        Side effects: Updates job lifecycle and emits failure metrics
-        Thread safety: Not thread-safe due to shared lifecycle manager
+    ----
+        Side effects: Updates job lifecycle and emits failure metrics.
+        Thread safety: Not thread-safe due to shared lifecycle manager.
 
     """
     report = self._errors.translate(exc, command=command, job_id=job_id)

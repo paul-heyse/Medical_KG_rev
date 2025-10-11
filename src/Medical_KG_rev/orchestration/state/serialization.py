@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import base64
-import zlib
 from typing import Any
+import base64
 
 import orjson
+import zlib
 
 from .models import PipelineStateModel
+
 
 
 def serialise_payload(payload: dict[str, Any]) -> PipelineStateModel:

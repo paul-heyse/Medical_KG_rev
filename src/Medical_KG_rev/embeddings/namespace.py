@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from .ports import EmbedderConfig, EmbeddingKind
 
 
+
 class DimensionMismatchError(RuntimeError):
     """Raised when an embedding's dimensionality does not match namespace expectations."""
 

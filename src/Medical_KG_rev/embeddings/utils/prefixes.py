@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 
+
 def apply_prefixes(
     texts: Sequence[str],
     *,

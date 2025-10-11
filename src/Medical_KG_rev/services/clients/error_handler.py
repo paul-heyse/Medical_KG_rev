@@ -3,11 +3,11 @@
 Provides centralized error handling, retry logic, and error classification.
 """
 
-import asyncio
-import logging
 from collections.abc import Callable
 from enum import Enum
 from typing import Any
+import asyncio
+import logging
 
 import grpc
 
@@ -118,9 +118,11 @@ class ErrorClassification:
         """Classify an error and return handling information.
 
         Args:
+        ----
             error: The error to classify
 
         Returns:
+        -------
             Dictionary containing error classification information
 
         """
@@ -167,6 +169,7 @@ class RetryManager:
         """Initialize retry manager.
 
         Args:
+        ----
             base_delay: Base delay in seconds for retries
             max_delay: Maximum delay in seconds for retries
 
@@ -183,11 +186,13 @@ class RetryManager:
         """Calculate delay for retry attempt.
 
         Args:
+        ----
             attempt: Current attempt number (0-based)
             strategy: Retry strategy to use
             base_delay: Override base delay
 
         Returns:
+        -------
             Delay in seconds
 
         """
@@ -214,15 +219,18 @@ class RetryManager:
         """Execute function with retry logic.
 
         Args:
+        ----
             func: Function to execute
             error_classification: Error classification information
             *args: Function arguments
             **kwargs: Function keyword arguments
 
         Returns:
+        -------
             Function result
 
         Raises:
+        ------
             ServiceError: If all retries fail
 
         """
@@ -271,6 +279,7 @@ class CircuitBreakerErrorHandler:
         """Initialize circuit breaker error handler.
 
         Args:
+        ----
             circuit_breaker: Circuit breaker instance
 
         """
@@ -286,14 +295,17 @@ class CircuitBreakerErrorHandler:
         """Handle service call with circuit breaker and retry logic.
 
         Args:
+        ----
             func: Function to execute
             *args: Function arguments
             **kwargs: Function keyword arguments
 
         Returns:
+        -------
             Function result
 
         Raises:
+        ------
             ServiceError: If service call fails
 
         """
@@ -364,6 +376,7 @@ class ServiceErrorMetrics:
         """Record an error occurrence.
 
         Args:
+        ----
             service_name: Name of the service
             error_info: Error classification information
             retry_attempts: Number of retry attempts made
@@ -416,6 +429,7 @@ class ServiceErrorHandler:
         """Initialize service error handler.
 
         Args:
+        ----
             service_name: Name of the service
 
         """
@@ -433,15 +447,18 @@ class ServiceErrorHandler:
         """Handle service call with comprehensive error handling.
 
         Args:
+        ----
             func: Function to execute
             circuit_breaker: Optional circuit breaker instance
             *args: Function arguments
             **kwargs: Function keyword arguments
 
         Returns:
+        -------
             Function result
 
         Raises:
+        ------
             ServiceError: If service call fails
 
         """
@@ -521,9 +538,11 @@ def create_error_handler(service_name: str) -> ServiceErrorHandler:
     """Create service error handler instance.
 
     Args:
+    ----
         service_name: Name of the service
 
     Returns:
+    -------
         ServiceErrorHandler instance
 
     """

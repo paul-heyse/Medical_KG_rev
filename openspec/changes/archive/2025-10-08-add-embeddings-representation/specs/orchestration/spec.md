@@ -123,4 +123,3 @@ The job ledger SHALL track embedding-specific fields including namespace, GPU av
 **Reason**: Direct model loading in orchestration tight-couples orchestration to embedding implementation, lacks GPU enforcement, and prevents experimentation with new models without orchestration changes.
 
 **Migration**: Orchestration now calls embedding service API (vLLM/Pyserini) via network, decoupling orchestration from embedding implementation.
-

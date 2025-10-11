@@ -4,6 +4,17 @@ This template shows the required structure and content for async function
 docstrings in the Medical_KG_rev pipeline codebase.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from Medical_KG_rev.services.embedding.persister import PersistenceContext
+    from Medical_KG_rev.services.embedding.service import EmbeddingVector
+else:
+    PersistenceContext = Any
+    EmbeddingVector = Any
+
 # Example async function docstring structure:
 
 """[One-line imperative summary: 'Process embeddings asynchronously'].
@@ -71,6 +82,8 @@ async def persist_embeddings(
     5. Update persistence metrics and telemetry
 
     Args:
+    ----
+        self: Persistence implementation responsible for storage operations.
         context: PersistenceContext containing tenant_id, namespace,
             and other context information. Must have valid tenant_id.
         vectors: List of EmbeddingVector objects to persist. Each vector
@@ -79,10 +92,12 @@ async def persist_embeddings(
             model information, creation timestamp, and any custom fields.
 
     Returns:
+    -------
         None: This is a fire-and-forget operation. Success is indicated
             by lack of exceptions. Use telemetry to monitor completion.
 
     Raises:
+    ------
         PersistenceError: If storage backend is unavailable or returns
             an error. Includes details about the specific failure.
         ValidationError: If vectors or metadata fail validation checks.
@@ -91,6 +106,7 @@ async def persist_embeddings(
             to the specified namespace.
 
     Note:
+    ----
         Concurrency: Safe to call from multiple async tasks concurrently
         I/O operations: Makes network calls to storage backend
         Thread safety: Not thread-safe due to shared storage client
@@ -99,10 +115,12 @@ async def persist_embeddings(
         Memory: O(1) space complexity (processes vectors in batches)
 
     Warning:
+    -------
         May timeout if storage backend is slow or unresponsive.
         Large batches may be split into smaller chunks automatically.
 
     Example:
+    -------
         >>> context = PersistenceContext(
         ...     tenant_id="tenant1",
         ...     namespace="medical",
@@ -139,6 +157,8 @@ async def generate_embeddings(
     5. Return formatted EmbeddingVector objects
 
     Args:
+    ----
+        self: Embedding generator responsible for orchestrating requests.
         texts: List of text strings to embed. Each text must be
             non-empty and within token limits for the model.
         model_name: Name of the embedding model to use. Must be
@@ -147,11 +167,13 @@ async def generate_embeddings(
             accessible by the current tenant.
 
     Returns:
+    -------
         list[EmbeddingVector]: List of embedding vectors corresponding
             to input texts. Each vector contains embedding data and
             metadata including model information and text length.
 
     Raises:
+    ------
         ModelNotFoundError: If the specified model is not available
             in the embedding model registry.
         NamespaceAccessError: If the tenant does not have permission
@@ -160,6 +182,7 @@ async def generate_embeddings(
             to model errors or resource constraints.
 
     Note:
+    ----
         Concurrency: Safe to call from multiple async tasks concurrently
         I/O operations: Makes calls to embedding service (potentially GPU-bound)
         Thread safety: Not thread-safe due to shared model resources
@@ -168,10 +191,12 @@ async def generate_embeddings(
         Memory: O(n) space complexity for storing embeddings
 
     Warning:
+    -------
         May timeout if embedding service is slow or GPU is unavailable.
         Large text inputs may be truncated to fit model token limits.
 
     Example:
+    -------
         >>> texts = ["Sample text 1", "Sample text 2"]
         >>> embeddings = await embedder.generate_embeddings(
         ...     texts=texts,

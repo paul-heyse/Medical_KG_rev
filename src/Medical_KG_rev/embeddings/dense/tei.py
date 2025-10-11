@@ -12,6 +12,7 @@ from ..registry import EmbedderRegistry
 from ..utils.normalization import normalize_batch
 
 
+
 @dataclass(slots=True)
 class TEIHTTPEmbedder:
     config: EmbedderConfig

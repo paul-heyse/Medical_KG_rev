@@ -3,52 +3,53 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from .exceptions import ChunkerConfigurationError, ChunkerRegistryError
 from .models import ChunkerConfig
 from .ports import BaseChunker
 
-
-@dataclass(slots=True)
-class ChunkerEntry:
-    name: str
-    factory: Callable[..., BaseChunker]
-    experimental: bool = False
+logger = logging.getLogger(__name__)
 
 
+@dataclass
 class ChunkerRegistry:
-    """Registry storing mappings from names to chunker factories."""
+    """Registry for chunker implementations."""
 
-    def __init__(self) -> None:
-        self._entries: dict[str, ChunkerEntry] = {}
+    _chunkers: dict[str, type[BaseChunker]] = None
 
-    def register(
-        self,
-        name: str,
-        factory: Callable[..., BaseChunker],
-        *,
-        experimental: bool = False,
-    ) -> None:
-        if name in self._entries:
-            raise ChunkerRegistryError(f"Chunker '{name}' already registered")
-        self._entries[name] = ChunkerEntry(name, factory, experimental=experimental)
+    def __post_init__(self):
+        if self._chunkers is None:
+            self._chunkers = {}
 
-    def create(self, config: ChunkerConfig, *, allow_experimental: bool = False) -> BaseChunker:
-        entry = self._entries.get(config.name)
-        if entry is None:
-            raise ChunkerConfigurationError(f"Chunker '{config.name}' is not registered")
-        if entry.experimental and not allow_experimental:
+    def register(self, name: str, chunker_class: type[BaseChunker]) -> None:
+        """Register a chunker class."""
+        self._chunkers[name] = chunker_class
+        logger.debug("chunker.registered", name=name, class_name=chunker_class.__name__)
+
+    def get(self, name: str) -> type[BaseChunker] | None:
+        """Get a chunker class by name."""
+        return self._chunkers.get(name)
+
+    def list_chunkers(self) -> list[str]:
+        """List all registered chunker names."""
+        return list(self._chunkers.keys())
+
+    def create_chunker(self, config: ChunkerConfig) -> BaseChunker:
+        """Create a chunker instance from configuration."""
+        chunker_class = self.get(config.name)
+        if chunker_class is None:
+            raise ChunkerRegistryError(f"Unknown chunker: {config.name}")
+
+        try:
+            return chunker_class(**config.parameters)
+        except Exception as exc:
             raise ChunkerConfigurationError(
-                f"Chunker '{config.name}' is experimental and not enabled"
-            )
-        return entry.factory(**config.params)
-
-    def list_chunkers(self, *, include_experimental: bool = False) -> dict[str, ChunkerEntry]:
-        if include_experimental:
-            return dict(self._entries)
-        return {name: entry for name, entry in self._entries.items() if not entry.experimental}
+                f"Failed to create chunker '{config.name}': {exc}"
+            ) from exc
 
 
 def _maybe_register(
@@ -59,33 +60,75 @@ def _maybe_register(
     *,
     experimental: bool = False,
 ) -> None:
+    """Attempt to register an optional chunker."""
     try:
         module = importlib.import_module(module_path)
-        factory = getattr(module, attribute)
-    except Exception:
-        return
-    registry.register(name, factory, experimental=experimental)
+        chunker_class = getattr(module, attribute)
+        registry.register(name, chunker_class)
+        logger.debug(
+            "chunker.optional_registered",
+            name=name,
+            module_path=module_path,
+            experimental=experimental,
+        )
+    except (ImportError, AttributeError) as exc:
+        logger.debug(
+            "chunker.optional_failed",
+            name=name,
+            module_path=module_path,
+            error=str(exc),
+            experimental=experimental,
+        )
 
 
-def default_registry() -> ChunkerRegistry:
-    from .chunkers.clinical_role import ClinicalRoleChunker
-    from .chunkers.docling import DoclingChunker, DoclingVLMChunker
-    from .chunkers.layout import LayoutHeuristicChunker
-    from .chunkers.section import SectionAwareChunker
-    from .chunkers.sliding_window import SlidingWindowChunker
-    from .chunkers.table import TableChunker
-    from .hybrid_chunker import HybridChunker
-
+def create_default_registry() -> ChunkerRegistry:
+    """Create the default chunker registry with core chunkers."""
     registry = ChunkerRegistry()
-    registry.register("section_aware", SectionAwareChunker)
-    registry.register("sliding_window", SlidingWindowChunker)
-    registry.register("table", TableChunker)
-    registry.register("clinical_role", ClinicalRoleChunker)
-    registry.register("layout_heuristic", LayoutHeuristicChunker)
-    registry.register("docling", DoclingChunker)
-    registry.register("docling_vlm", DoclingVLMChunker)
-    registry.register("hybrid", HybridChunker)
 
+    # Register core chunkers
+    try:
+        from .chunkers.section import SectionAwareChunker
+        registry.register("section_aware", SectionAwareChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .chunkers.sliding_window import SlidingWindowChunker
+        registry.register("sliding_window", SlidingWindowChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .chunkers.table import TableChunker
+        registry.register("table", TableChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .chunkers.clinical_role import ClinicalRoleChunker
+        registry.register("clinical_role", ClinicalRoleChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .chunkers.layout import LayoutHeuristicChunker
+        registry.register("layout_heuristic", LayoutHeuristicChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .chunkers.docling import DoclingChunker
+        registry.register("docling", DoclingChunker)
+    except ImportError:
+        pass
+
+    try:
+        from .hybrid_chunker import HybridChunker
+        registry.register("hybrid", HybridChunker)
+    except ImportError:
+        pass
+
+    # Register optional chunkers
     optional_specs = [
         (
             "Medical_KG_rev.chunking.chunkers.semantic",
@@ -205,3 +248,7 @@ def default_registry() -> ChunkerRegistry:
         )
 
     return registry
+
+
+# Create default registry instance
+default_registry = create_default_registry()

@@ -2,4 +2,5 @@
 
 from .adapter import SemanticScholarAdapter
 
+
 __all__ = ["SemanticScholarAdapter"]

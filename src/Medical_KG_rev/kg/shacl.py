@@ -29,23 +29,24 @@ Performance Characteristics:
     - SHACL validation may be expensive for large graphs
 """
 
+from __future__ import annotations
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
-from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from importlib import resources
 
+from importlib import resources
 from pyshacl import validate
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, XSD
 
 from .schema import GRAPH_SCHEMA, RELATIONSHIPS, NodeSchema, RelationshipSchema
+
 
 # ============================================================================
 # EXCEPTION CLASSES
@@ -59,9 +60,11 @@ class ValidationError(ValueError):
     the defined SHACL shapes, indicating schema compliance issues.
 
     Attributes:
+    ----------
         msg: Detailed error message describing the validation failure
 
     Example:
+    -------
         >>> raise ValidationError("Missing required properties: document_id, title")
 
     """
@@ -80,11 +83,13 @@ class GraphNodePayload:
     label, and properties for SHACL validation.
 
     Attributes:
+    ----------
         id: Unique identifier for the node
         label: Node label (e.g., "Document", "Entity")
         properties: Mapping of property names to values
 
     Example:
+    -------
         >>> node = GraphNodePayload(
         ...     id="doc1",
         ...     label="Document",
@@ -106,12 +111,14 @@ class GraphEdgePayload:
     start/end nodes, and optional properties for SHACL validation.
 
     Attributes:
+    ----------
         type: Relationship type (e.g., "MENTIONS", "SUPPORTS")
         start: Identifier of the start node
         end: Identifier of the end node
         properties: Optional mapping of relationship properties
 
     Example:
+    -------
         >>> edge = GraphEdgePayload(
         ...     type="MENTIONS",
         ...     start="doc1",
@@ -140,6 +147,7 @@ class ShaclValidator:
     and data integrity before write operations.
 
     Attributes:
+    ----------
         shapes_graph: RDF graph containing SHACL shape definitions
         namespace: RDF namespace for schema entities
         relationship_predicates: Mapping of relationship types to predicate names
@@ -154,6 +162,7 @@ class ShaclValidator:
         - Thread-safe: All methods are stateless
 
     Example:
+    -------
         >>> validator = ShaclValidator.default()
         >>> validator.validate_node("Document", {"document_id": "doc1", "title": "Test"})
 
@@ -172,17 +181,21 @@ class ShaclValidator:
         instance with the canonical graph schema and relationship definitions.
 
         Returns:
+        -------
             ShaclValidator instance configured with default settings
 
         Raises:
+        ------
             FileNotFoundError: If shapes.ttl file is not found
             ValueError: If shapes.ttl contains invalid RDF
 
         Note:
+        ----
             This method loads shapes from the package resources, ensuring
             the validator uses the latest shape definitions.
 
         Example:
+        -------
             >>> validator = ShaclValidator.default()
             >>> validator.validate_node("Document", {"document_id": "doc1"})
 
@@ -210,17 +223,21 @@ class ShaclValidator:
         schemas while keeping the default SHACL shapes.
 
         Args:
+        ----
             schema: Custom node schema definitions
             relationships: Custom relationship schema definitions
 
         Returns:
+        -------
             ShaclValidator instance configured with custom schemas
 
         Note:
+        ----
             The SHACL shapes remain the same, but validation uses the
             provided schema definitions for property requirements.
 
         Example:
+        -------
             >>> custom_schema = {"CustomNode": NodeSchema(...)}
             >>> validator = ShaclValidator.from_schema(custom_schema)
 
@@ -241,17 +258,21 @@ class ShaclValidator:
         schema definition and validates the node against SHACL constraints.
 
         Args:
+        ----
             label: Node label (e.g., "Document", "Entity")
             properties: Node properties to validate
 
         Raises:
+        ------
             ValidationError: If the node fails schema or SHACL validation
 
         Note:
+        ----
             This method validates both schema compliance (required properties)
             and SHACL constraints (data types, value ranges, etc.).
 
         Example:
+        -------
             >>> validator.validate_node("Document", {
             ...     "document_id": "doc1",
             ...     "title": "Test Document",
@@ -284,17 +305,21 @@ class ShaclValidator:
         the loaded SHACL shapes, ensuring overall graph structure compliance.
 
         Args:
+        ----
             nodes: Sequence of node payloads to validate
             edges: Sequence of edge payloads to validate
 
         Raises:
+        ------
             ValidationError: If the graph fails SHACL validation
 
         Note:
+        ----
             This method performs comprehensive validation including
             relationship constraints, cardinality rules, and data types.
 
         Example:
+        -------
             >>> nodes = [{"id": "doc1", "label": "Document", "properties": {...}}]
             >>> edges = [{"type": "MENTIONS", "start": "doc1", "end": "entity1"}]
             >>> validator.validate_payload(nodes, edges)
@@ -325,13 +350,16 @@ class ShaclValidator:
         node properties, relationships, and reified relationship properties.
 
         Args:
+        ----
             nodes: Sequence of node payloads to convert
             edges: Sequence of edge payloads to convert
 
         Returns:
+        -------
             RDF graph containing the converted data
 
         Note:
+        ----
             This method handles complex relationship patterns including
             evidence-to-activity and claim-support relationships.
 
@@ -391,12 +419,15 @@ class ShaclValidator:
         """Convert a raw payload to GraphNodePayload.
 
         Args:
+        ----
             payload: Raw node data or GraphNodePayload instance
 
         Returns:
+        -------
             GraphNodePayload instance
 
         Raises:
+        ------
             ValidationError: If required fields are missing or invalid
 
         """
@@ -415,12 +446,15 @@ class ShaclValidator:
         """Convert a raw payload to GraphEdgePayload.
 
         Args:
+        ----
             payload: Raw edge data or GraphEdgePayload instance
 
         Returns:
+        -------
             GraphEdgePayload instance
 
         Raises:
+        ------
             ValidationError: If required fields are missing or invalid
 
         """
@@ -440,12 +474,15 @@ class ShaclValidator:
         """Convert a Python value to an RDF Literal.
 
         Args:
+        ----
             value: Python value to convert
 
         Returns:
+        -------
             RDF Literal with appropriate datatype
 
         Note:
+        ----
             Automatically detects datetime strings and converts them
             to XSD.dateTime literals.
 
@@ -469,10 +506,12 @@ class ShaclValidator:
         """Check if a property has a meaningful value.
 
         Args:
+        ----
             properties: Property mapping to check
             key: Property key to check
 
         Returns:
+        -------
             True if the property has a non-empty value
 
         """
@@ -490,9 +529,11 @@ class ShaclValidator:
         """Check if a string looks like a datetime value.
 
         Args:
+        ----
             value: String to check
 
         Returns:
+        -------
             True if the string appears to be a datetime
 
         """
@@ -514,9 +555,11 @@ class ShaclValidator:
         """Build mapping from relationship types to predicate names.
 
         Args:
+        ----
             relationships: Relationship schema definitions
 
         Returns:
+        -------
             Mapping of relationship types to predicate names
 
         """
@@ -530,9 +573,11 @@ class ShaclValidator:
         """Convert relationship type to predicate name.
 
         Args:
+        ----
             rel_type: Relationship type (e.g., "GENERATED_BY")
 
         Returns:
+        -------
             Predicate name (e.g., "generatedBy")
 
         """

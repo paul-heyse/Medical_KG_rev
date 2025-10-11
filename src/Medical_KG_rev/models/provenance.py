@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+
 class ProvenanceBaseModel(BaseModel):
     """Base configuration shared across provenance models."""
 

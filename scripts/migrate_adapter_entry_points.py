@@ -27,9 +27,9 @@ def _generate_entry_points() -> dict[str, str]:
         plugin = manager._adapters.get(metadata.name)  # type: ignore[attr-defined]
         if plugin is None:
             continue
-        entry_points[metadata.name] = (
-            f"{plugin.__class__.__module__}:{plugin.__class__.__qualname__}"
-        )
+        entry_points[
+            metadata.name
+        ] = f"{plugin.__class__.__module__}:{plugin.__class__.__qualname__}"
     return dict(sorted(entry_points.items()))
 
 

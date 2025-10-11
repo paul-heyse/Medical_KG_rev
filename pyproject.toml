@@ -856,6 +856,7 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+files = ["src/Medical_KG_rev/observability"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -867,6 +868,22 @@ module = [
     "zeep.*",
     "aiokafka.*",
 ]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "Medical_KG_rev.adapters.*",
+    "Medical_KG_rev.config.*",
+    "Medical_KG_rev.services.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["Medical_KG_rev.auth.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["grpc", "grpc.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

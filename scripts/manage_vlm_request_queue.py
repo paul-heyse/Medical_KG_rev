@@ -8,13 +8,12 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
 
@@ -37,14 +36,12 @@ except ImportError as e:
     sys.exit(1)
 
 app = typer.Typer(
-    name="manage-vlm-request-queue",
-    help="Manage VLM request queue",
-    rich_markup_mode="rich"
+    name="manage-vlm-request-queue", help="Manage VLM request queue", rich_markup_mode="rich"
 )
 console = Console()
 
 
-def display_queue_status(status: Dict[str, Any]) -> None:
+def display_queue_status(status: dict[str, Any]) -> None:
     """Display queue status in a formatted table."""
     table = Table(title="VLM Request Queue Status")
     table.add_column("Metric", style="cyan")
@@ -52,21 +49,31 @@ def display_queue_status(status: Dict[str, Any]) -> None:
 
     # Basic status
     status_color = "green" if status["is_running"] else "red"
-    table.add_row("Status", Text("Running" if status["is_running"] else "Stopped", style=status_color))
+    table.add_row(
+        "Status", Text("Running" if status["is_running"] else "Stopped", style=status_color)
+    )
 
     # Queue size
     queue_size = status["queue_size"]
     max_size = status["max_queue_size"]
     utilization = (queue_size / max_size) * 100 if max_size > 0 else 0
     utilization_color = "red" if utilization > 80 else "yellow" if utilization > 60 else "green"
-    table.add_row("Queue Size", f"{queue_size}/{max_size} ({utilization:.1f}%)", style=utilization_color)
+    table.add_row(
+        "Queue Size", f"{queue_size}/{max_size} ({utilization:.1f}%)", style=utilization_color
+    )
 
     # Active requests
     active = status["active_requests"]
     max_concurrent = status["max_concurrent_requests"]
     active_utilization = (active / max_concurrent) * 100 if max_concurrent > 0 else 0
-    active_color = "red" if active_utilization > 90 else "yellow" if active_utilization > 70 else "green"
-    table.add_row("Active Requests", f"{active}/{max_concurrent} ({active_utilization:.1f}%)", style=active_color)
+    active_color = (
+        "red" if active_utilization > 90 else "yellow" if active_utilization > 70 else "green"
+    )
+    table.add_row(
+        "Active Requests",
+        f"{active}/{max_concurrent} ({active_utilization:.1f}%)",
+        style=active_color,
+    )
 
     # Strategy
     table.add_row("Strategy", status["strategy"])
@@ -86,7 +93,7 @@ def display_queue_status(status: Dict[str, Any]) -> None:
     console.print(table)
 
 
-def display_request_status(status: Dict[str, Any]) -> None:
+def display_request_status(status: dict[str, Any]) -> None:
     """Display request status in a formatted table."""
     table = Table(title=f"Request Status: {status['request_id']}")
     table.add_column("Field", style="cyan")
@@ -122,7 +129,7 @@ def display_request_status(status: Dict[str, Any]) -> None:
     console.print(table)
 
 
-def display_metrics_history(history: List[Dict[str, Any]]) -> None:
+def display_metrics_history(history: list[dict[str, Any]]) -> None:
     """Display metrics history in a formatted table."""
     if not history:
         console.print("No metrics history available")
@@ -147,7 +154,7 @@ def display_metrics_history(history: List[Dict[str, Any]]) -> None:
             str(entry["completed_requests"]),
             str(entry["failed_requests"]),
             f"{entry['error_rate'] * 100:.1f}%",
-            f"{entry['throughput']:.1f}"
+            f"{entry['throughput']:.1f}",
         )
 
     console.print(table)
@@ -198,7 +205,7 @@ def submit(
     priority: str = typer.Option("normal", "--priority", "-p", help="Request priority"),
     timeout: float = typer.Option(300.0, "--timeout", "-t", help="Request timeout in seconds"),
     max_retries: int = typer.Option(3, "--max-retries", "-r", help="Maximum retries"),
-    config_file: Optional[str] = typer.Option(None, "--config", "-c", help="Config file path")
+    config_file: Optional[str] = typer.Option(None, "--config", "-c", help="Config file path"),
 ) -> None:
     """Submit a request to the queue."""
     console.print(Panel("Submitting Request", style="bold blue"))
@@ -213,7 +220,7 @@ def submit(
 
     # Read PDF file
     try:
-        with open(pdf_file, 'rb') as f:
+        with open(pdf_file, "rb") as f:
             pdf_content = f.read()
     except FileNotFoundError:
         console.print(f"✗ PDF file not found: {pdf_file}", style="red")
@@ -226,7 +233,7 @@ def submit(
     config = {}
     if config_file:
         try:
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 config = json.load(f)
         except Exception as e:
             console.print(f"✗ Failed to load config file: {e}", style="red")
@@ -243,10 +250,10 @@ def submit(
                 options={},
                 priority=priority_enum,
                 timeout=timeout,
-                max_retries=max_retries
+                max_retries=max_retries,
             )
 
-            console.print(f"✓ Request submitted successfully", style="green")
+            console.print("✓ Request submitted successfully", style="green")
             console.print(f"Request ID: {request_id}")
             console.print(f"Priority: {priority}")
             console.print(f"Timeout: {timeout}s")
@@ -259,9 +266,7 @@ def submit(
 
 
 @app.command()
-def request_status(
-    request_id: str = typer.Argument(..., help="Request ID")
-) -> None:
+def request_status(request_id: str = typer.Argument(..., help="Request ID")) -> None:
     """Get status of a specific request."""
     console.print(Panel(f"Request Status: {request_id}", style="bold blue"))
 
@@ -279,9 +284,7 @@ def request_status(
 
 
 @app.command()
-def cancel(
-    request_id: str = typer.Argument(..., help="Request ID")
-) -> None:
+def cancel(request_id: str = typer.Argument(..., help="Request ID")) -> None:
     """Cancel a request."""
     console.print(Panel(f"Cancelling Request: {request_id}", style="bold blue"))
 
@@ -302,7 +305,7 @@ def cancel(
 @app.command()
 def monitor(
     duration: int = typer.Option(60, "--duration", "-d", help="Monitoring duration in seconds"),
-    interval: int = typer.Option(5, "--interval", "-i", help="Update interval in seconds")
+    interval: int = typer.Option(5, "--interval", "-i", help="Update interval in seconds"),
 ) -> None:
     """Monitor queue status in real-time."""
     console.print(Panel("Real-time Queue Monitoring", style="bold blue"))
@@ -313,9 +316,7 @@ def monitor(
         start_time = asyncio.get_event_loop().time()
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task("Monitoring queue...", total=None)
 
@@ -344,12 +345,20 @@ def monitor(
 def configure(
     strategy: str = typer.Option("priority", "--strategy", "-s", help="Queue strategy"),
     max_queue_size: int = typer.Option(1000, "--max-queue-size", "-q", help="Maximum queue size"),
-    max_concurrent: int = typer.Option(10, "--max-concurrent", "-c", help="Maximum concurrent requests"),
-    default_timeout: float = typer.Option(300.0, "--default-timeout", "-t", help="Default timeout in seconds"),
+    max_concurrent: int = typer.Option(
+        10, "--max-concurrent", "-c", help="Maximum concurrent requests"
+    ),
+    default_timeout: float = typer.Option(
+        300.0, "--default-timeout", "-t", help="Default timeout in seconds"
+    ),
     max_retries: int = typer.Option(3, "--max-retries", "-r", help="Maximum retries"),
     retry_delay: float = typer.Option(1.0, "--retry-delay", "-d", help="Retry delay in seconds"),
-    health_check_interval: float = typer.Option(30.0, "--health-check-interval", "-h", help="Health check interval in seconds"),
-    cleanup_interval: float = typer.Option(300.0, "--cleanup-interval", "-u", help="Cleanup interval in seconds")
+    health_check_interval: float = typer.Option(
+        30.0, "--health-check-interval", "-h", help="Health check interval in seconds"
+    ),
+    cleanup_interval: float = typer.Option(
+        300.0, "--cleanup-interval", "-u", help="Cleanup interval in seconds"
+    ),
 ) -> None:
     """Configure queue settings."""
     console.print(Panel("Configuring Queue Settings", style="bold blue"))
@@ -400,7 +409,7 @@ def configure(
         max_retries=max_retries,
         retry_delay=retry_delay,
         health_check_interval=health_check_interval,
-        cleanup_interval=cleanup_interval
+        cleanup_interval=cleanup_interval,
     )
 
     # Create new queue with configuration
@@ -430,7 +439,9 @@ def metrics() -> None:
 
 @app.command()
 def export_config(
-    output_file: str = typer.Option("vlm_queue_config.json", "--output", "-o", help="Output file path")
+    output_file: str = typer.Option(
+        "vlm_queue_config.json", "--output", "-o", help="Output file path"
+    ),
 ) -> None:
     """Export current configuration to JSON file."""
     console.print(Panel("Exporting Configuration", style="bold blue"))
@@ -449,11 +460,11 @@ def export_config(
         "health_check_interval": config.health_check_interval,
         "cleanup_interval": config.cleanup_interval,
         "enable_metrics": config.enable_metrics,
-        "enable_tracing": config.enable_tracing
+        "enable_tracing": config.enable_tracing,
     }
 
     try:
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(config_dict, f, indent=2)
 
         console.print(f"✓ Configuration exported to {output_file}", style="green")
@@ -462,14 +473,12 @@ def export_config(
 
 
 @app.command()
-def import_config(
-    input_file: str = typer.Argument(..., help="Input file path")
-) -> None:
+def import_config(input_file: str = typer.Argument(..., help="Input file path")) -> None:
     """Import configuration from JSON file."""
     console.print(Panel("Importing Configuration", style="bold blue"))
 
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             config_dict = json.load(f)
 
         # Create configuration from dict
@@ -484,7 +493,7 @@ def import_config(
             health_check_interval=config_dict.get("health_check_interval", 30.0),
             cleanup_interval=config_dict.get("cleanup_interval", 300.0),
             enable_metrics=config_dict.get("enable_metrics", True),
-            enable_tracing=config_dict.get("enable_tracing", True)
+            enable_tracing=config_dict.get("enable_tracing", True),
         )
 
         # Create new queue with imported configuration
@@ -508,7 +517,9 @@ def import_config(
 def benchmark(
     duration: int = typer.Option(300, "--duration", "-d", help="Benchmark duration in seconds"),
     request_rate: int = typer.Option(10, "--request-rate", "-r", help="Requests per second"),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output file for results")
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output file for results"
+    ),
 ) -> None:
     """Run a benchmark to test queue performance."""
     console.print(Panel("Running Queue Benchmark", style="bold blue"))
@@ -521,9 +532,7 @@ def benchmark(
         request_ids = []
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task = progress.add_task("Running benchmark...", total=duration)
 
@@ -541,9 +550,7 @@ def benchmark(
                         dummy_pdf = b"dummy pdf content"
 
                         request_id = await queue.submit_request(
-                            pdf_content=dummy_pdf,
-                            config={},
-                            options={}
+                            pdf_content=dummy_pdf, config={}, options={}
                         )
                         request_ids.append(request_id)
                         next_request_time += request_interval
@@ -552,15 +559,17 @@ def benchmark(
 
                 # Collect metrics
                 status_info = queue.get_queue_status()
-                benchmark_data.append({
-                    "timestamp": current_time - start_time,
-                    "queue_size": status_info["queue_size"],
-                    "active_requests": status_info["active_requests"],
-                    "completed_requests": status_info["metrics"]["completed_requests"],
-                    "failed_requests": status_info["metrics"]["failed_requests"],
-                    "error_rate": status_info["metrics"]["error_rate"],
-                    "throughput": status_info["metrics"]["throughput"]
-                })
+                benchmark_data.append(
+                    {
+                        "timestamp": current_time - start_time,
+                        "queue_size": status_info["queue_size"],
+                        "active_requests": status_info["active_requests"],
+                        "completed_requests": status_info["metrics"]["completed_requests"],
+                        "failed_requests": status_info["metrics"]["failed_requests"],
+                        "error_rate": status_info["metrics"]["error_rate"],
+                        "throughput": status_info["metrics"]["throughput"],
+                    }
+                )
 
                 await asyncio.sleep(1)  # Sample every second
 
@@ -585,7 +594,7 @@ def benchmark(
         # Export results if requested
         if output_file:
             try:
-                with open(output_file, 'w') as f:
+                with open(output_file, "w") as f:
                     json.dump(benchmark_data, f, indent=2)
                 console.print(f"✓ Benchmark results exported to {output_file}", style="green")
             except Exception as e:

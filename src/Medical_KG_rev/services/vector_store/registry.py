@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from .errors import DimensionMismatchError, InvalidNamespaceConfigError, NamespaceNotFoundError
+from .errors import HttpClient
 from .models import NamespaceConfig
+
 
 
 @dataclass(slots=True)

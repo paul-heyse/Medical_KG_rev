@@ -1,178 +1,305 @@
-"""CloudEvents emission utilities for embedding lifecycle."""
+"""Events for embedding service operations."""
 
 from __future__ import annotations
 
-import uuid
-from dataclasses import dataclass
-from datetime import UTC, datetime
+import json
+import time
 from typing import Any
 
-try:  # pragma: no cover - optional dependency for structured CloudEvents
+import structlog
+
+from Medical_KG_rev.utils.fallbacks import fallback_unavailable
+
+try:
     from cloudevents.http import CloudEvent  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - fallback used in tests without dependency
+except ImportError as exc:  # pragma: no cover - optional dependency
+    fallback_unavailable("Embedding CloudEvent dependency", exc)
 
-    class CloudEvent(dict):  # type: ignore[override]
-        """Minimal CloudEvent fallback supporting the mapping interface."""
-
-        def __init__(self, attributes: dict[str, Any], data: dict[str, Any]):
-            super().__init__(attributes)
-            self.data = data
-
-        def keys(self):
-            return super().keys()
-
-
-try:  # pragma: no cover - orchestration client optional in unit tests
+try:
     from Medical_KG_rev.orchestration.kafka import KafkaClient
-except Exception:  # pragma: no cover - fallback for lightweight envs
+except Exception as exc:  # pragma: no cover - fallback for lightweight envs
+    fallback_unavailable("Embedding event Kafka client", exc)
 
-    class KafkaClient:  # type: ignore[override]
-        """Minimal in-memory Kafka facade used when orchestration stack unavailable."""
-
-        def __init__(self) -> None:
-            self._topics: dict[str, list[dict[str, Any]]] = {}
-
-        def create_topics(self, topics):
-            for topic in topics:
-                self._topics.setdefault(topic, [])
-
-        def publish(self, topic: str, value: dict[str, Any], *, key=None, headers=None):
-            self._topics.setdefault(topic, []).append(value)
+logger = structlog.get_logger(__name__)
 
 
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
-
-
-def _base_attributes(
-    event_type: str, *, namespace: str, correlation_id: str | None
-) -> dict[str, Any]:
-    event_id = str(uuid.uuid4())
-    return {
-        "specversion": "1.0",
-        "type": event_type,
-        "source": "services.embedding.worker",
-        "subject": namespace,
-        "time": _now(),
-        "id": event_id,
-        "datacontenttype": "application/json",
-        "correlationid": correlation_id or event_id,
-    }
-
-
-def _to_message(event: CloudEvent) -> dict[str, Any]:
-    payload: dict[str, Any] = {key: event.get(key) for key in event.keys()}  # type: ignore[arg-type]
-    payload["data"] = event.data
-    return payload
-
-
-@dataclass(slots=True)
 class EmbeddingEventEmitter:
-    """Publishes embedding lifecycle CloudEvents to Kafka."""
+    """Event emitter for embedding operations."""
 
-    kafka: KafkaClient
-    topic: str = "embedding.events.v1"
+    def __init__(self, kafka_client: KafkaClient | None = None) -> None:
+        """Initialize the embedding event emitter."""
+        self.kafka_client = kafka_client or KafkaClient()
+        self.logger = logger
 
-    def __post_init__(self) -> None:
-        self.kafka.create_topics([self.topic])
-
-    def emit_started(
+    def emit_embedding_started(
         self,
-        *,
-        tenant_id: str,
         namespace: str,
-        provider: str,
-        batch_size: int,
-        correlation_id: str | None,
-    ) -> CloudEvent:
-        attributes = _base_attributes(
-            "com.medical-kg.embedding.started",
-            namespace=namespace,
-            correlation_id=correlation_id,
-        )
-        data = {
-            "tenant_id": tenant_id,
+        model: str,
+        text_count: int,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit embedding started event."""
+        event_data = {
             "namespace": namespace,
-            "provider": provider,
-            "batch_size": batch_size,
-            "correlation_id": attributes["correlationid"],
+            "model": model,
+            "text_count": text_count,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "embedding_started",
         }
-        event = CloudEvent(attributes, data)
-        self.kafka.publish(
-            self.topic,
-            value=_to_message(event),
-            key=attributes["correlationid"],
-            headers={"content-type": "application/cloudevents+json"},
-        )
-        return event
 
-    def emit_completed(
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "embedding.started",
+            namespace=namespace,
+            model=model,
+            text_count=text_count,
+            tenant_id=tenant_id,
+        )
+
+    def emit_embedding_completed(
         self,
-        *,
-        tenant_id: str,
         namespace: str,
-        provider: str,
-        correlation_id: str | None,
+        model: str,
+        text_count: int,
+        embedding_count: int,
         duration_ms: float,
-        generated: int,
-        cache_hits: int,
-        cache_misses: int,
-    ) -> CloudEvent:
-        attributes = _base_attributes(
-            "com.medical-kg.embedding.completed",
-            namespace=namespace,
-            correlation_id=correlation_id,
-        )
-        data = {
-            "tenant_id": tenant_id,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit embedding completed event."""
+        event_data = {
             "namespace": namespace,
-            "provider": provider,
+            "model": model,
+            "text_count": text_count,
+            "embedding_count": embedding_count,
             "duration_ms": duration_ms,
-            "embeddings_generated": generated,
-            "cache_hits": cache_hits,
-            "cache_misses": cache_misses,
-            "correlation_id": attributes["correlationid"],
-        }
-        event = CloudEvent(attributes, data)
-        self.kafka.publish(
-            self.topic,
-            value=_to_message(event),
-            key=attributes["correlationid"],
-            headers={"content-type": "application/cloudevents+json"},
-        )
-        return event
-
-    def emit_failed(
-        self,
-        *,
-        tenant_id: str,
-        namespace: str,
-        provider: str,
-        correlation_id: str | None,
-        error_type: str,
-        message: str,
-    ) -> CloudEvent:
-        attributes = _base_attributes(
-            "com.medical-kg.embedding.failed",
-            namespace=namespace,
-            correlation_id=correlation_id,
-        )
-        data = {
             "tenant_id": tenant_id,
-            "namespace": namespace,
-            "provider": provider,
-            "error_type": error_type,
-            "message": message,
-            "correlation_id": attributes["correlationid"],
+            "timestamp": time.time(),
+            "event_type": "embedding_completed",
         }
-        event = CloudEvent(attributes, data)
-        self.kafka.publish(
-            self.topic,
-            value=_to_message(event),
-            key=attributes["correlationid"],
-            headers={"content-type": "application/cloudevents+json"},
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "embedding.completed",
+            namespace=namespace,
+            model=model,
+            text_count=text_count,
+            embedding_count=embedding_count,
+            duration_ms=duration_ms,
+            tenant_id=tenant_id,
         )
-        return event
+
+    def emit_embedding_failed(
+        self,
+        namespace: str,
+        model: str,
+        error: str,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit embedding failed event."""
+        event_data = {
+            "namespace": namespace,
+            "model": model,
+            "error": error,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "embedding_failed",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.error(
+            "embedding.failed",
+            namespace=namespace,
+            model=model,
+            error=error,
+            tenant_id=tenant_id,
+        )
+
+    def emit_namespace_created(
+        self,
+        namespace: str,
+        config: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit namespace created event."""
+        event_data = {
+            "namespace": namespace,
+            "config": config,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "namespace_created",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "namespace.created",
+            namespace=namespace,
+            config=config,
+            tenant_id=tenant_id,
+        )
+
+    def emit_namespace_deleted(
+        self,
+        namespace: str,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit namespace deleted event."""
+        event_data = {
+            "namespace": namespace,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "namespace_deleted",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "namespace.deleted",
+            namespace=namespace,
+            tenant_id=tenant_id,
+        )
+
+    def emit_model_loaded(
+        self,
+        model: str,
+        namespace: str,
+        load_time_ms: float,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit model loaded event."""
+        event_data = {
+            "model": model,
+            "namespace": namespace,
+            "load_time_ms": load_time_ms,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "model_loaded",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "model.loaded",
+            model=model,
+            namespace=namespace,
+            load_time_ms=load_time_ms,
+            tenant_id=tenant_id,
+        )
+
+    def emit_model_unloaded(
+        self,
+        model: str,
+        namespace: str,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit model unloaded event."""
+        event_data = {
+            "model": model,
+            "namespace": namespace,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "model_unloaded",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.info(
+            "model.unloaded",
+            model=model,
+            namespace=namespace,
+            tenant_id=tenant_id,
+        )
+
+    def emit_embedding_cache_hit(
+        self,
+        namespace: str,
+        model: str,
+        cache_key: str,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit embedding cache hit event."""
+        event_data = {
+            "namespace": namespace,
+            "model": model,
+            "cache_key": cache_key,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "embedding_cache_hit",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.debug(
+            "embedding.cache.hit",
+            namespace=namespace,
+            model=model,
+            cache_key=cache_key,
+            tenant_id=tenant_id,
+        )
+
+    def emit_embedding_cache_miss(
+        self,
+        namespace: str,
+        model: str,
+        cache_key: str,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Emit embedding cache miss event."""
+        event_data = {
+            "namespace": namespace,
+            "model": model,
+            "cache_key": cache_key,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+            "event_type": "embedding_cache_miss",
+        }
+
+        self._publish_event("embedding.events", event_data)
+        self.logger.debug(
+            "embedding.cache.miss",
+            namespace=namespace,
+            model=model,
+            cache_key=cache_key,
+            tenant_id=tenant_id,
+        )
+
+    def _publish_event(self, topic: str, event_data: dict[str, Any]) -> None:
+        """Publish event to Kafka topic."""
+        try:
+            if CloudEvent:
+                # Create CloudEvent
+                event = CloudEvent(
+                    type=event_data["event_type"],
+                    source="embedding-service",
+                    data=event_data,
+                )
+                self.kafka_client.publish(topic, event)
+            else:
+                # Fallback to simple dict
+                self.kafka_client.publish(topic, event_data)
+        except Exception as exc:
+            self.logger.warning(f"Failed to publish event to {topic}: {exc}")
+
+    def health_check(self) -> dict[str, Any]:
+        """Check event emitter health."""
+        return {
+            "emitter": "embedding",
+            "status": "healthy",
+            "kafka_client": "available" if self.kafka_client else "unavailable",
+            "cloudevents": "available" if CloudEvent else "unavailable",
+        }
 
 
-__all__ = ["EmbeddingEventEmitter"]
+# Global event emitter instance
+_embedding_event_emitter: EmbeddingEventEmitter | None = None
+
+
+def get_embedding_event_emitter() -> EmbeddingEventEmitter:
+    """Get the global embedding event emitter instance."""
+    global _embedding_event_emitter
+
+    if _embedding_event_emitter is None:
+        _embedding_event_emitter = EmbeddingEventEmitter()
+
+    return _embedding_event_emitter
+
+
+def create_embedding_event_emitter(kafka_client: KafkaClient | None = None) -> EmbeddingEventEmitter:
+    """Create a new embedding event emitter instance."""
+    return EmbeddingEventEmitter(kafka_client)

@@ -84,4 +84,3 @@ tenants:
 - **Health checks** – call `VectorStoreService.check_health` to surface backend readiness for observability pipelines.
 
 Refer to `services/vector_store/evaluation.py` for parameter sweeps, latency profiles, and leaderboard generation used in continuous evaluation.
-

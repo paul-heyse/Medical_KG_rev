@@ -27,6 +27,7 @@ try:
 except ImportError:
     # Fallback for development
     import sys
+
     sys.path.append(str(Path(__file__).parent.parent))
     from src.Medical_KG_rev.services.optimization.model_warmup import (
         ModelWarmupManager,
@@ -88,11 +89,13 @@ def status() -> None:
 
 @app.command()
 def start(
-    strategy: str = typer.Option("standard", help="Warm-up strategy (minimal, standard, comprehensive, custom)"),
+    strategy: str = typer.Option(
+        "standard", help="Warm-up strategy (minimal, standard, comprehensive, custom)"
+    ),
     requests: int = typer.Option(10, help="Number of warm-up requests"),
     timeout: int = typer.Option(300, help="Warm-up timeout in seconds"),
     batch_sizes: str = typer.Option("1,2,4,8", help="Comma-separated batch sizes"),
-    retry_attempts: int = typer.Option(3, help="Number of retry attempts")
+    retry_attempts: int = typer.Option(3, help="Number of retry attempts"),
 ) -> None:
     """Start model warm-up procedure."""
     try:
@@ -110,22 +113,20 @@ def start(
         warmup_requests=requests,
         warmup_timeout=timeout,
         batch_sizes=batch_size_list,
-        retry_attempts=retry_attempts
+        retry_attempts=retry_attempts,
     )
 
     manager = ModelWarmupManager(config)
 
     async def _warmup():
-        console.print(f"[bold blue]Starting model warm-up[/bold blue]")
+        console.print("[bold blue]Starting model warm-up[/bold blue]")
         console.print(f"Strategy: [bold]{strategy}[/bold]")
         console.print(f"Requests: [bold]{requests}[/bold]")
         console.print(f"Timeout: [bold]{timeout}s[/bold]")
         console.print(f"Batch sizes: [bold]{batch_size_list}[/bold]")
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("Warming up model..."),
-            console=console
+            SpinnerColumn(), TextColumn("Warming up model..."), console=console
         ) as progress:
             task = progress.add_task("Warming up", total=None)
 
@@ -183,7 +184,7 @@ def configure(
     temperature_threshold: Optional[float] = typer.Option(None, help="GPU temperature threshold"),
     performance_threshold: Optional[float] = typer.Option(None, help="Performance threshold"),
     retry_attempts: Optional[int] = typer.Option(None, help="Number of retry attempts"),
-    retry_delay: Optional[int] = typer.Option(None, help="Retry delay in seconds")
+    retry_delay: Optional[int] = typer.Option(None, help="Retry delay in seconds"),
 ) -> None:
     """Configure warm-up settings."""
     # Get current config
@@ -198,12 +199,20 @@ def configure(
         warmup_timeout=timeout if timeout is not None else current_config.warmup_timeout,
         batch_sizes=current_config.batch_sizes,
         request_types=current_config.request_types,
-        gpu_memory_threshold=memory_threshold if memory_threshold is not None else current_config.gpu_memory_threshold,
-        temperature_threshold=temperature_threshold if temperature_threshold is not None else current_config.temperature_threshold,
-        performance_threshold=performance_threshold if performance_threshold is not None else current_config.performance_threshold,
-        retry_attempts=retry_attempts if retry_attempts is not None else current_config.retry_attempts,
+        gpu_memory_threshold=memory_threshold
+        if memory_threshold is not None
+        else current_config.gpu_memory_threshold,
+        temperature_threshold=temperature_threshold
+        if temperature_threshold is not None
+        else current_config.temperature_threshold,
+        performance_threshold=performance_threshold
+        if performance_threshold is not None
+        else current_config.performance_threshold,
+        retry_attempts=retry_attempts
+        if retry_attempts is not None
+        else current_config.retry_attempts,
         retry_delay=retry_delay if retry_delay is not None else current_config.retry_delay,
-        monitoring_interval=current_config.monitoring_interval
+        monitoring_interval=current_config.monitoring_interval,
     )
 
     # Create new manager instance with updated config
@@ -211,6 +220,7 @@ def configure(
 
     # Update global manager instance
     import src.Medical_KG_rev.services.optimization.model_warmup as warmup_module
+
     warmup_module._warmup_manager = new_manager
 
     console.print("[bold green]Warm-up configuration updated![/bold green]")
@@ -237,7 +247,7 @@ def configure(
 @app.command()
 def test(
     duration: int = typer.Option(60, help="Test duration in seconds"),
-    interval: int = typer.Option(5, help="Update interval in seconds")
+    interval: int = typer.Option(5, help="Update interval in seconds"),
 ) -> None:
     """Test warm-up procedure with simulated requests."""
     manager = get_warmup_manager()
@@ -248,11 +258,7 @@ def test(
 
         start_time = time.time()
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("Testing..."),
-            console=console
-        ) as progress:
+        with Progress(SpinnerColumn(), TextColumn("Testing..."), console=console) as progress:
             task = progress.add_task("Testing", total=duration)
 
             while time.time() - start_time < duration:
@@ -282,17 +288,12 @@ def test(
 
 
 @app.command()
-def export(
-    output_file: str = typer.Option("warmup_data.json", help="Output file path")
-) -> None:
+def export(output_file: str = typer.Option("warmup_data.json", help="Output file path")) -> None:
     """Export warm-up data to JSON file."""
     manager = get_warmup_manager()
     status_info = manager.get_status()
 
-    export_data = {
-        "warmup_status": status_info,
-        "export_timestamp": time.time()
-    }
+    export_data = {"warmup_status": status_info, "export_timestamp": time.time()}
 
     with open(output_file, "w") as f:
         json.dump(export_data, f, indent=2)

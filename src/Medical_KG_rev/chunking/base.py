@@ -161,18 +161,21 @@ def resolve_sentence_encoder(
     """
     if encoder is not None:
         return encoder
-    try:  # pragma: no cover - optional dependency
-        from sentence_transformers import SentenceTransformer  # type: ignore
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise ChunkerConfigurationError(
-            "sentence-transformers must be installed for semantic chunkers"
-        ) from exc
-    resolved = SentenceTransformer(model_name)
-    # GPU semantic checks removed - use Docling chunking instead
     if gpu_semantic_checks:
         raise ChunkerConfigurationError(
             "GPU semantic checks are no longer supported. Use Docling's built-in chunking capabilities instead."
         )
+    try:  # pragma: no cover - optional dependency
+        from sentence_transformers import SentenceTransformer  # type: ignore
+    except Exception as exc:  # pragma: no cover - optional dependency
+        message = "sentence-transformers must be installed for semantic chunkers"
+
+        class _MissingEncoder:
+            def encode(self, *_args, **_kwargs):
+                raise ChunkerConfigurationError(message) from exc
+
+        return _MissingEncoder()
+    resolved = SentenceTransformer(model_name)
     return resolved
 
 

@@ -1,6 +1,6 @@
 # Tenant Isolation Penetration Test Report
 
-**Date:** 2024-07-18  
+**Date:** 2024-07-18
 **Scope:** Gateway REST, GraphQL, and gRPC embedding surfaces (multi-tenancy enforcement).
 
 ## Objectives

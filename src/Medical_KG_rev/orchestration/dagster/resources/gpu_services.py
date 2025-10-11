@@ -12,6 +12,7 @@ from Medical_KG_rev.services.gpu.grpc_client import GPUServiceClient
 from Medical_KG_rev.services.reranking.grpc_client import RerankingServiceClient
 
 
+
 class GPUServiceResource(ConfigurableResource):
     """Dagster resource providing gRPC clients for GPU services."""
 

@@ -20,7 +20,10 @@ from rich.table import Table
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from Medical_KG_rev.services.caching.cache_integration import CacheIntegrationConfig
-from Medical_KG_rev.services.caching.cache_manager import CacheConfig, create_cache_manager
+from Medical_KG_rev.services.caching.cache_manager import (
+    CacheConfig,
+    create_cache_manager,
+)
 from Medical_KG_rev.services.caching.service_cache import create_service_cache_config
 
 app = typer.Typer(help="Service Cache Management Tool")
@@ -438,17 +441,13 @@ def health(
 
                 # Set/Get test
                 if result == "test_value":
-                    health_table.add_row(
-                        "Set/Get Operations", "✅ PASS", "Basic operations working"
-                    )
+                    health_table.add_row("Set/Get Operations", "✅ PASS", "Basic operations working")
                 else:
                     health_table.add_row("Set/Get Operations", "❌ FAIL", "Basic operations failed")
 
                 # Delete test
                 if deleted:
-                    health_table.add_row(
-                        "Delete Operations", "✅ PASS", "Delete operations working"
-                    )
+                    health_table.add_row("Delete Operations", "✅ PASS", "Delete operations working")
                 else:
                     health_table.add_row("Delete Operations", "❌ FAIL", "Delete operations failed")
 

@@ -48,7 +48,7 @@ beautifulsoup4>=4.14.2
 lxml>=6.0.2
 python-magic>=0.4.27
 nltk>=3.9.2
-pillow>=10.3.0,<11.0.0
+pillow>=11.3.0
 
 # Security
 python-jose>=3.5.0
@@ -63,6 +63,10 @@ opentelemetry-sdk>=1.37.0
 opentelemetry-instrumentation>=0.58b0
 opentelemetry-instrumentation-fastapi>=0.58b0
 opentelemetry-instrumentation-grpc>=0.58b0
+opentelemetry-proto>=1.28.2
+opentelemetry-exporter-otlp-proto-grpc>=1.37.0
+opentelemetry-exporter-otlp-proto-http>=1.37.0
+opentelemetry-exporter-otlp>=1.37.0
 structlog>=25.4.0
 sentry-sdk>=2.41.0
 

@@ -7,6 +7,7 @@ from typing import Literal
 
 import numpy as np
 
+
 PoolingStrategy = Literal["mean", "max", "cls", "last_token", "none"]
 
 

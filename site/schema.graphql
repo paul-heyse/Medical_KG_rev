@@ -180,4 +180,3 @@ input KnowledgeGraphWriteInput {
   edges: JSON
   transactional: Boolean = true
 }
-

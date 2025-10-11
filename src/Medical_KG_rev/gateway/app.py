@@ -32,18 +32,18 @@ Performance Characteristics:
     - Static file serving optimized for production
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.app import create_app
     >>> app = create_app()
     >>> # Run with: uvicorn Medical_KG_rev.gateway.app:app
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
-
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 
@@ -55,11 +55,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkingFailedError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from Medical_KG_rev.utils.http_client import HttpClient
 
 from ..config.settings import get_settings
 from ..observability import setup_observability
@@ -100,9 +96,11 @@ def create_problem_response(detail: ProblemDetail) -> JSONResponse:
     """Create a JSON response for problem details.
 
     Args:
+    ----
         detail: Problem detail object containing error information.
 
     Returns:
+    -------
         JSON response with appropriate status code and headers.
 
     """
@@ -339,8 +337,6 @@ def create_app() -> FastAPI:
         )
         _log_problem("gateway.chunking.failed", detail)
         return create_problem_response(detail)
-
-
 
     return app
 

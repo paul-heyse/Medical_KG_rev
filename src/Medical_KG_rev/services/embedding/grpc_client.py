@@ -1,31 +1,26 @@
 """gRPC client for embedding service."""
 
+from typing import Optional
 import asyncio
-from typing import List, Optional
 
-import grpc
 from grpc import aio
 
-from Medical_KG_rev.services.clients.circuit_breaker import CircuitBreaker, CircuitBreakerState
+from Medical_KG_rev.services.clients.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerState,
+)
 
 
 class EmbeddingServiceClient:
     """gRPC client for embedding service."""
 
-    def __init__(
-        self,
-        host: str = "localhost",
-        port: int = 50051,
-        timeout: float = 30.0
-    ):
+    def __init__(self, host: str = "localhost", port: int = 50051, timeout: float = 30.0):
         self.host = host
         self.port = port
         self.timeout = timeout
         self._channel: Optional[aio.Channel] = None
         self._circuit_breaker = CircuitBreaker(
-            failure_threshold=5,
-            recovery_timeout=60.0,
-            name="embedding_service"
+            failure_threshold=5, recovery_timeout=60.0, name="embedding_service"
         )
 
     async def __aenter__(self):
@@ -48,7 +43,7 @@ class EmbeddingServiceClient:
             await self._channel.close()
             self._channel = None
 
-    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
+    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed a list of texts."""
         if self._circuit_breaker.state == CircuitBreakerState.OPEN:
             raise Exception("Circuit breaker is OPEN for embedding service")
@@ -60,7 +55,7 @@ class EmbeddingServiceClient:
         # Return dummy embeddings
         return [[0.1] * 384 for _ in texts]  # 384-dimensional embeddings
 
-    async def embed_query(self, query: str) -> List[float]:
+    async def embed_query(self, query: str) -> list[float]:
         """Embed a single query."""
         embeddings = await self.embed_texts([query])
         return embeddings[0]

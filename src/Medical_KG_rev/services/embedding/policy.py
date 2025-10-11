@@ -32,6 +32,7 @@ Performance Characteristics:
     - Policy evaluation time depends on implementation complexity
 
 Example:
+-------
     >>> from Medical_KG_rev.services.embedding.policy import build_policy_chain
     >>> policy = build_policy_chain(registry, dry_run=True)
     >>> decision = policy.evaluate(namespace="medical", tenant_id="tenant1", required_scope="read")
@@ -39,11 +40,11 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, MutableMapping
@@ -51,14 +52,13 @@ from dataclasses import asdict, dataclass, field, replace
 from time import perf_counter
 
 import structlog
-from Medical_KG_rev.services.embedding.namespace.access import (
-    NamespaceAccessResult,
-    validate_namespace_access,
-)
-from Medical_KG_rev.services.embedding.namespace.registry import EmbeddingNamespaceRegistry
+
+from Medical_KG_rev.services.embedding.namespace.access import HttpClient
+from Medical_KG_rev.services.embedding.namespace.registry import HttpClient
 from Medical_KG_rev.services.embedding.namespace.schema import NamespaceConfig
 
 from .telemetry import EmbeddingTelemetry
+
 
 # ============================================================================
 # LOGGING SETUP
@@ -80,6 +80,7 @@ class NamespaceAccessDecision:
     access status, reasoning, and metadata.
 
     Attributes:
+    ----------
         namespace: Namespace name that was evaluated
         tenant_id: Tenant requesting access
         scope: Required scope for the operation
@@ -96,6 +97,7 @@ class NamespaceAccessDecision:
         - metadata is immutable after creation
 
     Example:
+    -------
         >>> decision = NamespaceAccessDecision(
         ...     namespace="medical", tenant_id="tenant1", scope="read",
         ...     allowed=True, reason="Tenant has read access"
@@ -118,13 +120,16 @@ class NamespaceAccessDecision:
         """Check if the denial was caused by tenant restrictions.
 
         Returns:
+        -------
             True if the denial reason contains "tenant", False otherwise.
 
         Note:
+        ----
             This is a heuristic check based on the reason text.
             Returns False for allowed decisions regardless of reason.
 
         Example:
+        -------
             >>> decision = NamespaceAccessDecision(
             ...     namespace="medical", tenant_id="tenant1", scope="read",
             ...     allowed=False, reason="Tenant not authorized"
@@ -146,6 +151,7 @@ class NamespacePolicySettings:
     and performance characteristics.
 
     Attributes:
+    ----------
         cache_ttl_seconds: Time-to-live for cached decisions in seconds.
             Defaults to 60.0 seconds.
         max_cache_entries: Maximum number of cached decisions.
@@ -154,6 +160,7 @@ class NamespacePolicySettings:
             Defaults to False.
 
     Example:
+    -------
         >>> settings = NamespacePolicySettings(
         ...     cache_ttl_seconds=120.0, max_cache_entries=1024
         ... )
@@ -173,7 +180,8 @@ class _CacheEntry:
     Represents a cached policy decision with expiration time
     for TTL-based cache management.
 
-    Attributes:
+    Attributes
+    ----------
         decision: The cached policy decision
         expires_at: Timestamp when the cache entry expires
 
@@ -196,6 +204,7 @@ class NamespaceAccessPolicy(ABC):
     common functionality for policy evaluation, caching, and monitoring.
 
     Attributes:
+    ----------
         _registry: Namespace registry for configuration lookup
         _telemetry: Optional telemetry system for monitoring
         _settings: Policy configuration and settings
@@ -222,6 +231,7 @@ class NamespaceAccessPolicy(ABC):
         - Statistics accumulate over policy lifetime
 
     Example:
+    -------
         >>> class CustomPolicy(NamespaceAccessPolicy):
         ...     def _evaluate(self, *, namespace, tenant_id, required_scope):
         ...         # Custom implementation
@@ -241,11 +251,13 @@ class NamespaceAccessPolicy(ABC):
         """Initialize policy with registry and optional dependencies.
 
         Args:
+        ----
             registry: Namespace registry for configuration lookup
             telemetry: Optional telemetry system for monitoring
             settings: Optional policy configuration settings
 
         Note:
+        ----
             Logger is automatically bound to the concrete class name
             for structured logging identification.
 
@@ -263,7 +275,8 @@ class NamespaceAccessPolicy(ABC):
     def registry(self) -> EmbeddingNamespaceRegistry:
         """Get the namespace registry.
 
-        Returns:
+        Returns
+        -------
             Registry instance for namespace configuration lookup.
 
         """
@@ -273,7 +286,8 @@ class NamespaceAccessPolicy(ABC):
     def settings(self) -> NamespacePolicySettings:
         """Get current policy settings.
 
-        Returns:
+        Returns
+        -------
             Current policy configuration including cache and dry-run settings.
 
         """
@@ -283,10 +297,12 @@ class NamespaceAccessPolicy(ABC):
         """Update policy settings with new values.
 
         Args:
+        ----
             **kwargs: Settings to update. Valid keys: cache_ttl_seconds,
                 max_cache_entries, dry_run.
 
         Note:
+        ----
             Only provided settings are updated; others remain unchanged.
             Cache is invalidated after settings update.
 
@@ -301,19 +317,23 @@ class NamespaceAccessPolicy(ABC):
         """Evaluate access for the supplied namespace/tenant/scope.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Policy decision with access status, reasoning, and metadata
 
         Note:
+        ----
             This method implements caching with TTL and integrates with
             telemetry for monitoring. The actual policy logic is delegated
             to the _evaluate method implemented by subclasses.
 
         Example:
+        -------
             >>> policy = StandardNamespacePolicy(registry)
             >>> decision = policy.evaluate(
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
@@ -360,10 +380,12 @@ class NamespaceAccessPolicy(ABC):
         """Invalidate cached policy decisions.
 
         Args:
+        ----
             namespace: Optional namespace to invalidate. If None,
                 invalidates all cached decisions.
 
         Note:
+        ----
             This method is called automatically when settings are updated
             to ensure cache consistency.
 
@@ -379,10 +401,12 @@ class NamespaceAccessPolicy(ABC):
         """Get health diagnostics for monitoring and alerting.
 
         Returns:
+        -------
             Dictionary containing policy health information including
             evaluation counts, denial counts, and cache status.
 
         Example:
+        -------
             >>> policy = StandardNamespacePolicy(registry)
             >>> health = policy.health_status()
             >>> print(f"Policy: {health['policy']}, Evaluations: {health['evaluations']}")
@@ -399,10 +423,12 @@ class NamespaceAccessPolicy(ABC):
         """Get introspection snapshot useful during debugging.
 
         Returns:
+        -------
             Dictionary containing detailed policy state including
             settings, cache keys, and statistics.
 
         Note:
+        ----
             This method is intended for debugging and development,
             not for production monitoring.
 
@@ -417,10 +443,12 @@ class NamespaceAccessPolicy(ABC):
         """Get current policy statistics.
 
         Returns:
+        -------
             Dictionary containing policy performance statistics
             including evaluation counts and cache hit information.
 
         Example:
+        -------
             >>> policy = StandardNamespacePolicy(registry)
             >>> stats = policy.stats()
             >>> print(f"Cache hits: {stats['cache_hits']}")
@@ -439,14 +467,17 @@ class NamespaceAccessPolicy(ABC):
         """Perform the actual policy evaluation.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Policy decision with access status, reasoning, and metadata
 
         Note:
+        ----
             This method must be implemented by subclasses to provide
             the actual policy logic. The base class handles caching,
             telemetry, and statistics.
@@ -457,11 +488,13 @@ class NamespaceAccessPolicy(ABC):
         """Get metrics suitable for operational monitoring.
 
         Returns:
+        -------
             Dictionary containing operational metrics including
             policy name, evaluation counts, denial counts, and
             cache hit ratio.
 
         Example:
+        -------
             >>> policy = StandardNamespacePolicy(registry)
             >>> metrics = policy.operational_metrics()
             >>> print(f"Cache hit ratio: {metrics['cache_hit_ratio']:.2f}")
@@ -484,6 +517,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
     permissions.
 
     Attributes:
+    ----------
         Inherits all attributes from NamespaceAccessPolicy
 
     Invariants:
@@ -496,6 +530,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
         - Registry lookups are read-only operations
 
     Example:
+    -------
         >>> registry = EmbeddingNamespaceRegistry()
         >>> policy = StandardNamespacePolicy(registry)
         >>> decision = policy.evaluate(
@@ -511,14 +546,17 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
         """Evaluate access using the namespace registry configuration.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Policy decision with access status and detailed reasoning
 
         Note:
+        ----
             This method performs the following checks in order:
             1. Namespace existence in registry
             2. Namespace enabled status
@@ -526,6 +564,7 @@ class StandardNamespacePolicy(NamespaceAccessPolicy):
             4. Scope permissions
 
         Example:
+        -------
             >>> policy = StandardNamespacePolicy(registry)
             >>> decision = policy._evaluate(
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
@@ -579,6 +618,7 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
     what would be denied without actually blocking requests.
 
     Attributes:
+    ----------
         _delegate: The underlying policy to evaluate
         Inherits all other attributes from NamespaceAccessPolicy
 
@@ -592,6 +632,7 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         - Delegate policy evaluation is thread-safe
 
     Example:
+    -------
         >>> base_policy = StandardNamespacePolicy(registry)
         >>> dry_run_policy = DryRunNamespacePolicy(base_policy)
         >>> decision = dry_run_policy.evaluate(
@@ -610,10 +651,12 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         """Initialize dry-run policy with delegate.
 
         Args:
+        ----
             delegate: The underlying policy to evaluate
             telemetry: Optional telemetry system for monitoring
 
         Note:
+        ----
             The dry-run policy inherits the delegate's registry and
             settings, but can override the telemetry system.
 
@@ -631,21 +674,25 @@ class DryRunNamespacePolicy(NamespaceAccessPolicy):
         """Evaluate access using delegate policy but always grant access.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Policy decision that is always allowed, with metadata indicating
             if the underlying policy would have denied access
 
         Note:
+        ----
             This method evaluates the delegate policy but always returns
             allowed=True. If the delegate would deny access, the metadata
             includes "dry_run_denied": True to indicate this was a dry-run
             denial.
 
         Example:
+        -------
             >>> dry_run_policy = DryRunNamespacePolicy(base_policy)
             >>> decision = dry_run_policy._evaluate(
             ...     namespace="medical", tenant_id="tenant1", required_scope="read"
@@ -682,6 +729,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
     (namespace, tenant_id, scope) tuples to predefined decisions.
 
     Attributes:
+    ----------
         _decisions: Mapping of (namespace, tenant_id, scope) to decisions
         Inherits all other attributes from NamespaceAccessPolicy
 
@@ -695,6 +743,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         - Decision map operations are thread-safe
 
     Example:
+    -------
         >>> mock_policy = MockNamespacePolicy(registry)
         >>> mock_policy.register_decision(
         ...     namespace="test", tenant_id="t1", scope="read", allowed=True
@@ -714,10 +763,12 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         """Initialize mock policy with registry and optional decisions.
 
         Args:
+        ----
             registry: Namespace registry for configuration lookup
             decisions: Optional mapping of (namespace, tenant_id, scope) to decisions
 
         Note:
+        ----
             If no decisions are provided, an empty mapping is used.
             Decisions can be added later using register_decision.
 
@@ -737,6 +788,7 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         """Register a predefined decision for a specific namespace/tenant/scope.
 
         Args:
+        ----
             namespace: Namespace name
             tenant_id: Tenant ID
             scope: Required scope
@@ -744,11 +796,13 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
             reason: Optional reason for the decision
 
         Note:
+        ----
             This method creates a NamespaceAccessDecision and stores it
             in the decisions map. If the namespace exists in the registry,
             the config is included in the decision.
 
         Example:
+        -------
             >>> mock_policy = MockNamespacePolicy(registry)
             >>> mock_policy.register_decision(
             ...     namespace="test", tenant_id="t1", scope="read",
@@ -778,21 +832,26 @@ class MockNamespacePolicy(NamespaceAccessPolicy):
         """Evaluate access using predefined decisions.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Predefined policy decision for the given parameters
 
         Raises:
+        ------
             KeyError: If no decision is registered for the given parameters
 
         Note:
+        ----
             This method looks up the decision in the predefined decisions map.
             If no decision is found, it raises a KeyError.
 
         Example:
+        -------
             >>> mock_policy = MockNamespacePolicy(registry)
             >>> mock_policy.register_decision(
             ...     namespace="test", tenant_id="t1", scope="read", allowed=True
@@ -817,6 +876,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
     and returns a NamespaceAccessDecision.
 
     Attributes:
+    ----------
         _resolver: Custom callable for policy evaluation
         Inherits all other attributes from NamespaceAccessPolicy
 
@@ -830,6 +890,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         - Resolver callable must be thread-safe
 
     Example:
+    -------
         >>> def custom_resolver(namespace, tenant_id, scope):
         ...     return NamespaceAccessDecision(
         ...         namespace=namespace, tenant_id=tenant_id, scope=scope,
@@ -853,6 +914,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         """Initialize custom policy with registry and resolver.
 
         Args:
+        ----
             registry: Namespace registry for configuration lookup
             resolver: Callable that takes (namespace, tenant_id, scope) and
                 returns a NamespaceAccessDecision
@@ -860,6 +922,7 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
             settings: Optional policy configuration settings
 
         Note:
+        ----
             The resolver callable is responsible for implementing the
             custom access control logic.
 
@@ -873,20 +936,24 @@ class CustomNamespacePolicy(NamespaceAccessPolicy):
         """Evaluate access using custom resolver callable.
 
         Args:
+        ----
             namespace: Namespace name to evaluate access for
             tenant_id: Tenant requesting access
             required_scope: Required scope for the operation
 
         Returns:
+        -------
             Policy decision from the custom resolver, with config filled in
             if missing
 
         Note:
+        ----
             This method calls the custom resolver and then fills in the
             config information from the registry if it's missing from
             the resolver's decision.
 
         Example:
+        -------
             >>> def custom_resolver(namespace, tenant_id, scope):
             ...     return NamespaceAccessDecision(
             ...         namespace=namespace, tenant_id=tenant_id, scope=scope,
@@ -922,6 +989,7 @@ def build_policy_chain(
     """Build a composed namespace access policy.
 
     Args:
+    ----
         registry: Namespace registry for configuration lookup
         telemetry: Optional telemetry system for monitoring
         settings: Optional policy configuration settings
@@ -929,14 +997,17 @@ def build_policy_chain(
         extra_policies: Optional iterable of policy factory functions
 
     Returns:
+    -------
         Composed namespace access policy with optional wrappers
 
     Note:
+    ----
         This function builds a policy chain starting with StandardNamespacePolicy
         and optionally wrapping it with DryRunNamespacePolicy and any extra
         policies provided by the extra_policies parameter.
 
     Example:
+    -------
         >>> registry = EmbeddingNamespaceRegistry()
         >>> policy = build_policy_chain(
         ...     registry, dry_run=True, telemetry=telemetry

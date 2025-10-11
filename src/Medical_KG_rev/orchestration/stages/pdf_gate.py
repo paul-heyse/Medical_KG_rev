@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any
+import time
 
 import structlog
+
 from Medical_KG_rev.config.settings import get_settings
-from Medical_KG_rev.orchestration.stages.contracts import (
-    GateDecision,
-    GateStage,
-    PipelineState,
-    StageContext,
-)
+from Medical_KG_rev.orchestration.stages.contracts import HttpClient
 from Medical_KG_rev.orchestration.stages.plugin_manager import StagePluginContext
+
 
 logger = structlog.get_logger(__name__)
 

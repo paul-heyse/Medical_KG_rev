@@ -10,6 +10,7 @@ from ..segmentation import LayoutSegmenter, Segment
 from ..tokenization import TokenCounter
 
 
+
 class LayoutHeuristicChunker(ContextualChunker):
     name = "layout_heuristic"
     version = "v1"

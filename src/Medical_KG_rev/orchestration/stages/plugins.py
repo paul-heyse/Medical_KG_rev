@@ -10,30 +10,27 @@ serialisation of diagnostics, and ``prometheus_client`` for observability.
 
 from __future__ import annotations
 
-import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Literal
+import time
 
-import orjson
-import pluggy
 from attrs import define, evolve, field
+from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, ConfigDict, Field
 from structlog.stdlib import BoundLogger
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
-
+import orjson
+import pluggy
 import structlog
+
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
+from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
+from Medical_KG_rev.storage.base import CacheBackend, ObjectStore
+from Medical_KG_rev.storage.clients import DocumentStorageClient, PdfStorageClient
 
-# StageDefinition import moved to avoid circular imports
-from prometheus_client import Counter, Histogram
-
-if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
-    from Medical_KG_rev.storage.base import CacheBackend, ObjectStore
-    from Medical_KG_rev.storage.clients import DocumentStorageClient, PdfStorageClient
 
 __all__ = [
     "STAGE_PLUGIN_NAMESPACE",
@@ -78,7 +75,7 @@ class StagePluginRegistration:
     """Registration record returned by plugin implementations."""
 
     metadata: StagePluginMetadata
-    builder: Callable[["StageDefinition", StagePluginResources], object]
+    builder: Callable[[StageDefinition, StagePluginResources], object]
     provider: StagePlugin | None = None
 
     def bind(self, provider: StagePlugin) -> StagePluginRegistration:
@@ -192,7 +189,7 @@ class StagePlugin(ABC):
         self,
         *,
         stage_type: str,
-        builder: Callable[["StageDefinition", StagePluginResources], object],
+        builder: Callable[[StageDefinition, StagePluginResources], object],
         capabilities: Sequence[str] | None = None,
         dependencies: Sequence[str] | None = None,
     ) -> StagePluginRegistration:
@@ -379,7 +376,7 @@ class StagePluginManager:
             report[name] = health
         return report
 
-    def build_stage(self, definition: "StageDefinition") -> object:
+    def build_stage(self, definition: StageDefinition) -> object:
         """Instantiate a stage for the supplied definition."""
         stage_type = definition.stage_type
         registrations = self._registry.get(stage_type, [])
@@ -445,8 +442,8 @@ class StagePluginManager:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.1, max=2.0))
     def _execute_with_retry(
         self,
-        builder: Callable[["StageDefinition", StagePluginResources], object],
-        definition: "StageDefinition",
+        builder: Callable[[StageDefinition, StagePluginResources], object],
+        definition: StageDefinition,
     ) -> object:
         return builder(definition, self.resources)
 

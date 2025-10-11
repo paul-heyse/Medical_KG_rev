@@ -4,11 +4,12 @@ This module implements specialized analyzers and tokenizers for BM25
 indexing with medical terminology preservation and MeSH/UMLS support.
 """
 
+from typing import Any
 import logging
 import re
-from typing import Any
 
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class BM25Analyzer:
         """Initialize BM25 analyzer.
 
         Args:
+        ----
             config: Analyzer configuration
 
         """
@@ -173,9 +175,11 @@ class BM25Analyzer:
         """Preserve medical terms in text.
 
         Args:
+        ----
             text: Input text
 
         Returns:
+        -------
             Tuple of (processed_text, placeholders)
 
         """
@@ -195,10 +199,12 @@ class BM25Analyzer:
         """Restore medical terms in text.
 
         Args:
+        ----
             text: Processed text with placeholders
             placeholders: Dictionary mapping placeholders to original terms
 
         Returns:
+        -------
             Text with restored medical terms
 
         """
@@ -211,9 +217,11 @@ class BM25Analyzer:
         """Apply MeSH and UMLS synonyms.
 
         Args:
+        ----
             tokens: List of tokens
 
         Returns:
+        -------
             List of tokens with synonyms
 
         """
@@ -243,9 +251,11 @@ class BM25Analyzer:
         """Apply stemming to tokens.
 
         Args:
+        ----
             tokens: List of tokens
 
         Returns:
+        -------
             List of stemmed tokens
 
         """
@@ -273,9 +283,11 @@ class BM25Analyzer:
         """Analyze text and return tokens.
 
         Args:
+        ----
             text: Input text
 
         Returns:
+        -------
             List of analyzed tokens
 
         """
@@ -336,7 +348,8 @@ class BM25Analyzer:
     def get_analyzer_stats(self) -> dict[str, Any]:
         """Get analyzer statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with analyzer statistics
 
         """
@@ -366,6 +379,7 @@ class BM25Tokenizer:
         """Initialize BM25 tokenizer.
 
         Args:
+        ----
             config: Tokenizer configuration
 
         """
@@ -406,9 +420,11 @@ class BM25Tokenizer:
         """Preserve units in text.
 
         Args:
+        ----
             text: Input text
 
         Returns:
+        -------
             Tuple of (processed_text, placeholders)
 
         """
@@ -428,10 +444,12 @@ class BM25Tokenizer:
         """Restore units in text.
 
         Args:
+        ----
             text: Processed text with placeholders
             placeholders: Dictionary mapping placeholders to original units
 
         Returns:
+        -------
             Text with restored units
 
         """
@@ -444,9 +462,11 @@ class BM25Tokenizer:
         """Tokenize text.
 
         Args:
+        ----
             text: Input text
 
         Returns:
+        -------
             List of tokens
 
         """
@@ -493,7 +513,8 @@ class BM25Tokenizer:
     def get_tokenizer_stats(self) -> dict[str, Any]:
         """Get tokenizer statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with tokenizer statistics
 
         """
@@ -515,7 +536,8 @@ class BM25AnalyzerFactory:
     def create_standard_analyzer() -> BM25Analyzer:
         """Create standard analyzer.
 
-        Returns:
+        Returns
+        -------
             Standard BM25 analyzer
 
         """
@@ -534,7 +556,8 @@ class BM25AnalyzerFactory:
     def create_medical_analyzer() -> BM25Analyzer:
         """Create medical analyzer.
 
-        Returns:
+        Returns
+        -------
             Medical BM25 analyzer
 
         """
@@ -553,7 +576,8 @@ class BM25AnalyzerFactory:
     def create_title_analyzer() -> BM25Analyzer:
         """Create title analyzer.
 
-        Returns:
+        Returns
+        -------
             Title BM25 analyzer
 
         """
@@ -572,7 +596,8 @@ class BM25AnalyzerFactory:
     def create_standard_tokenizer() -> BM25Tokenizer:
         """Create standard tokenizer.
 
-        Returns:
+        Returns
+        -------
             Standard BM25 tokenizer
 
         """
@@ -590,7 +615,8 @@ class BM25AnalyzerFactory:
     def create_medical_tokenizer() -> BM25Tokenizer:
         """Create medical tokenizer.
 
-        Returns:
+        Returns
+        -------
             Medical BM25 tokenizer
 
         """

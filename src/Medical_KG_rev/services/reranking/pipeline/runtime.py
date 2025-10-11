@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import TypeVar
 
 import structlog
+
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.observability.metrics import record_pipeline_stage
 
@@ -17,6 +18,7 @@ from ..models import QueryDocumentPair, RerankingResponse, RerankResult, ScoredD
 from ..ports import RerankerPort
 from .batch_processor import BatchProcessor
 from .cache import RerankCacheManager
+
 
 logger = structlog.get_logger(__name__)
 

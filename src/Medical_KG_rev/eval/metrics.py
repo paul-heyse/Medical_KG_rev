@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from math import log2
 
 
+
 def ndcg_at_k(relevances: Sequence[float], k: int) -> float:
     gains = [rel for rel in relevances[:k]]
     if not gains:

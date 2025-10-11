@@ -8,7 +8,7 @@ from ..provenance import BlockContext
 from ..segmentation import Segment
 from ..tokenization import TokenCounter
 
-_TAXONOMY = load_json_resource("clinical_sections.json")
+_TAXONOMY = load_json_resource("Medical_KG_rev.chunking.data", "clinical_sections.json")
 
 
 def _build_role_keywords() -> dict[str, set[str]]:

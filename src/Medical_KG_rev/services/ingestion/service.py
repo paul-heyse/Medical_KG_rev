@@ -8,23 +8,13 @@ from dataclasses import dataclass
 from time import perf_counter
 
 import structlog
+
 from Medical_KG_rev.chunking import Chunk, ChunkingOptions, ChunkingService
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from Medical_KG_rev.chunking.exceptions import HttpClient
 from Medical_KG_rev.models.ir import Document
-from Medical_KG_rev.observability.metrics import (
-    observe_chunking_latency,
-    record_chunk_size,
-    record_chunking_document,
-    record_chunking_failure,
-)
+from Medical_KG_rev.observability.metrics import HttpClient
 from Medical_KG_rev.services.chunking.events import ChunkingEventEmitter
+
 
 logger = structlog.get_logger(__name__)
 

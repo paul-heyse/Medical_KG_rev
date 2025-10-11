@@ -9,7 +9,6 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -26,6 +25,7 @@ try:
 except ImportError:
     # Fallback for development
     import sys
+
     sys.path.append(str(Path(__file__).parent.parent))
     from src.Medical_KG_rev.services.optimization.batch_size_optimizer import (
         BatchSizeConfig,
@@ -51,7 +51,9 @@ def status() -> None:
     table.add_row("State", status_info["state"])
     table.add_row("Metrics Collected", str(status_info["metrics_count"]))
     table.add_row("Optimizations Performed", str(status_info["optimization_count"]))
-    table.add_row("GPU Monitoring", "Available" if status_info["gpu_available"] else "Not Available")
+    table.add_row(
+        "GPU Monitoring", "Available" if status_info["gpu_available"] else "Not Available"
+    )
 
     if status_info["latest_result"]:
         latest = status_info["latest_result"]
@@ -69,7 +71,7 @@ def optimize(
     initial_batch_size: int = typer.Option(4, help="Initial batch size"),
     memory_threshold: float = typer.Option(0.85, help="GPU memory usage threshold"),
     latency_threshold: float = typer.Option(30.0, help="Latency threshold in seconds"),
-    optimization_interval: int = typer.Option(300, help="Optimization interval in seconds")
+    optimization_interval: int = typer.Option(300, help="Optimization interval in seconds"),
 ) -> None:
     """Run batch size optimization."""
     config = BatchSizeConfig(
@@ -78,16 +80,14 @@ def optimize(
         initial_batch_size=initial_batch_size,
         memory_threshold=memory_threshold,
         latency_threshold=latency_threshold,
-        optimization_interval=optimization_interval
+        optimization_interval=optimization_interval,
     )
 
     optimizer = Gemma3BatchSizeOptimizer(config)
 
     async def _optimize():
         with Progress(
-            SpinnerColumn(),
-            TextColumn("Optimizing batch size..."),
-            console=console
+            SpinnerColumn(), TextColumn("Optimizing batch size..."), console=console
         ) as progress:
             task = progress.add_task("Optimizing", total=None)
 
@@ -99,7 +99,7 @@ def optimize(
                 await optimizer.collect_metrics(
                     batch_size=config.initial_batch_size + i % 4,
                     processing_time=10.0 + i * 0.5,
-                    success=True
+                    success=True,
                 )
 
                 progress.advance(task)
@@ -110,7 +110,7 @@ def optimize(
             progress.update(task, description="Optimization complete")
 
             # Display results
-            console.print(f"\n[bold green]Optimization Complete![/bold green]")
+            console.print("\n[bold green]Optimization Complete![/bold green]")
             console.print(f"Optimal Batch Size: [bold]{result.optimal_batch_size}[/bold]")
             console.print(f"Confidence: [bold]{result.confidence:.2f}[/bold]")
             console.print(f"Recommendation: [bold]{result.recommendation}[/bold]")
@@ -133,17 +133,11 @@ def recommend() -> None:
     table.add_row(
         "Conservative",
         str(recommendations["conservative"]),
-        "Prioritizes stability and low memory usage"
+        "Prioritizes stability and low memory usage",
     )
+    table.add_row("Balanced", str(recommendations["balanced"]), "Current optimized batch size")
     table.add_row(
-        "Balanced",
-        str(recommendations["balanced"]),
-        "Current optimized batch size"
-    )
-    table.add_row(
-        "Aggressive",
-        str(recommendations["aggressive"]),
-        "Maximizes throughput if resources allow"
+        "Aggressive", str(recommendations["aggressive"]), "Maximizes throughput if resources allow"
     )
 
     console.print(table)
@@ -160,7 +154,7 @@ def reset() -> None:
 @app.command()
 def simulate(
     duration: int = typer.Option(60, help="Simulation duration in seconds"),
-    batch_sizes: str = typer.Option("1,2,4,8", help="Comma-separated batch sizes to test")
+    batch_sizes: str = typer.Option("1,2,4,8", help="Comma-separated batch sizes to test"),
 ) -> None:
     """Simulate batch size optimization with synthetic data."""
     batch_size_list = [int(x.strip()) for x in batch_sizes.split(",")]
@@ -173,11 +167,7 @@ def simulate(
         start_time = time.time()
         request_count = 0
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("Simulating..."),
-            console=console
-        ) as progress:
+        with Progress(SpinnerColumn(), TextColumn("Simulating..."), console=console) as progress:
             task = progress.add_task("Simulating", total=duration)
 
             while time.time() - start_time < duration:
@@ -192,9 +182,7 @@ def simulate(
 
                 # Collect metrics
                 await optimizer.collect_metrics(
-                    batch_size=batch_size,
-                    processing_time=processing_time,
-                    success=success
+                    batch_size=batch_size, processing_time=processing_time, success=success
                 )
 
                 request_count += 1
@@ -209,7 +197,7 @@ def simulate(
             progress.update(task, description="Simulation complete")
 
             # Display results
-            console.print(f"\n[bold green]Simulation Complete![/bold green]")
+            console.print("\n[bold green]Simulation Complete![/bold green]")
             console.print(f"Requests processed: [bold]{request_count}[/bold]")
             console.print(f"Optimal Batch Size: [bold]{result.optimal_batch_size}[/bold]")
             console.print(f"Confidence: [bold]{result.confidence:.2f}[/bold]")
@@ -220,7 +208,7 @@ def simulate(
 
 @app.command()
 def export(
-    output_file: str = typer.Option("batch_optimization_data.json", help="Output file path")
+    output_file: str = typer.Option("batch_optimization_data.json", help="Output file path"),
 ) -> None:
     """Export optimization data to JSON file."""
     optimizer = get_batch_size_optimizer()
@@ -236,7 +224,7 @@ def export(
                 "gpu_memory_usage": m.gpu_memory_usage,
                 "gpu_utilization": m.gpu_utilization,
                 "timestamp": m.timestamp,
-                "success_rate": m.success_rate
+                "success_rate": m.success_rate,
             }
             for m in optimizer.metrics_history
         ],
@@ -246,11 +234,11 @@ def export(
                 "confidence": r.confidence,
                 "recommendation": r.recommendation,
                 "state": r.state.value,
-                "timestamp": r.metrics.timestamp
+                "timestamp": r.metrics.timestamp,
             }
             for r in optimizer.optimization_history
         ],
-        "export_timestamp": time.time()
+        "export_timestamp": time.time(),
     }
 
     with open(output_file, "w") as f:
@@ -260,15 +248,13 @@ def export(
 
 
 @app.command()
-def import_data(
-    input_file: str = typer.Argument(..., help="Input file path")
-) -> None:
+def import_data(input_file: str = typer.Argument(..., help="Input file path")) -> None:
     """Import optimization data from JSON file."""
     if not Path(input_file).exists():
         console.print(f"[bold red]File not found: {input_file}[/bold red]")
         raise typer.Exit(1)
 
-    with open(input_file, "r") as f:
+    with open(input_file) as f:
         data = json.load(f)
 
     # Create new optimizer with imported data
@@ -277,7 +263,10 @@ def import_data(
 
     # Import metrics history
     for metric_data in data.get("metrics_history", []):
-        from src.Medical_KG_rev.services.optimization.batch_size_optimizer import PerformanceMetrics
+        from src.Medical_KG_rev.services.optimization.batch_size_optimizer import (
+            PerformanceMetrics,
+        )
+
         metric = PerformanceMetrics(**metric_data)
         optimizer.metrics_history.append(metric)
 

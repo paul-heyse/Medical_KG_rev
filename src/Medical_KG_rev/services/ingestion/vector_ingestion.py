@@ -11,6 +11,7 @@ from ..vector_store.models import UpsertResult, VectorRecord
 from ..vector_store.service import VectorStoreService
 
 
+
 @dataclass(slots=True)
 class VectorIngestionService:
     """Coordinates ingestion workers writing into vector store namespaces."""

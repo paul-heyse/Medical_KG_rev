@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
+import hashlib
 
 import numpy as np
-
 import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
@@ -15,6 +14,7 @@ from ..utils.batching import BatchProgress, iter_with_progress
 from ..utils.normalization import normalize_batch
 from ..utils.prefixes import apply_prefixes
 from ..utils.records import RecordBuilder
+
 
 _MODEL_DEFAULTS: dict[str, dict[str, object]] = {
     "BAAI/bge-small-en": {"dim": 384, "pooling": "mean"},

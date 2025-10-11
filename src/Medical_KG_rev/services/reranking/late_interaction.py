@@ -15,6 +15,7 @@ from .errors import RerankingError
 from .models import QueryDocumentPair, RerankingResponse, RerankResult
 from .utils import FeatureView, clamp
 
+
 logger = structlog.get_logger(__name__)
 
 

@@ -9,6 +9,7 @@ from .models import QueryDocumentPair
 from .utils import FeatureView, clamp, mean_or_default
 
 
+
 def _lexical_overlap(query: str, document: str) -> float:
     query_terms = {term for term in query.lower().split() if term}
     doc_terms = {term for term in document.lower().split() if term}

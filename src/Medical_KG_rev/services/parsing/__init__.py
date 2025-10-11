@@ -6,6 +6,7 @@ from .docling import DoclingParser, DoclingVLMOutputParser
 from .docling_vlm_service import DoclingVLMResult, DoclingVLMService
 from .unstructured_parser import UnstructuredParser
 
+
 __all__ = [
     "DoclingParser",
     "DoclingVLMOutputParser",

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-"""LlamaIndex embedding adapter built atop the delegate helper."""
-
 from dataclasses import dataclass
 
 from ..registry import EmbedderRegistry
 from .delegate import DelegateCall, DelegatedFrameworkAdapter
+
 
 
 @dataclass(slots=True)

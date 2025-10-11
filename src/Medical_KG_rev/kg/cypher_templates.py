@@ -18,6 +18,7 @@ Performance:
     Parameterized queries enable query plan caching.
 
 Example:
+-------
     >>> templates = CypherTemplates(GRAPH_SCHEMA)
     >>> query, params = templates.merge_node("Document", {"document_id": "doc1"})
     >>> print(query)
@@ -27,13 +28,11 @@ Example:
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from .schema import GRAPH_SCHEMA, NodeSchema
+
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -59,6 +58,7 @@ class CypherTemplates:
     and schema validation.
 
     Attributes:
+    ----------
         node_schema: Mapping of node labels to their schema definitions
 
     Invariants:
@@ -70,6 +70,7 @@ class CypherTemplates:
         - Thread-safe: Immutable dataclass with stateless methods
 
     Example:
+    -------
         >>> templates = CypherTemplates(GRAPH_SCHEMA)
         >>> query, params = templates.merge_node("Document", {"document_id": "doc1"})
         >>> print(query)
@@ -88,21 +89,26 @@ class CypherTemplates:
         exist or update it if it does, based on the primary key property.
 
         Args:
+        ----
             label: Node label (e.g., "Document", "Entity")
             properties: Node properties including the primary key
 
         Returns:
+        -------
             Tuple of (query_string, parameters_dict)
 
         Raises:
+        ------
             ValueError: If the primary key property is missing from properties
             ValueError: If the label is not defined in the schema
 
         Note:
+        ----
             The primary key property must be present in properties.
             MERGE ensures idempotency by matching on the primary key.
 
         Example:
+        -------
             >>> query, params = templates.merge_node(
             ...     "Document",
             ...     {"document_id": "doc1", "title": "Test"}
@@ -137,6 +143,7 @@ class CypherTemplates:
         between two nodes if it doesn't exist, or update it if it does.
 
         Args:
+        ----
             start_label: Label of the start node
             end_label: Label of the end node
             rel_type: Relationship type (e.g., "MENTIONS", "SUPPORTS")
@@ -145,16 +152,20 @@ class CypherTemplates:
             properties: Optional relationship properties
 
         Returns:
+        -------
             Tuple of (query_string, parameters_dict)
 
         Raises:
+        ------
             ValueError: If either label is not defined in the schema
 
         Note:
+        ----
             Both nodes must exist in the database before creating the relationship.
             MERGE ensures idempotency by matching on both nodes and relationship type.
 
         Example:
+        -------
             >>> query, params = templates.link_nodes(
             ...     "Document", "Entity", "MENTIONS",
             ...     "doc1", "entity1", {"sentence_index": 5}
@@ -183,15 +194,19 @@ class CypherTemplates:
         """Get the schema definition for a node label.
 
         Args:
+        ----
             label: Node label to look up
 
         Returns:
+        -------
             NodeSchema instance for the label
 
         Raises:
+        ------
             ValueError: If the label is not defined in the schema
 
         Note:
+        ----
             This is a private method used internally for schema validation.
 
         """
@@ -204,12 +219,15 @@ class CypherTemplates:
         """Format property assignments for SET clauses.
 
         Args:
+        ----
             properties: Mapping of property names to values
 
         Returns:
+        -------
             Comma-separated string of assignment expressions
 
         Note:
+        ----
             This is a private method used internally for query generation.
             Generates assignments in the form "n.key = $props.key".
 

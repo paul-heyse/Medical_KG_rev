@@ -11,11 +11,13 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from types import MappingProxyType
 from typing import Protocol, runtime_checkable
+
+from types import MappingProxyType
 
 from Medical_KG_rev.adapters.base import AdapterContext
 from Medical_KG_rev.models import Document
+
 
 
 @dataclass(frozen=True)

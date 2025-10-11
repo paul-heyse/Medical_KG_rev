@@ -8,11 +8,12 @@ This module provides medical terminology capabilities including:
 - Document terminology handling in processing pipeline
 """
 
-import logging
-import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+import logging
+import re
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class MedicalTerminologyProcessor:
         """Initialize the medical terminology processor.
 
         Args:
+        ----
             enable_synonym_expansion: Whether to enable synonym expansion
             enable_validation: Whether to enable terminology validation
 
@@ -282,10 +284,12 @@ class MedicalTerminologyProcessor:
         """Process text with medical terminology support.
 
         Args:
+        ----
             text: Input text to process
             terminology_type: Type of terminology processing to apply
 
         Returns:
+        -------
             TerminologyResult with processed text and metadata
 
         """
@@ -464,9 +468,11 @@ class MedicalTerminologyProcessor:
         original text for learned-sparse and dense encoders.
 
         Args:
+        ----
             text: Input text for BM25 processing
 
         Returns:
+        -------
             Text with expanded synonyms for BM25
 
         """
@@ -477,9 +483,11 @@ class MedicalTerminologyProcessor:
         """Validate medical terminology processing result.
 
         Args:
+        ----
             result: TerminologyResult to validate
 
         Returns:
+        -------
             True if validation passes, False otherwise
 
         """
@@ -525,12 +533,14 @@ def process_medical_terminology(
     """Convenience function for medical terminology processing.
 
     Args:
+    ----
         text: Text to process
         terminology_type: Type of processing
         enable_synonym_expansion: Whether to enable synonym expansion
         enable_validation: Whether to enable validation
 
     Returns:
+    -------
         TerminologyResult
 
     """

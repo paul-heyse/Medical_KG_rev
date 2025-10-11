@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
-if TYPE_CHECKING:  # pragma: no cover - avoid circular import at runtime
-    from .port import Chunk
-else:
-    Chunk = Any
+from .port import Chunk
 
 
 class ChunkValidationError(ValueError):
@@ -25,7 +22,12 @@ class ChunkValidationResult:
     reason: str | None = None
 
 
-_REQUIRED_METADATA = {"chunking_profile", "source_system", "chunker_version", "created_at"}
+_REQUIRED_METADATA = {
+    "chunking_profile",
+    "source_system",
+    "chunker_version",
+    "created_at",
+}
 
 
 class ChunkModel(BaseModel):
@@ -61,7 +63,7 @@ def validate_chunk(chunk: Chunk) -> ChunkValidationResult:
             valid=False,
             reason=f"missing metadata: {', '.join(sorted(missing))}",
         )
-    return ChunkValidationResult(chunk_id=chunk.chunk_id, valid=True)
+    return ChunkValidationResult(chunk_id=model.chunk_id, valid=True)
 
 
 def ensure_valid_chunks(chunks: Sequence[Chunk]) -> None:

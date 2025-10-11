@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from datetime import time as time_of_day
+from datetime import timedelta
 from pathlib import Path
 from threading import Event, Thread
 from typing import Any
+import json
 
 from .ground_truth import GroundTruthManager, GroundTruthRecord
 from .metrics import evaluate_query
+
 
 Evaluator = Callable[[str, Mapping[str, Any]], Sequence[str]]
 

@@ -6,17 +6,11 @@ focuses on a single business capability (chunking, embedding, etc.)
 while sharing lifecycle and resilience helpers.
 """
 
-from .base import (
-    BaseCoordinator,
-    CoordinatorConfig,
-    CoordinatorError,
-    CoordinatorMetrics,
-    CoordinatorRequest,
-    CoordinatorResult,
-)
+from .base import HttpClient
 from .chunking import ChunkingCoordinator, ChunkingRequest, ChunkingResult
 from .embedding import EmbeddingCoordinator, EmbeddingRequest, EmbeddingResult
 from .job_lifecycle import JobLifecycleManager
+
 
 __all__ = [
     "BaseCoordinator",

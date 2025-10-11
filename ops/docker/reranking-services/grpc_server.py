@@ -11,15 +11,20 @@ import grpc
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_health.v1.health_pb2 import HealthCheckResponse
 
-# Add the app directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from proto import reranking_pb2_grpc
-from services.reranking.grpc_service import RerankingServiceServicer
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).parent
+
+
+def _load_reranking_components():
+    """Load reranking service modules after configuring sys.path."""
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from proto import reranking_pb2_grpc  # type: ignore import-not-found
+    from services.reranking.grpc_service import RerankingServiceServicer  # type: ignore import-not-found
+
+    return reranking_pb2_grpc, RerankingServiceServicer
 
 
 class HealthServicer(health.HealthServicer):
@@ -28,7 +33,7 @@ class HealthServicer(health.HealthServicer):
     def __init__(self):
         self._status_map = {}
 
-    def Check(self, request, context):
+    def Check(self, request, context):  # noqa: N802  # gRPC method signature defined by protocol
         """Check service health."""
         service = request.service
         status = self._status_map.get(service, HealthCheckResponse.UNKNOWN)
@@ -41,6 +46,8 @@ class HealthServicer(health.HealthServicer):
 
 async def serve():
     """Start the gRPC server."""
+    reranking_pb2_grpc, RerankingServiceServicer = _load_reranking_components()
+
     # Create gRPC server
     server = grpc.aio.server()
 

@@ -5,16 +5,17 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
-
 import structlog
 
 from .serialization import dumps_orjson, encode_base64
+
 
 logger = structlog.get_logger(__name__)
 
 
 class SupportsMetadataUpdate(Protocol):
-    def update_metadata(self, job_id: str, payload: dict[str, Any]) -> None: ...
+    def update_metadata(self, job_id: str, payload: dict[str, Any]) -> None:
+        ...
 
 
 class StatePersistenceError(RuntimeError):

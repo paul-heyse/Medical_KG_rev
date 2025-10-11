@@ -6,6 +6,7 @@ from collections.abc import Callable, Generator
 from typing import Any
 
 
+
 class PaginationMixin:
     """Mixin providing pagination utilities for adapters."""
 

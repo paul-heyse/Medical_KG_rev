@@ -1,260 +1,167 @@
-"""Docling-based chunker leveraging Docling's built-in chunking capabilities."""
+"""Docling-based chunking strategies."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
-from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMResult
+from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
-from ..base import ContextualChunker
-from ..provenance import BlockContext
-from ..segmentation import Segment
-from ..tokenization import TokenCounter
+from ..assembly import ChunkAssembler
+from ..exceptions import ChunkerConfigurationError
+from ..models import Chunk, Granularity
+from ..ports import BaseChunker
+from ..provenance import ProvenanceNormalizer
+from ..tokenization import TokenCounter, default_token_counter
 
 
-class DoclingChunker(ContextualChunker):
-    """Chunker that uses Docling's output without requiring torch in main gateway.
-
-    Docling dependency (docling[vlm]>=2.0.0) is already present and runs in
-    its own GPU-enabled container. This class consumes Docling's output.
-    """
-
-    name = "docling"
-    version = "v1"
-    segment_type = "docling"
+class DoclingChunker(BaseChunker):
+    """Chunker that uses Docling VLM for document processing."""
 
     def __init__(
         self,
         *,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
         token_counter: TokenCounter | None = None,
-        min_chunk_size: int = 64,
-        max_chunk_size: int = 2048,
-        overlap_ratio: float = 0.1,
     ) -> None:
-        super().__init__(token_counter=token_counter)
-        self.min_chunk_size = min_chunk_size
-        self.max_chunk_size = max_chunk_size
-        self.overlap_ratio = overlap_ratio
+        """Initialize the Docling chunker."""
+        super().__init__()
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.counter = token_counter or default_token_counter()
+        self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
 
-    def segment_contexts(self, contexts: Sequence[BlockContext]) -> Iterable[Segment]:
-        """Segment contexts using Docling's semantic understanding."""
-        if not contexts:
-            return []
-
-        segments: list[Segment] = []
-        current_segment: list[BlockContext] = []
-        current_tokens = 0
-
-        for context in contexts:
-            context_tokens = context.token_count
-
-            # Check if adding this context would exceed max size
-            if current_tokens + context_tokens > self.max_chunk_size and current_segment:
-                # Create segment from current contexts
-                if current_tokens >= self.min_chunk_size:
-                    segments.append(Segment(contexts=list(current_segment)))
-
-                # Start new segment with overlap
-                overlap_contexts = self._get_overlap_contexts(current_segment)
-                current_segment = list(overlap_contexts)
-                current_tokens = sum(ctx.token_count for ctx in current_segment)
-
-            current_segment.append(context)
-            current_tokens += context_tokens
-
-        # Add final segment if it meets minimum size
-        if current_segment and current_tokens >= self.min_chunk_size:
-            segments.append(Segment(contexts=list(current_segment)))
-
-        return segments
-
-    def _get_overlap_contexts(self, contexts: list[BlockContext]) -> list[BlockContext]:
-        """Get overlap contexts for smooth transitions between chunks."""
-        if not contexts:
-            return []
-
-        overlap_tokens = int(self.max_chunk_size * self.overlap_ratio)
-        overlap_contexts: list[BlockContext] = []
-        current_tokens = 0
-
-        # Add contexts from the end until we reach overlap size
-        for context in reversed(contexts):
-            if current_tokens + context.token_count > overlap_tokens:
-                break
-            overlap_contexts.insert(0, context)
-            current_tokens += context.token_count
-
-        return overlap_contexts
-
-    def explain(self) -> dict[str, object]:
-        return {
-            "min_chunk_size": self.min_chunk_size,
-            "max_chunk_size": self.max_chunk_size,
-            "overlap_ratio": self.overlap_ratio,
-        }
-
-
-class DoclingVLMChunker(ContextualChunker):
-    """Chunker that directly processes DoclingVLMResult without torch dependencies."""
-
-    name = "docling_vlm"
-    version = "v1"
-    segment_type = "docling_vlm"
-
-    def __init__(
+    def chunk(
         self,
-        *,
-        token_counter: TokenCounter | None = None,
-        preserve_structure: bool = True,
-        include_tables: bool = True,
-        include_figures: bool = True,
-    ) -> None:
-        super().__init__(token_counter=token_counter)
-        self.preserve_structure = preserve_structure
-        self.include_tables = include_tables
-        self.include_figures = include_figures
-
-    def chunk_from_docling_result(
-        self,
-        result: DoclingVLMResult,
+        document: Document,
         *,
         tenant_id: str,
-    ) -> list:
-        """Chunk a DoclingVLMResult directly without requiring torch."""
-        from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+        granularity: Granularity | None = None,
+        blocks: Iterable | None = None,
+    ) -> list[Chunk]:
+        """Chunk a document using Docling VLM processing."""
+        try:
+            from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMService
+        except ImportError as exc:
+            raise ChunkerConfigurationError("Docling VLM service not available") from exc
 
-
-        # Create document from Docling result
-        blocks: list[Block] = []
-
-        # Add text blocks
-        if result.text:
-            paragraphs = [p.strip() for p in result.text.split("\n\n") if p.strip()]
-            for idx, paragraph in enumerate(paragraphs):
-                blocks.append(
-                    Block(
-                        id=f"{result.document_id}-text-{idx}",
-                        type=BlockType.PARAGRAPH,
-                        text=paragraph,
-                        metadata={"source": "docling_vlm", "paragraph_index": idx},
-                    )
-                )
-
-        # Add table blocks if requested
-        if self.include_tables and result.tables:
-            for idx, table_data in enumerate(result.tables):
-                table_text = self._format_table(table_data)
-                blocks.append(
-                    Block(
-                        id=f"{result.document_id}-table-{idx}",
-                        type=BlockType.TABLE,
-                        text=table_text,
-                        metadata={"source": "docling_vlm", "table_index": idx},
-                    )
-                )
-
-        # Add figure blocks if requested
-        if self.include_figures and result.figures:
-            for idx, figure_data in enumerate(result.figures):
-                caption = figure_data.get("caption", "")
-                blocks.append(
-                    Block(
-                        id=f"{result.document_id}-figure-{idx}",
-                        type=BlockType.FIGURE,
-                        text=caption,
-                        metadata={"source": "docling_vlm", "figure_index": idx},
-                    )
-                )
-
-        # Create document
-        section = Section(
-            id=f"{result.document_id}-section-0",
-            title=result.metadata.get("title"),
-            blocks=blocks,
-        )
-
-        document = Document(
-            id=result.document_id,
-            source="docling_vlm",
-            title=result.metadata.get("title"),
-            sections=[section],
-            metadata=result.metadata,
-        )
-
-        # Use base chunking logic
-        contexts = self.prepare_contexts(document)
-        return self.chunk_with_contexts(
-            document,
-            contexts,
-            tenant_id=tenant_id,
-            granularity="paragraph",
-        )
-
-    def _format_table(self, table_data: dict) -> str:
-        """Format table data as markdown text."""
-        headers = table_data.get("headers", [])
-        cells = table_data.get("cells", [])
-
-        if not cells:
-            return ""
-
-        # Create markdown table
-        lines = []
-
-        # Add headers if available
-        if headers:
-            lines.append("| " + " | ".join(str(h) for h in headers) + " |")
-            lines.append("| " + " | ".join("---" for _ in headers) + " |")
-
-        # Add rows
-        max_row = max(cell.get("row", 0) for cell in cells) if cells else 0
-        for row_idx in range(max_row + 1):
-            row_cells = [cell for cell in cells if cell.get("row") == row_idx]
-            if row_cells:
-                row_text = []
-                for col_idx in range(
-                    len(headers)
-                    if headers
-                    else max(cell.get("column", 0) for cell in row_cells) + 1
-                ):
-                    cell = next((c for c in row_cells if c.get("column") == col_idx), None)
-                    cell_text = cell.get("text", "") if cell else ""
-                    row_text.append(cell_text)
-                lines.append("| " + " | ".join(row_text) + " |")
-
-        return "\n".join(lines)
-
-    def segment_contexts(self, contexts: Sequence[BlockContext]) -> Iterable[Segment]:
-        """Segment contexts preserving Docling's structure."""
+        # Extract text content from document
+        contexts = [ctx for ctx in self.normalizer.iter_block_contexts(document) if ctx.text]
         if not contexts:
             return []
 
-        segments: list[Segment] = []
+        # Process with Docling VLM
+        docling_service = DoclingVLMService()
 
-        # Group contexts by type for better semantic coherence
-        current_segment: list[BlockContext] = []
-        current_type = None
+        # Create a temporary document for processing
+        temp_doc = Document(
+            id=document.id,
+            title=document.title or "Untitled",
+            content=[ctx.text for ctx in contexts],
+            metadata=document.metadata,
+        )
 
-        for context in contexts:
-            context_type = context.metadata.get("source", "unknown")
+        try:
+            result = docling_service.process_document(temp_doc)
 
-            # Start new segment if type changes and we have content
-            if current_type is not None and current_type != context_type and current_segment:
-                segments.append(Segment(contexts=list(current_segment)))
-                current_segment = []
+            # Create blocks from Docling result
+            blocks: list[Block] = []
 
-            current_segment.append(context)
-            current_type = context_type
+            # Add text blocks
+            if result.text:
+                paragraphs = [p.strip() for p in result.text.split("\n\n") if p.strip()]
+                for idx, paragraph in enumerate(paragraphs):
+                    blocks.append(
+                        Block(
+                            id=f"{result.document_id}-text-{idx}",
+                            type=BlockType.PARAGRAPH,
+                            text=paragraph,
+                            metadata={"source": "docling_vlm", "paragraph_index": idx},
+                        )
+                    )
 
-        # Add final segment
-        if current_segment:
-            segments.append(Segment(contexts=list(current_segment)))
+            # Add table blocks
+            if result.tables:
+                for idx, table in enumerate(result.tables):
+                    blocks.append(
+                        Block(
+                            id=f"{result.document_id}-table-{idx}",
+                            type=BlockType.TABLE,
+                            text=table.text,
+                            metadata={"source": "docling_vlm", "table_index": idx, "table": table.model_dump()},
+                        )
+                    )
 
-        return segments
+            # Add figure blocks
+            if result.figures:
+                for idx, figure in enumerate(result.figures):
+                    blocks.append(
+                        Block(
+                            id=f"{result.document_id}-figure-{idx}",
+                            type=BlockType.FIGURE,
+                            text=figure.caption or "",
+                            metadata={"source": "docling_vlm", "figure_index": idx, "figure": figure.model_dump()},
+                        )
+                    )
+
+            # Group blocks into chunks
+            chunks = []
+            current_chunk = []
+            current_size = 0
+
+            for block in blocks:
+                block_size = self.counter.count_tokens(block.text)
+                if current_size + block_size > self.chunk_size and current_chunk:
+                    chunks.append(current_chunk)
+                    current_chunk = [block]
+                    current_size = block_size
+                else:
+                    current_chunk.append(block)
+                    current_size += block_size
+
+            if current_chunk:
+                chunks.append(current_chunk)
+
+            # Create chunk objects
+            assembler = ChunkAssembler(
+                document,
+                tenant_id=tenant_id,
+                chunker_name="docling",
+                chunker_version="v1",
+                granularity=granularity or "paragraph",
+                token_counter=self.counter,
+            )
+
+            result_chunks = []
+            for chunk_blocks in chunks:
+                chunk_text = " ".join(block.text for block in chunk_blocks)
+                chunk_meta = {
+                    "segment_type": "docling",
+                    "block_count": len(chunk_blocks),
+                    "token_count": self.counter.count_tokens(chunk_text),
+                    "blocks": [block.model_dump() for block in chunk_blocks],
+                }
+
+                # Create a simple context for the chunk
+                from ..provenance import BlockContext
+                context = BlockContext(
+                    text=chunk_text,
+                    block_id=f"docling-chunk-{len(result_chunks)}",
+                    block_type="docling_chunk",
+                    metadata=chunk_meta,
+                )
+
+                result_chunks.append(assembler.build([context], metadata=chunk_meta))
+
+            return result_chunks
+
+        except Exception as exc:
+            raise ChunkerConfigurationError(f"Docling processing failed: {exc}") from exc
 
     def explain(self) -> dict[str, object]:
+        """Explain the chunking strategy."""
         return {
-            "preserve_structure": self.preserve_structure,
-            "include_tables": self.include_tables,
-            "include_figures": self.include_figures,
+            "strategy": "docling",
+            "chunk_size": self.chunk_size,
+            "chunk_overlap": self.chunk_overlap,
         }

@@ -390,7 +390,6 @@ Update imports and dependencies as needed for current architecture.
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
-
             task = progress.add_task("Creating archives...", total=4)
 
             # Create original code files
@@ -459,7 +458,7 @@ Update imports and dependencies as needed for current architecture.
 
 @app.command()
 def archive(
-    archive_dir: str = typer.Option("archive/torch-dependent-code", help="Archive directory path")
+    archive_dir: str = typer.Option("archive/torch-dependent-code", help="Archive directory path"),
 ):
     """Archive torch-dependent code."""
     archiver = TorchCodeArchiver(archive_dir)

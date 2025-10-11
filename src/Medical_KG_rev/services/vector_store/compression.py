@@ -11,6 +11,7 @@ import numpy as np
 from .models import CompressionPolicy
 
 
+
 class CompressionError(RuntimeError):
     """Raised when a compression policy cannot be satisfied."""
 

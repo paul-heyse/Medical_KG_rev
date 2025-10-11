@@ -10,6 +10,7 @@ from pydantic import Field, ValidationInfo, field_validator
 from ..ir import Document, IRBaseModel
 
 
+
 class XBRLContext(IRBaseModel):
     """Represents an XBRL context definition."""
 

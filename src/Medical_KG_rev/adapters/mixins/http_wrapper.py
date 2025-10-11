@@ -7,6 +7,7 @@ from typing import Any
 from Medical_KG_rev.utils.http_client import HttpClient
 
 
+
 class HTTPWrapperMixin:
     """Mixin providing common HTTP operations for adapters."""
 

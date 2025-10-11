@@ -333,10 +333,9 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Organize imports in Python files")
     parser.add_argument(
-        "path",
-        nargs="?",
-        default="src/Medical_KG_rev/",
-        help="Path to organize (default: src/Medical_KG_rev/)",
+        "paths",
+        nargs="*",
+        help="Paths to organize (default: src/Medical_KG_rev/)",
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Show what would be changed without modifying files"
@@ -349,18 +348,20 @@ def main():
 
     # Determine mode
     dry_run = args.dry_run and not args.fix
-
-    path = Path(args.path)
-    if not path.exists():
-        print(f"Error: Path {path} does not exist")
-        sys.exit(1)
+    targets = args.paths or ["src/Medical_KG_rev/"]
 
     organizer = ImportOrganizer(dry_run=dry_run)
 
-    if path.is_file() and path.suffix == ".py":
-        organizer.organize_file(path)
-    else:
-        organizer.organize_directory(path)
+    for target in targets:
+        path = Path(target)
+        if not path.exists():
+            organizer.errors.append(f"Path does not exist: {path}")
+            continue
+
+        if path.is_file() and path.suffix == ".py":
+            organizer.organize_file(path)
+        else:
+            organizer.organize_directory(path)
 
     # Generate and print report
     report = organizer.generate_report()

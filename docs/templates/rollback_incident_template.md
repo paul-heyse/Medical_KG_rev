@@ -20,9 +20,9 @@
 |            |       |       |
 
 ## 4. Execution Steps
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## 5. Outcome Metrics
 - **Embedding Latency p95:** Before / After rollback

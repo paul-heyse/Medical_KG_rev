@@ -8,6 +8,7 @@ from typing import Any
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 
+
 MetadataSource = Sequence[dict[str, Any]] | dict[str, Any] | Callable[[int], dict[str, Any]] | None
 
 

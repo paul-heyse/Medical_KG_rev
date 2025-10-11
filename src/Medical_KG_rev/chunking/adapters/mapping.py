@@ -9,6 +9,7 @@ from ..provenance import BlockContext
 from ..tokenization import TokenCounter, default_token_counter
 
 
+
 @dataclass(slots=True)
 class SegmentProjection:
     contexts: list[BlockContext]

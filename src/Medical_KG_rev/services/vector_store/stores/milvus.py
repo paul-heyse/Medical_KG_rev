@@ -2,28 +2,20 @@
 
 from __future__ import annotations
 
-import json
-import time
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+import json
+import time
 
 import numpy as np
 
 from ..errors import BackendUnavailableError, NamespaceNotFoundError, VectorStoreError
 from ..gpu import GPUResourceManager
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..models import HttpClient
 from ..types import VectorStorePort
+
 
 
 def _collection_name(tenant_id: str, namespace: str) -> str:

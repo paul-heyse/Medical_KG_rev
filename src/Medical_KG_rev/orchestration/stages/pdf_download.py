@@ -2,23 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import asyncio
 import hashlib
 import time
-from dataclasses import dataclass
 
 import httpx
-
 import structlog
+
 from Medical_KG_rev.config.settings import get_settings
-from Medical_KG_rev.orchestration.stages.contracts import (
-    DownloadArtifact,
-    DownloadStage,
-    PipelineState,
-    StageContext,
-)
+from Medical_KG_rev.orchestration.stages.contracts import HttpClient
 from Medical_KG_rev.orchestration.stages.plugin_manager import StagePluginContext
 from Medical_KG_rev.storage import PdfStorageClient
+
 
 logger = structlog.get_logger(__name__)
 

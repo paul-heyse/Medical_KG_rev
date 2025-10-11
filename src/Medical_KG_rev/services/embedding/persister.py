@@ -32,6 +32,7 @@ Performance Characteristics:
     - Configurable cache limits and backend selection
 
 Example:
+-------
     >>> from Medical_KG_rev.services.embedding.persister import build_persister
     >>> persister = build_persister(storage_router, settings=settings)
     >>> report = persister.persist_batch(records, context)
@@ -39,11 +40,11 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
@@ -53,10 +54,12 @@ from time import perf_counter
 from typing import Any
 
 import structlog
+
 from Medical_KG_rev.embeddings.ports import EmbeddingRecord
 from Medical_KG_rev.embeddings.storage import StorageRouter
 
 from .telemetry import EmbeddingTelemetry
+
 
 logger = structlog.get_logger(__name__)
 
@@ -73,6 +76,7 @@ class PersistenceContext:
     namespace configuration, model details, and optional tracking identifiers.
 
     Attributes:
+    ----------
         tenant_id: Unique identifier for the tenant owning the embeddings
         namespace: Namespace within which embeddings are stored
         model: Name of the embedding model used to generate vectors
@@ -82,6 +86,7 @@ class PersistenceContext:
         normalize: Whether to normalize embeddings before storage
 
     Example:
+    -------
         >>> context = PersistenceContext(
         ...     tenant_id="tenant1",
         ...     namespace="documents",
@@ -110,12 +115,14 @@ class PersistenceReport:
     error information, and performance metrics.
 
     Attributes:
+    ----------
         persisted: Number of embedding records successfully persisted
         skipped: Number of records skipped (e.g., duplicates, invalid)
         errors: List of error messages encountered during persistence
         duration_ms: Total time taken for persistence operation in milliseconds
 
     Example:
+    -------
         >>> report = PersistenceReport()
         >>> report.persisted = 100
         >>> report.duration_ms = 250.5
@@ -132,9 +139,11 @@ class PersistenceReport:
         """Record an error message in the report.
 
         Args:
+        ----
             message: Error message describing what went wrong
 
         Note:
+        ----
             This method is thread-safe and can be called from multiple threads.
 
         """
@@ -149,11 +158,13 @@ class PersisterRuntimeSettings:
     backend selection, caching behavior, and hybrid persistence strategies.
 
     Attributes:
+    ----------
         backend: Storage backend to use ("vector_store", "database", "dry_run", "hybrid")
         cache_limit: Maximum number of records to keep in memory cache
         hybrid_backends: Mapping of embedding kinds to backend names for hybrid persistence
 
     Example:
+    -------
         >>> settings = PersisterRuntimeSettings(
         ...     backend="hybrid",
         ...     cache_limit=512,
@@ -171,12 +182,15 @@ class PersisterRuntimeSettings:
         """Create settings from a configuration mapping.
 
         Args:
+        ----
             payload: Configuration dictionary with backend, cache_limit, and hybrid_backends
 
         Returns:
+        -------
             PersisterRuntimeSettings instance with parsed configuration
 
         Note:
+        ----
             Invalid or missing values use defaults. Hybrid backends must be a mapping.
 
         """
@@ -209,6 +223,7 @@ class EmbeddingPersister(ABC):
     like caching, error handling, and telemetry.
 
     Attributes:
+    ----------
         _telemetry: Optional telemetry instance for metrics collection
         _logger: Structured logger bound to this persister instance
         _cache: In-memory cache of embedding records for performance
@@ -231,6 +246,7 @@ class EmbeddingPersister(ABC):
         - Cache persists for lifetime of instance
 
     Example:
+    -------
         >>> class CustomPersister(EmbeddingPersister):
         ...     def _persist(self, records, context, report):
         ...         # Custom persistence logic
@@ -244,9 +260,11 @@ class EmbeddingPersister(ABC):
         """Initialize the persister with optional telemetry.
 
         Args:
+        ----
             telemetry: Optional telemetry instance for metrics collection
 
         Note:
+        ----
             Sets up logging, cache, and LRU tracking with default limits.
 
         """
@@ -269,11 +287,13 @@ class EmbeddingPersister(ABC):
         their specific persistence logic.
 
         Args:
+        ----
             records: Sequence of embedding records to persist
             context: Persistence context with metadata and configuration
             report: Report object to update with persistence results
 
         Note:
+        ----
             Implementations should update report.persisted, report.skipped,
             and report.errors as appropriate. Cache updates are handled
             by the base class.
@@ -289,13 +309,16 @@ class EmbeddingPersister(ABC):
         performance measurement, and telemetry emission.
 
         Args:
+        ----
             records: Sequence of embedding records to persist
             context: Persistence context with metadata and configuration
 
         Returns:
+        -------
             PersistenceReport with detailed results and metrics
 
         Note:
+        ----
             Emits telemetry events and logs errors if telemetry is configured.
             Performance is measured in milliseconds.
 
@@ -323,9 +346,11 @@ class EmbeddingPersister(ABC):
         """Add a record to the cache with LRU eviction.
 
         Args:
+        ----
             record: Embedding record to cache
 
         Note:
+        ----
             Evicts oldest records if cache limit is exceeded.
 
         """
@@ -339,12 +364,15 @@ class EmbeddingPersister(ABC):
         """Retrieve embedding records from cache.
 
         Args:
+        ----
             ids: Optional sequence of record IDs to retrieve. If None, returns all cached records.
 
         Returns:
+        -------
             List of embedding records found in cache
 
         Note:
+        ----
             Only returns records that are currently cached.
 
         """
@@ -356,12 +384,15 @@ class EmbeddingPersister(ABC):
         """Delete embedding records from cache.
 
         Args:
+        ----
             ids: Sequence of record IDs to delete
 
         Returns:
+        -------
             Number of records successfully deleted
 
         Note:
+        ----
             Safe to call with non-existent IDs.
 
         """
@@ -375,12 +406,15 @@ class EmbeddingPersister(ABC):
         """Search cached records by metadata.
 
         Args:
+        ----
             metadata: Optional metadata filter. If None, returns all cached records.
 
         Returns:
+        -------
             List of records matching metadata criteria
 
         Note:
+        ----
             Performs exact match on all specified metadata keys.
 
         """
@@ -396,9 +430,11 @@ class EmbeddingPersister(ABC):
         """Get debug information about cache state.
 
         Returns:
+        -------
             Dictionary with cache statistics and recent IDs
 
         Note:
+        ----
             Useful for debugging cache behavior and performance.
 
         """
@@ -411,9 +447,11 @@ class EmbeddingPersister(ABC):
         """Get health status information.
 
         Returns:
+        -------
             Dictionary with persister health information
 
         Note:
+        ----
             Used by health check endpoints and monitoring systems.
 
         """
@@ -426,12 +464,15 @@ class EmbeddingPersister(ABC):
         """Configure persister runtime settings.
 
         Args:
+        ----
             **kwargs: Configuration parameters including cache_limit
 
         Raises:
+        ------
             ValueError: If cache_limit is negative
 
         Note:
+        ----
             Logs configuration changes for audit purposes.
 
         """
@@ -459,9 +500,11 @@ class VectorStorePersister(EmbeddingPersister):
     abstraction. This is the primary persister for production use cases.
 
     Attributes:
+    ----------
         _storage_router: StorageRouter instance for vector store operations
 
     Example:
+    -------
         >>> persister = VectorStorePersister(storage_router, telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
 
@@ -476,6 +519,7 @@ class VectorStorePersister(EmbeddingPersister):
         """Initialize vector store persister.
 
         Args:
+        ----
             storage_router: StorageRouter for vector store operations
             telemetry: Optional telemetry instance for metrics
 
@@ -492,6 +536,7 @@ class VectorStorePersister(EmbeddingPersister):
         """Persist records to vector store via storage router.
 
         Args:
+        ----
             records: Embedding records to persist
             context: Persistence context (unused by this implementation)
             report: Report to update with persistence results
@@ -510,9 +555,11 @@ class DatabasePersister(EmbeddingPersister):
     Provides additional storage methods beyond the base cache.
 
     Attributes:
+    ----------
         _store: In-memory dictionary storing embedding records
 
     Example:
+    -------
         >>> persister = DatabasePersister(telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
 
@@ -522,6 +569,7 @@ class DatabasePersister(EmbeddingPersister):
         """Initialize database persister.
 
         Args:
+        ----
             telemetry: Optional telemetry instance for metrics
 
         """
@@ -537,6 +585,7 @@ class DatabasePersister(EmbeddingPersister):
         """Persist records to in-memory store.
 
         Args:
+        ----
             records: Embedding records to persist
             context: Persistence context (unused by this implementation)
             report: Report to update with persistence results
@@ -551,9 +600,11 @@ class DatabasePersister(EmbeddingPersister):
         """Retrieve records from in-memory store.
 
         Args:
+        ----
             ids: Optional sequence of record IDs to retrieve
 
         Returns:
+        -------
             List of embedding records from store
 
         """
@@ -565,9 +616,11 @@ class DatabasePersister(EmbeddingPersister):
         """Delete records from both store and cache.
 
         Args:
+        ----
             ids: Sequence of record IDs to delete
 
         Returns:
+        -------
             Number of records successfully deleted
 
         """
@@ -586,9 +639,11 @@ class DryRunPersister(EmbeddingPersister):
     Tracks all operations for later inspection.
 
     Attributes:
+    ----------
         _operations: List of persistence contexts that would have been processed
 
     Example:
+    -------
         >>> persister = DryRunPersister(telemetry=telemetry)
         >>> report = persister.persist_batch(records, context)
         >>> print(f"Would have processed {len(persister.operations)} operations")
@@ -599,6 +654,7 @@ class DryRunPersister(EmbeddingPersister):
         """Initialize dry run persister.
 
         Args:
+        ----
             telemetry: Optional telemetry instance for metrics
 
         """
@@ -614,6 +670,7 @@ class DryRunPersister(EmbeddingPersister):
         """Record operation without actual persistence.
 
         Args:
+        ----
             records: Embedding records (counted as skipped)
             context: Persistence context to record
             report: Report to update with skip count
@@ -626,7 +683,8 @@ class DryRunPersister(EmbeddingPersister):
     def operations(self) -> Sequence[PersistenceContext]:
         """Get recorded operations.
 
-        Returns:
+        Returns
+        -------
             Tuple of persistence contexts that would have been processed
 
         """
@@ -640,9 +698,11 @@ class MockPersister(EmbeddingPersister):
     Does not require telemetry or complex configuration.
 
     Attributes:
+    ----------
         persisted_records: List of all records that have been persisted
 
     Example:
+    -------
         >>> persister = MockPersister()
         >>> report = persister.persist_batch(records, context)
         >>> assert len(persister.persisted_records) == len(records)
@@ -663,6 +723,7 @@ class MockPersister(EmbeddingPersister):
         """Store records in memory for test verification.
 
         Args:
+        ----
             records: Embedding records to store
             context: Persistence context (unused)
             report: Report to update with persistence count
@@ -681,9 +742,11 @@ class HybridPersister(EmbeddingPersister):
     Useful for mixed storage strategies (e.g., text to vector store, images to database).
 
     Attributes:
+    ----------
         _persisters: Mapping of embedding kinds to persister instances
 
     Example:
+    -------
         >>> persisters = {"text": VectorStorePersister(router), "image": DatabasePersister()}
         >>> persister = HybridPersister(persisters, telemetry=telemetry)
         >>> report = persister.persist_batch(mixed_records, context)
@@ -699,6 +762,7 @@ class HybridPersister(EmbeddingPersister):
         """Initialize hybrid persister.
 
         Args:
+        ----
             persisters: Mapping of embedding kinds to persister instances
             telemetry: Optional telemetry instance for metrics
 
@@ -715,11 +779,13 @@ class HybridPersister(EmbeddingPersister):
         """Route records to appropriate persisters by kind.
 
         Args:
+        ----
             records: Embedding records to persist
             context: Persistence context passed to all persisters
             report: Report to update with aggregated results
 
         Note:
+        ----
             Records without registered persisters are counted as errors.
 
         """
@@ -753,17 +819,21 @@ def _build_backend(
     """Build a single backend persister instance.
 
     Args:
+    ----
         backend: Backend name ("vector_store", "database", "dry_run")
         router: StorageRouter for vector store operations
         telemetry: Optional telemetry instance
 
     Returns:
+    -------
         Configured persister instance
 
     Raises:
+    ------
         ValueError: If backend name is not recognized
 
     Note:
+    ----
         Private helper function for build_persister.
 
     """
@@ -789,17 +859,21 @@ def build_persister(
     configuration settings. Supports single backend and hybrid configurations.
 
     Args:
+    ----
         router: StorageRouter for vector store operations
         telemetry: Optional telemetry instance for metrics collection
         settings: Runtime settings or configuration mapping
 
     Returns:
+    -------
         Configured persister instance ready for use
 
     Raises:
+    ------
         ValueError: If hybrid backend lacks hybrid_backends mapping
 
     Example:
+    -------
         >>> settings = PersisterRuntimeSettings(backend="vector_store", cache_limit=512)
         >>> persister = build_persister(router, telemetry=telemetry, settings=settings)
         >>> report = persister.persist_batch(records, context)

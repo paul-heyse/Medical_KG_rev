@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from typing import Any
+
+from importlib import import_module
+
 
 __all__ = [
     "BayesSegChunker",

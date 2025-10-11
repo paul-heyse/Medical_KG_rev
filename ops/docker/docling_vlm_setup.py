@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+
 from Medical_KG_rev.config.docling_config import DoclingVLMConfig
 from Medical_KG_rev.services import GpuNotAvailableError
 from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMService

@@ -2,6 +2,7 @@
 
 from .pdf import PdfAssetManifest, PdfCapableAdapter, PdfManifest
 
+
 __all__ = [
     "PdfAssetManifest",
     "PdfCapableAdapter",

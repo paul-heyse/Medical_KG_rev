@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any
+import hashlib
 
 import structlog
+
 from Medical_KG_rev.storage.clients import PdfStorageClient
+
 
 logger = structlog.get_logger(__name__)
 
@@ -51,7 +53,9 @@ class StorageHelperMixin:
                 checksum=asset.checksum,
             )
 
-            return f"s3://{asset.s3_key}"
+            # Get bucket name from storage client settings
+            bucket_name = self._pdf_storage._settings.bucket
+            return f"s3://{bucket_name}/{asset.s3_key}"
         except Exception as e:
             logger.warning(
                 "adapter.pdf_upload_failed",

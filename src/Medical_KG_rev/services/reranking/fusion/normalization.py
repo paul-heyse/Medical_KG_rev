@@ -7,6 +7,7 @@ from math import exp
 from statistics import mean, pstdev
 
 
+
 def min_max(values: Sequence[float]) -> list[float]:
     if not values:
         return []

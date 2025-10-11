@@ -2,4 +2,5 @@
 
 from .errors import FoundationError, ProblemDetail
 
+
 __all__ = ["FoundationError", "ProblemDetail"]

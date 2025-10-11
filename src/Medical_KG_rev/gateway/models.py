@@ -27,6 +27,7 @@ Performance Characteristics:
     - Efficient JSON serialization with Pydantic
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.models import ProblemDetail
     >>> error = ProblemDetail(
     ...     title="Validation Error",
@@ -37,22 +38,23 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
-import json
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Any, Literal
+import json
 
 from pydantic import BaseModel, Field, model_validator
 
 from Medical_KG_rev.adapters import AdapterDomain
 from Medical_KG_rev.services.evaluation import EvaluationResult, MetricSummary
 from Medical_KG_rev.services.retrieval.routing import QueryIntent
+
 
 # ==============================================================================
 # ERROR MODELS
@@ -534,9 +536,11 @@ def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationRes
     """Build a batch operation result from a collection of operation statuses.
 
     Args:
+    ----
         statuses: Collection of operation status objects.
 
     Returns:
+    -------
         Batch operation result with summary statistics.
 
     """
@@ -554,19 +558,21 @@ def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationRes
 # PROCESSING MODELS
 # ==============================================================================
 
+
 class DoclingProcessingPayload(BaseModel):
     """Payload for Docling processing requests."""
 
     document_id: str = Field(..., description="Document identifier")
     file_path: str = Field(..., description="Path to the document file")
-    processing_options: Dict[str, Any] = Field(default_factory=dict, description="Processing options")
+    processing_options: Dict[str, Any] = Field(
+        default_factory=dict, description="Processing options"
+    )
     callback_url: Optional[str] = Field(None, description="Callback URL for async processing")
 
     class Config:
         """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class DoclingProcessingRequest(BaseModel):
@@ -574,14 +580,15 @@ class DoclingProcessingRequest(BaseModel):
 
     document_id: str = Field(..., description="Document identifier")
     file_path: str = Field(..., description="Path to the document file")
-    processing_options: Dict[str, Any] = Field(default_factory=dict, description="Processing options")
+    processing_options: Dict[str, Any] = Field(
+        default_factory=dict, description="Processing options"
+    )
     callback_url: Optional[str] = Field(None, description="Callback URL for async processing")
 
     class Config:
         """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class DoclingProcessingResponse(BaseModel):
@@ -594,9 +601,8 @@ class DoclingProcessingResponse(BaseModel):
 
     class Config:
         """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 # ==============================================================================

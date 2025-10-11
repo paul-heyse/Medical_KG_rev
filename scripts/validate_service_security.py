@@ -17,7 +17,10 @@ from cryptography import x509
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from Medical_KG_rev.config.mtls_config import create_default_mtls_config, mTLSManagerConfig
+from Medical_KG_rev.config.mtls_config import (
+    create_default_mtls_config,
+    mTLSManagerConfig,
+)
 from Medical_KG_rev.services.security.mtls import CertificateConfig, mTLSManager
 
 logging.basicConfig(level=logging.INFO)

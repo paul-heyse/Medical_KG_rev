@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 from math import sqrt
 
 
+
 def l2_normalize(vector: Sequence[float]) -> list[float]:
     norm = sqrt(sum(value * value for value in vector))
     if norm == 0.0:

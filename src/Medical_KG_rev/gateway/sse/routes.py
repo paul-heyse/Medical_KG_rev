@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import AsyncIterator
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from ...auth import Scopes, SecurityContext, secure_endpoint
 from ..models import JobEvent
 from ..services import GatewayService, get_gateway_service
+
 
 router = APIRouter(prefix="/v1", tags=["sse"])
 

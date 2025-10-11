@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import logging
 
-try:  # pragma: no cover - sentry optional during tests
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
-    from sentry_sdk.integrations.logging import LoggingIntegration
-except Exception:  # pragma: no cover - sentry not installed
-    sentry_sdk = None  # type: ignore
+import sentry_sdk
+from sentry_sdk.integrations import Integration
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from Medical_KG_rev.config.settings import AppSettings
 
@@ -26,10 +24,10 @@ def initialise_sentry(settings: AppSettings) -> None:
     if not sentry_settings.dsn:
         return
 
-    integrations = [FastApiIntegration(transaction_style="endpoint")]
+    integrations: list[Integration] = [FastApiIntegration(transaction_style="endpoint")]
     integrations.append(LoggingIntegration(level=logging.INFO, event_level=logging.ERROR))
 
-    sentry_sdk.init(  # type: ignore[call-arg]
+    sentry_sdk.init(
         dsn=sentry_settings.dsn,
         environment=sentry_settings.environment or settings.environment.value,
         traces_sample_rate=sentry_settings.traces_sample_rate,

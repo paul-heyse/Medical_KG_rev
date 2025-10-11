@@ -17,6 +17,7 @@ Performance:
     Validation performance depends on resource complexity.
 
 Example:
+-------
     >>> validator = FHIRValidator()
     >>> resource = {"resourceType": "Evidence", "status": "active"}
     >>> validator.validate(resource)
@@ -25,13 +26,11 @@ Example:
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator
+
 
 # ==============================================================================
 # TYPE DEFINITIONS
@@ -47,7 +46,8 @@ from jsonschema import Draft202012Validator
 class _CompiledSchema:
     """Internal data model for compiled schema information.
 
-    Attributes:
+    Attributes
+    ----------
         validator: Compiled JSON Schema validator.
         resource_type: FHIR resource type name.
 
@@ -228,6 +228,7 @@ class FHIRValidator:
         """Initialize validator with schemas.
 
         Args:
+        ----
             schemas: Optional custom schemas to use instead of defaults.
 
         """
@@ -243,9 +244,11 @@ class FHIRValidator:
         """Validate a FHIR resource against its schema.
 
         Args:
+        ----
             resource: FHIR resource to validate.
 
         Raises:
+        ------
             FHIRValidationError: If validation fails.
 
         """
@@ -264,9 +267,11 @@ class FHIRValidator:
         """Validate an Evidence resource.
 
         Args:
+        ----
             resource: Evidence resource to validate.
 
         Raises:
+        ------
             FHIRValidationError: If validation fails.
 
         """
@@ -276,9 +281,11 @@ class FHIRValidator:
         """Validate a ResearchStudy resource.
 
         Args:
+        ----
             resource: ResearchStudy resource to validate.
 
         Raises:
+        ------
             FHIRValidationError: If validation fails.
 
         """
@@ -288,9 +295,11 @@ class FHIRValidator:
         """Validate a MedicationStatement resource.
 
         Args:
+        ----
             resource: MedicationStatement resource to validate.
 
         Raises:
+        ------
             FHIRValidationError: If validation fails.
 
         """

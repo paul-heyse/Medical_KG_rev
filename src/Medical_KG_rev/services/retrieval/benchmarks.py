@@ -9,6 +9,7 @@ from time import perf_counter
 from Medical_KG_rev.services.retrieval.reranker import CrossEncoderReranker
 
 
+
 def benchmark_reranking_latency(
     reranker: CrossEncoderReranker,
     query: str,

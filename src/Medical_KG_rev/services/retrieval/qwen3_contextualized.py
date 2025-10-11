@@ -1,14 +1,42 @@
-"""Qwen3 contextualized text embedding processing.
+"""Contextualize chunk text for Qwen3 embedding generation.
 
-This module implements contextualized text processing for Qwen3 embeddings
-with section path and caption context inclusion.
+This module assembles contextual strings for Qwen3 dense embedding requests.
+It combines raw chunk content with surrounding metadata such as section paths,
+captions, and table information while preserving medical terminology.
+
+Key Responsibilities:
+    - Normalize and contextualize chunk text ahead of embedding generation.
+    - Preserve sensitive medical terminology through placeholder handling.
+    - Provide batch processing utilities for efficient pipeline integration.
+
+Collaborators:
+    - Upstream: Retrieval chunk processors that supply `ChunkContext` objects.
+    - Downstream: `Qwen3Service` which submits contextualized text to gRPC.
+
+Side Effects:
+    - Emits structured logs for observability.
+    - Raises `FallbackNotAllowedError` when contextualization fails.
+
+Thread Safety:
+    - Thread-safe: Instances do not mutate shared state after construction.
+
+Performance Characteristics:
+    - Linear relative to number of chunk contexts; string operations only.
+    - No external I/O or shared caches.
 """
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 import logging
 import re
 from typing import Any
 
+from Medical_KG_rev.utils.fallbacks import fallback_unavailable
+
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,18 +66,34 @@ class ChunkContext(BaseModel):
 
 
 class Qwen3ContextualizedProcessor:
-    """Qwen3 contextualized text processor.
+    """Compute contextualized text payloads for Qwen3 embeddings.
 
-    This processor creates contextualized text for Qwen3 embeddings
-    by including section path and caption context.
+    Attributes:
+        config: Runtime configuration controlling context assembly behavior.
+
+    Thread Safety:
+        - Thread-safe: Does not retain mutable shared state after construction.
+
+    Example:
+        >>> processor = Qwen3ContextualizedProcessor()
+        >>> context = ChunkContext(
+        ...     chunk_id="chunk-1",
+        ...     doc_id="doc-42",
+        ...     page_no=1,
+        ...     element_label="paragraph",
+        ...     section_path="Introduction",
+        ...     contextualized_text="",
+        ...     content_only_text="sample text",
+        ... )
+        >>> processor.process_chunk_context(context)
+        'Introduction | sample text'
     """
 
     def __init__(self, config: ContextualizedTextConfig | None = None):
-        """Initialize Qwen3 contextualized processor.
+        """Initialize the contextualized text processor.
 
         Args:
-            config: Configuration for contextualized text processing
-
+            config: Configuration describing how context should be constructed.
         """
         self.config = config or ContextualizedTextConfig()
 
@@ -84,14 +128,14 @@ class Qwen3ContextualizedProcessor:
         )
 
     def _preserve_medical_terms(self, text: str) -> tuple[str, dict[str, str]]:
-        """Preserve medical terms in text.
+        """Replace medical terms with placeholders to prevent truncation.
 
         Args:
-            text: Input text
+            text: Raw chunk text.
 
         Returns:
-            Tuple of (processed_text, placeholders)
-
+            A tuple containing the masked text and a mapping from placeholders
+            to the original medical terms.
         """
         placeholders = {}
         processed_text = text
@@ -106,15 +150,14 @@ class Qwen3ContextualizedProcessor:
         return processed_text, placeholders
 
     def _restore_medical_terms(self, text: str, placeholders: dict[str, str]) -> str:
-        """Restore medical terms in text.
+        """Restore medical terminology that was placeholder-substituted.
 
         Args:
-            text: Processed text with placeholders
-            placeholders: Dictionary mapping placeholders to original terms
+            text: Text containing placeholders.
+            placeholders: Mapping from placeholder tokens to original terms.
 
         Returns:
-            Text with restored medical terms
-
+            The input text with all placeholders replaced by medical terms.
         """
         restored_text = text
         for placeholder, original in placeholders.items():
@@ -122,15 +165,7 @@ class Qwen3ContextualizedProcessor:
         return restored_text
 
     def _extract_section_context(self, section_path: str) -> str:
-        """Extract section context from section path.
-
-        Args:
-            section_path: Section path
-
-        Returns:
-            Section context
-
-        """
+        """Normalize a section path into a context string."""
         if not section_path:
             return ""
 
@@ -150,15 +185,7 @@ class Qwen3ContextualizedProcessor:
         return " > ".join(context_parts)
 
     def _extract_caption_context(self, caption: str) -> str:
-        """Extract caption context.
-
-        Args:
-            caption: Caption text
-
-        Returns:
-            Caption context
-
-        """
+        """Format caption text into contextual metadata."""
         if not caption:
             return ""
 
@@ -168,9 +195,11 @@ class Qwen3ContextualizedProcessor:
         """Extract table context from table payload.
 
         Args:
+        ----
             table_payload: Table payload
 
         Returns:
+        -------
             Table context
 
         """
@@ -194,14 +223,13 @@ class Qwen3ContextualizedProcessor:
         return " | ".join(context_parts)
 
     def _create_contextualized_text(self, chunk_context: ChunkContext) -> str:
-        """Create contextualized text for Qwen3 embedding.
+        """Generate the context string submitted to Qwen3 embeddings.
 
         Args:
-            chunk_context: Chunk context information
+            chunk_context: Chunk-level metadata and text payload.
 
         Returns:
-            Contextualized text
-
+            A context string containing metadata and chunk text.
         """
         context_parts = []
 
@@ -240,14 +268,13 @@ class Qwen3ContextualizedProcessor:
         return contextualized_text
 
     def process_chunk_context(self, chunk_context: ChunkContext) -> str:
-        """Process chunk context and return contextualized text.
+        """Transform a single chunk context into contextualized text.
 
         Args:
-            chunk_context: Chunk context information
+            chunk_context: Chunk metadata and text to contextualize.
 
         Returns:
-            Contextualized text for Qwen3 embedding
-
+            The contextualized string supplied to Qwen3.
         """
         try:
             # Create contextualized text
@@ -283,14 +310,13 @@ class Qwen3ContextualizedProcessor:
             raise
 
     def validate_contextualized_text(self, contextualized_text: str) -> list[str]:
-        """Validate contextualized text.
+        """Validate that contextualized text meets formatting requirements.
 
         Args:
-            contextualized_text: Contextualized text to validate
+            contextualized_text: Context string to validate.
 
         Returns:
-            List of validation error messages
-
+            A list of validation error messages. Empty if valid.
         """
         errors = []
 
@@ -310,9 +336,11 @@ class Qwen3ContextualizedProcessor:
         """Get processing statistics for chunk context.
 
         Args:
+        ----
             chunk_context: Chunk context information
 
         Returns:
+        -------
             Dictionary with processing statistics
 
         """
@@ -336,14 +364,13 @@ class Qwen3ContextualizedProcessor:
         }
 
     def batch_process_chunk_contexts(self, chunk_contexts: list[ChunkContext]) -> list[str]:
-        """Process multiple chunk contexts in batch.
+        """Contextualize many chunk contexts sequentially.
 
         Args:
-            chunk_contexts: List of chunk context information
+            chunk_contexts: Chunk contexts to contextualize.
 
         Returns:
-            List of contextualized texts
-
+            A list of contextualized text strings corresponding to the input.
         """
         contextualized_texts = []
 
@@ -352,15 +379,10 @@ class Qwen3ContextualizedProcessor:
                 contextualized_text = self.process_chunk_context(chunk_context)
                 contextualized_texts.append(contextualized_text)
             except Exception as e:
-                logger.error(
-                    "Failed to process chunk context in batch",
-                    extra={
-                        "chunk_id": chunk_context.chunk_id,
-                        "error": str(e),
-                    },
+                fallback_unavailable(
+                    "Qwen3 contextualized text processing",
+                    f"chunk_id={chunk_context.chunk_id}: {e}",
                 )
-                # Add empty string as fallback
-                contextualized_texts.append("")
 
         logger.info(
             "Processed chunk contexts in batch",

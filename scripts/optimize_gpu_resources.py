@@ -12,7 +12,9 @@ import logging
 import sys
 from pathlib import Path
 
-from src.Medical_KG_rev.services.optimization.gpu_resource_optimizer import GPUResourceOptimizer
+from src.Medical_KG_rev.services.optimization.gpu_resource_optimizer import (
+    GPUResourceOptimizer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,7 @@ class GPUOptimizationCLI:
         """Optimize memory usage for a specific service.
 
         Args:
+        ----
             service_name: Name of the service to optimize
 
         """
@@ -95,6 +98,7 @@ class GPUOptimizationCLI:
         """Allocate a GPU for a service.
 
         Args:
+        ----
             service_name: Name of the service
             required_memory_mb: Required memory in MB
             preferred_device_id: Preferred GPU device ID
@@ -123,6 +127,7 @@ class GPUOptimizationCLI:
         """Deallocate a GPU from a service.
 
         Args:
+        ----
             service_name: Name of the service
             device_id: GPU device ID to deallocate
 
@@ -147,6 +152,7 @@ class GPUOptimizationCLI:
         """Run continuous optimization loop.
 
         Args:
+        ----
             interval: Optimization interval in seconds
 
         """
@@ -163,6 +169,7 @@ class GPUOptimizationCLI:
         """Export current status to JSON file.
 
         Args:
+        ----
             output_file: Output file path
 
         """

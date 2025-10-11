@@ -4,8 +4,8 @@ This module provides integration between the caching system and gRPC service cli
 to enable transparent caching of service calls.
 """
 
-import logging
 from typing import Any, TypeVar
+import logging
 
 from pydantic import BaseModel, Field
 

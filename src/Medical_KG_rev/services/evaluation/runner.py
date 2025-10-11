@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 from statistics import mean, median, stdev
 from time import perf_counter
+import hashlib
+import json
 
 from prometheus_client import Gauge  # type: ignore
 
 from .metrics import evaluate_ranking
 from .metrics import mean_metric as _metrics_mean_metric
 from .test_sets import QueryJudgment, QueryType, TestSet
+
 
 EVALUATION_RECALL = Gauge(
     "medicalkg_retrieval_recall_at_k",

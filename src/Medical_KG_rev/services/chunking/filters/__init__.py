@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 from collections.abc import Callable, Iterable
+import re
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
+
 
 FilterFunc = Callable[[Document], Document]
 

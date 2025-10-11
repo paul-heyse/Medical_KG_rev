@@ -39,6 +39,7 @@ Performance Characteristics:
     - Chunk assembly involves string operations and mapping
 
 Example:
+-------
     >>> document = Document(id="doc1", sections=[...])
     >>> contexts = list(iter_block_contexts(document))
     >>> groups = group_contexts(contexts, respect_boundaries=["section"])
@@ -56,18 +57,16 @@ Example:
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
-import uuid
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+import uuid
 
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
 from .port import Chunk
+
 
 # ==============================================================================
 # DATA MODELS
@@ -82,6 +81,7 @@ class _BlockContext:
     character offsets for proper chunk assembly and mapping.
 
     Attributes:
+    ----------
         block: The block being processed
         section: The section containing the block
         text: The text content of the block
@@ -94,6 +94,7 @@ class _BlockContext:
         - block and section are never None
 
     Example:
+    -------
         >>> context = _BlockContext(
         ...     block=block, section=section, text="Hello world",
         ...     start=100, end=111
@@ -118,16 +119,20 @@ def iter_block_contexts(document: Document) -> Iterable[_BlockContext]:
     """Yield block contexts with absolute offsets within the document.
 
     Args:
+    ----
         document: Document to process into block contexts
 
     Yields:
+    ------
         _BlockContext instances with absolute character offsets
 
     Note:
+    ----
         This function maintains a running cursor to calculate absolute
         offsets across all sections and blocks in the document.
 
     Example:
+    -------
         >>> document = Document(id="doc1", sections=[...])
         >>> for context in iter_block_contexts(document):
         ...     print(f"Block: {context.text[:50]}... at {context.start}-{context.end}")
@@ -157,19 +162,23 @@ def group_contexts(
     """Group contexts based on the requested boundary hints.
 
     Args:
+    ----
         contexts: Iterable of block contexts to group
         respect_boundaries: Sequence of boundary types to respect
             (e.g., "section", "table")
 
     Returns:
+    -------
         List of context groups, where each group respects the specified
         boundaries
 
     Note:
+    ----
         This function groups contexts while respecting section and table
         boundaries. Tables are always isolated into their own groups.
 
     Example:
+    -------
         >>> contexts = list(iter_block_contexts(document))
         >>> groups = group_contexts(
         ...     contexts, respect_boundaries=["section", "table"]
@@ -219,6 +228,7 @@ def build_chunk(
     """Create a :class:`Chunk` from assembled text and mapping.
 
     Args:
+    ----
         document: Source document for the chunk
         profile_name: Name of the chunking profile used
         text: The text content of the chunk
@@ -228,14 +238,17 @@ def build_chunk(
         metadata: Optional additional metadata
 
     Returns:
+    -------
         Constructed Chunk instance with proper metadata and offsets
 
     Note:
+    ----
         This function calculates character offsets from the mapping,
         generates a unique chunk ID, and sets up metadata including
         timestamps and source information.
 
     Example:
+    -------
         >>> chunk = build_chunk(
         ...     document=doc,
         ...     profile_name="medical",
@@ -290,6 +303,7 @@ def assemble_chunks(
     """Materialize chunks based on generated text pieces.
 
     Args:
+    ----
         document: Source document for chunks
         profile_name: Name of the chunking profile used
         groups: Sequence of context groups
@@ -299,14 +313,17 @@ def assemble_chunks(
         metadata_provider: Optional function to extract metadata from contexts
 
     Returns:
+    -------
         List of constructed Chunk instances
 
     Note:
+    ----
         This function assembles chunks by aligning chunk texts with
         their corresponding context groups and building proper character
         offset mappings.
 
     Example:
+    -------
         >>> chunks = assemble_chunks(
         ...     document=doc,
         ...     profile_name="medical",
@@ -363,15 +380,19 @@ def identity_intent_provider(section: Section | None) -> str | None:
     """Extract intent from section metadata using 'intent' key.
 
     Args:
+    ----
         section: Section to extract intent from
 
     Returns:
+    -------
         Intent string if found, None otherwise
 
     Note:
+    ----
         This provider looks for the 'intent' key in section metadata.
 
     Example:
+    -------
         >>> intent = identity_intent_provider(section)
         >>> print(f"Intent: {intent}")
 
@@ -388,16 +409,20 @@ def default_intent_provider(section: Section | None) -> str | None:
     """Extract intent from section metadata using 'intent_hint' key.
 
     Args:
+    ----
         section: Section to extract intent from
 
     Returns:
+    -------
         Intent hint string if found, None otherwise
 
     Note:
+    ----
         This provider looks for the 'intent_hint' key in section metadata.
         This is the default provider used in most chunking operations.
 
     Example:
+    -------
         >>> intent_hint = default_intent_provider(section)
         >>> print(f"Intent hint: {intent_hint}")
 

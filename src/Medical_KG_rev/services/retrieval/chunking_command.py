@@ -5,11 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from types import MappingProxyType
 from typing import Any
 from uuid import uuid4
 
+from types import MappingProxyType
+
 from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
+
 
 
 def _coerce_mapping(payload: Mapping[str, Any] | None) -> Mapping[str, Any]:

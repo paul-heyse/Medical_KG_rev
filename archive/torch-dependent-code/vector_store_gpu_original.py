@@ -2,9 +2,8 @@
 
 from typing import Any
 
-import torch
-
 import structlog
+import torch
 
 logger = structlog.get_logger(__name__)
 
@@ -44,7 +43,7 @@ class VectorStoreGPU:
 
         except Exception as e:
             logger.error("vector_store.embedding.error", error=str(e))
-            raise RuntimeError(f"Embedding generation failed: {e}")
+            raise RuntimeError(f"Embedding generation failed: {e}") from e
 
     def similarity_search(
         self, query_embedding: list[float], index_embeddings: list[list[float]], top_k: int = 10
@@ -66,7 +65,9 @@ class VectorStoreGPU:
             top_similarities = torch.topk(similarities, top_k).values
 
             results = []
-            for idx, sim in zip(top_indices.cpu().numpy(), top_similarities.cpu().numpy(), strict=False):
+            for idx, sim in zip(
+                top_indices.cpu().numpy(), top_similarities.cpu().numpy(), strict=False
+            ):
                 results.append(
                     {
                         "index": int(idx),
@@ -79,7 +80,7 @@ class VectorStoreGPU:
 
         except Exception as e:
             logger.error("vector_store.similarity.error", error=str(e))
-            raise RuntimeError(f"Similarity search failed: {e}")
+            raise RuntimeError(f"Similarity search failed: {e}") from e
 
 
 # Legacy functions

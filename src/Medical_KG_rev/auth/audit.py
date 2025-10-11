@@ -30,16 +30,14 @@ Performance Characteristics:
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import builtins
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+import builtins
 import structlog
 
 from .context import SecurityContext
+
 
 logger = structlog.get_logger(__name__)
 
@@ -53,7 +51,8 @@ logger = structlog.get_logger(__name__)
 class AuditEntry:
     """Immutable representation of a security audit event.
 
-    Attributes:
+    Attributes
+    ----------
         timestamp: When the event occurred in UTC.
         tenant_id: Identifier of the tenant associated with the event.
         subject: Authenticated principal performing the action.
@@ -100,12 +99,14 @@ class AuditTrail:
         """Record a new audit event.
 
         Args:
+        ----
             context: Security context associated with the request.
             action: Name of the performed action.
             resource: Resource identifier describing what was acted upon.
             metadata: Optional structured metadata.
 
         Returns:
+        -------
             The stored :class:`AuditEntry` instance for further inspection.
 
         """
@@ -131,10 +132,12 @@ class AuditTrail:
         """Return the most recent audit entries for the provided tenant.
 
         Args:
+        ----
             tenant_id: Tenant identifier to filter events.
             limit: Maximum number of entries to return.
 
         Returns:
+        -------
             Sorted list of :class:`AuditEntry` instances ordered newest first.
 
         """

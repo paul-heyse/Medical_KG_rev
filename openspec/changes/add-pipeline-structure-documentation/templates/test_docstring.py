@@ -75,6 +75,7 @@ def test_chunking_coordinator_raises_error_when_profile_not_found():
         - Failure metrics are emitted
 
     Example:
+    -------
         >>> coordinator = ChunkingCoordinator(
         ...     lifecycle=mock_lifecycle,
         ...     chunker=mock_chunker,
@@ -123,6 +124,7 @@ def test_embedding_coordinator_denies_access_when_tenant_not_allowed():
         - Access denied metrics are emitted
 
     Example:
+    -------
         >>> coordinator = EmbeddingCoordinator(
         ...     lifecycle=mock_lifecycle,
         ...     policy=mock_policy,
@@ -176,6 +178,7 @@ def test_chunking_service_returns_chunks_when_valid_text_provided():
         - Total content length matches input text
 
     Example:
+    -------
         >>> service = ChunkingService(config=ChunkingConfig())
         >>> text = "Sample document text for chunking. " * 100
         >>> chunks = service.chunk(ChunkCommand(text=text, strategy="section"))
@@ -222,6 +225,7 @@ def test_embedding_service_generates_embeddings_when_valid_texts_provided():
         - Processing time is within expected range
 
     Example:
+    -------
         >>> service = EmbeddingService(config=EmbeddingConfig())
         >>> texts = ["Sample text 1", "Sample text 2", "Sample text 3"]
         >>> embeddings = service.generate_embeddings(
@@ -274,6 +278,7 @@ def test_stage_plugin_registration_succeeds_when_valid_stage_provided():
         - Stage metadata is correctly stored
 
     Example:
+    -------
         >>> @stage_plugin(
         ...     name="test_stage",
         ...     version="1.0.0",

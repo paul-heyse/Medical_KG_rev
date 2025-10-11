@@ -24,7 +24,8 @@ Performance:
 - No external dependencies or I/O operations
 - Minimal memory allocation
 
-Examples:
+Examples
+--------
     translator = ChunkingErrorTranslator(strategies=["semantic", "fixed"])
     report = translator.translate(exception, command=chunk_command, job_id="job-123")
     if report:
@@ -32,23 +33,17 @@ Examples:
 
 """
 
-# IMPORTS
 from __future__ import annotations
 
+# IMPORTS
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from Medical_KG_rev.chunking.exceptions import (
-    ChunkerConfigurationError,
-    ChunkingFailedError,
-    ChunkingUnavailableError,
-    InvalidDocumentError,
-    ProfileNotFoundError,
-    TokenizerMismatchError,
-)
+from Medical_KG_rev.chunking.exceptions import HttpClient
 from Medical_KG_rev.gateway.models import ProblemDetail
 from Medical_KG_rev.services.retrieval.chunking import ChunkCommand
+
 
 
 # DATA MODELS
@@ -60,7 +55,8 @@ class ChunkingErrorReport:
     a structured view of chunking errors suitable for API responses and
     monitoring systems.
 
-    Attributes:
+    Attributes
+    ----------
         problem: Standardized problem detail for API response
         severity: Error severity level (client, fatal, retryable)
         metric: Optional metric name for monitoring
@@ -69,7 +65,8 @@ class ChunkingErrorReport:
     Thread Safety:
         Immutable dataclass, thread-safe.
 
-    Examples:
+    Examples
+    --------
         report = ChunkingErrorReport(
             problem=problem_detail,
             severity="client",
@@ -94,7 +91,8 @@ class ChunkingErrorTranslator:
     suitable for API responses. It handles configuration errors, resource
     unavailability, processing failures, and system errors.
 
-    Attributes:
+    Attributes
+    ----------
         _strategies: Available chunking strategies for validation
         _base_path: Base path for error instance URLs
 
@@ -105,7 +103,8 @@ class ChunkingErrorTranslator:
         Lightweight translation with minimal overhead.
         No external dependencies or I/O operations.
 
-    Examples:
+    Examples
+    --------
         translator = ChunkingErrorTranslator(
             strategies=["semantic", "fixed"],
             base_path="/v1/chunk"
@@ -118,10 +117,12 @@ class ChunkingErrorTranslator:
         """Initialize the chunking error translator.
 
         Args:
+        ----
             strategies: Available chunking strategies for validation
             base_path: Base path for error instance URLs
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -142,14 +143,17 @@ class ChunkingErrorTranslator:
         Returns None for unrecognized exception types.
 
         Args:
+        ----
             exc: The exception to translate
             command: Chunk command providing context
             job_id: Optional job identifier for correlation
 
         Returns:
+        -------
             Structured error report or None if exception is not recognized
 
         Raises:
+        ------
             None: This method never raises exceptions.
 
         """
@@ -215,7 +219,6 @@ class ChunkingErrorTranslator:
             )
             return ChunkingErrorReport(detail, "retryable", "ChunkingUnavailableError", job_id)
 
-
         if isinstance(exc, MemoryError):
             detail = self._problem(
                 title="Chunking resources exhausted",
@@ -252,12 +255,15 @@ class ChunkingErrorTranslator:
         """Extract a ProblemDetail from a context mapping.
 
         Args:
+        ----
             context: Context mapping potentially containing a problem
 
         Returns:
+        -------
             ProblemDetail if found, None otherwise
 
         Raises:
+        ------
             None: This method never raises exceptions.
 
         """
@@ -279,6 +285,7 @@ class ChunkingErrorTranslator:
         """Create a ProblemDetail object with the given parameters.
 
         Args:
+        ----
             title: Error title
             status: HTTP status code
             detail: Error detail message
@@ -287,9 +294,11 @@ class ChunkingErrorTranslator:
             extensions: Optional additional error context
 
         Returns:
+        -------
             Validated ProblemDetail object
 
         Raises:
+        ------
             ValidationError: If the payload is invalid
 
         """
@@ -308,12 +317,15 @@ class ChunkingErrorTranslator:
         """Extract the profile name from a chunk command.
 
         Args:
+        ----
             command: Chunk command to extract profile from
 
         Returns:
+        -------
             Profile name if present and valid, None otherwise
 
         Raises:
+        ------
             None: This method never raises exceptions.
 
         """

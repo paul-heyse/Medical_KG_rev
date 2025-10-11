@@ -1,105 +1,64 @@
-"""Runtime registry for embedding namespaces."""
+"""Registry for embedding namespaces."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+import logging
+from typing import Any
 
 import structlog
 
-logger = structlog.get_logger(__name__)
-
 from .schema import EmbeddingKind, NamespaceConfig
 
+logger = structlog.get_logger(__name__)
 
-@dataclass(slots=True)
-class EmbeddingNamespaceRegistry:
-    """In-memory registry storing namespace configurations by identifier."""
 
-    _namespaces: dict[str, NamespaceConfig] = field(default_factory=dict)
-    _tokenizers: dict[str, object] = field(default_factory=dict, init=False, repr=False)
+class NamespaceRegistry:
+    """Registry for managing embedding namespaces."""
 
-    def register(self, namespace: str, config: NamespaceConfig) -> None:
+    def __init__(self) -> None:
+        """Initialize the namespace registry."""
+        self.logger = logger
+        self._namespaces: dict[str, NamespaceConfig] = {}
+        self._tokenizers: dict[str, Any] = {}
+
+    def register_namespace(self, namespace: str, config: NamespaceConfig) -> None:
+        """Register a namespace configuration."""
         self._namespaces[namespace] = config
-        self._tokenizers.pop(namespace, None)
+        self.logger.info(f"Registered namespace: {namespace}")
 
-    def bulk_register(self, configs: Mapping[str, NamespaceConfig]) -> None:
-        for namespace, config in configs.items():
-            self.register(namespace, config)
-
-    def reset(self) -> None:
-        self._namespaces.clear()
-        self._tokenizers.clear()
-
-    def get(self, namespace: str) -> NamespaceConfig:
-        try:
-            return self._namespaces[namespace]
-        except KeyError as exc:  # pragma: no cover - exercised via tests
-            available = ", ".join(sorted(self._namespaces))
-            raise ValueError(
-                f"Namespace '{namespace}' not found. Available: {available}"
-                if available
-                else "No namespaces registered"
-            ) from exc
+    def get_namespace_config(self, namespace: str) -> NamespaceConfig | None:
+        """Get namespace configuration."""
+        return self._namespaces.get(namespace)
 
     def list_namespaces(self) -> list[str]:
-        return sorted(self._namespaces)
+        """List all registered namespaces."""
+        return list(self._namespaces.keys())
 
-    def list_by_kind(self, kind: EmbeddingKind) -> list[str]:
-        return sorted(
-            namespace for namespace, config in self._namespaces.items() if config.kind == kind
-        )
+    def unregister_namespace(self, namespace: str) -> bool:
+        """Unregister a namespace."""
+        if namespace in self._namespaces:
+            del self._namespaces[namespace]
+            if namespace in self._tokenizers:
+                del self._tokenizers[namespace]
+            self.logger.info(f"Unregistered namespace: {namespace}")
+            return True
+        return False
 
-    def exists(self, namespace: str, *, include_disabled: bool = False) -> bool:
-        config = self._namespaces.get(namespace)
-        if not config:
-            return False
-        return bool(config.enabled or include_disabled)
-
-    def list_enabled(
-        self,
-        *,
-        tenant_id: str | None = None,
-        scope: str | None = None,
-    ) -> list[tuple[str, NamespaceConfig]]:
-        configs: list[tuple[str, NamespaceConfig]] = []
-        for namespace, config in self._namespaces.items():
-            if not config.enabled:
-                continue
-            if scope and scope not in config.allowed_scopes and "*" not in config.allowed_scopes:
-                continue
-            tenants = config.allowed_tenants
-            if tenant_id is not None and "all" not in tenants and tenant_id not in tenants:
-                continue
-            configs.append((namespace, config))
-        return sorted(configs, key=lambda item: item[0])
-
-    def get_provider(self, namespace: str) -> str:
-        return self.get(namespace).provider
-
-    def get_dimension(self, namespace: str) -> int | None:
-        return self.get(namespace).dim
-
-    def get_max_tokens(self, namespace: str) -> int | None:
-        return self.get(namespace).max_tokens
-
-    def get_allowed_scopes(self, namespace: str) -> list[str]:
-        return list(self.get(namespace).allowed_scopes)
-
-    def get_allowed_tenants(self, namespace: str) -> list[str]:
-        return list(self.get(namespace).allowed_tenants)
-
-    def get_tokenizer(self, namespace: str):  # pragma: no cover - exercised via validation tests
+    def get_tokenizer(self, namespace: str) -> Any | None:
+        """Get tokenizer for namespace."""
         if namespace in self._tokenizers:
             return self._tokenizers[namespace]
-        config = self.get(namespace)
-        if not config.tokenizer:
-            raise ValueError(f"Namespace '{namespace}' does not define a tokenizer")
+
+        config = self.get_namespace_config(namespace)
+        if not config:
+            return None
+
         try:
-            from transformers import AutoTokenizer  # type: ignore import-not-found
+            from transformers import AutoTokenizer
         except ModuleNotFoundError as exc:  # pragma: no cover - dependency guard
             raise RuntimeError("transformers package is required for tokenizer validation") from exc
-        logger.debug(
+
+        self.logger.debug(
             "embedding.namespace.tokenizer.load",
             namespace=namespace,
             tokenizer=config.tokenizer,
@@ -109,7 +68,123 @@ class EmbeddingNamespaceRegistry:
         return tokenizer
 
     def __contains__(self, namespace: str) -> bool:  # pragma: no cover - convenience
+        """Check if namespace is registered."""
         return namespace in self._namespaces
 
+    def __len__(self) -> int:  # pragma: no cover - convenience
+        """Get number of registered namespaces."""
+        return len(self._namespaces)
 
-__all__ = ["EmbeddingNamespaceRegistry"]
+    def __iter__(self):  # pragma: no cover - convenience
+        """Iterate over registered namespaces."""
+        return iter(self._namespaces)
+
+    def health_check(self) -> dict[str, Any]:
+        """Check registry health."""
+        return {
+            "registry": "namespace",
+            "status": "healthy",
+            "namespaces": len(self._namespaces),
+            "tokenizers": len(self._tokenizers),
+        }
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get registry statistics."""
+        return {
+            "total_namespaces": len(self._namespaces),
+            "namespaces": list(self._namespaces.keys()),
+            "tokenizers_loaded": len(self._tokenizers),
+            "tokenizer_namespaces": list(self._tokenizers.keys()),
+        }
+
+    def clear(self) -> None:
+        """Clear all namespaces and tokenizers."""
+        self._namespaces.clear()
+        self._tokenizers.clear()
+        self.logger.info("Cleared all namespaces and tokenizers")
+
+    def validate_namespace(self, namespace: str) -> bool:
+        """Validate namespace configuration."""
+        config = self.get_namespace_config(namespace)
+        if not config:
+            return False
+
+        try:
+            # Validate tokenizer
+            tokenizer = self.get_tokenizer(namespace)
+            if not tokenizer:
+                return False
+
+            # Validate embedding kind
+            if config.embedding_kind not in [EmbeddingKind.SINGLE_VECTOR, EmbeddingKind.MULTI_VECTOR]:
+                return False
+
+            return True
+
+        except Exception as exc:
+            self.logger.warning(f"Namespace validation failed for {namespace}: {exc}")
+            return False
+
+    def get_namespace_info(self, namespace: str) -> dict[str, Any] | None:
+        """Get detailed information about a namespace."""
+        config = self.get_namespace_config(namespace)
+        if not config:
+            return None
+
+        return {
+            "namespace": namespace,
+            "config": config.model_dump(),
+            "tokenizer_loaded": namespace in self._tokenizers,
+            "valid": self.validate_namespace(namespace),
+        }
+
+
+# Global namespace registry instance
+_namespace_registry: NamespaceRegistry | None = None
+
+
+def get_namespace_registry() -> NamespaceRegistry:
+    """Get the global namespace registry instance."""
+    global _namespace_registry
+
+    if _namespace_registry is None:
+        _namespace_registry = NamespaceRegistry()
+
+    return _namespace_registry
+
+
+def create_namespace_registry() -> NamespaceRegistry:
+    """Create a new namespace registry instance."""
+    return NamespaceRegistry()
+
+
+def register_default_namespaces(registry: NamespaceRegistry) -> None:
+    """Register default namespaces."""
+    # Register default namespace
+    default_config = NamespaceConfig(
+        embedding_kind=EmbeddingKind.SINGLE_VECTOR,
+        tokenizer="bert-base-uncased",
+        max_tokens=512,
+        dimensions=768,
+    )
+    registry.register_namespace("default", default_config)
+
+    # Register biomedical namespace
+    biomedical_config = NamespaceConfig(
+        embedding_kind=EmbeddingKind.SINGLE_VECTOR,
+        tokenizer="microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract",
+        max_tokens=512,
+        dimensions=768,
+    )
+    registry.register_namespace("biomedical", biomedical_config)
+
+    # Register clinical namespace
+    clinical_config = NamespaceConfig(
+        embedding_kind=EmbeddingKind.SINGLE_VECTOR,
+        tokenizer="emilyalsentzer/Bio_ClinicalBERT",
+        max_tokens=512,
+        dimensions=768,
+    )
+    registry.register_namespace("clinical", clinical_config)
+
+    logger.info("Registered default namespaces")

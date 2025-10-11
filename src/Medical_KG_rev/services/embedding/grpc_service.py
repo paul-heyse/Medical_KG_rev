@@ -1,31 +1,49 @@
-"""gRPC service implementation for embedding operations."""
+"""gRPC service for embedding operations."""
 
 from __future__ import annotations
 
 import logging
+import time
+from typing import Any
 
 import grpc
+import structlog
 
-# Import generated protobuf classes
+# Proto imports - handle missing generated files gracefully
 try:
-    from proto import embedding_pb2, embedding_pb2_grpc
+    from ...proto.embedding_service_pb2 import (
+        EmbedRequest,
+        EmbedResponse,
+        ListModelsRequest,
+        ListModelsResponse,
+    )
+    from ...proto.embedding_service_pb2_grpc import EmbeddingServiceServicer
 except ImportError:
-    # Fallback for when protobuf files aren't generated yet
-    embedding_pb2 = None
-    embedding_pb2_grpc = None
+    # Mock classes when proto files are not available
+    class EmbedRequest:
+        pass
+    class EmbedResponse:
+        pass
+    class ListModelsRequest:
+        pass
+    class ListModelsResponse:
+        pass
+    EmbeddingServiceServicer = object
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
-class EmbeddingServiceServicer(embedding_pb2_grpc.EmbeddingServiceServicer):
-    """gRPC servicer for embedding operations."""
+class EmbeddingGRPCService(EmbeddingServiceServicer):
+    """gRPC service implementation for embedding operations."""
 
-    def __init__(self):
-        self._models = {}
-        self._load_default_models()
+    def __init__(self) -> None:
+        """Initialize the embedding gRPC service."""
+        self.logger = logger
+        self._models: dict[str, Any] = {}
+        self._load_models()
 
-    def _load_default_models(self):
-        """Load default embedding models."""
+    def _load_models(self) -> None:
+        """Load embedding models."""
         try:
             from sentence_transformers import SentenceTransformer
 
@@ -37,123 +55,105 @@ class EmbeddingServiceServicer(embedding_pb2_grpc.EmbeddingServiceServicer):
             logger.warning("Failed to load embedding models: %s", e)
 
     def Embed(
-        self, request: embedding_pb2.EmbedRequest, context: grpc.ServicerContext
-    ) -> embedding_pb2.EmbedResponse:
+        self, request: EmbedRequest, context: grpc.ServicerContext
+    ) -> EmbedResponse:
         """Generate embeddings for input texts."""
         try:
             if not request.inputs:
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                 context.set_details("No input texts provided")
-                return embedding_pb2.EmbedResponse()
+                return EmbedResponse()
 
-            # Get model (default to qwen3)
-            model_name = "qwen3"
+            # Get model
+            model_name = request.model or "qwen3"
             if model_name not in self._models:
-                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
-                context.set_details(f"Model {model_name} not available")
-                return embedding_pb2.EmbedResponse()
-
-            model = self._models[model_name]
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"Model not found: {model_name}")
+                return EmbedResponse()
 
             # Generate embeddings
-            embeddings = model.encode(request.inputs, convert_to_numpy=True)
+            start_time = time.time()
+            model = self._models[model_name]
+            embeddings = model.encode(request.inputs)
+            duration_ms = (time.time() - start_time) * 1000
 
-            # Convert to protobuf format
-            embedding_vectors = []
-            for i, embedding in enumerate(embeddings):
-                vector = embedding_pb2.EmbeddingVector(
-                    id=f"embedding_{i}",
-                    model=model_name,
-                    namespace=request.namespace or "default",
-                    kind="dense",
-                    dimension=len(embedding),
-                    values=embedding.tolist(),
-                    metadata={
-                        "input_text": request.inputs[i][:100],  # Truncate for metadata
-                        "tenant_id": request.tenant_id,
-                    },
-                )
-                embedding_vectors.append(vector)
+            # Create response
+            response = EmbedResponse()
+            response.embeddings.extend(embeddings.tolist())
+            response.model = model_name
+            response.dimensions = len(embeddings[0]) if len(embeddings) > 0 else 0
+            response.duration_ms = duration_ms
 
-            # Create metadata
-            metadata = embedding_pb2.EmbeddingMetadata(
-                provider="sentence-transformers",
-                dimension=len(embeddings[0]) if len(embeddings) > 0 else 0,
-                duration_ms=0.0,  # TODO: Measure actual duration
-                model=model_name,
-            )
-
-            return embedding_pb2.EmbedResponse(
-                namespace=request.namespace or "default",
-                embeddings=embedding_vectors,
-                metadata=metadata,
-            )
+            return response
 
         except Exception as e:
-            logger.error("Error generating embeddings: %s", e)
+            self.logger.error(f"Embedding generation failed: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return embedding_pb2.EmbedResponse()
+            context.set_details(f"Embedding generation failed: {e}")
+            return EmbedResponse()
 
-    def ListNamespaces(
-        self, request: embedding_pb2.ListNamespacesRequest, context: grpc.ServicerContext
-    ) -> embedding_pb2.ListNamespacesResponse:
-        """List available embedding namespaces."""
+    def ListModels(
+        self, request: ListModelsRequest, context: grpc.ServicerContext
+    ) -> ListModelsResponse:
+        """List available embedding models."""
         try:
-            # Return default namespaces
-            namespaces = [
-                embedding_pb2.NamespaceInfo(
-                    id="default",
-                    provider="sentence-transformers",
-                    kind="dense",
-                    dimension=4096,  # Qwen3 embedding dimension
-                    max_tokens=8192,
-                    enabled=True,
-                    allowed_tenants=[request.tenant_id] if request.tenant_id else [],
-                    allowed_scopes=["embedding:read"],
-                )
-            ]
-
-            return embedding_pb2.ListNamespacesResponse(namespaces=namespaces)
+            response = ListModelsResponse()
+            response.models.extend(list(self._models.keys()))
+            return response
 
         except Exception as e:
-            logger.error("Error listing namespaces: %s", e)
+            self.logger.error(f"List models failed: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return embedding_pb2.ListNamespacesResponse()
+            context.set_details(f"List models failed: {e}")
+            return ListModelsResponse()
 
-    def ValidateTexts(
-        self, request: embedding_pb2.ValidateTextsRequest, context: grpc.ServicerContext
-    ) -> embedding_pb2.ValidateTextsResponse:
-        """Validate texts for embedding generation."""
-        try:
-            results = []
-            valid = True
+    def health_check(self) -> dict[str, Any]:
+        """Check service health."""
+        return {
+            "service": "embedding_grpc",
+            "status": "healthy",
+            "models_loaded": len(self._models),
+            "available_models": list(self._models.keys()),
+        }
 
-            for i, text in enumerate(request.texts):
-                # Simple validation - check length and basic content
-                token_count = len(text.split())  # Rough token count
-                exceeds_budget = token_count > 8192  # Max tokens for Qwen3
+    def get_metrics(self) -> dict[str, Any]:
+        """Get service metrics."""
+        return {
+            "models_loaded": len(self._models),
+            "available_models": list(self._models.keys()),
+        }
 
-                if exceeds_budget:
-                    valid = False
 
-                result = embedding_pb2.TextValidationResult(
-                    text_index=i,
-                    token_count=token_count,
-                    exceeds_budget=exceeds_budget,
-                    warning="Text exceeds token budget" if exceeds_budget else "",
-                )
-                results.append(result)
+class EmbeddingGRPCServiceFactory:
+    """Factory for creating embedding gRPC services."""
 
-            return embedding_pb2.ValidateTextsResponse(
-                namespace=request.namespace or "default",
-                valid=valid,
-                results=results,
-            )
+    @staticmethod
+    def create() -> EmbeddingGRPCService:
+        """Create an embedding gRPC service instance."""
+        return EmbeddingGRPCService()
 
-        except Exception as e:
-            logger.error("Error validating texts: %s", e)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return embedding_pb2.ValidateTextsResponse()
+    @staticmethod
+    def create_with_config(config: dict[str, Any]) -> EmbeddingGRPCService:
+        """Create an embedding gRPC service with configuration."""
+        service = EmbeddingGRPCService()
+        # Apply configuration if needed
+        return service
+
+
+# Global embedding gRPC service instance
+_embedding_grpc_service: EmbeddingGRPCService | None = None
+
+
+def get_embedding_grpc_service() -> EmbeddingGRPCService:
+    """Get the global embedding gRPC service instance."""
+    global _embedding_grpc_service
+
+    if _embedding_grpc_service is None:
+        _embedding_grpc_service = EmbeddingGRPCServiceFactory.create()
+
+    return _embedding_grpc_service
+
+
+def create_embedding_grpc_service() -> EmbeddingGRPCService:
+    """Create a new embedding gRPC service instance."""
+    return EmbeddingGRPCServiceFactory.create()

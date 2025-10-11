@@ -8,6 +8,7 @@ from .overlays.legal import LegalClause, LegalDocument, LegalReference
 from .overlays.medical import EvidenceAssessment, MedicalDocument, ResearchStudy
 from .provenance import DataSource
 
+
 __all__ = [
     "Block",
     "BlockType",

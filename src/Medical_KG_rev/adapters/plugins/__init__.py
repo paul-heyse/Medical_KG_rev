@@ -1,92 +1,11 @@
-"""Adapter plugin framework utilities."""
+"""Adapter plugin conveniences."""
 
-from .base import BaseAdapterPlugin, ReadOnlyAdapterPlugin
-from .config import (
-    AdapterSettings,
-    ConfigValidationResult,
-    SettingsHotReloader,
-    VaultSecretProvider,
-    apply_env_overrides,
-    migrate_yaml_to_env,
-    validate_on_startup,
-)
-from .errors import AdapterPluginError
-from .manager import AdapterHookSpec, AdapterPluginManager, hookimpl, hookspec
-from .models import (
-    AdapterConfig,
-    AdapterCostEstimate,
-    AdapterDomain,
-    AdapterMetadata,
-    AdapterRequest,
-    AdapterResponse,
-    AdapterResponseEnvelope,
-    BiomedicalPayload,
-    FinancialPayload,
-    LegalPayload,
-    Pagination,
-    ValidationOutcome,
-)
-from .pipeline import (
-    AdapterExecutionContext,
-    AdapterExecutionMetrics,
-    AdapterExecutionState,
-    AdapterPipeline,
-    AdapterPipelineFactory,
-    AdapterStage,
-    StageResult,
-)
-from .resilience import (
-    BackoffStrategy,
-    CircuitBreaker,
-    ResilienceConfig,
-    ResilientHTTPClient,
-    circuit_breaker,
-    rate_limit,
-    retry_on_failure,
-)
-from .runtime import AdapterExecutionPlan, AdapterInvocationResult
+from __future__ import annotations
 
-__all__ = [
-    "AdapterConfig",
-    "AdapterCostEstimate",
-    "AdapterDomain",
-    "AdapterExecutionContext",
-    "AdapterExecutionMetrics",
-    "AdapterExecutionPlan",
-    "AdapterExecutionState",
-    "AdapterHookSpec",
-    "AdapterInvocationResult",
-    "AdapterMetadata",
-    "AdapterPipeline",
-    "AdapterPipelineFactory",
-    "AdapterPluginError",
-    "AdapterPluginManager",
-    "AdapterRequest",
-    "AdapterResponse",
-    "AdapterResponseEnvelope",
-    "AdapterSettings",
-    "AdapterStage",
-    "BackoffStrategy",
-    "BaseAdapterPlugin",
-    "BiomedicalPayload",
-    "CircuitBreaker",
-    "ConfigValidationResult",
-    "FinancialPayload",
-    "LegalPayload",
-    "Pagination",
-    "ReadOnlyAdapterPlugin",
-    "ResilienceConfig",
-    "ResilientHTTPClient",
-    "SettingsHotReloader",
-    "StageResult",
-    "ValidationOutcome",
-    "VaultSecretProvider",
-    "apply_env_overrides",
-    "circuit_breaker",
-    "hookimpl",
-    "hookspec",
-    "migrate_yaml_to_env",
-    "rate_limit",
-    "retry_on_failure",
-    "validate_on_startup",
-]
+from typing import Any
+
+hookimpl = lambda func: func  # type: ignore
+hookspec = lambda func: func  # type: ignore
+
+
+__all__ = ["hookimpl", "hookspec"]

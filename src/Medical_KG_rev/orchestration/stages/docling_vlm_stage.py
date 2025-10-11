@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import asyncio
-import tempfile
 from collections.abc import Iterable
 from pathlib import Path
+import asyncio
+import tempfile
 
 import structlog
+
 from Medical_KG_rev.models.ir import BlockType, Document
-from Medical_KG_rev.orchestration.stages.contracts import (
-    DownloadArtifact,
-    PipelineState,
-    StageContext,
-)
+from Medical_KG_rev.orchestration.stages.contracts import HttpClient
 from Medical_KG_rev.orchestration.stages.plugin_manager import StagePluginContext
 from Medical_KG_rev.services.parsing.docling import DoclingVLMOutputParser
-from Medical_KG_rev.services.parsing.docling_vlm_service import (
-    DoclingVLMResult,
-    DoclingVLMService,
-)
+from Medical_KG_rev.services.parsing.docling_vlm_service import HttpClient
 from Medical_KG_rev.storage.clients import PdfAsset, PdfStorageClient
+
 
 logger = structlog.get_logger(__name__)
 

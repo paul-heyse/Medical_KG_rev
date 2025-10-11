@@ -404,6 +404,13 @@ class Qwen3Settings(BaseModel):
     cache_ttl_seconds: int = Field(default=300, ge=0)
     query_timeout_ms: int = Field(default=400, ge=1)
 
+    # gRPC configuration
+    use_grpc: bool = Field(default=True, description="Use gRPC client instead of in-process model")
+    grpc_endpoint: str = Field(default="localhost:50051", description="gRPC service endpoint")
+    grpc_timeout: float = Field(default=30.0, ge=1.0, description="gRPC request timeout in seconds")
+    grpc_max_retries: int = Field(default=3, ge=0, description="Maximum gRPC retry attempts")
+    grpc_retry_delay: float = Field(default=1.0, ge=0.0, description="Delay between gRPC retries in seconds")
+
     @model_validator(mode="after")
     def _validate_alignment(self) -> Qwen3Settings:
         if self.tokenizer_name != self.model_name:
@@ -488,6 +495,8 @@ class FeatureFlagSettings(BaseModel):
     docling_rollout_percentage: int = Field(default=0, ge=0, le=100)
     retrieval_backend: Literal["bm25", "splade", "qwen3", "hybrid"] = "hybrid"
     retrieval_rollout_percentage: int = Field(default=100, ge=0, le=100)
+    domain_specific_metric_registries: bool = Field(default=True)
+    use_typed_embedding_stage: bool = Field(default=True)
     flags: dict[str, bool] = Field(default_factory=dict)
 
     def selected_pdf_backend(self) -> str:

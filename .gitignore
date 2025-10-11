@@ -35,4 +35,3 @@ pip-wheel-metadata/
 models/qwen3-embedding-8b/
 models/splade-v3/
 .vllm_cache/
-

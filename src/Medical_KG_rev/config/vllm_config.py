@@ -7,17 +7,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:  # pragma: no cover - optional dependency
-    import yaml
-except ModuleNotFoundError:  # pragma: no cover - fallback when PyYAML unavailable
-    yaml = None  # type: ignore[assignment]
-
-try:  # pragma: no cover - optional dependency
+try:
     from pydantic import BaseModel, Field
 except ModuleNotFoundError:  # pragma: no cover - allow running without pydantic
     BaseModel = None  # type: ignore[assignment]
     Field = None  # type: ignore[assignment]
 
+import yaml
 
 DEFAULT_VLLM_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embedding" / "vllm.yaml"
 

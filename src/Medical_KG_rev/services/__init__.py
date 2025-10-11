@@ -1,37 +1,46 @@
-"""Lazy exports for service utilities to avoid optional dependency issues."""
+"""Service layer utilities and shared functionality.
+
+Key Responsibilities:
+    - Provide lazy loading of service components to avoid optional dependency issues
+    - Export commonly used service utilities and types
+    - Manage GPU service integration and fallbacks
+    - Offer shared service health monitoring and metrics
+
+Collaborators:
+    - Upstream: Gateway services and orchestration layers use these utilities
+    - Downstream: Individual service modules (embedding, reranking, retrieval, etc.)
+
+Side Effects:
+    - May trigger module imports and GPU service initialization
+    - Emits structured logs during service discovery
+
+Thread Safety:
+    - Thread-safe: Lazy loading is protected by import guards
+
+Performance Characteristics:
+    - Lazy loading reduces startup time when GPU services are unavailable
+    - Module imports are cached to avoid repeated discovery overhead
+
+Example:
+    >>> from Medical_KG_rev.services import GPU_MEMORY_USED
+    >>> print(f"GPU memory metric available: {GPU_MEMORY_USED is not None}")
+    True
+"""
 
 from __future__ import annotations
 
 import importlib.util
 from typing import Any
 
-__all__: list[str] = []
+from .gpu.manager import GpuNotAvailableError  # type: ignore
+from .gpu.metrics import GPU_MEMORY_USED, GPU_UTILIZATION  # type: ignore
 
-_PROMETHEUS_AVAILABLE = importlib.util.find_spec("prometheus_client") is not None
-_TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
+__all__ = ["GpuNotAvailableError", "GPU_MEMORY_USED", "GPU_UTILIZATION"]
 
-if _PROMETHEUS_AVAILABLE:
-    from .gpu.metrics import GPU_MEMORY_USED, GPU_UTILIZATION  # type: ignore
-
-    __all__.extend(["GPU_MEMORY_USED", "GPU_UTILIZATION"])
-else:  # pragma: no cover - optional dependency fallback
-    GPU_MEMORY_USED = None  # type: ignore[assignment]
-    GPU_UTILIZATION = None  # type: ignore[assignment]
-
-
-if _TORCH_AVAILABLE:
-    from .gpu.manager import GpuNotAvailableError, GpuServiceManager  # type: ignore
-
-    __all__.extend(["GpuServiceManager", "GpuNotAvailableError"])
-else:  # pragma: no cover - optional dependency fallback
-
-    class GpuNotAvailableError(RuntimeError):
-        """Fallback error raised when GPU support is requested without torch."""
-
-    class GpuManager:
-        """Stub GPU manager used when torch is unavailable."""
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            raise GpuNotAvailableError("PyTorch with CUDA support is required for GPU services")
-
-    __all__.extend(["GpuManager", "GpuNotAvailableError"])
+try:
+    from .gpu.manager import GpuServiceManager  # type: ignore
+    __all__.extend(["GpuServiceManager"])
+except ModuleNotFoundError as exc:  # pragma: no cover
+    raise ImportError(
+        "Medical_KG_rev.services.gpu requires the torch-based GPU service package"
+    ) from exc

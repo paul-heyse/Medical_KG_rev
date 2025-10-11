@@ -4,13 +4,14 @@ This module implements storage layout management for the hybrid retrieval system
 including manifest creation, validation, and storage organization.
 """
 
+from pathlib import Path
+from typing import Any
 import json
 import logging
 import time
-from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class StorageLayout:
         """Initialize storage layout manager.
 
         Args:
+        ----
             config: Configuration for storage layout
 
         """
@@ -225,7 +227,8 @@ class StorageLayout:
     def validate_layout(self) -> bool:
         """Validate storage layout.
 
-        Returns:
+        Returns
+        -------
             True if layout is valid, False otherwise
 
         """
@@ -288,6 +291,7 @@ class StorageLayout:
         """Update manifest with new data.
 
         Args:
+        ----
             **kwargs: Fields to update in manifest
 
         """
@@ -342,9 +346,11 @@ class StorageLayout:
         """Calculate total size of directory.
 
         Args:
+        ----
             directory: Directory path
 
         Returns:
+        -------
             Total size in bytes
 
         """
@@ -361,7 +367,8 @@ class StorageLayout:
     def get_storage_stats(self) -> dict[str, Any]:
         """Get storage statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with storage statistics
 
         """
@@ -410,9 +417,11 @@ class StorageLayout:
         """Get path for storage type.
 
         Args:
+        ----
             storage_type: Type of storage (chunk_store, bm25_index, etc.)
 
         Returns:
+        -------
             Path for the storage type
 
         """
@@ -433,7 +442,8 @@ class StorageLayout:
     def health_check(self) -> dict[str, Any]:
         """Check storage layout health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

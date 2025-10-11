@@ -27,26 +27,28 @@ Performance Characteristics:
     - O(n) where n is schema complexity for dynamic schemas
 
 Example:
+-------
     >>> python -m Medical_KG_rev.gateway.main --export-openapi
     >>> python -m Medical_KG_rev.gateway.main --export-graphql
     >>> python -m Medical_KG_rev.gateway.main --export-asyncapi
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
-import argparse
 from pathlib import Path
 from typing import Any
+import argparse
 
 from yaml import safe_dump
 
 from .app import create_app
 from .graphql.schema import schema
+
 
 # ==============================================================================
 # TEMPLATES
@@ -92,7 +94,8 @@ channels:
 def export_openapi() -> str:
     """Export OpenAPI specification for REST endpoints.
 
-    Returns:
+    Returns
+    -------
         YAML-formatted OpenAPI specification.
 
     """
@@ -104,7 +107,8 @@ def export_openapi() -> str:
 def export_graphql() -> str:
     """Export GraphQL schema for GraphQL endpoints.
 
-    Returns:
+    Returns
+    -------
         GraphQL schema definition language (SDL) string.
 
     """
@@ -114,7 +118,8 @@ def export_graphql() -> str:
 def export_asyncapi() -> str:
     """Export AsyncAPI specification for SSE endpoints.
 
-    Returns:
+    Returns
+    -------
         YAML-formatted AsyncAPI specification.
 
     """

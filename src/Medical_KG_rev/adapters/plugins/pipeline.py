@@ -11,6 +11,7 @@ from uuid import uuid4
 from .errors import AdapterPluginError
 from .models import AdapterMetadata, AdapterRequest, AdapterResponse, ValidationOutcome
 
+
 StageCallable = Callable[["AdapterExecutionContext"], "AdapterExecutionContext"]
 
 

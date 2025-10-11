@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
+import asyncio
 
 from ..models import JobEvent
+
 
 
 class EventStreamManager:

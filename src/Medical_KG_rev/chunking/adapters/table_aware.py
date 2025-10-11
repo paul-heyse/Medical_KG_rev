@@ -13,6 +13,7 @@ from ..provenance import BlockContext, ProvenanceNormalizer
 from ..tokenization import TokenCounter, default_token_counter
 
 
+
 class TableAwareChunker(BaseChunker):
     """Chunker that preserves table boundaries and captions."""
 

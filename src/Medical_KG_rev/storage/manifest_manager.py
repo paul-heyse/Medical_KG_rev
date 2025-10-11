@@ -4,15 +4,16 @@ This module implements a comprehensive manifest management system for tracking
 and managing storage manifests across the hybrid retrieval system.
 """
 
+from pathlib import Path
+from typing import Any
 import json
 import logging
 import time
-from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, Field
 
 from Medical_KG_rev.storage.layout import StorageLayout, StorageManifest
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class ManifestManager:
         """Initialize manifest manager.
 
         Args:
+        ----
             config: Configuration for manifest manager
 
         """
@@ -72,9 +74,11 @@ class ManifestManager:
         """Synchronize manifest with storage layout.
 
         Args:
+        ----
             force: Force sync even if recently synced
 
         Returns:
+        -------
             True if sync was successful, False otherwise
 
         """
@@ -122,7 +126,8 @@ class ManifestManager:
     def _should_sync(self) -> bool:
         """Check if manifest should be synchronized.
 
-        Returns:
+        Returns
+        -------
             True if sync is needed, False otherwise
 
         """
@@ -135,7 +140,8 @@ class ManifestManager:
     def validate_manifest(self) -> dict[str, Any]:
         """Validate current manifest.
 
-        Returns:
+        Returns
+        -------
             Validation results
 
         """
@@ -182,7 +188,8 @@ class ManifestManager:
     def _get_manifest_age_hours(self) -> float:
         """Get manifest age in hours.
 
-        Returns:
+        Returns
+        -------
             Manifest age in hours
 
         """
@@ -205,7 +212,8 @@ class ManifestManager:
     def _check_manifest_consistency(self) -> list[str]:
         """Check manifest consistency.
 
-        Returns:
+        Returns
+        -------
             List of consistency errors
 
         """
@@ -268,7 +276,8 @@ class ManifestManager:
     def backup_manifest(self) -> bool:
         """Create manifest backup.
 
-        Returns:
+        Returns
+        -------
             True if backup was successful, False otherwise
 
         """
@@ -306,6 +315,7 @@ class ManifestManager:
         """Clean up old backup files.
 
         Args:
+        ----
             backup_dir: Backup directory path
 
         """
@@ -324,9 +334,11 @@ class ManifestManager:
         """Restore manifest from backup.
 
         Args:
+        ----
             backup_path: Path to backup file
 
         Returns:
+        -------
             True if restore was successful, False otherwise
 
         """
@@ -364,7 +376,8 @@ class ManifestManager:
     def get_manifest_info(self) -> dict[str, Any]:
         """Get manifest information.
 
-        Returns:
+        Returns
+        -------
             Manifest information
 
         """
@@ -394,9 +407,11 @@ class ManifestManager:
         """Update manifest with new data.
 
         Args:
+        ----
             **kwargs: Fields to update in manifest
 
         Returns:
+        -------
             True if update was successful, False otherwise
 
         """
@@ -423,7 +438,8 @@ class ManifestManager:
     def health_check(self) -> dict[str, Any]:
         """Check manifest manager health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

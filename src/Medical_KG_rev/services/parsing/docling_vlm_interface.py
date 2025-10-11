@@ -8,21 +8,18 @@ This module provides a processing interface compatible with existing pipeline in
 - Add provenance tracking for VLM processing (model_version, processing_time)
 """
 
-import logging
-import time
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
+import logging
+import time
 
-from .docling_vlm_service import (
-    DoclingVLMConfig,
-    DoclingVLMResult,
-    DoclingVLMService,
-)
+from .docling_vlm_service import DoclingVLMConfig, DoclingVLMResult, DoclingVLMService
 from .medical_normalization import MedicalNormalizer, NormalizationLevel
 from .medical_terminology import MedicalTerminologyProcessor, TerminologyType
 from .table_fidelity import TableFidelityPreserver
+
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +101,7 @@ class DoclingVLMInterface:
         """Initialize the Docling VLM interface.
 
         Args:
+        ----
             config: Configuration for the VLM interface
 
         """
@@ -157,9 +155,11 @@ class DoclingVLMInterface:
         """Process PDF using Docling VLM (compatible with processing interface).
 
         Args:
+        ----
             pdf_path: Path to the PDF file
 
         Returns:
+        -------
             ProcessingCompatibleResult with processing results
 
         """
@@ -335,7 +335,8 @@ class DoclingVLMInterface:
     async def health_check(self) -> dict[str, Any]:
         """Check health of VLM interface and all components.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """
@@ -400,9 +401,9 @@ class DoclingVLMInterface:
             stats["table_preserver_stats"] = self.table_preserver.get_preservation_stats()
 
         if self.terminology_processor:
-            stats["terminology_processor_stats"] = (
-                self.terminology_processor.get_terminology_stats()
-            )
+            stats[
+                "terminology_processor_stats"
+            ] = self.terminology_processor.get_terminology_stats()
 
         return stats
 
@@ -417,9 +418,11 @@ def create_docling_vlm_interface(config: VLMProcessingConfig) -> DoclingVLMInter
     """Create Docling VLM interface instance.
 
     Args:
+    ----
         config: VLM processing configuration
 
     Returns:
+    -------
         DoclingVLMInterface instance
 
     """
@@ -432,10 +435,12 @@ def create_processing_compatible_interface(
     """Create processing-compatible VLM interface.
 
     Args:
+    ----
         vlm_config: VLM service configuration
         processing_mode: Processing mode
 
     Returns:
+    -------
         DoclingVLMInterface instance
 
     """

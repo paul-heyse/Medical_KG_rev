@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+
 class Profile(BaseModel):
     """Declarative configuration describing a chunking profile."""
 

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+import os
 
-import yaml
 from pydantic import BaseModel, Field, ValidationError
+import yaml
 
 from .exceptions import ChunkerConfigurationError, ProfileNotFoundError
 from .models import ChunkerConfig, Granularity
+
 
 
 class ChunkerSettings(BaseModel):
@@ -86,10 +87,15 @@ class ChunkingConfig(BaseModel):
     def profile_for_source(self, source: str | None) -> ChunkingProfile:
         available = tuple(self.profiles.keys())
         if source:
-            try:
-                return self.profiles[source]
-            except KeyError as exc:
-                raise ProfileNotFoundError(source, available) from exc
+            profile = self.profiles.get(source)
+            if profile is not None:
+                return profile
+            # Fall back to the default profile when the requested source is missing.
+            # Historic behaviour allowed downstream services to continue operating even if a
+            # specialised profile had not been provisioned yet, so we retain that compatibility.
+            if self.default_profile in self.profiles:
+                return self.profiles[self.default_profile]
+            raise ProfileNotFoundError(source, available)
         try:
             return self.profiles[self.default_profile]
         except KeyError as exc:

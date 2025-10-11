@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from time import monotonic
 
 
+
 @dataclass(slots=True)
 class CircuitState:
     failures: int = 0

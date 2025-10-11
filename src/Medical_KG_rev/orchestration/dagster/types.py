@@ -7,6 +7,7 @@ from dagster import PythonObjectDagsterType, TypeCheck
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 
 
+
 def _pipeline_state_type_check(_context, value: object) -> TypeCheck:
     if not isinstance(value, PipelineState):
         return TypeCheck(

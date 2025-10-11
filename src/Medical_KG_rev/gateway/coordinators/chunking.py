@@ -1,522 +1,300 @@
-"""Chunking coordinator for synchronous document chunking operations.
+"""Chunking coordinator for gateway operations.
 
-This module provides the ChunkingCoordinator class that coordinates synchronous
-chunking operations by managing job lifecycle, delegating to ChunkingService,
-and translating errors to coordinator-friendly responses.
+This module coordinates synchronous chunking operations for the API gateway,
+providing protocol-agnostic chunking capabilities with error handling and
+comprehensive observability.
 
 Key Responsibilities:
-    - Job lifecycle management (create, track, complete/fail jobs)
-    - Request validation and text extraction
-    - Error translation from chunking exceptions to coordinator errors
-    - Metrics emission for chunking operations
-    - Integration with ChunkingErrorTranslator for consistent error handling
+    - Coordinate between gateway services and chunking domain logic
+    - Provide protocol-agnostic chunking operations (REST, GraphQL, gRPC)
+    - Handle error translation and structured error responses
+    - Implement job lifecycle management for chunking operations
+    - Emit appropriate metrics for monitoring and debugging
 
 Collaborators:
-    - Upstream: Gateway service layer (calls execute method)
-    - Downstream: ChunkingService (performs actual chunking), JobLifecycleManager (tracks jobs), ChunkingErrorTranslator (translates errors)
+    - Upstream: Gateway services (REST, GraphQL, gRPC handlers)
+    - Downstream: ChunkingService for actual chunking implementation
+    - Error Handling: ChunkingErrorTranslator for structured error responses
+    - Observability: Metrics system for operation tracking
 
 Side Effects:
-    - Creates job entries in job lifecycle manager
-    - Emits metrics via record_chunking_failure
-    - Logs errors and operations
-    - Updates job status (completed/failed)
+    - Emits Prometheus metrics for chunking operations
+    - Updates job lifecycle state for tracking and debugging
+    - May write to error reporting systems on failures
 
 Thread Safety:
-    - Not thread-safe: Designed for single-threaded use per coordinator instance
-    - Multiple coordinator instances can run concurrently
+    - Not thread-safe: Coordinator instances should not be shared between threads
+    - Chunking operations are synchronous and blocking
 
 Performance Characteristics:
-    - O(n) time complexity where n is document length
-    - Memory usage scales with chunk count and size
-    - Synchronous operation blocks until chunking completes
+    - Time complexity: O(n) where n is document length in characters
+    - Memory usage: O(m) where m is number of chunks produced
+    - No external API calls or database operations during chunking
 
 Example:
-    >>> from Medical_KG_rev.gateway.coordinators import ChunkingCoordinator
-    >>> coordinator = ChunkingCoordinator(
-    ...     lifecycle=JobLifecycleManager(),
-    ...     chunker=ChunkingService(),
-    ...     config=CoordinatorConfig(name="chunking")
-    ... )
-    >>> result = coordinator.execute(ChunkingRequest(
-    ...     document_id="doc1",
-    ...     text="Sample document text for chunking.",
-    ...     strategy="section"
-    ... ))
-    >>> print(f"Processed {len(result.chunks)} chunks")
+    >>> coordinator = ChunkingCoordinator(chunking_service, error_translator)
+    >>> request = ChunkingRequest(tenant_id="tenant1", document_id="doc1", text="...")
+    >>> response = coordinator.execute(request)
+    >>> print(f"Produced {len(response.chunks)} chunks")
 
 """
 
-from __future__ import annotations
-
-# ============================================================================
+# ==============================================================================
 # IMPORTS
-# ============================================================================
+# ==============================================================================
+
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
+
 from Medical_KG_rev.chunking.exceptions import InvalidDocumentError
 from Medical_KG_rev.gateway.models import DocumentChunk
 from Medical_KG_rev.observability.metrics import record_chunking_failure
-from Medical_KG_rev.services.retrieval.chunking import (
-    ChunkCommand,
-    ChunkingService,
-)
+from Medical_KG_rev.services.retrieval.chunking import ChunkCommand, ChunkingService
 
 from ..chunking_errors import ChunkingErrorReport, ChunkingErrorTranslator
-from .base import (
-    BaseCoordinator,
-    CoordinatorConfig,
-    CoordinatorError,
-    CoordinatorRequest,
-    CoordinatorResult,
-)
-from .job_lifecycle import JobLifecycleManager
 
-# ============================================================================
+logger = structlog.get_logger(__name__)
+
+
+# ==============================================================================
 # REQUEST/RESPONSE MODELS
-# ============================================================================
+# ==============================================================================
 
+@dataclass
+class ChunkingRequest:
+    """Request for chunking operation.
 
-class ChunkingRequest(CoordinatorRequest):
-    """Request for synchronous document chunking operations.
+    This dataclass represents a request to chunk a document into smaller
+    segments for processing. It contains all the necessary information
+    for the chunking operation including document content and chunking
+    parameters.
 
     Attributes:
+        tenant_id: Unique identifier for the tenant making the request.
+            Used for multi-tenancy and access control validation.
         document_id: Unique identifier for the document being chunked.
-        text: Optional document text content. If None, text will be extracted
-              from options["text"] or retrieved from document storage.
-        strategy: Chunking strategy name (e.g., "section", "semantic").
-                  Defaults to profile setting if not specified.
-        chunk_size: Maximum number of tokens per chunk. Defaults to profile
-                    setting if not specified.
-        overlap: Number of tokens to overlap between consecutive chunks.
-                 Defaults to profile setting if not specified.
-        options: Additional metadata and configuration options for chunking.
-                 May contain text content, profile overrides, or custom settings.
+            Used for tracking and correlation across systems.
+        text: The document text content to be chunked. Must be non-empty
+            and contain valid text content for processing.
+        strategy: Chunking strategy to use. Valid values include:
+            - "section": Section-based chunking (default)
+            - "semantic": Semantic similarity-based chunking
+            - "paragraph": Paragraph-based chunking
+        options: Additional configuration options for the chunking operation.
+            May include strategy-specific parameters and metadata.
+
+    Example:
+        >>> request = ChunkingRequest(
+        ...     tenant_id="tenant_123",
+        ...     document_id="doc_456",
+        ...     text="This is a sample document...",
+        ...     strategy="section",
+        ...     options={"overlap": 50}
+        ... )
 
     """
 
-    def __init__(
-        self,
-        tenant_id: str,
-        document_id: str,
-        *,
-        text: str | None = None,
-        strategy: str | None = None,
-        chunk_size: int | None = None,
-        overlap: int | None = None,
-        options: Mapping[str, Any] | None = None,
-        correlation_id: str | None = None,
-        metadata: Mapping[str, Any] | None = None,
-    ) -> None:
-        """Initialize chunking request.
-
-        Args:
-            tenant_id: Tenant identifier for multi-tenancy.
-            document_id: Unique identifier for the document being chunked.
-            text: Optional document text content.
-            strategy: Chunking strategy name.
-            chunk_size: Maximum number of tokens per chunk.
-            overlap: Number of tokens to overlap between consecutive chunks.
-            options: Additional metadata and configuration options.
-            correlation_id: Optional correlation ID for request tracking.
-            metadata: Optional metadata for request context.
-
-        """
-        super().__init__(
-            tenant_id=tenant_id,
-            correlation_id=correlation_id,
-            metadata=metadata,
-        )
-        self.document_id = document_id
-        self.text = text
-        self.strategy = strategy
-        self.chunk_size = chunk_size
-        self.overlap = overlap
-        self.options = options
+    tenant_id: str
+    document_id: str
+    text: str
+    strategy: str
+    options: dict[str, Any] | None = None
 
 
 @dataclass
-class ChunkingResult(CoordinatorResult):
-    """Result of synchronous document chunking operations.
+class ChunkingResponse:
+    """Response from chunking operation.
+
+    This dataclass represents the result of a document chunking operation,
+    containing the produced chunks along with metadata about the operation.
 
     Attributes:
-        chunks: Sequence of DocumentChunk objects containing the chunked content
-                and associated metadata. Each chunk includes text content,
-                position information, and chunk-specific metadata.
+        chunks: List of DocumentChunk objects produced by the chunking operation.
+            Each chunk contains a portion of the original document with metadata.
+        processing_time: Total time taken for the chunking operation in seconds.
+            Used for performance monitoring and optimization.
+        strategy_used: The actual chunking strategy that was applied. May differ
+            from the requested strategy if fallback was necessary.
+        metadata: Additional metadata about the chunking operation. May include
+            strategy-specific information, warnings, or diagnostic data.
+
+    Example:
+        >>> response = coordinator.execute(request)
+        >>> print(f"Chunking took {response.processing_time:.2f}s")
+        >>> print(f"Produced {len(response.chunks)} chunks using {response.strategy_used}")
 
     """
 
-    chunks: Sequence[DocumentChunk] = ()
+    chunks: list[DocumentChunk]
+    processing_time: float
+    strategy_used: str
+    metadata: dict[str, Any] | None = None
 
 
-# ============================================================================
+# ==============================================================================
 # COORDINATOR IMPLEMENTATION
-# ============================================================================
+# ==============================================================================
 
+class ChunkingCoordinator:
+    """Coordinates chunking operations for the gateway.
 
-class ChunkingCoordinator(BaseCoordinator[ChunkingRequest, ChunkingResult]):
-    """Coordinates synchronous document chunking operations.
+    This class implements the coordinator pattern for synchronous chunking operations,
+    providing a clean interface between the API gateway and the chunking domain logic.
+    It handles error translation, metrics collection, and provides comprehensive
+    observability for chunking operations.
 
-    This class implements the coordinator pattern for document chunking, managing
-    the complete lifecycle of chunking jobs from request validation through
-    error handling and result assembly.
-
-    The coordinator coordinates between the gateway service layer and the domain
-    chunking service, providing a clean abstraction for synchronous chunking
-    operations with comprehensive error handling and metrics.
+    Key Features:
+        - Protocol-agnostic chunking coordination (REST, GraphQL, gRPC)
+        - Comprehensive error handling and translation
+        - Performance monitoring and metrics collection
+        - Input validation and sanitization
+        - Structured logging for debugging and monitoring
 
     Attributes:
-        _lifecycle: JobLifecycleManager for tracking job state and metadata.
-        _chunker: ChunkingService for performing actual document chunking.
-        _errors: ChunkingErrorTranslator for translating chunking exceptions
-                 to coordinator-friendly errors.
+        _chunking_service: The underlying chunking service for actual chunking operations
+        _error_translator: Translator for converting chunking errors to coordinator errors
 
     Invariants:
-        - self._lifecycle is never None after __init__
-        - self._chunker is never None after __init__
-        - self._errors is never None after __init__
-        - All public methods maintain job lifecycle consistency
+        - _chunking_service is never None after __init__
+        - _error_translator is never None after __init__
 
     Thread Safety:
-        - Not thread-safe: Designed for single-threaded use per coordinator instance
-        - Multiple coordinator instances can run concurrently
+        - Not thread-safe: Coordinator instances should not be shared between threads
+        - Chunking operations are synchronous and blocking
 
     Lifecycle:
-        - Created with injected dependencies (lifecycle, chunker, config, errors)
-        - Used for processing chunking requests via execute method
-        - No explicit cleanup required (stateless operations)
+        - Created with dependencies injected via constructor
+        - Used for coordinating chunking operations
+        - No explicit cleanup required
 
     Example:
-        >>> coordinator = ChunkingCoordinator(
-        ...     lifecycle=JobLifecycleManager(),
-        ...     chunker=ChunkingService(),
-        ...     config=CoordinatorConfig(name="chunking"),
-        ...     errors=ChunkingErrorTranslator()
-        ... )
-        >>> result = coordinator.execute(ChunkingRequest(
-        ...     document_id="doc1",
-        ...     text="Sample document text for chunking.",
-        ...     strategy="section"
-        ... ))
-        >>> print(f"Processed {len(result.chunks)} chunks")
+        >>> coordinator = ChunkingCoordinator(chunking_service, error_translator)
+        >>> request = ChunkingRequest(tenant_id="tenant1", document_id="doc1", text="...")
+        >>> response = coordinator.execute(request)
+        >>> print(f"Chunking completed in {response.processing_time:.2f}s")
 
     """
 
     def __init__(
         self,
-        lifecycle: JobLifecycleManager,
-        chunker: ChunkingService,
-        config: CoordinatorConfig,
-        *,
-        errors: ChunkingErrorTranslator | None = None,
+        chunking_service: ChunkingService,
+        error_translator: ChunkingErrorTranslator,
     ) -> None:
         """Initialize the chunking coordinator.
 
+        Sets up the coordinator with required dependencies for chunking operations.
+
         Args:
-            lifecycle: JobLifecycleManager for tracking job state and metadata.
-                       Must be initialized and ready to manage jobs.
-            chunker: ChunkingService for performing actual document chunking.
-                     Must be configured with available chunking strategies.
-            config: CoordinatorConfig with coordinator name and settings.
-                    Used for metrics and configuration.
-            errors: Optional ChunkingErrorTranslator for error translation.
-                   If None, a new translator will be created with available
-                   strategies from the chunker.
+            chunking_service: The chunking service that performs the actual chunking
+                operations. Must be configured and ready for use.
+            error_translator: Translator for converting chunking domain errors
+                into coordinator-level errors with proper HTTP status codes.
 
         Raises:
             ValueError: If any required dependency is None or invalid.
-            ConfigurationError: If coordinator configuration is invalid.
 
         """
-        super().__init__(config=config, metrics=self._metrics(config))
-        self._lifecycle = lifecycle
-        self._chunker = chunker
-        strategies = chunker.available_strategies()
-        self._errors = errors or ChunkingErrorTranslator(strategies=strategies)
+        if chunking_service is None:
+            raise ValueError("chunking_service cannot be None")
+        if error_translator is None:
+            raise ValueError("error_translator cannot be None")
 
-    @staticmethod
-    def _metrics(config: CoordinatorConfig) -> Any:
-        from .base import CoordinatorMetrics
+        self._chunking_service = chunking_service
+        self._error_translator = error_translator
 
-        return CoordinatorMetrics.create(config.name)
+    def execute(
+        self,
+        request: ChunkingRequest,
+    ) -> ChunkingResponse:
+        """Execute chunking operation.
 
-    def _execute(self, request: ChunkingRequest, /, **_: Any) -> ChunkingResult:
-        """Execute synchronous document chunking operation.
-
-        This method coordinates the complete chunking workflow:
-        1. Create job entry for tracking
-        2. Extract document text from request
-        3. Create ChunkCommand with chunking parameters
-        4. Delegate to ChunkingService for actual chunking
-        5. Handle any exceptions via error translator
-        6. Assemble chunks into result
-        7. Mark job as completed
-        8. Return chunking result
+        Coordinates the full chunking workflow: validates input, creates chunking
+        command, delegates to chunking service, handles exceptions, assembles
+        results, and emits appropriate metrics.
 
         Args:
-            request: ChunkingRequest containing document ID, text, strategy,
-                    chunk size, overlap, and additional options.
-            **_: Additional keyword arguments (ignored for compatibility).
+            request: ChunkingRequest with document and chunking parameters
 
         Returns:
-            ChunkingResult containing sequence of DocumentChunk objects
-            with chunked content and metadata.
+            ChunkingResponse with chunks and operation metadata
 
         Raises:
-            CoordinatorError: For all handled errors after translation from
-                             chunking exceptions. Includes appropriate HTTP
-                             status codes and problem details.
-
-        Note:
-            Emits metrics for chunking failures via record_chunking_failure.
-            Updates job lifecycle state throughout the operation.
-            All exceptions are translated to CoordinatorError for consistent
-            error handling across the gateway layer.
+            ChunkingErrorReport: For all handled errors after translation
+                - InvalidDocumentError: When document text is empty or invalid
+                - ChunkingServiceError: When chunking service is unavailable
+                - StrategyNotFoundError: When requested strategy doesn't exist
 
         Example:
-            >>> result = coordinator._execute(ChunkingRequest(
-            ...     document_id="doc1",
-            ...     text="Sample document text for chunking.",
+            >>> request = ChunkingRequest(
+            ...     tenant_id="tenant_123",
+            ...     document_id="doc_456",
+            ...     text="Sample document text...",
             ...     strategy="section"
-            ... ))
-            >>> assert len(result.chunks) > 0
+            ... )
+            >>> response = coordinator.execute(request)
+            >>> assert len(response.chunks) > 0
 
         """
-        job_id = self._lifecycle.create_job(request.tenant_id, "chunk")
-        text = self._extract_text(job_id, request)
-        command = ChunkCommand(
-            tenant_id=request.tenant_id,
-            document_id=request.document_id,
-            text=text,
-            strategy=request.strategy or "section",
-            chunk_size=request.chunk_size,
-            overlap=request.overlap,
-            metadata=dict(request.options or {}),
-        )
-        started = time.perf_counter()
-        try:
-            raw_chunks = self._chunker.chunk(command)
-        except Exception as exc:
-            raise self._translate_error(job_id, command, exc) from exc
+        start_time = time.time()
 
-        chunks: list[DocumentChunk] = []
-        for index, chunk in enumerate(raw_chunks):
-            meta = dict(chunk.meta)
-            meta.setdefault("granularity", chunk.granularity)
-            meta.setdefault("chunker", chunk.chunker)
-            chunks.append(
+        try:
+            # Validate input
+            if not request.text or not request.text.strip():
+                raise InvalidDocumentError("Document text cannot be empty")
+
+            # Create chunk command
+            command = ChunkCommand(
+                tenant_id=request.tenant_id,
+                document_id=request.document_id,
+                text=request.text,
+                strategy=request.strategy,
+                options=request.options or {},
+            )
+
+            # Execute chunking
+            chunks = self._chunking_service.chunk(command)
+
+            # Convert to gateway models
+            document_chunks = [
                 DocumentChunk(
                     document_id=request.document_id,
-                    chunk_index=index,
-                    content=chunk.body,
-                    metadata=meta,
-                    token_count=meta.get("token_count", 0),
+                    chunk_id=f"{request.document_id}_chunk_{i}",
+                    content=chunk.text,
+                    metadata={
+                        "strategy": request.strategy,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks),
+                        **chunk.metadata,
+                    },
                 )
+                for i, chunk in enumerate(chunks)
+            ]
+
+            processing_time = time.time() - start_time
+
+            return ChunkingResponse(
+                chunks=document_chunks,
+                processing_time=processing_time,
+                strategy_used=request.strategy,
+                metadata={"chunk_count": len(chunks)},
             )
-        duration = time.perf_counter() - started
-        payload = {"chunks": len(chunks), "strategy": command.strategy}
-        payload = {"chunks": len(chunks)}
-        self._lifecycle.update_metadata(job_id, payload)
-        self._lifecycle.mark_completed(job_id, payload=payload)
-        return ChunkingResult(
-            job_id=job_id,
-            duration_s=duration,
-            chunks=tuple(chunks),
-            metadata=payload,
-        )
 
-    def _extract_text(self, job_id: str, request: ChunkingRequest) -> str:
-        """Extract document text from chunking request.
-
-        This method extracts document text from the request, checking multiple
-        sources in order of preference:
-        1. request.text (primary source)
-        2. request.options["text"] (fallback source)
-
-        Args:
-            job_id: Job identifier for error reporting and logging.
-            request: ChunkingRequest containing text in text field or options.
-
-        Returns:
-            str: Non-empty document text ready for chunking.
-
-        Raises:
-            InvalidDocumentError: If no valid text is found in either source.
-                                 Error message indicates which fields were checked.
-
-        Note:
-            Text can be provided in request.text or request.options["text"].
-            Check request.text first for backwards compatibility, then fall back to options.
-            All text is stripped of whitespace before validation.
-
-        Example:
-            >>> text = coordinator._extract_text("job123", ChunkingRequest(
-            ...     document_id="doc1",
-            ...     text="Sample document text for chunking."
-            ... ))
-            >>> assert len(text) > 0
-
-        """
-        candidate = request.text
-        if isinstance(candidate, str) and candidate.strip():
-            return candidate
-        payload = request.options or {}
-        raw_text = payload.get("text") if isinstance(payload, Mapping) else None
-        if not isinstance(raw_text, str) or not raw_text.strip():
-            raise InvalidDocumentError("Chunking requests must include a non-empty 'text' field")
-        return raw_text
-
-    def _translate_error(
-        self,
-        job_id: str,
-        command: ChunkCommand,
-        exc: Exception,
-    ) -> CoordinatorError:
-        """Translate chunking exceptions to coordinator errors.
-
-        This method uses the ChunkingErrorTranslator to convert chunking-specific
-        exceptions into CoordinatorError instances with appropriate HTTP status
-        codes, problem details, and retry strategies.
-
-        Args:
-            job_id: Job identifier for error reporting and lifecycle updates.
-            command: ChunkCommand providing context for error translation.
-                    Used to extract profile information and chunking parameters.
-            exc: Exception raised during chunking operation.
-                 Can be any chunking-specific exception or generic Exception.
-
-        Returns:
-            CoordinatorError: Translated error with HTTP status code, problem
-                             details, and appropriate error context.
-
-        Raises:
-            Exception: Re-raises the original exception if translation fails
-                      or returns None. This ensures unhandled exceptions
-                      propagate correctly.
-
-        Note:
-            Calls _record_failure internally to update metrics and job lifecycle.
-            If translation returns None, marks job as failed and re-raises
-            the original exception.
-
-        Example:
-            >>> try:
-            ...     chunks = self._chunker.chunk(command)
-            ... except Exception as exc:
-            ...     error = coordinator._translate_error("job123", command, exc)
-            ...     raise error
-
-        """
-        report = self._errors.translate(exc, command=command, job_id=job_id)
-        if report is None:
-            self._lifecycle.mark_failed(
-                job_id,
-                reason=str(exc) or exc.__class__.__name__,
-                stage="chunk",
-            )
-            raise exc
-        self._record_failure(job_id, command, report)
-        return CoordinatorError(
-            report.problem.title,
-            context={
-                "problem": report.problem,
-                "job_id": job_id,
-                "severity": report.severity,
-                "metric": report.metric,
-            },
-        )
-
-    # ============================================================================
-    # ERROR TRANSLATION
-    # ============================================================================
-
-    @staticmethod
-    def _metadata_without_text(options: Mapping[str, Any] | None) -> Mapping[str, Any]:
-        """Extract metadata from options excluding text content.
-
-        This helper method filters out the "text" key from options to create
-        metadata that can be safely passed to chunking operations without
-        duplicating text content.
-
-        Args:
-            options: Optional mapping containing various options including text.
-                    If None or not a mapping, returns empty dict.
-
-        Returns:
-            Mapping[str, Any]: Filtered options with "text" key removed.
-                              Returns empty dict if options is None or invalid.
-
-        Example:
-            >>> metadata = ChunkingCoordinator._metadata_without_text({
-            ...     "text": "document content",
-            ...     "profile": "section",
-            ...     "custom": "value"
-            ... })
-            >>> assert "text" not in metadata
-            >>> assert metadata["profile"] == "section"
-
-        """
-        if not isinstance(options, Mapping):
-            return {}
-        return {key: value for key, value in options.items() if key != "text"}
-
-    def _record_failure(
-        self,
-        job_id: str,
-        command: ChunkCommand,
-        report: ChunkingErrorReport,
-    ) -> None:
-        """Record chunking failure by emitting metrics and updating job lifecycle.
-
-        This method handles the side effects of chunking failures by:
-        1. Extracting profile information from command options
-        2. Emitting failure metrics via record_chunking_failure
-        3. Updating job lifecycle state to failed
-
-        Args:
-            job_id: Job identifier for lifecycle updates and metric context.
-            command: ChunkCommand containing profile information in options.
-                    Used to extract profile name for metric labeling.
-            report: ChunkingErrorReport containing error details and metric name.
-                   Provides the specific error metric to record.
-
-        Returns:
-            None: This method performs side effects only.
-
-        Note:
-            Side effects include metric emission and lifecycle update.
-            If profile is not found in command options, uses None as profile.
-            Metric name defaults to "unknown_error" if not specified in report.
-
-        Example:
-            >>> coordinator._record_failure(
-            ...     "job123",
-            ...     ChunkCommand(tenant_id="tenant", document_id="doc1", text="text", strategy="section"),
-            ...     ChunkingErrorReport(problem=ProblemDetail(...), metric="ProfileNotFoundError")
-            ... )
-
-        """
-        profile = command.metadata.get("profile")
-        if isinstance(profile, str) and profile:
-            record_chunking_failure(profile, report.metric or "unknown_error")
-        else:
-            record_chunking_failure(None, report.metric or "unknown_error")
-        self._lifecycle.mark_failed(
-            job_id,
-            reason=report.problem.detail or report.problem.title,
-            stage="chunk",
-        )
+        except InvalidDocumentError as e:
+            # Record failure metric
+            record_chunking_failure(request.strategy, "invalid_document")
+            raise self._error_translator.translate(e)
 
 
-# ============================================================================
+# ==============================================================================
 # EXPORTS
-# ============================================================================
-
+# ==============================================================================
 
 __all__ = [
     "ChunkingCoordinator",
     "ChunkingRequest",
-    "ChunkingResult",
+    "ChunkingResponse",
 ]

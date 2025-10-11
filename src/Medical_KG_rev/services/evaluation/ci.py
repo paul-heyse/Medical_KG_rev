@@ -26,6 +26,7 @@ Performance Characteristics:
     - Minimal overhead for CI integration
 
 Example:
+-------
     >>> from Medical_KG_rev.services.evaluation.ci import enforce_recall_threshold
     >>> baseline_recall = 0.85
     >>> current_recall = 0.82
@@ -33,11 +34,12 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
 
 # ==============================================================================
 # CI INTEGRATION FUNCTIONS
@@ -53,11 +55,13 @@ def enforce_recall_threshold(
     """Raise ``RuntimeError`` if Recall@10 regresses beyond the tolerated drop.
 
     Args:
+    ----
         baseline: Baseline recall performance value.
         current: Current recall performance value.
         tolerance: Maximum tolerated performance drop (default: 0.05).
 
     Raises:
+    ------
         RuntimeError: If performance regression exceeds tolerance.
 
     """

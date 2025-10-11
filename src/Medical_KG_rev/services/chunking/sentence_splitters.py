@@ -2,56 +2,28 @@
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable
 from functools import lru_cache
+from typing import List, Tuple
 
-Segment = tuple[int, int, str]
+from .wrappers.huggingface_segmenter import HuggingFaceSentenceSegmenter
+from .wrappers.syntok_segmenter import SyntokSentenceSegmenter
 
-
-def get_sentence_splitter(name: str) -> Callable[[str], list[Segment]]:
-    name = name.lower()
-    if name in {"huggingface", "hf"}:
-        return _huggingface_split
-    if name == "scispacy":  # pragma: no cover - deprecated path
-        warnings.warn(
-            "SciSpaCy sentence splitting has been removed. Falling back to the "
-            "Hugging Face-backed segmenter.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return _huggingface_split
-    if name == "syntok":
-        return _syntok_split
-    return _simple_split
+Segment = Tuple[int, int, str]
 
 
 @lru_cache(maxsize=1)
-def _huggingface_segmenter():  # pragma: no cover - heavy dependency path
-    from .wrappers.huggingface_segmenter import HuggingFaceSentenceSegmenter
-
-    return HuggingFaceSentenceSegmenter()
-
-
-def _huggingface_split(text: str) -> list[Segment]:
-    segmenter = _huggingface_segmenter()
-    return segmenter.segment(text)
-
-
-@lru_cache(maxsize=1)
-def _syntok_segmenter():  # pragma: no cover - heavy dependency path
-    from .wrappers.syntok_segmenter import SyntokSentenceSegmenter
-
+def _syntok_segmenter() -> SyntokSentenceSegmenter:
     return SyntokSentenceSegmenter()
 
 
-def _syntok_split(text: str) -> list[Segment]:
+def syntok_split(text: str) -> List[Segment]:
     segmenter = _syntok_segmenter()
     return segmenter.segment(text)
 
 
-def _simple_split(text: str) -> list[Segment]:
-    sentences: list[Segment] = []
+def simple_split(text: str) -> List[Segment]:
+    sentences: List[Segment] = []
     cursor = 0
     for part in [segment.strip() for segment in text.split(". ") if segment.strip()]:
         idx = text.find(part, cursor)
@@ -62,3 +34,9 @@ def _simple_split(text: str) -> list[Segment]:
         sentences.append((start, end, text[start:end]))
         cursor = end
     return sentences
+
+
+DEFAULT_SPLITTER: Callable[[str], List[Segment]] = syntok_split
+
+
+__all__ = ["Segment", "syntok_split", "simple_split", "DEFAULT_SPLITTER"]

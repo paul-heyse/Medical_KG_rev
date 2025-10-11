@@ -4,12 +4,13 @@ This module provides auto-scaling capabilities for GPU services including
 load-based scaling, performance-based scaling, and resource utilization monitoring.
 """
 
-import asyncio
-import logging
 from datetime import datetime, timedelta
 from typing import Any
+import asyncio
+import logging
 
 from pydantic import BaseModel, Field
+
 
 logger = logging.getLogger(__name__)
 

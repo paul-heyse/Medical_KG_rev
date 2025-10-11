@@ -1,100 +1,170 @@
-"""Sentence splitter adapters used by chunkers."""
+"""Sentence splitting utilities for chunking."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Protocol
+import logging
+import re
+from abc import ABC, abstractmethod
+from typing import Any
 
 from .exceptions import ChunkerConfigurationError
 
-
-class SentenceSplitter(Protocol):
-    """Protocol for sentence splitter adapters."""
-
-    def split(self, text: str) -> list[str]: ...
+logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
-class NLTKSentenceSplitter:
-    """Adapter around the NLTK Punkt tokenizer."""
+class SentenceSplitter(ABC):
+    """Abstract base class for sentence splitters."""
 
-    language: str = "english"
+    @abstractmethod
+    def split(self, text: str) -> list[str]:
+        """Split text into sentences."""
+        pass
 
-    def __post_init__(self) -> None:
+
+class NLTKSentenceSplitter(SentenceSplitter):
+    """Sentence splitter using NLTK."""
+
+    def __init__(self, language: str = "english") -> None:
+        """Initialize the NLTK sentence splitter."""
         try:
             import nltk
-        except Exception as exc:  # pragma: no cover - optional dependency
+            from nltk.tokenize import sent_tokenize
+
+            # Download required NLTK data
+            try:
+                nltk.data.find('tokenizers/punkt')
+            except LookupError:
+                nltk.download('punkt', quiet=True)
+
+            self._sent_tokenize = sent_tokenize
+            self.language = language
+        except ImportError as exc:
             raise ChunkerConfigurationError(
-                "nltk must be installed to use the NLTKSentenceSplitter"
+                "nltk must be installed to use NLTKSentenceSplitter"
             ) from exc
-        try:
-            nltk.data.find(f"tokenizers/punkt/{self.language}.pickle")
-        except LookupError:  # pragma: no cover - data download path
-            nltk.download("punkt")
-        self._tokenizer = nltk.data.load(f"tokenizers/punkt/{self.language}.pickle")
 
     def split(self, text: str) -> list[str]:
+        """Split text into sentences using NLTK."""
         if not text:
             return []
-        return [segment.strip() for segment in self._tokenizer.tokenize(text) if segment.strip()]
+
+        try:
+            sentences = self._sent_tokenize(text)
+            return [s.strip() for s in sentences if s.strip()]
+        except Exception as exc:
+            logger.error("nltk.sentence_split_failed", error=str(exc))
+            raise ChunkerConfigurationError(
+                "NLTK sentence splitter failed"
+            ) from exc
 
 
-@dataclass(slots=True)
-class SpacySentenceSplitter:
-    """Adapter that wraps spaCy pipelines for sentence boundary detection."""
+class SpacySentenceSplitter(SentenceSplitter):
+    """Sentence splitter using spaCy."""
 
-    model_name: str = "en_core_web_sm"
-
-    def __post_init__(self) -> None:
+    def __init__(self, model: str = "en_core_web_sm") -> None:
+        """Initialize the spaCy sentence splitter."""
         try:
             import spacy
-        except Exception as exc:  # pragma: no cover - optional dependency
+            self._nlp = spacy.load(model)
+        except ImportError as exc:
             raise ChunkerConfigurationError(
-                "spaCy must be installed to use the SpacySentenceSplitter"
+                "spacy must be installed to use SpacySentenceSplitter"
             ) from exc
-        try:
-            self._nlp = spacy.load(self.model_name)
-        except OSError as exc:  # pragma: no cover - model missing
+        except OSError as exc:
             raise ChunkerConfigurationError(
-                f"spaCy model '{self.model_name}' is not installed"
+                f"spaCy model '{model}' not found. Install with: python -m spacy download {model}"
             ) from exc
 
     def split(self, text: str) -> list[str]:
+        """Split text into sentences using spaCy."""
         if not text:
             return []
-        doc = self._nlp(text)
-        return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+
+        try:
+            doc = self._nlp(text)
+            sentences = [sent.text.strip() for sent in doc.sents]
+            return [s for s in sentences if s]
+        except Exception as exc:
+            logger.error("spacy.sentence_split_failed", error=str(exc))
+            raise ChunkerConfigurationError(
+                "spaCy sentence splitter failed"
+            ) from exc
 
 
-@dataclass(slots=True)
-class PySBDSentenceSplitter:
-    """Adapter around the PySBD rule-based splitter for English."""
+class PySBDSentenceSplitter(SentenceSplitter):
+    """Sentence splitter using PySBD."""
 
-    language: str = "en"
-
-    def __post_init__(self) -> None:
+    def __init__(self, language: str = "en") -> None:
+        """Initialize the PySBD sentence splitter."""
         try:
             import pysbd
-        except Exception as exc:  # pragma: no cover - optional dependency
+            self._segmenter = pysbd.Segmenter(language=language, clean=True)
+            self.language = language
+        except ImportError as exc:
             raise ChunkerConfigurationError(
-                "pysbd must be installed to use the PySBDSentenceSplitter"
+                "pysbd must be installed to use PySBDSentenceSplitter"
             ) from exc
-        self._segmenter = pysbd.Segmenter(language=self.language, clean=True)
 
     def split(self, text: str) -> list[str]:
+        """Split text into sentences using PySBD."""
         if not text:
             return []
-        segments = self._segmenter.segment(text)
-        return [segment.strip() for segment in segments if segment.strip()]
+
+        try:
+            segments = self._segmenter.segment(text)
+            return [segment.strip() for segment in segments if segment.strip()]
+        except Exception as exc:
+            logger.error("pysbd.sentence_split_failed", error=str(exc))
+            raise ChunkerConfigurationError(
+                "PySBD sentence splitter failed"
+            ) from exc
 
 
-def sentence_splitter_factory(name: str) -> SentenceSplitter:
-    """Return a sentence splitter adapter based on configuration."""
-    normalized = name.lower()
-    if normalized in {"nltk", "punkt"}:
-        return NLTKSentenceSplitter()
-    if normalized == "spacy":
-        return SpacySentenceSplitter()
-    if normalized in {"pysbd", "py-sbd", "sbd"}:
-        return PySBDSentenceSplitter()
-    raise ChunkerConfigurationError(f"Unknown sentence splitter '{name}'")
+class RegexSentenceSplitter(SentenceSplitter):
+    """Simple regex-based sentence splitter."""
+
+    def __init__(self, pattern: str = r'[.!?]+') -> None:
+        """Initialize the regex sentence splitter."""
+        self.pattern = pattern
+        self._regex = re.compile(pattern)
+
+    def split(self, text: str) -> list[str]:
+        """Split text into sentences using regex."""
+        if not text:
+            return []
+
+        sentences = self._regex.split(text)
+        return [s.strip() for s in sentences if s.strip()]
+
+
+class SentenceSplitterFactory:
+    """Factory for creating sentence splitters."""
+
+    _splitters = {
+        "nltk": NLTKSentenceSplitter,
+        "spacy": SpacySentenceSplitter,
+        "pysbd": PySBDSentenceSplitter,
+        "regex": RegexSentenceSplitter,
+    }
+
+    @classmethod
+    def create(cls, name: str, **kwargs: Any) -> SentenceSplitter:
+        """Create a sentence splitter by name."""
+        if name not in cls._splitters:
+            raise ChunkerConfigurationError(f"Unknown sentence splitter: {name}")
+
+        try:
+            return cls._splitters[name](**kwargs)
+        except Exception as exc:
+            raise ChunkerConfigurationError(
+                f"Failed to create sentence splitter '{name}': {exc}"
+            ) from exc
+
+    @classmethod
+    def list_splitters(cls) -> list[str]:
+        """List available sentence splitter names."""
+        return list(cls._splitters.keys())
+
+
+# Create factory instance
+sentence_splitter_factory = SentenceSplitterFactory()

@@ -10,26 +10,35 @@ from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 from .tokenization import TokenCounter, default_token_counter
 
 
+
 @dataclass(slots=True, frozen=True)
 class BlockContext:
     """Normalized view over IR blocks with positional metadata."""
 
     block: Block
-    section: Section
-    title_path: tuple[str, ...]
-    text: str
-    start_char: int
-    end_char: int
-    token_count: int
-    page_no: int | None
+    section: Section | None = None
+    title_path: tuple[str, ...] = ()
+    text: str = ""
+    start_char: int = 0
+    end_char: int = 0
+    token_count: int = 0
+    page_no: int | None = None
 
     @property
     def section_title(self) -> str:
-        return self.section.title or "Untitled"
+        if self.section is not None:
+            return self.section.title or "Untitled"
+        if self.title_path:
+            return self.title_path[-1]
+        return "Untitled"
 
     @property
     def is_table(self) -> bool:
         return self.block.type == BlockType.TABLE or self.block.metadata.get("is_table", False)
+
+    @property
+    def metadata(self) -> dict[str, object]:
+        return self.block.metadata
 
 
 def _extract_page_number(metadata: dict[str, object]) -> int | None:

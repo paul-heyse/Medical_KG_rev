@@ -5,17 +5,18 @@ medical document search, including title, section headers, paragraphs,
 captions, and table text with appropriate field boosts.
 """
 
+from collections import defaultdict
+from typing import Any
 import logging
 import math
 import re
 import time
-from collections import defaultdict
-from typing import Any
 
+from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, Field
 
 from Medical_KG_rev.config.settings import get_settings
-from prometheus_client import Counter, Histogram
+
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,7 @@ class BM25Service:
         """Initialize BM25 service.
 
         Args:
+        ----
             k1: BM25 parameter controlling term frequency scaling
             b: BM25 parameter controlling document length normalization
             delta: BM25 parameter for term frequency floor
@@ -194,10 +196,12 @@ class BM25Service:
         """Tokenize text with optional medical term preservation.
 
         Args:
+        ----
             text: Text to tokenize
             preserve_medical: Whether to preserve medical terminology
 
         Returns:
+        -------
             List of tokens
 
         """
@@ -300,10 +304,12 @@ class BM25Service:
         """Calculate field length for BM25 scoring.
 
         Args:
+        ----
             field_name: Name of the field
             tokens: List of tokens in the field
 
         Returns:
+        -------
             Field length
 
         """
@@ -313,9 +319,11 @@ class BM25Service:
         """Calculate term frequency for a list of tokens.
 
         Args:
+        ----
             tokens: List of tokens
 
         Returns:
+        -------
             Dictionary mapping terms to their frequencies
 
         """
@@ -328,6 +336,7 @@ class BM25Service:
         """Add a document to the BM25 index.
 
         Args:
+        ----
             document: BM25 document to add
 
         """
@@ -403,12 +412,14 @@ class BM25Service:
         """Calculate BM25 score for a term in a field.
 
         Args:
+        ----
             term: Term to score
             field_name: Name of the field
             chunk_id: Document identifier
             query_term_freq: Frequency of term in query
 
         Returns:
+        -------
             BM25 score
 
         """
@@ -448,10 +459,12 @@ class BM25Service:
         """Search documents using BM25 scoring.
 
         Args:
+        ----
             query_text: Query text
             top_k: Number of top results to return
 
         Returns:
+        -------
             List of BM25 results sorted by score
 
         """
@@ -539,9 +552,11 @@ class BM25Service:
         """Get a document from the index.
 
         Args:
+        ----
             chunk_id: Document identifier
 
         Returns:
+        -------
             BM25 document if found, None otherwise
 
         """
@@ -566,9 +581,11 @@ class BM25Service:
         """Remove a document from the index.
 
         Args:
+        ----
             chunk_id: Document identifier
 
         Returns:
+        -------
             True if document was removed, False if not found
 
         """
@@ -610,7 +627,8 @@ class BM25Service:
     def get_index_stats(self) -> dict[str, Any]:
         """Get index statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with index statistics
 
         """
@@ -632,7 +650,8 @@ class BM25Service:
     def health_check(self) -> dict[str, Any]:
         """Check BM25 service health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

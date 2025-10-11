@@ -1,31 +1,26 @@
 """gRPC client for GPU service."""
 
+from typing import Any, Optional
 import asyncio
-from typing import Any, Dict, List, Optional
 
-import grpc
 from grpc import aio
 
-from Medical_KG_rev.services.clients.circuit_breaker import CircuitBreaker, CircuitBreakerState
+from Medical_KG_rev.services.clients.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerState,
+)
 
 
 class GPUServiceClient:
     """gRPC client for GPU service."""
 
-    def __init__(
-        self,
-        host: str = "localhost",
-        port: int = 50052,
-        timeout: float = 30.0
-    ):
+    def __init__(self, host: str = "localhost", port: int = 50052, timeout: float = 30.0):
         self.host = host
         self.port = port
         self.timeout = timeout
         self._channel: Optional[aio.Channel] = None
         self._circuit_breaker = CircuitBreaker(
-            failure_threshold=5,
-            recovery_timeout=60.0,
-            name="gpu_service"
+            failure_threshold=5, recovery_timeout=60.0, name="gpu_service"
         )
 
     async def __aenter__(self):
@@ -48,7 +43,7 @@ class GPUServiceClient:
             await self._channel.close()
             self._channel = None
 
-    async def process_batch(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def process_batch(self, data: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Process a batch of data on GPU."""
         if self._circuit_breaker.state == CircuitBreakerState.OPEN:
             raise Exception("Circuit breaker is OPEN for GPU service")
@@ -59,7 +54,7 @@ class GPUServiceClient:
         # Return processed data
         return [{"processed": True, "result": f"processed_{i}"} for i in range(len(data))]
 
-    async def get_gpu_status(self) -> Dict[str, Any]:
+    async def get_gpu_status(self) -> dict[str, Any]:
         """Get GPU status information."""
         # Simulate GPU status check
         await asyncio.sleep(0.05)
@@ -69,7 +64,7 @@ class GPUServiceClient:
             "device_count": 1,
             "memory_used": 1024,
             "memory_total": 8192,
-            "utilization": 45.0
+            "utilization": 45.0,
         }
 
     def is_healthy(self) -> bool:

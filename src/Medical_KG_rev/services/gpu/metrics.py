@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prometheus_client import Gauge
 
+
 GPU_UTILIZATION = Gauge(
     "gpu_service_utilization_percent",
     "Reported GPU utilization percent for a microservice.",

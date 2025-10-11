@@ -11,16 +11,20 @@ import grpc
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_health.v1.health_pb2 import HealthCheckResponse
 
-# Add the app directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from proto import gpu_pb2_grpc
-from services.gpu.grpc_service import GPUServiceServicer
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).parent
 
+
+def _load_gpu_components():
+    """Load GPU service modules after configuring sys.path."""
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from proto import gpu_pb2_grpc  # type: ignore import-not-found
+    from services.gpu.grpc_service import GPUServiceServicer  # type: ignore import-not-found
+
+    return gpu_pb2_grpc, GPUServiceServicer
 
 class HealthServicer(health.HealthServicer):
     """Health check servicer for gRPC health protocol."""
@@ -28,7 +32,7 @@ class HealthServicer(health.HealthServicer):
     def __init__(self):
         self._status_map = {}
 
-    def Check(self, request, context):
+    def Check(self, request, context):  # noqa: N802  # gRPC method signature defined by protocol
         """Check service health."""
         service = request.service
         status = self._status_map.get(service, HealthCheckResponse.UNKNOWN)
@@ -41,6 +45,8 @@ class HealthServicer(health.HealthServicer):
 
 async def serve():
     """Start the gRPC server."""
+    gpu_pb2_grpc, GPUServiceServicer = _load_gpu_components()
+
     # Create gRPC server
     server = grpc.aio.server()
 

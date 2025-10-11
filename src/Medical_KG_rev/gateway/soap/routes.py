@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import textwrap
 import xml.etree.ElementTree as ET
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
+import textwrap
 
 from ...auth import Scopes, SecurityContext
 from ...auth.audit import get_audit_trail
@@ -13,6 +13,7 @@ from ...auth.dependencies import get_security_context
 from ...auth.rate_limit import RateLimitExceeded, build_rate_limiter
 from ..models import IngestionRequest, RetrieveRequest
 from ..services import GatewayService, get_gateway_service
+
 
 router = APIRouter(prefix="/soap", tags=["soap"])
 

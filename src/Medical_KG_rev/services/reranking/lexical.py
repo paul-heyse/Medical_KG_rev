@@ -10,6 +10,7 @@ from .models import QueryDocumentPair, RerankingResponse
 from .utils import FeatureView, clamp
 
 
+
 class BM25Reranker(BaseReranker):
     def __init__(self, batch_size: int = 128) -> None:
         super().__init__(

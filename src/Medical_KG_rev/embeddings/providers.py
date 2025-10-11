@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import importlib
-
 import structlog
 
 from .dense.openai_compat import register_openai_compat
 from .registry import EmbedderRegistry
 from .sparse.splade import register_sparse
+
 
 logger = structlog.get_logger(__name__)
 

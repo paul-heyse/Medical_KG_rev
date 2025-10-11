@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-"""LLM assisted chunker implementations."""
-
-import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
+import json
 
 import numpy as np
 
@@ -20,13 +18,12 @@ from ..models import Chunk, Granularity
 from ..ports import BaseChunker
 from ..provenance import BlockContext, ProvenanceNormalizer, make_chunk_id
 from ..tokenization import TokenCounter, default_token_counter
-from .semantic import SemanticSplitterChunker
-
 
 class SupportsLLMGeneration(Protocol):
     """Protocol implemented by lightweight LLM client wrappers."""
 
-    def generate(self, *, prompt: str, text: str) -> dict[str, object]: ...
+    def generate(self, *, prompt: str, text: str) -> dict[str, object]:
+        ...
 
 
 @dataclass(slots=True)
@@ -103,7 +100,6 @@ class LLMChapteringChunker(BaseChunker):
         coherence_threshold: float = 0.78,
         min_tokens: int = 160,
         token_counter: TokenCounter | None = None,
-        fallback_chunker: SemanticSplitterChunker | None = None,
     ) -> None:
         self.prompt_version = prompt_version
         self.llm = llm_client or _TemplateLLM()
@@ -111,9 +107,6 @@ class LLMChapteringChunker(BaseChunker):
         self.min_tokens = min_tokens
         self.counter = token_counter or default_token_counter()
         self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
-        self._fallback = fallback_chunker or SemanticSplitterChunker(
-            encoder=_HashingEncoder(), token_counter=self.counter
-        )
         self._boundary_cache: dict[str, list[int]] = {}
 
     def chunk(
@@ -134,8 +127,8 @@ class LLMChapteringChunker(BaseChunker):
         boundaries = self._fetch_boundaries(document, contexts)
         validated = self._validate_boundaries(contexts, boundaries)
         if len(validated) <= 1:
-            return self._fallback.chunk(
-                document, tenant_id=tenant_id, granularity=granularity or "section"
+            raise ChunkerConfigurationError(
+                "LLM chaptering failed to identify valid boundaries"
             )
         assembler = ChunkAssembler(
             document,

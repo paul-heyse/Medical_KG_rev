@@ -4,15 +4,17 @@ This module implements BM25 index storage using Lucene-style format
 with multi-field configuration and manifest-based version tracking.
 """
 
+from pathlib import Path
+from typing import Any
 import json
 import logging
 import time
-from pathlib import Path
-from typing import Any
+
+from prometheus_client import Counter, Histogram
 
 from Medical_KG_rev.services.retrieval.bm25_field_mapping import BM25FieldMapper
 from Medical_KG_rev.services.retrieval.bm25_service import BM25Document
-from prometheus_client import Counter, Histogram
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ class BM25IndexManifest:
         """Initialize BM25 index manifest.
 
         Args:
+        ----
             index_path: Path to the index directory
             created_at: Creation timestamp
             version: Index version
@@ -104,6 +107,7 @@ class BM25Index:
         """Initialize BM25 index.
 
         Args:
+        ----
             index_path: Path to the index directory
             field_mapper: Field mapper for document processing
             created_at: Creation timestamp
@@ -169,6 +173,7 @@ class BM25Index:
         """Add a BM25 document to the index.
 
         Args:
+        ----
             document: BM25 document to add
 
         """
@@ -241,9 +246,11 @@ class BM25Index:
         """Get a BM25 document from the index.
 
         Args:
+        ----
             chunk_id: Document identifier
 
         Returns:
+        -------
             BM25 document if found, None otherwise
 
         """
@@ -305,7 +312,8 @@ class BM25Index:
     def get_all_documents(self) -> list[BM25Document]:
         """Get all documents from the index.
 
-        Returns:
+        Returns
+        -------
             List of BM25 documents
 
         """
@@ -370,9 +378,11 @@ class BM25Index:
         """Remove a document from the index.
 
         Args:
+        ----
             chunk_id: Document identifier
 
         Returns:
+        -------
             True if document was removed, False if not found
 
         """
@@ -498,7 +508,8 @@ class BM25Index:
     def get_index_stats(self) -> dict[str, Any]:
         """Get index statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with index statistics
 
         """
@@ -514,7 +525,8 @@ class BM25Index:
     def validate_index(self) -> list[str]:
         """Validate index integrity.
 
-        Returns:
+        Returns
+        -------
             List of validation error messages
 
         """
@@ -653,7 +665,8 @@ class BM25Index:
     def health_check(self) -> dict[str, Any]:
         """Check BM25 index health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """

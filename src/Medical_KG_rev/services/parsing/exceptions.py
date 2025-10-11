@@ -1,7 +1,8 @@
 """Custom exceptions for Docling VLM processing."""
 
-from __future__ import annotations
 
+
+from __future__ import annotations
 
 class DoclingVLMError(RuntimeError):
     """Base error for Docling VLM operations."""

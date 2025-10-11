@@ -26,7 +26,8 @@ Performance:
 - Lightweight exception definitions with minimal overhead.
 - Problem detail generation is fast and stateless.
 
-Examples:
+Examples
+--------
     try:
         vector_store.store(namespace, vectors)
     except NamespaceNotFoundError as e:
@@ -34,12 +35,13 @@ Examples:
 
 """
 
-# IMPORTS
 from __future__ import annotations
 
+# IMPORTS
 from typing import Any
 
 from Medical_KG_rev.utils.errors import FoundationError
+
 
 
 # EXCEPTION CLASSES
@@ -50,13 +52,15 @@ class VectorStoreError(FoundationError):
     errors, automatically generating RFC 7807 problem details for
     consistent API error responses.
 
-    Attributes:
+    Attributes
+    ----------
         problem: RFC 7807 problem details object
 
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         error = VectorStoreError(
             "Vector operation failed",
             status=500,
@@ -77,12 +81,14 @@ class VectorStoreError(FoundationError):
         """Initialize the vector store error.
 
         Args:
+        ----
             message: Error message
             status: HTTP status code
             detail: Optional detailed error message
             extra: Additional error context
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -100,7 +106,8 @@ class NamespaceNotFoundError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.get_namespace("unknown", tenant_id="tenant-1")
         except NamespaceNotFoundError as e:
@@ -112,10 +119,12 @@ class NamespaceNotFoundError(VectorStoreError):
         """Initialize the namespace not found error.
 
         Args:
+        ----
             namespace: The unknown namespace name
             tenant_id: The tenant ID
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -136,7 +145,8 @@ class DimensionMismatchError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.store(namespace, vectors)
         except DimensionMismatchError as e:
@@ -148,11 +158,13 @@ class DimensionMismatchError(VectorStoreError):
         """Initialize the dimension mismatch error.
 
         Args:
+        ----
             expected: Expected vector dimension
             actual: Actual vector dimension
             namespace: The namespace name
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -173,7 +185,8 @@ class ResourceExhaustedError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.store(namespace, large_vectors)
         except ResourceExhaustedError as e:
@@ -185,10 +198,12 @@ class ResourceExhaustedError(VectorStoreError):
         """Initialize the resource exhausted error.
 
         Args:
+        ----
             namespace: The namespace name
             detail: Optional detailed error message
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -209,7 +224,8 @@ class BackendUnavailableError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.query(namespace, query_vector)
         except BackendUnavailableError as e:
@@ -223,10 +239,12 @@ class BackendUnavailableError(VectorStoreError):
         """Initialize the backend unavailable error.
 
         Args:
+        ----
             message: Error message
             retry_after: Optional retry delay in seconds
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -247,7 +265,8 @@ class ScopeError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.store(namespace, vectors)
         except ScopeError as e:
@@ -259,9 +278,11 @@ class ScopeError(VectorStoreError):
         """Initialize the scope error.
 
         Args:
+        ----
             required_scope: The required scope name
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """
@@ -282,7 +303,8 @@ class InvalidNamespaceConfigError(VectorStoreError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             vector_store.create_namespace(config)
         except InvalidNamespaceConfigError as e:
@@ -294,10 +316,12 @@ class InvalidNamespaceConfigError(VectorStoreError):
         """Initialize the invalid namespace config error.
 
         Args:
+        ----
             namespace: The namespace name
             detail: Detailed error message
 
         Raises:
+        ------
             None: Initialization always succeeds.
 
         """

@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from tests.validation.test_docker_image_validation import DockerImageValidator
-from tests.validation.test_production_deployment_validation import ProductionDeploymentValidator
+from tests.validation.test_production_deployment_validation import (
+    ProductionDeploymentValidator,
+)
 
 
 class TorchFreeDeploymentValidator:

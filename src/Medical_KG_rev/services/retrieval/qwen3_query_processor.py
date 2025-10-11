@@ -4,14 +4,15 @@ This module implements Qwen3 dense query processing with embedding generation,
 query preprocessing, and similarity search for semantic retrieval.
 """
 
-import logging
 from typing import Any
+import logging
 
-import numpy as np
 from pydantic import BaseModel, Field
+import numpy as np
 
-from Medical_KG_rev.services.retrieval.qwen3_contextualized import Qwen3ContextualizedProcessor
+from Medical_KG_rev.services.retrieval.qwen3_contextualized import HttpClient
 from Medical_KG_rev.services.retrieval.qwen3_service import Qwen3Service
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class Qwen3QueryProcessor:
         """Initialize the Qwen3 query processor.
 
         Args:
+        ----
             qwen3_service: Qwen3 service for embedding generation
             contextualized_processor: Processor for query contextualization
             enable_query_expansion: Enable query expansion
@@ -72,9 +74,11 @@ class Qwen3QueryProcessor:
         """Process a query for Qwen3 retrieval.
 
         Args:
+        ----
             query_text: Raw query text
 
         Returns:
+        -------
             Processed Qwen3 query with embedding vector
 
         """
@@ -224,10 +228,12 @@ class Qwen3QueryProcessor:
         """Calculate cosine similarity between query and chunk embeddings.
 
         Args:
+        ----
             query_embedding: Query embedding vector
             chunk_embedding: Chunk embedding vector
 
         Returns:
+        -------
             Cosine similarity score
 
         """
@@ -270,10 +276,12 @@ class Qwen3QueryProcessor:
         """Score a Qwen3 query against a chunk embedding.
 
         Args:
+        ----
             qwen3_query: Processed Qwen3 query
             chunk_embedding: Chunk's embedding vector
 
         Returns:
+        -------
             Similarity score
 
         """
@@ -309,10 +317,12 @@ class Qwen3QueryProcessor:
         """Score multiple queries against multiple chunk embeddings.
 
         Args:
+        ----
             queries: List of Qwen3 queries
             chunk_embeddings: Dictionary of chunk_id -> embedding
 
         Returns:
+        -------
             Dictionary of query_id -> list of (chunk_id, score) tuples
 
         """

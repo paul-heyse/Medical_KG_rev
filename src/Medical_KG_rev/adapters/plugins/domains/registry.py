@@ -10,6 +10,7 @@ from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterMetadat
 from .metadata import DomainAdapterMetadata, as_metadata
 
 
+
 class DomainAdapterRegistry:
     """Maintain adapters grouped by domain for quick lookups."""
 

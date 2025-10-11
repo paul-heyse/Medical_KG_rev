@@ -1,21 +1,47 @@
-"""Information extraction microservice using an LLM template approach."""
+"""Extraction service data models and abstract contract.
+
+Key Responsibilities:
+    - Define domain dataclasses representing extracted spans and results
+    - Provide the abstract service contract for entity extraction pipelines
+
+Collaborators:
+    - Upstream: Gateway coordinators and service orchestrators invoke
+      extraction through this interface
+    - Downstream: Concrete NLP or ML extraction engines implement the contract
+
+Side Effects:
+    - None; module contains immutable dataclasses and abstract interfaces
+
+Thread Safety:
+    - Thread-safe; dataclasses are immutable and the abstract service holds no
+      shared state
+
+Performance Characteristics:
+    - Dataclass operations are O(1); concrete performance depends on
+      implementations that subclass :class:`ExtractionService`
+"""
 
 from __future__ import annotations
 
-import json
-import re
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Sequence
 
-import structlog
-
-from ..gpu.manager import GpuServiceManager
-
-logger = structlog.get_logger(__name__)
+# ==============================================================================
+# DATA MODELS
+# ============================================================================
 
 
 @dataclass(slots=True)
 class ExtractionSpan:
+    """Individual extracted entity or span from text.
+
+    Attributes:
+        label: Category or type of the extracted entity.
+        text: The actual text content of the span.
+        start: Starting character position in the original text.
+        end: Ending character position in the original text.
+        confidence: Confidence score for the extraction (0.0 to 1.0).
+    """
     label: str
     text: str
     start: int
@@ -25,158 +51,72 @@ class ExtractionSpan:
 
 @dataclass(slots=True)
 class ExtractionResult:
+    """Result of an entity extraction operation.
+
+    Attributes:
+        document_id: Identifier for the document that was processed.
+        kind: Type of extraction that was performed.
+        spans: List of extracted entities and spans.
+    """
     document_id: str
     kind: str
-    spans: list[ExtractionSpan] = field(default_factory=list)
-    raw_response: dict[str, object] = field(default_factory=dict)
+    spans: Sequence[ExtractionSpan]
 
 
-@dataclass(slots=True)
-class ExtractionInput:
-    tenant_id: str
-    document_id: str
-    text: str
-    kind: str
-    metadata: dict[str, object] = field(default_factory=dict)
-    structured_context: list[str] = field(default_factory=list)
-
-
-PicoSchema = {
-    "population": ["population", "participants", "patients"],
-    "intervention": ["intervention", "treatment"],
-    "comparison": ["comparison", "control"],
-    "outcome": ["outcome", "result"],
-}
-
-
-class _LLMClient:
-    """Lightweight template-driven LLM stub for deterministic tests."""
-
-    def __init__(self, gpu: GpuManager) -> None:
-        self.gpu = gpu
-        self._prompt_cache: dict[str, str] = {}
-
-    def generate(self, *, prompt: str, text: str) -> dict[str, object]:
-        cache_key = f"{prompt}:{hash(text)}"
-        if cache_key in self._prompt_cache:
-            return json.loads(self._prompt_cache[cache_key])
-        with self.gpu.device_session("extraction", warmup=True):
-            # Build a deterministic pseudo-response by matching heuristics.
-            result: dict[str, list[dict[str, object]]] = {}
-            lowered = text.lower()
-            for label, keywords in PicoSchema.items():
-                matches: list[dict[str, object]] = []
-                for keyword in keywords:
-                    for match in re.finditer(keyword, lowered):
-                        span = {
-                            "text": text[match.start() : match.end()],
-                            "start": match.start(),
-                            "end": match.end(),
-                            "confidence": 0.7,
-                        }
-                        matches.append(span)
-                if matches:
-                    result[label] = matches
-            payload = json.dumps(result)
-            self._prompt_cache[cache_key] = payload
-            return json.loads(payload)
+# ==============================================================================
+# INTERFACES
+# ============================================================================
 
 
 class ExtractionService:
-    """Runs LLM extraction flows with span grounding validation."""
+    """Abstract base class for entity extraction service implementations.
 
-    def __init__(self, gpu: GpuManager) -> None:
-        self.gpu = gpu
-        self.llm = _LLMClient(gpu)
+    This class defines the interface that concrete extraction services must implement.
+    It serves as the contract for extracting entities and spans from text.
 
-    def _validate_spans(
-        self, text: str, spans: Iterable[dict[str, object]]
-    ) -> list[ExtractionSpan]:
-        validated: list[ExtractionSpan] = []
-        for span in spans:
-            start = int(span.get("start", -1))
-            end = int(span.get("end", -1))
-            if start < 0 or end <= start or end > len(text):
-                logger.warning("extraction.span.invalid", span=span)
-                continue
-            snippet = text[start:end]
-            if snippet != span.get("text"):
-                logger.warning(
-                    "extraction.span.mismatch", expected=snippet, actual=span.get("text")
-                )
-                continue
-            validated.append(
-                ExtractionSpan(
-                    label=span.get("label", ""),
-                    text=snippet,
-                    start=start,
-                    end=end,
-                    confidence=float(span.get("confidence", 0.5)),
-                )
-            )
-        return validated
+    Attributes:
+        None (abstract base class)
 
-    def extract(self, request: ExtractionInput) -> ExtractionResult:
-        logger.info("extraction.run", document_id=request.document_id, kind=request.kind)
-        template = {
-            "pico": "Identify PICO elements with start/end offsets.",
-            "adverse-event": "Extract adverse events and severities.",
-        }.get(request.kind, "generic extraction")
-        context = "\n\n".join(request.structured_context)
-        augmented_prompt = template
-        if context:
-            augmented_prompt = f"{template}\n\nContext:\n{context}"
-        raw = self.llm.generate(prompt=augmented_prompt, text=request.text)
+    Invariants:
+        - Implementations must handle empty text gracefully
+        - Must validate document_id and return appropriate results
+        - Must support multiple extraction kinds
 
-        spans: list[ExtractionSpan] = []
-        for label, matches in raw.items():
-            validated = self._validate_spans(
-                request.text,
-                ({**match, "label": label} for match in matches),  # type: ignore[arg-type]
-            )
-            spans.extend(validated)
+    Thread Safety:
+        - Implementations must be thread-safe for concurrent requests
 
-        logger.info(
-            "extraction.completed",
-            document_id=request.document_id,
-            kind=request.kind,
-            spans=len(spans),
-        )
-        return ExtractionResult(
-            document_id=request.document_id,
-            kind=request.kind,
-            spans=spans,
-            raw_response=raw,
+    Lifecycle:
+        - No explicit lifecycle management required
+        - Implementations may cache models or resources as needed
+
+    Example:
+        >>> class MyExtractionService(ExtractionService):
+        ...     def extract(self, document_id, text, kind="generic"):
+        ...         # Implementation here
+        ...         return ExtractionResult(document_id, kind, [])
+    """
+
+    def extract(self, document_id: str, text: str, *, kind: str = "generic") -> ExtractionResult:
+        """Extract entities and spans from text content.
+
+        Args:
+            document_id: Unique identifier for the document being processed.
+            text: Text content to extract entities from.
+            kind: Type of extraction to perform (e.g., "generic", "medical").
+
+        Returns:
+            Extraction result containing identified spans and metadata.
+
+        Raises:
+            NotImplementedError: Always raised by this abstract implementation.
+            ValueError: If parameters are invalid or text is empty.
+            RuntimeError: If extraction service encounters an error.
+        """
+        raise NotImplementedError(
+            "ExtractionService.extract() not implemented. "
+            "This service requires a real extraction implementation. "
+            "Please implement or configure a proper extraction service."
         )
 
 
-class ExtractionGrpcService:
-    """Async gRPC servicer bridging extraction results to protobuf responses."""
-
-    def __init__(self, service: ExtractionService) -> None:
-        self.service = service
-
-    async def Extract(self, request, context):  # type: ignore[override]
-        extraction_request = ExtractionInput(
-            tenant_id=request.tenant_id,
-            document_id=request.document_id,
-            text=request.text,
-            kind=request.kind,
-        )
-        result = self.service.extract(extraction_request)
-
-        from Medical_KG_rev.proto.gen import extraction_pb2  # type: ignore import-error
-
-        reply = extraction_pb2.ExtractResponse(
-            document_id=result.document_id,
-            kind=result.kind,
-            raw_json=json.dumps(result.raw_response),
-        )
-        for span in result.spans:
-            message = reply.spans.add()
-            message.label = span.label
-            message.text = span.text
-            message.start = span.start
-            message.end = span.end
-            message.confidence = span.confidence
-        return reply
+__all__ = ["ExtractionService", "ExtractionResult", "ExtractionSpan"]

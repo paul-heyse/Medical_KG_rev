@@ -1,20 +1,42 @@
-"""Asynchronous hybrid retrieval coordination utilities."""
+"""Coordinate asynchronous hybrid retrieval components.
+
+Key Responsibilities:
+    - Load component configuration for hybrid retrieval strategies.
+    - Execute lexical, sparse, and dense components concurrently.
+    - Cache component responses and normalize results.
+
+Collaborators:
+    - Downstream: Retrieval components implementing `ComponentCallable`.
+    - Upstream: Retrieval service orchestrating hybrid searches.
+
+Side Effects:
+    - Performs asynchronous network I/O via component callables.
+    - Persists results in the injected cache implementation.
+
+Thread Safety:
+    - Designed for async contexts; no shared mutable state outside cache.
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
-import asyncio
-import hashlib
-import json
-import unicodedata
 from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Protocol
+import asyncio
+import hashlib
+import json
 
-import structlog
-import yaml
 from structlog.stdlib import BoundLogger
+import structlog
+import unicodedata
+import yaml
+
 
 DEFAULT_COMPONENT_CONFIG = Path("config/retrieval/components.yaml")
 
@@ -46,7 +68,18 @@ class ComponentCallable(Protocol):
 
 @dataclass(slots=True)
 class HybridComponentSettings:
-    """Configuration for the :class:`HybridSearchCoordinator`."""
+    """Configuration for :class:`HybridSearchCoordinator`.
+
+    Attributes:
+        enable_splade: Whether to call the SPLADE component.
+        enable_dense: Whether to call dense embedding components.
+        enable_query_expansion: Enable lexical query expansion.
+        timeout_ms: Default component timeout in milliseconds.
+        cache_ttl_seconds: TTL for cached component responses.
+        default_components: Ordered default set of components to execute.
+        component_timeouts: Optional per-component timeout overrides.
+        synonyms: Dictionary of query expansion synonyms.
+    """
 
     enable_splade: bool = True
     enable_dense: bool = True
@@ -112,6 +145,19 @@ class HybridComponentSettings:
 
 @dataclass(slots=True)
 class HybridSearchResult:
+    """Container for hybrid search results and metadata.
+
+    Attributes:
+        component_results: Per-component retrieval outputs.
+        component_errors: List of error messages captured during execution.
+        timings_ms: Per-component execution times in milliseconds.
+        query: Original user query string.
+        normalized_query: Normalized form of the query used for execution.
+        expanded_query: Optional expanded query string.
+        correlation_id: Correlation identifier propagated from upstream.
+        cache_hit: Flag indicating whether the results came from cache.
+    """
+
     component_results: dict[str, Sequence[Mapping[str, object]]]
     component_errors: list[str]
     timings_ms: dict[str, float]
@@ -177,7 +223,14 @@ class InMemoryHybridCache(CacheProtocol):
 
 
 class HybridSearchCoordinator:
-    """Coordinates concurrent retrieval component execution."""
+    """Coordinate concurrent execution of retrieval components.
+
+    Attributes:
+        components: Mapping of component names to callables.
+        settings: Hybrid retrieval settings controlling execution.
+        cache: Cache implementation used for storing component responses.
+        logger: Bound structlog logger for observability.
+    """
 
     def __init__(
         self,
@@ -187,6 +240,14 @@ class HybridSearchCoordinator:
         cache: CacheProtocol | None = None,
         logger: BoundLogger | None = None,
     ) -> None:
+        """Create a new coordinator instance.
+
+        Args:
+            components: Mapping of component names to async callables.
+            settings: Optional configuration overriding defaults.
+            cache: Cache implementation for storing component output.
+            logger: Structlog logger to use for observability.
+        """
         self._components = dict(components)
         self._settings = settings or self._load_default_settings()
         self._cache = cache or InMemoryHybridCache()
@@ -212,6 +273,22 @@ class HybridSearchCoordinator:
         cache_scope: str | None = None,
         use_cache: bool = True,
     ) -> HybridSearchResult:
+        """Execute all configured retrieval components for a query.
+
+        Args:
+            index: Logical index or namespace to query.
+            query: Raw user query string.
+            k: Number of results requested per component.
+            filters: Optional structured filters forwarded to components.
+            components: Optional override for component execution order.
+            correlation_id: Correlation identifier for logging and tracing.
+            context: Optional context object passed to component handlers.
+            cache_scope: Optional scope identifier used to build cache keys.
+            use_cache: Whether to consult and populate the coordinator cache.
+
+        Returns:
+            A :class:`HybridSearchResult` containing component outputs, errors, and timings.
+        """
         filters = filters or {}
         normalized_query = self._preprocess_query(query)
         expanded_query = self._expand_query(normalized_query)

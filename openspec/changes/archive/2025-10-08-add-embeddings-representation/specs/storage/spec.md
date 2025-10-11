@@ -187,4 +187,3 @@ Embedding metadata SHALL be stored in Neo4j linking chunks to embedding model, v
 **Reason**: Pickle files are brittle, lack versioning, create operational confusion, and do not support efficient search.
 
 **Migration**: All pickle file embeddings migrated to FAISS. No new pickle file storage allowed.
-

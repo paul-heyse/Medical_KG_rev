@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+try:
+    from unstructured.partition.html import partition_html
+    from unstructured.partition.xml import partition_xml
+except ImportError as exc:  # pragma: no cover - optional dependency
+    raise RuntimeError("unstructured[local-inference]>=0.12.0 is required") from exc
+
 from Medical_KG_rev.models.ir import Block, BlockType, Document, Section
 
 
 class UnstructuredParser:
-    """Parse XML/HTML payloads using the unstructured library."""
+    """Parse HTML/XML documents using the unstructured library."""
 
     def __init__(self) -> None:
-        try:
-            from unstructured.partition.html import partition_html
-            from unstructured.partition.xml import partition_xml
-        except ImportError as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError("unstructured[local-inference]>=0.12.0 is required") from exc
         self._partition_xml = partition_xml
         self._partition_html = partition_html
 

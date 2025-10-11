@@ -7,7 +7,8 @@ opportunities for modernization to current Python type hint conventions.
 Usage:
     python scripts/check_type_hints.py [path]
 
-Examples:
+Examples
+--------
     python scripts/check_type_hints.py src/Medical_KG_rev/
     python scripts/check_type_hints.py tests/
 
@@ -34,7 +35,7 @@ class TypeHintChecker:
     def analyze_file(self, file_path: Path) -> None:
         """Analyze a single Python file for type hint issues."""
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content, filename=str(file_path))
@@ -87,7 +88,7 @@ class TypeHintChecker:
 
     def _visit_node(self, node: ast.AST, file_path: Path, domain_type: str) -> None:
         """Visit AST nodes and check type hints."""
-        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             self._check_function(node, file_path, domain_type)
 
         # Recursively visit child nodes
@@ -131,7 +132,7 @@ class TypeHintChecker:
         # For now, we'll check the source code directly
         count = 0
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines, 1):
@@ -148,7 +149,7 @@ class TypeHintChecker:
         """Check for deprecated dict/list usage instead of Mapping/Sequence."""
         count = 0
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines, 1):
@@ -253,7 +254,7 @@ class TypeHintChecker:
 
 
 def main() -> None:
-    """Main entry point."""
+    """Run the type hint checker."""
     parser = argparse.ArgumentParser(description="Check type hint coverage")
     parser.add_argument(
         "path",
@@ -273,11 +274,7 @@ def main() -> None:
     checker = TypeHintChecker()
 
     # Find all Python files
-    python_files = []
-    if path.is_file() and path.suffix == ".py":
-        python_files = [path]
-    else:
-        python_files = list(path.rglob("*.py"))
+    python_files = [path] if path.is_file() and path.suffix == ".py" else list(path.rglob("*.py"))
 
     print(f"Analyzing {len(python_files)} Python files...")
 
@@ -288,9 +285,10 @@ def main() -> None:
     report = checker.generate_report()
 
     if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
+        output_path = Path(args.output)
+        with output_path.open("w", encoding="utf-8") as f:
             f.write(report)
-        print(f"Report written to {args.output}")
+        print(f"Report written to {output_path}")
     else:
         print(report)
 

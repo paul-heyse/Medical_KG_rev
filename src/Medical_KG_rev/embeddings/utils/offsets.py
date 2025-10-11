@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 
 
+
 def compute_offsets(text: str) -> list[Mapping[str, int | str]]:
     offsets: list[Mapping[str, int | str]] = []
     cursor = 0

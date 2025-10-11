@@ -29,6 +29,7 @@ Performance Characteristics:
     - Loading from configuration scales with number of configured keys.
 
 Example:
+-------
     >>> manager = APIKeyManager()
     >>> key = manager.generate(tenant_id="demo", scopes=["ingest:write"])
     >>> manager.authenticate(key.raw_secret)
@@ -38,17 +39,15 @@ Example:
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import hashlib
-import json
-import secrets
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
+import hashlib
+import json
+import secrets
 
 from ..config.settings import APIKeyRecord, AppSettings, SecretResolver, get_settings
+
 
 # ============================================================================
 # DATA MODELS
@@ -59,7 +58,8 @@ from ..config.settings import APIKeyRecord, AppSettings, SecretResolver, get_set
 class APIKey:
     """Runtime representation of an issued API key.
 
-    Attributes:
+    Attributes
+    ----------
         key_id: Stable identifier for the key used for rotation and auditing.
         raw_secret: Plaintext secret returned to the caller exactly once.
         hashed_secret: Hash of the secret stored in configuration or Vault.
@@ -89,7 +89,8 @@ class APIKeyManager:
     rotate, and authenticate keys. Generated secrets are hashed using a
     configurable algorithm before being persisted in ``APIKeyRecord`` models.
 
-    Attributes:
+    Attributes
+    ----------
         hashing_algorithm: Name of ``hashlib`` hashing algorithm used for
             storing secrets.
 
@@ -103,10 +104,12 @@ class APIKeyManager:
         """Initialize the manager with the desired hashing algorithm.
 
         Args:
+        ----
             hashing_algorithm: Name of the ``hashlib`` algorithm used to hash
                 API secrets.
 
         Raises:
+        ------
             ValueError: If the provided algorithm is not supported by
                 :mod:`hashlib` when hashing is attempted.
 
@@ -118,6 +121,7 @@ class APIKeyManager:
         """Load API key records from configuration or external storage.
 
         Args:
+        ----
             records: Mapping of key identifier to ``APIKeyRecord`` metadata.
 
         """
@@ -129,12 +133,14 @@ class APIKeyManager:
         """Create a new API key for the provided tenant.
 
         Args:
+        ----
             key_id: Optional identifier. A random identifier is created when not
                 provided.
             tenant_id: Tenant identifier that owns the generated key.
             scopes: Iterable of scopes granted to the key.
 
         Returns:
+        -------
             ``APIKey`` containing the identifier, plaintext secret, and hashed
             secret. The caller must persist the plaintext secret.
 
@@ -161,12 +167,15 @@ class APIKeyManager:
         """Rotate an existing key while preserving its identifier.
 
         Args:
+        ----
             key_id: Identifier of the key to rotate.
 
         Returns:
+        -------
             Newly generated ``APIKey`` representing the rotated secret.
 
         Raises:
+        ------
             KeyError: If the key identifier is unknown.
 
         """
@@ -180,12 +189,15 @@ class APIKeyManager:
         """Validate a caller-provided key and return the canonical record.
 
         Args:
+        ----
             provided_key: Plaintext secret presented by the caller.
 
         Returns:
+        -------
             Tuple containing the key identifier and matching record.
 
         Raises:
+        ------
             PermissionError: If the provided secret does not match any record.
 
         """
@@ -199,19 +211,23 @@ class APIKeyManager:
         """Hash the provided secret using the configured algorithm.
 
         Args:
+        ----
             value: Plaintext value to hash.
 
         Returns:
+        -------
             Hexadecimal digest of the hashed secret.
 
         Raises:
+        ------
             ValueError: If the configured algorithm is unsupported.
 
         """
-        algorithm = getattr(hashlib, self.hashing_algorithm, None)
-        if not algorithm:
-            raise ValueError(f"Unsupported hashing algorithm {self.hashing_algorithm}")
-        return algorithm(value.encode("utf-8")).hexdigest()
+        try:
+            digest = hashlib.new(self.hashing_algorithm, value.encode("utf-8"))
+        except ValueError as exc:
+            raise ValueError(f"Unsupported hashing algorithm {self.hashing_algorithm}") from exc
+        return digest.hexdigest()
 
 
 # ============================================================================
@@ -223,12 +239,15 @@ def build_api_key_manager(settings: AppSettings | None = None) -> APIKeyManager:
     """Construct an ``APIKeyManager`` initialized from application settings.
 
     Args:
+    ----
         settings: Optional settings override. Defaults to global settings.
 
     Returns:
+    -------
         A fully populated ``APIKeyManager`` ready for authentication checks.
 
     Notes:
+    -----
         When the API key feature is disabled the returned manager will be empty
         but still functional for generating ad-hoc keys (useful in tests).
 

@@ -8,6 +8,7 @@ from typing import Any, Self, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 
+
 class Artifact(BaseModel):
     """Base model for structured artefacts extracted from documents."""
 

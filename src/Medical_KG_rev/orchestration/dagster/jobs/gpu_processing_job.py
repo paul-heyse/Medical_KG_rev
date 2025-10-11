@@ -6,12 +6,10 @@ from typing import Any
 
 from dagster import job
 
-from Medical_KG_rev.orchestration.dagster.assets.gpu_assets import (
-    allocate_gpu_resources,
-    check_gpu_service_health,
-    get_gpu_service_status,
+from Medical_KG_rev.orchestration.dagster.assets.gpu_assets import HttpClient
+from Medical_KG_rev.orchestration.dagster.resources.gpu_services import (
+    GPUServiceResource,
 )
-from Medical_KG_rev.orchestration.dagster.resources.gpu_services import GPUServiceResource
 
 
 @job(

@@ -10,6 +10,7 @@ from typing import Protocol
 from .models import QueryDocumentPair
 
 
+
 class FeatureExtractor(Protocol):
     """Protocol describing a single feature extractor."""
 

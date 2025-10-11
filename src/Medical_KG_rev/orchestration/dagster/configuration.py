@@ -1,618 +1,254 @@
-"""Configuration models and loaders for Dagster-based orchestration."""
+"""Dagster configuration and resource management."""
 
 from __future__ import annotations
 
-import asyncio
-import json
-import threading
-import time
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+import logging
+from dataclasses import dataclass, field
+from typing import Any
 
-import yaml
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    PrivateAttr,
-    ValidationError,
-    field_validator,
-    model_validator,
-)
-
-from Medical_KG_rev.observability.metrics import (
-    record_resilience_circuit_state,
-    record_resilience_rate_limit_wait,
-    record_resilience_retry,
-)
+from Medical_KG_rev.config.settings import AppSettings
 from Medical_KG_rev.orchestration.stages.contracts import PipelineState
 from Medical_KG_rev.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-if TYPE_CHECKING:  # pragma: no cover - hints only
-    from aiolimiter import AsyncLimiter
-    from pybreaker import CircuitBreaker
+
+@dataclass
+class DagsterConfig:
+    """Configuration for Dagster operations."""
+
+    app_settings: AppSettings
+    pipeline_resources: dict[str, Any] = field(default_factory=dict)
+    job_configs: dict[str, Any] = field(default_factory=dict)
+    asset_configs: dict[str, Any] = field(default_factory=dict)
 
 
-class BackoffStrategy(str, Enum):
-    EXPONENTIAL = "exponential"
-    LINEAR = "linear"
-    NONE = "none"
-
-
-class GateCondition(BaseModel):
-    """Predicate evaluated against Job Ledger entries to resume a pipeline."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    field: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
-    equals: Any
-    timeout_seconds: int | None = Field(default=None, ge=1, le=3600)
-    poll_interval_seconds: float = Field(default=5.0, ge=0.5, le=60.0)
-
-
-class GateDefinition(BaseModel):
-    """Declarative definition for a pipeline gate."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-    condition: GateCondition
-    resume_stage: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-
-
-class StageDefinition(BaseModel):
-    """Declarative stage specification for topology YAML files."""
-
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-    stage_type: str = Field(alias="type", pattern=r"^[A-Za-z0-9_-]+$")
-    policy: str | None = Field(default=None, alias="policy")
-    depends_on: list[str] = Field(default_factory=list, alias="depends_on")
-    config: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("depends_on")
-    @classmethod
-    def _unique_dependencies(cls, value: Iterable[str]) -> list[str]:
-        seen: set[str] = set()
-        result: list[str] = []
-        for item in value:
-            if item in seen:
-                raise ValueError(f"duplicate dependency '{item}' declared for stage")
-            seen.add(item)
-            result.append(item)
-        return result
-
-
-class PipelineMetadata(BaseModel):
-    """Optional metadata about the pipeline."""
-
-    owner: str | None = None
-    description: str | None = None
-    tags: list[str] = Field(default_factory=list)
-
-
-class PipelineTopologyConfig(BaseModel):
-    """Complete topology definition for a pipeline."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
-    version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[A-Za-z0-9]+)?$")
-    applicable_sources: list[str] = Field(default_factory=list)
-    stages: list[StageDefinition]
-    gates: list[GateDefinition] = Field(default_factory=list)
-    metadata: PipelineMetadata | None = None
-
-    @model_validator(mode="after")
-    def _validate_dependencies(self) -> PipelineTopologyConfig:
-        stage_names = [stage.name for stage in self.stages]
-        if len(stage_names) != len(set(stage_names)):
-            duplicates = {name for name in stage_names if stage_names.count(name) > 1}
-            raise ValueError(f"duplicate stage names detected: {sorted(duplicates)}")
-
-        stage_set = set(stage_names)
-        for stage in self.stages:
-            missing = [dep for dep in stage.depends_on if dep not in stage_set]
-            if missing:
-                raise ValueError(
-                    f"stage '{stage.name}' declares unknown dependencies: {', '.join(sorted(missing))}"
-                )
-
-        graph = build_stage_dependency_graph(self.stages)
-        order = _topological_sort(graph)
-        if order is None:
-            raise ValueError("cycle detected in pipeline dependencies")
-
-        gate_stage_set = {stage.name for stage in self.stages}
-        for gate in self.gates:
-            if gate.resume_stage not in gate_stage_set:
-                raise ValueError(
-                    f"gate '{gate.name}' references unknown resume_stage '{gate.resume_stage}'"
-                )
-        return self
-
-
-class CircuitBreakerConfig(BaseModel):
-    failure_threshold: int = Field(ge=3, le=10)
-    recovery_timeout: float = Field(ge=1.0, le=600.0)
-    expected_exception: str | None = None
-
-
-class RateLimitConfig(BaseModel):
-    rate_limit_per_second: float = Field(ge=0.1, le=100.0)
-
-
-class BackoffConfig(BaseModel):
-    strategy: BackoffStrategy = Field(default=BackoffStrategy.EXPONENTIAL)
-    initial: float = Field(default=0.5, ge=0.0, le=60.0)
-    maximum: float = Field(default=30.0, ge=0.0, le=600.0)
-    jitter: bool = Field(default=True)
-
-    @model_validator(mode="after")
-    def _validate_bounds(self) -> BackoffConfig:
-        if self.strategy is BackoffStrategy.NONE:
-            return self
-        if self.initial < 0.05:
-            raise ValueError("initial backoff must be >=0.05 for non-none strategies")
-        if self.maximum < 0.1:
-            raise ValueError("maximum backoff must be >=0.1 for non-none strategies")
-        if self.maximum < self.initial:
-            raise ValueError("maximum backoff must be >= initial backoff")
-        return self
-
-
-class ResiliencePolicyConfig(BaseModel):
-    """Configuration describing retry, circuit breaker, and rate limiting."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    max_attempts: int = Field(ge=1, le=10)
-    timeout_seconds: int = Field(ge=1, le=600)
-    backoff: BackoffConfig = Field(default_factory=BackoffConfig)
-    circuit_breaker: CircuitBreakerConfig | None = None
-    rate_limit: RateLimitConfig | None = None
-
-
-@dataclass(slots=True)
-class StageExecutionHooks:
-    """Lifecycle callbacks for stage execution resilience wrappers."""
-
-    on_retry: Callable[[Any], None] | None = None
-    on_success: Callable[[int, float], None] | None = None
-    on_failure: Callable[[BaseException, int], None] | None = None
-
-
-class ResiliencePolicy(BaseModel):
-    """Runtime wrapper around :class:`ResiliencePolicyConfig`."""
+@dataclass
+class PipelineResourceConfig:
+    """Configuration for pipeline resources."""
 
     name: str
-    config: ResiliencePolicyConfig
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
-
-    _rate_limiter: AsyncLimiter | None = PrivateAttr(default=None)
-    _circuit_breakers: dict[str, CircuitBreaker] = PrivateAttr(default_factory=dict)
-
-    def create_retry(self, stage: str, hooks: StageExecutionHooks | None = None):
-        from tenacity import retry, stop_after_attempt, wait_none
-        from tenacity.wait import wait_exponential, wait_incrementing
-
-        backoff = self.config.backoff
-        if backoff.strategy is BackoffStrategy.NONE:
-            wait = wait_none()
-        elif backoff.strategy is BackoffStrategy.LINEAR:
-            wait = wait_incrementing(
-                start=backoff.initial,
-                increment=backoff.initial,
-                max=backoff.maximum,
-            )
-        else:
-            wait = wait_exponential(
-                multiplier=backoff.initial,
-                max=backoff.maximum,
-                exp_base=2,
-            )
-        if backoff.jitter and hasattr(wait, "with_jitter"):
-            wait = wait.with_jitter(0.1)  # type: ignore[attr-defined]
-
-        def _before_sleep(retry_state):
-            record_resilience_retry(self.name, stage)
-            if hooks and hooks.on_retry:
-                hooks.on_retry(retry_state)
-
-        return retry(
-            stop=stop_after_attempt(self.config.max_attempts),
-            wait=wait,
-            reraise=True,
-            before_sleep=_before_sleep,
-        )
-
-    def create_circuit_breaker(self, stage: str):
-        try:
-            from pybreaker import CircuitBreaker, CircuitBreakerListener
-        except ModuleNotFoundError:  # pragma: no cover - optional dependency
-            logger.warning(
-                "resilience.circuit_breaker.disabled policy=%s stage=%s reason=%s",
-                self.name,
-                stage,
-                "pybreaker_missing",
-            )
-            return None
-
-        cfg = self.config.circuit_breaker
-        if cfg is None:
-            return None
-
-        if stage in self._circuit_breakers:
-            return self._circuit_breakers[stage]
-
-        class _Listener(CircuitBreakerListener):
-            def __init__(self, policy_name: str, stage_name: str) -> None:
-                self._policy_name = policy_name
-                self._stage_name = stage_name
-
-            def state_change(self, cb, old_state, new_state):  # type: ignore[override]
-                record_resilience_circuit_state(self._policy_name, self._stage_name, str(new_state))
-
-        breaker = CircuitBreaker(
-            fail_max=cfg.failure_threshold,
-            reset_timeout=cfg.recovery_timeout,
-            listeners=[_Listener(self.name, stage)],
-        )
-        self._circuit_breakers[stage] = breaker
-        return breaker
-
-    def get_rate_limiter(self) -> AsyncLimiter | None:
-        try:
-            from aiolimiter import AsyncLimiter
-        except ModuleNotFoundError:  # pragma: no cover - optional dependency
-            logger.warning(
-                "resilience.rate_limiter.disabled policy=%s reason=%s",
-                self.name,
-                "aiolimiter_missing",
-            )
-            return None
-
-        cfg = self.config.rate_limit
-        if cfg is None:
-            return None
-        if self._rate_limiter is None:
-            rate = max(cfg.rate_limit_per_second, 1e-6)
-            self._rate_limiter = AsyncLimiter(rate, time_period=1.0)
-        return self._rate_limiter
+    resource_type: str
+    config: dict[str, Any] = field(default_factory=dict)
 
 
-def build_stage_dependency_graph(
-    stages: Sequence[StageDefinition],
-) -> dict[str, set[str]]:
-    """Combine explicit and inferred dependencies for pipeline stages."""
-    graph: dict[str, set[str]] = {stage.name: set(stage.depends_on) for stage in stages}
-    index_map = {stage.name: idx for idx, stage in enumerate(stages)}
-    type_to_names: dict[str, list[str]] = {}
-    for stage in stages:
-        type_to_names.setdefault(stage.stage_type, []).append(stage.name)
+@dataclass
+class JobConfig:
+    """Configuration for Dagster jobs."""
 
-    for stage in stages:
-        required_types = PipelineState.required_stage_types(stage.stage_type)
-        if not required_types:
-            continue
-        current_deps = graph[stage.name]
-        for required_type in required_types:
-            providers = [
-                name
-                for name in type_to_names.get(required_type, [])
-                if index_map[name] < index_map[stage.name]
-            ]
-            if not providers:
-                raise ValueError(
-                    "stage '%s' (type=%s) requires a preceding stage of type '%s'"
-                    % (stage.name, stage.stage_type, required_type)
-                )
-            provider = max(providers, key=lambda candidate: index_map[candidate])
-            current_deps.add(provider)
-    return graph
+    name: str
+    description: str
+    resource_defs: dict[str, Any] = field(default_factory=dict)
+    config_schema: dict[str, Any] = field(default_factory=dict)
 
 
-def derive_stage_execution_order(stages: Sequence[StageDefinition]) -> list[str]:
-    order = _topological_sort(build_stage_dependency_graph(stages))
-    if order is None:
-        raise ValueError("cycle detected in pipeline dependencies")
-    return order
+@dataclass
+class AssetConfig:
+    """Configuration for Dagster assets."""
+
+    name: str
+    description: str
+    dependencies: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
-def _topological_sort(graph: Mapping[str, Iterable[str]]) -> list[str] | None:
-    in_degree: dict[str, int] = dict.fromkeys(graph, 0)
-    for deps in graph.values():
-        for dep in deps:
-            in_degree[dep] = in_degree.get(dep, 0) + 1
-    queue = [node for node, degree in in_degree.items() if degree == 0]
-    order: list[str] = []
-    while queue:
-        node = queue.pop(0)
-        order.append(node)
-        for dep in graph.get(node, []):
-            in_degree[dep] -= 1
-            if in_degree[dep] == 0:
-                queue.append(dep)
-    if len(order) != len(in_degree):
-        return None
-    return order
+class DagsterConfigurationManager:
+    """Manages Dagster configuration and resources."""
 
+    def __init__(self, config: DagsterConfig) -> None:
+        """Initialize the configuration manager."""
+        self.config = config
+        self.logger = get_logger(__name__)
 
-@dataclass(slots=True)
-class _CacheEntry:
-    config: PipelineTopologyConfig
-    mtime: float
+    def create_pipeline_resources(self) -> dict[str, Any]:
+        """Create pipeline resources from configuration."""
+        resources = {}
 
-
-class _SyncLimiter:
-    """Run an AsyncLimiter behind a dedicated event loop for sync callers."""
-
-    def __init__(self, limiter: AsyncLimiter) -> None:
-        self._limiter = limiter
-        self._loop = asyncio.new_event_loop()
-        self._ready = threading.Event()
-        self._thread = threading.Thread(
-            target=self._run,
-            name="resilience-policy-limiter",
-            daemon=True,
-        )
-        self._thread.start()
-        self._ready.wait()
-
-    def _run(self) -> None:
-        asyncio.set_event_loop(self._loop)
-        self._ready.set()
-        self._loop.run_forever()
-
-    def acquire(self) -> float:
-        start = time.perf_counter()
-        future = asyncio.run_coroutine_threadsafe(self._limiter.acquire(), self._loop)
-        future.result()
-        return time.perf_counter() - start
-
-    def close(self) -> None:
-        self._loop.call_soon_threadsafe(self._loop.stop)
-        self._thread.join(timeout=1.0)
-
-    @property
-    def limiter(self) -> AsyncLimiter:
-        return self._limiter
-
-
-class PipelineConfigLoader:
-    """Load and cache pipeline topology YAML files."""
-
-    def __init__(self, base_path: str | Path | None = None) -> None:
-        self.base_path = Path(base_path or "config/orchestration/pipelines")
-        self._cache: dict[str, _CacheEntry] = {}
-        self._lock = threading.Lock()
-        self._watchers: list[Callable[[str, PipelineTopologyConfig], None]] = []
-        self._watch_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-
-    def load(self, name: str, *, force: bool = False) -> PipelineTopologyConfig:
-        path = self.base_path / f"{name}.yaml"
-        if not path.exists():
-            raise FileNotFoundError(f"Pipeline config '{name}' not found at {path}")
-        with self._lock:
-            entry = self._cache.get(name)
-            mtime = path.stat().st_mtime
-            if force or entry is None or entry.mtime < mtime:
-                logger.info("pipeline.config.reload: pipeline=%s path=%s", name, str(path))
-                raw = yaml.safe_load(path.read_text()) or {}
-                try:
-                    config = PipelineTopologyConfig.model_validate(raw)
-                except ValidationError as exc:
-                    raise ValueError(f"Invalid pipeline config '{name}': {exc}") from exc
-                entry = _CacheEntry(config=config, mtime=mtime)
-                self._cache[name] = entry
-                for watcher in self._watchers:
-                    watcher(name, entry.config)
-            return entry.config
-
-    def invalidate(self, name: str) -> None:
-        with self._lock:
-            self._cache.pop(name, None)
-
-    def watch(
-        self, callback: Callable[[str, PipelineTopologyConfig], None], *, interval: float = 2.0
-    ) -> None:
-        self._watchers.append(callback)
-        if self._watch_thread is None:
-            self._start_watcher(interval)
-
-    def _start_watcher(self, interval: float) -> None:
-        def _run() -> None:
-            while not self._stop_event.is_set():
-                with self._lock:
-                    items = list(self._cache.items())
-                for name, entry in items:
-                    path = self.base_path / f"{name}.yaml"
-                    try:
-                        mtime = path.stat().st_mtime
-                    except FileNotFoundError:
-                        continue
-                    if mtime > entry.mtime:
-                        self.load(name, force=True)
-                time.sleep(interval)
-
-        self._watch_thread = threading.Thread(
-            target=_run, name="pipeline-config-watcher", daemon=True
-        )
-        self._watch_thread.start()
-
-    def close(self) -> None:
-        self._stop_event.set()
-        if self._watch_thread and self._watch_thread.is_alive():
-            self._watch_thread.join(timeout=1.0)
-
-
-class ResiliencePolicyLoader:
-    """Load resilience policy definitions and provide helper factories."""
-
-    def __init__(self, path: str | Path | None = None) -> None:
-        self.path = Path(path or "config/orchestration/resilience.yaml")
-        self._policies: dict[str, ResiliencePolicy] = {}
-        self._lock = threading.Lock()
-        self._watchers: list[Callable[[str, ResiliencePolicy], None]] = []
-        self._watch_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-        self._sync_limiters: dict[str, _SyncLimiter] = {}
-
-    def load(self, *, force: bool = False) -> dict[str, ResiliencePolicy]:
-        if not self.path.exists():
-            raise FileNotFoundError(f"Resilience policy config not found at {self.path}")
-        with self._lock:
-            if force or not self._policies:
-                raw = yaml.safe_load(self.path.read_text()) or {}
-                data = raw.get("policies", {})
-                policies: dict[str, ResiliencePolicy] = {}
-                for name, payload in data.items():
-                    try:
-                        config = ResiliencePolicyConfig.model_validate(payload)
-                    except ValidationError as exc:
-                        raise ValueError(f"Invalid resilience policy '{name}': {exc}") from exc
-                    policies[name] = ResiliencePolicy(name=name, config=config)
-                self._policies = policies
-                for watcher in self._watchers:
-                    for name, policy in policies.items():
-                        watcher(name, policy)
-                self._prune_limiters(set(policies))
-            return dict(self._policies)
-
-    def get(self, name: str) -> ResiliencePolicy:
-        with self._lock:
-            if name not in self._policies:
-                self.load()
+        for name, resource_config in self.config.pipeline_resources.items():
             try:
-                return self._policies[name]
-            except KeyError as exc:
-                raise KeyError(f"Unknown resilience policy '{name}'") from exc
-
-    def apply(
-        self,
-        name: str,
-        stage: str,
-        func: Callable[..., Any],
-        hooks: StageExecutionHooks | None = None,
-    ) -> Callable[..., Any]:
-        policy = self.get(name)
-        if asyncio.iscoroutinefunction(func):
-            raise TypeError("ResiliencePolicyLoader.apply only supports synchronous callables")
-
-        hooks = hooks or StageExecutionHooks()
-        circuit_breaker = policy.create_circuit_breaker(stage)
-        limiter = policy.get_rate_limiter()
-        sync_limiter = None
-        if limiter is not None:
-            sync_limiter = self._sync_limiters.get(name)
-            if sync_limiter is None or sync_limiter.limiter is not limiter:
-                if sync_limiter is not None:
-                    sync_limiter.close()
-                sync_limiter = _SyncLimiter(limiter)
-                self._sync_limiters[name] = sync_limiter
-
-        def _invoke(*args: Any, **kwargs: Any) -> Any:
-            call_state = {"attempts": 0}
-
-            def _call(*inner_args: Any, **inner_kwargs: Any) -> Any:
-                call_state["attempts"] += 1
-                return func(*inner_args, **inner_kwargs)
-
-            retry_decorator = policy.create_retry(stage, hooks)
-            wrapped = retry_decorator(_call)
-            start = time.perf_counter()
-            try:
-                result = wrapped(*args, **kwargs)
+                resource = self._create_resource(resource_config)
+                resources[name] = resource
+                self.logger.info(f"Created pipeline resource: {name}")
             except Exception as exc:
-                if hooks.on_failure:
-                    hooks.on_failure(exc, call_state["attempts"])
-                raise
-            duration = time.perf_counter() - start
-            if hooks.on_success:
-                hooks.on_success(call_state["attempts"], duration)
-            return result
+                self.logger.error(f"Failed to create resource {name}: {exc}")
+                continue
 
-        def _wrapped(*args: Any, **kwargs: Any) -> Any:
-            if sync_limiter is not None:
-                waited = sync_limiter.acquire()
-                if waited:
-                    record_resilience_rate_limit_wait(name, stage, waited)
-            call = _invoke
-            if circuit_breaker is not None:
+        return resources
 
-                def _call_with_breaker(*inner_args: Any, **inner_kwargs: Any) -> Any:
-                    return circuit_breaker.call(call, *inner_args, **inner_kwargs)
+    def create_job_configs(self) -> dict[str, JobConfig]:
+        """Create job configurations."""
+        job_configs = {}
 
-                call = _call_with_breaker
-            return call(*args, **kwargs)
+        for name, config_data in self.config.job_configs.items():
+            job_config = JobConfig(
+                name=name,
+                description=config_data.get("description", ""),
+                resource_defs=config_data.get("resource_defs", {}),
+                config_schema=config_data.get("config_schema", {}),
+            )
+            job_configs[name] = job_config
 
-        return _wrapped
+        return job_configs
 
-    def watch(
-        self, callback: Callable[[str, ResiliencePolicy], None], *, interval: float = 2.0
-    ) -> None:
-        self._watchers.append(callback)
-        if self._watch_thread is None:
-            self._start_watcher(interval)
+    def create_asset_configs(self) -> dict[str, AssetConfig]:
+        """Create asset configurations."""
+        asset_configs = {}
 
-    def _start_watcher(self, interval: float) -> None:
-        def _run() -> None:
-            last_mtime = 0.0
-            while not self._stop_event.is_set():
-                try:
-                    mtime = self.path.stat().st_mtime
-                except FileNotFoundError:
-                    time.sleep(interval)
-                    continue
-                if mtime > last_mtime:
-                    last_mtime = mtime
-                    self.load(force=True)
-                time.sleep(interval)
+        for name, config_data in self.config.asset_configs.items():
+            asset_config = AssetConfig(
+                name=name,
+                description=config_data.get("description", ""),
+                dependencies=config_data.get("dependencies", []),
+                metadata=config_data.get("metadata", {}),
+            )
+            asset_configs[name] = asset_config
 
-        self._watch_thread = threading.Thread(
-            target=_run, name="resilience-policy-watcher", daemon=True
-        )
-        self._watch_thread.start()
+        return asset_configs
 
-    def close(self) -> None:
-        self._stop_event.set()
-        if self._watch_thread and self._watch_thread.is_alive():
-            self._watch_thread.join(timeout=1.0)
-        for limiter in list(self._sync_limiters.values()):
-            limiter.close()
-        self._sync_limiters.clear()
+    def _create_resource(self, resource_config: dict[str, Any]) -> Any:
+        """Create a resource from configuration."""
+        resource_type = resource_config.get("type")
+        config = resource_config.get("config", {})
 
-    def _prune_limiters(self, active: set[str]) -> None:
-        for key in list(self._sync_limiters.keys()):
-            if key not in active:
-                limiter = self._sync_limiters.pop(key)
-                limiter.close()
+        if resource_type == "gpu_service":
+            return self._create_gpu_service_resource(config)
+        elif resource_type == "embedding_service":
+            return self._create_embedding_service_resource(config)
+        elif resource_type == "chunking_service":
+            return self._create_chunking_service_resource(config)
+        else:
+            raise ValueError(f"Unknown resource type: {resource_type}")
+
+    def _create_gpu_service_resource(self, config: dict[str, Any]) -> Any:
+        """Create GPU service resource."""
+        # Mock implementation
+        return {"type": "gpu_service", "config": config}
+
+    def _create_embedding_service_resource(self, config: dict[str, Any]) -> Any:
+        """Create embedding service resource."""
+        # Mock implementation
+        return {"type": "embedding_service", "config": config}
+
+    def _create_chunking_service_resource(self, config: dict[str, Any]) -> Any:
+        """Create chunking service resource."""
+        # Mock implementation
+        return {"type": "chunking_service", "config": config}
+
+    def validate_configuration(self) -> bool:
+        """Validate the Dagster configuration."""
+        try:
+            # Validate pipeline resources
+            for name, resource_config in self.config.pipeline_resources.items():
+                if not isinstance(resource_config, dict):
+                    self.logger.error(f"Invalid resource config for {name}")
+                    return False
+
+                if "type" not in resource_config:
+                    self.logger.error(f"Missing resource type for {name}")
+                    return False
+
+            # Validate job configs
+            for name, job_config in self.config.job_configs.items():
+                if not isinstance(job_config, dict):
+                    self.logger.error(f"Invalid job config for {name}")
+                    return False
+
+            # Validate asset configs
+            for name, asset_config in self.config.asset_configs.items():
+                if not isinstance(asset_config, dict):
+                    self.logger.error(f"Invalid asset config for {name}")
+                    return False
+
+            return True
+
+        except Exception as exc:
+            self.logger.error(f"Configuration validation failed: {exc}")
+            return False
+
+    def get_resource_config(self, name: str) -> dict[str, Any] | None:
+        """Get configuration for a specific resource."""
+        return self.config.pipeline_resources.get(name)
+
+    def get_job_config(self, name: str) -> JobConfig | None:
+        """Get configuration for a specific job."""
+        config_data = self.config.job_configs.get(name)
+        if config_data:
+            return JobConfig(
+                name=name,
+                description=config_data.get("description", ""),
+                resource_defs=config_data.get("resource_defs", {}),
+                config_schema=config_data.get("config_schema", {}),
+            )
+        return None
+
+    def get_asset_config(self, name: str) -> AssetConfig | None:
+        """Get configuration for a specific asset."""
+        config_data = self.config.asset_configs.get(name)
+        if config_data:
+            return AssetConfig(
+                name=name,
+                description=config_data.get("description", ""),
+                dependencies=config_data.get("dependencies", []),
+                metadata=config_data.get("metadata", {}),
+            )
+        return None
 
 
-def export_pipeline_schema(path: str | Path) -> None:
-    """Write the JSON schema for pipeline topology configs to disk."""
-    schema = PipelineTopologyConfig.model_json_schema(by_alias=True)
-    resolved = Path(path)
-    resolved.parent.mkdir(parents=True, exist_ok=True)
-    resolved.write_text(json.dumps(schema, indent=2, sort_keys=True))
-
-
-__all__ = [
-    "BackoffStrategy",
-    "GateCondition",
-    "GateDefinition",
-    "PipelineConfigLoader",
-    "PipelineTopologyConfig",
-    "ResiliencePolicy",
-    "ResiliencePolicyConfig",
-    "ResiliencePolicyLoader",
-    "export_pipeline_schema",
-]
+def create_default_dagster_config(app_settings: AppSettings) -> DagsterConfig:
+    """Create default Dagster configuration."""
+    return DagsterConfig(
+        app_settings=app_settings,
+        pipeline_resources={
+            "gpu_service": {
+                "type": "gpu_service",
+                "config": {
+                    "endpoint": "localhost:50051",
+                    "timeout": 30,
+                },
+            },
+            "embedding_service": {
+                "type": "embedding_service",
+                "config": {
+                    "endpoint": "localhost:50052",
+                    "timeout": 30,
+                },
+            },
+            "chunking_service": {
+                "type": "chunking_service",
+                "config": {
+                    "endpoint": "localhost:50053",
+                    "timeout": 30,
+                },
+            },
+        },
+        job_configs={
+            "ingestion_job": {
+                "description": "Document ingestion job",
+                "resource_defs": ["gpu_service", "embedding_service"],
+                "config_schema": {
+                    "batch_size": {"type": "int", "default": 10},
+                    "timeout": {"type": "int", "default": 300},
+                },
+            },
+            "embedding_job": {
+                "description": "Embedding generation job",
+                "resource_defs": ["embedding_service"],
+                "config_schema": {
+                    "model": {"type": "str", "default": "bert-base-uncased"},
+                    "batch_size": {"type": "int", "default": 32},
+                },
+            },
+        },
+        asset_configs={
+            "document_asset": {
+                "description": "Document processing asset",
+                "dependencies": [],
+                "metadata": {"version": "1.0"},
+            },
+            "embedding_asset": {
+                "description": "Embedding generation asset",
+                "dependencies": ["document_asset"],
+                "metadata": {"version": "1.0"},
+            },
+        },
+    )

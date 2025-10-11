@@ -1,8 +1,9 @@
-"""LlamaIndex node parser adapters."""
+"""Adapters that wrap LlamaIndex node parsers for the chunking system."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any, Type
 
 from Medical_KG_rev.models.ir import Document
 
@@ -14,20 +15,20 @@ from ..provenance import ProvenanceNormalizer
 from ..tokenization import TokenCounter, default_token_counter
 from .mapping import OffsetMapper
 
+try:  # pragma: no cover - optional dependency
+    from llama_index.core.node_parser import (  # type: ignore
+        HierarchicalNodeParser,
+        SemanticSplitterNodeParser,
+        SentenceSplitterNodeParser,
+    )
+    from llama_index.core.schema import Document as LlamaDocument  # type: ignore
+except Exception as exc:  # pragma: no cover - graceful fallback when llama-index missing
+    raise ImportError("llama-index is required for LlamaIndex chunkers") from exc
 
-def _load_node_parser(class_name: str, **kwargs):
-    try:  # pragma: no cover - optional dependency
-        from llama_index.core.node_parser import (  # type: ignore
-            HierarchicalNodeParser,
-            SemanticSplitterNodeParser,
-            SentenceSplitterNodeParser,
-        )
-        from llama_index.core.schema import Document as LlamaDocument  # type: ignore
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise ChunkerConfigurationError(
-            "llama-index must be installed to use LlamaIndex chunkers"
-        ) from exc
-    mapping = {
+
+def _load_node_parser(class_name: str, **kwargs: Any) -> tuple[Any, Type[Any]]:
+    """Instantiate a LlamaIndex node parser and return it with the document class."""
+    mapping: dict[str, Type[Any]] = {
         "SemanticSplitterNodeParser": SemanticSplitterNodeParser,
         "HierarchicalNodeParser": HierarchicalNodeParser,
         "SentenceSplitterNodeParser": SentenceSplitterNodeParser,
@@ -40,14 +41,16 @@ def _load_node_parser(class_name: str, **kwargs):
 
 
 class _BaseLlamaIndexChunker(BaseChunker):
+    """Shared functionality for LlamaIndex-based chunkers."""
+
     framework = "llama_index"
     version = "v1"
 
     def __init__(
         self,
         *,
-        parser,
-        document_cls,
+        parser: Any,
+        document_cls: Type[Any],
         name: str,
         parser_name: str,
         token_counter: TokenCounter | None = None,
@@ -60,16 +63,16 @@ class _BaseLlamaIndexChunker(BaseChunker):
         self.normalizer = ProvenanceNormalizer(token_counter=self.counter)
 
     def _parse(self, text: str) -> list[tuple[str, dict[str, object]]]:
-        doc = self.document_cls(text=text)
-        nodes = self.parser.get_nodes_from_documents([doc])
+        document = self.document_cls(text=text)
+        nodes = self.parser.get_nodes_from_documents([document])
         segments: list[tuple[str, dict[str, object]]] = []
         for node in nodes:
-            content = getattr(node, "text", None) or getattr(node, "get_content", lambda: "")
-            body = content() if callable(content) else content
-            if not body:
+            maybe_content = getattr(node, "text", None) or getattr(node, "get_content", None)
+            content = maybe_content() if callable(maybe_content) else maybe_content
+            if not content:
                 continue
             metadata = getattr(node, "metadata", {}) or {}
-            segments.append((str(body), dict(metadata)))
+            segments.append((str(content), dict(metadata)))
         return segments
 
     def chunk(
@@ -90,7 +93,7 @@ class _BaseLlamaIndexChunker(BaseChunker):
             tenant_id=tenant_id,
             chunker_name=self.name,
             chunker_version=self.version,
-            granularity=granularity or "paragraph",
+            granularity=granularity or self.default_granularity,
             token_counter=self.counter,
         )
         chunks: list[Chunk] = []
@@ -115,6 +118,8 @@ class _BaseLlamaIndexChunker(BaseChunker):
 
 
 class LlamaIndexNodeParserChunker(_BaseLlamaIndexChunker):
+    """Chunker backed by the LlamaIndex semantic splitter parser."""
+
     def __init__(
         self,
         *,
@@ -135,6 +140,8 @@ class LlamaIndexNodeParserChunker(_BaseLlamaIndexChunker):
 
 
 class LlamaIndexHierarchicalChunker(_BaseLlamaIndexChunker):
+    """Chunker backed by the LlamaIndex hierarchical node parser."""
+
     def __init__(
         self,
         *,
@@ -155,6 +162,8 @@ class LlamaIndexHierarchicalChunker(_BaseLlamaIndexChunker):
 
 
 class LlamaIndexSentenceChunker(_BaseLlamaIndexChunker):
+    """Chunker backed by the LlamaIndex sentence splitter parser."""
+
     def __init__(
         self,
         *,

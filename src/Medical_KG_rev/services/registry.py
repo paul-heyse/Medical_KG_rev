@@ -1,8 +1,9 @@
 """Service registry for managing service instances."""
 
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Optional, TypeVar
 
-T = TypeVar('T')
+
+T = TypeVar("T")
 
 
 class ServiceRegistry:
@@ -10,13 +11,13 @@ class ServiceRegistry:
 
     def __init__(self):
         """Initialize the service registry."""
-        self._services: Dict[str, Any] = {}
+        self._services: dict[str, Any] = {}
 
     def register(self, name: str, service: Any) -> None:
         """Register a service instance."""
         self._services[name] = service
 
-    def get(self, name: str, service_type: Optional[Type[T]] = None) -> Optional[T]:
+    def get(self, name: str, service_type: Optional[type[T]] = None) -> Optional[T]:
         """Get a service instance by name."""
         service = self._services.get(name)
         if service_type and service and not isinstance(service, service_type):
@@ -27,7 +28,7 @@ class ServiceRegistry:
         """Unregister a service instance."""
         self._services.pop(name, None)
 
-    def list_services(self) -> Dict[str, Any]:
+    def list_services(self) -> dict[str, Any]:
         """List all registered services."""
         return self._services.copy()
 

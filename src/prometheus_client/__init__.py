@@ -52,5 +52,20 @@ class Histogram(_Metric):
     pass
 
 
+class CollectorRegistry:
+    """Minimal collector registry shim."""
+
+    def __init__(self) -> None:
+        self._collectors: dict[str, Any] = {}
+
+    def register(self, collector: Any) -> None:
+        """Register a collector."""
+        pass
+
+    def unregister(self, collector: Any) -> None:
+        """Unregister a collector."""
+        pass
+
+
 def generate_latest() -> bytes:
     return b""

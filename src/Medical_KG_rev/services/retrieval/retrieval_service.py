@@ -1,69 +1,39 @@
-"""Hybrid retrieval service coordinating lexical, sparse, and dense signals.
+"""Hybrid retrieval coordinator for lexical, sparse, and dense signals.
 
-This module provides a comprehensive retrieval service that coordinates
-multiple retrieval components including lexical search (OpenSearch),
-dense vector search (FAISS), and hybrid fusion with reranking capabilities.
-
-Key Components:
-    - RetrievalService: Main service coordinating all retrieval operations
-    - RetrievalResult: Data model for retrieval results with scores
-    - Hybrid coordination: Combines multiple retrieval signals
-    - Reranking pipeline: Two-stage reranking with fusion
-    - Router: Intelligent routing based on query characteristics
-
-Responsibilities:
-    - Coordinate fan-out to multiple retrieval components
-    - Perform hybrid fusion of lexical and dense signals
-    - Execute two-stage reranking pipelines
-    - Handle query routing and component selection
-    - Manage model registry and circuit breakers
-    - Provide security context and namespace mapping
+Key Responsibilities:
+    - Fan out queries to lexical (OpenSearch), sparse (SPLADE), and dense (FAISS/Qwen3) components.
+    - Fuse heterogeneous result sets and execute two-stage reranking.
+    - Manage per-tenant routing, model selection, and security contexts.
 
 Collaborators:
-    - OpenSearch client for lexical search
-    - FAISS index for dense vector search
-    - Vector store service for hybrid search
-    - Reranking engine and model registry
-    - Fusion service for signal combination
-    - Router for intelligent query routing
+    - Downstream: OpenSearch, FAISS, SPLADE, reranking pipelines, vector store.
+    - Upstream: Gateway APIs, orchestration pipelines, and evaluation tooling.
 
 Side Effects:
-    - Logs retrieval operations and performance metrics
-    - Updates circuit breaker states
-    - Manages model handles and caching
-    - Generates security contexts for operations
+    - Emits structured logs and Prometheus metrics.
+    - Performs network I/O to retrieval, embedding, and reranking backends.
+    - Updates circuit breakers and caches for model handles.
 
 Thread Safety:
-    - Thread-safe: Uses thread pools for concurrent operations
-    - Circuit breakers provide thread-safe failure handling
-    - Model handles are cached per thread
+    - Thread-safe: Uses thread pools and concurrent futures for component fan-out.
 
 Performance Characteristics:
-    - Hybrid search combines multiple signals efficiently
-    - Reranking pipeline optimizes result quality
-    - Circuit breakers prevent cascading failures
-    - Concurrent execution improves response times
+    - Latency bounded by the slowest downstream component; batching and pooling reduce fan-out cost.
+    - Circuit breakers and candidate pooling prevent cascading failures under load.
 
 Example:
-    >>> service = RetrievalService(
-    ...     opensearch=opensearch_client,
-    ...     faiss=faiss_index,
-    ...     vector_store=vector_store
-    ... )
-    >>> results = await service.search(
-    ...     query="medical diagnosis",
-    ...     tenant_id="tenant1",
-    ...     limit=10
-    ... )
-    >>> print(f"Retrieved {len(results)} results")
-
+    >>> service = RetrievalService(opensearch, faiss, vector_store)
+    >>> results = await service.search(query="medical diagnosis", tenant_id="tenant-1", k=5)
+    >>> len(results)
+    5
 """
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -72,29 +42,16 @@ from pathlib import Path
 from time import perf_counter
 
 import structlog
+
 from Medical_KG_rev.auth.context import SecurityContext
 from Medical_KG_rev.config import RerankingSettings
-from Medical_KG_rev.services.reranking import (
-    BatchProcessor,
-    CircuitBreaker,
-    FusionService,
-    FusionSettings,
-    FusionStrategy,
-    ModelDownloadError,
-    ModelHandle,
-    NormalizationStrategy,
-    PipelineSettings,
-    RerankCacheManager,
-    RerankerFactory,
-    RerankerModelRegistry,
-    RerankingEngine,
-    ScoredDocument,
-)
+from Medical_KG_rev.services.reranking import HttpClient
 from Medical_KG_rev.services.reranking.errors import RerankingError
 from Medical_KG_rev.services.reranking.pipeline.two_stage import TwoStagePipeline
 from Medical_KG_rev.services.vector_store.errors import VectorStoreError
 from Medical_KG_rev.services.vector_store.models import VectorQuery
 from Medical_KG_rev.services.vector_store.service import VectorStoreService
+from Medical_KG_rev.utils.fallbacks import fallback_unavailable
 
 from .faiss_index import FAISSIndex
 from .hybrid import HybridComponentSettings, HybridSearchCoordinator
@@ -131,6 +88,7 @@ class RetrievalResult:
     metadata.
 
     Attributes:
+    ----------
         id: Unique identifier for the result
         text: Text content of the retrieved document/chunk
         retrieval_score: Initial retrieval score from search engine
@@ -147,6 +105,7 @@ class RetrievalResult:
         - granularity defaults to "chunk"
 
     Example:
+    -------
         >>> result = RetrievalResult(
         ...     id="chunk_123",
         ...     text="Sample medical text",
@@ -181,6 +140,7 @@ class RetrievalService:
     different signals, and executing reranking pipelines.
 
     Attributes:
+    ----------
         opensearch: OpenSearch client for lexical search
         faiss: FAISS index for dense vector search
         vector_store: Vector store service for hybrid search
@@ -210,6 +170,7 @@ class RetrievalService:
         - Circuit breakers are configured during initialization
 
     Example:
+    -------
         >>> service = RetrievalService(
         ...     opensearch=opensearch_client,
         ...     faiss=faiss_index,
@@ -245,6 +206,7 @@ class RetrievalService:
         """Initialize retrieval service with required and optional components.
 
         Args:
+        ----
             opensearch: OpenSearch client for lexical search
             faiss: Optional FAISS index for dense vector search
             vector_store: Optional vector store service for hybrid search
@@ -262,6 +224,7 @@ class RetrievalService:
             hybrid_settings: Optional hybrid component settings
 
         Note:
+        ----
             The service initializes with sensible defaults for optional
             components. Model handles are loaded on demand to improve
             startup performance.
@@ -347,6 +310,7 @@ class RetrievalService:
         """Execute hybrid search with optional reranking.
 
         Args:
+        ----
             index: Search index name
             query: Search query string
             filters: Optional filters to apply
@@ -359,14 +323,17 @@ class RetrievalService:
             explain: Whether to include explanation in results
 
         Returns:
+        -------
             List of retrieval results with scores and metadata
 
         Note:
+        ----
             This method coordinates hybrid search across multiple
             components and optionally applies reranking based on
             the provided parameters.
 
         Example:
+        -------
             >>> results = await service.search(
             ...     index="medical_docs",
             ...     query="diabetes treatment",
@@ -397,7 +364,7 @@ class RetrievalService:
         }
 
         decision = self._rerank_policy.decide(security_context.tenant_id, query, rerank)
-        model_handle, model_key, requested_model, model_fallback = self._resolve_model(rerank_model)
+        model_handle, model_key, requested_model, _ = self._resolve_model(rerank_model)
         reranker_key = reranker_id or model_handle.model.reranker_id or self._default_reranker
         metrics: dict[str, object]
         rerank_applied = decision.enabled
@@ -412,32 +379,7 @@ class RetrievalService:
                 explain=explain,
             )
         except RerankingError as exc:
-            logger.warning(
-                "retrieval.rerank_failed",
-                tenant=security_context.tenant_id,
-                reranker=reranker_key,
-                error=str(exc),
-            )
-            rerank_applied = False
-            documents, metrics = self._pipeline.execute(
-                security_context,
-                query,
-                candidate_lists,
-                reranker_id=reranker_key,
-                top_k=k,
-                rerank=False,
-                explain=explain,
-            )
-            metrics = dict(metrics)
-            rerank_metrics = dict(metrics.get("reranking", {}))
-            rerank_metrics.update(
-                {
-                    "error": exc.__class__.__name__,
-                    "message": str(exc),
-                    "fallback": "fusion",
-                }
-            )
-            metrics["reranking"] = rerank_metrics
+            fallback_unavailable("retrieval reranking pipeline", exc)
         else:
             metrics = dict(metrics)
 
@@ -458,9 +400,6 @@ class RetrievalService:
         }
         if requested_model:
             rerank_metadata["requested_model"] = requested_model
-        if model_fallback:
-            rerank_metadata["fallback_model"] = model_key
-            rerank_metadata.setdefault("warnings", []).append("model_fallback")
         rerank_metadata["model"] = model_meta
         rerank_metadata.setdefault("reranker_id", reranker_key)
         metrics["reranking"] = rerank_metadata
@@ -499,11 +438,7 @@ class RetrievalService:
         namespace: str,
         top_k: int,
         context: SecurityContext,
-    ) -> tuple[
-        dict[str, Sequence[Mapping[str, object]]],
-        list[str],
-        dict[str, float],
-    ]:
+    ) -> tuple[dict[str, Sequence[Mapping[str, object]]], list[str], dict[str, float],]:
         if self._hybrid:
             outcome = self._hybrid.search_sync(
                 index=index,
@@ -748,12 +683,12 @@ class RetrievalService:
             return self._default_model_key
         try:
             return self._model_registry.resolve_key(identifier)
-        except KeyError:
-            logger.warning(
-                "retrieval.rerank_model.unknown",
-                requested=identifier,
+        except KeyError as exc:
+            fallback_unavailable(
+                "retrieval rerank model resolution",
+                f"Unknown rerank model '{identifier}'",
             )
-            return self._default_model_key
+            raise AssertionError("unreachable") from exc
 
     def _ensure_model(self, key: str) -> ModelHandle:
         handle = self._model_handles.get(key)
@@ -762,31 +697,25 @@ class RetrievalService:
         try:
             handle = self._model_registry.ensure(key)
         except ModelDownloadError as exc:
-            logger.warning(
-                "retrieval.rerank_model.ensure_failed",
-                model=key,
-                error=str(exc),
-            )
-            model = self._model_registry.get(key)
-            cache_dir = getattr(self._model_registry, "cache_dir", None)
-            cache_root = cache_dir if cache_dir else DEFAULT_POLICY_PATH.parent
-            handle = ModelHandle(model=model, path=model.cache_path(cache_root))
+            fallback_unavailable("retrieval rerank model download", exc)
         self._model_handles[key] = handle
         return handle
 
     def _resolve_model(self, identifier: str | None) -> tuple[ModelHandle, str, str | None, bool]:
         key = self._resolve_model_key(identifier)
-        fallback = (
-            bool(identifier)
-            and key == self._default_model_key
-            and (identifier != self._default_model_key)
-        )
         handle = self._ensure_model(key)
         if handle is not self._default_model_handle and key not in self._model_handles:
             self._model_handles[key] = handle
         if identifier and key != identifier:
-            fallback = True
-        return handle, key, identifier, fallback
+            fallback_unavailable(
+                "retrieval rerank model resolution",
+                f"Requested '{identifier}' but resolved '{key}'",
+            )
+        raise NotImplementedError(
+            "Retrieval service fallback mechanism removed. "
+            "This service requires a real retrieval implementation. "
+            "Please implement or configure a proper retrieval service."
+        )
 
     def _resolve_namespace(self, embedding_kind: str | None) -> str:
         if embedding_kind and embedding_kind in self._namespace_map:

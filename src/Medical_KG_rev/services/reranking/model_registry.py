@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import json
 
 import yaml
 
 from Medical_KG_rev.observability import logger as global_logger
+
 
 logger = global_logger.bind(module="reranking.model_registry")
 
@@ -184,7 +185,11 @@ class RerankerModelRegistry:
     def ensure(self, identifier: str | None = None) -> ModelHandle:
         model = self.get(identifier)
         try:
-            path = self.downloader.fetch(model) if self.downloader else model.cache_path(self.cache_dir)  # type: ignore[arg-type]
+            path = (
+                self.downloader.fetch(model)
+                if self.downloader
+                else model.cache_path(self.cache_dir)
+            )  # type: ignore[arg-type]
         except Exception as exc:  # pragma: no cover - defensive
             raise ModelDownloadError(str(exc)) from exc
         return ModelHandle(model=model, path=path)

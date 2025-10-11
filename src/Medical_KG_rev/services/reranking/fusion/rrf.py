@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from ..models import FusionResponse, ScoredDocument
 
 
+
 def rrf(
     ranked_lists: Mapping[str, Sequence[ScoredDocument]],
     *,

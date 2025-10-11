@@ -7,7 +7,8 @@ imports across the Medical_KG_rev repository.
 Usage:
     python scripts/find_duplicate_code.py [path]
 
-Examples:
+Examples
+--------
     python scripts/find_duplicate_code.py src/Medical_KG_rev/
     python scripts/find_duplicate_code.py tests/
 

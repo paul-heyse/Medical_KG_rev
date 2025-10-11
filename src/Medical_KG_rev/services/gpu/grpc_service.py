@@ -1,15 +1,13 @@
-"""gRPC service implementation for GPU operations."""
+"""gRPC service for GPU operations."""
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import grpc
 from google.protobuf import empty_pb2
 
-from Medical_KG_rev.services.gpu.manager import GpuDevice, GpuNotAvailableError, GpuServiceManager
-
-# Import generated protobuf classes
 try:
     from proto import gpu_pb2, gpu_pb2_grpc
 except ImportError:
@@ -17,170 +15,164 @@ except ImportError:
     gpu_pb2 = None
     gpu_pb2_grpc = None
 
+from Medical_KG_rev.services.gpu.manager import (
+    GpuServiceManager,
+)
+
 logger = logging.getLogger(__name__)
 
 
-class GPUServiceServicer(gpu_pb2_grpc.GPUServiceServicer):
-    """gRPC servicer for GPU operations."""
+class GPUService(gpu_pb2_grpc.GPUServiceServicer if gpu_pb2_grpc else object):
+    """gRPC service implementation for GPU operations."""
 
-    def __init__(self, gpu_manager: GpuServiceManager | None = None):
-        self.gpu_manager = gpu_manager or GpuServiceManager()
-        self._device_cache: dict[int, GpuDevice] = {}
+    def __init__(self) -> None:
+        """Initialize the GPU gRPC service."""
+        self.logger = logger
+        self.gpu_manager = GpuServiceManager()
 
-    def GetStatus(
-        self, request: empty_pb2.Empty, context: grpc.ServicerContext
-    ) -> gpu_pb2.StatusResponse:
-        """Get GPU service status."""
+    def GetGPUStatus(
+        self, request: Any, context: grpc.ServicerContext
+    ) -> Any:
+        """Get GPU status."""
         try:
-            device = self.gpu_manager.get_device()
-            return gpu_pb2.StatusResponse(
-                available=True,
-                device_count=1,  # TODO: Get actual device count
-                device_names=[device.name],
-            )
-        except GpuNotAvailableError as e:
-            logger.warning("GPU not available: %s", e)
-            return gpu_pb2.StatusResponse(
-                available=False,
-                device_count=0,
-                error_message=str(e),
-            )
-        except Exception as e:
-            logger.error("Error getting GPU status: %s", e)
-            return gpu_pb2.StatusResponse(
-                available=False,
-                device_count=0,
-                error_message=f"Internal error: {e}",
-            )
+            if gpu_pb2:
+                # Real implementation
+                status = self.gpu_manager.get_status()
+                response = gpu_pb2.GetGPUStatusResponse()
+                response.available = status.get("available", False)
+                response.device_count = status.get("device_count", 0)
+                response.total_memory = status.get("total_memory", 0)
+                response.free_memory = status.get("free_memory", 0)
+                return response
+            else:
+                # Mock implementation
+                return {"available": False, "device_count": 0}
 
-    def ListDevices(
-        self, request: empty_pb2.Empty, context: grpc.ServicerContext
-    ) -> gpu_pb2.ListDevicesResponse:
-        """List available GPU devices."""
-        try:
-            device = self.gpu_manager.get_device()
-            devices = [
-                gpu_pb2.GpuDevice(
-                    index=device.index,
-                    name=device.name,
-                    total_memory_mb=device.total_memory_mb,
-                    free_memory_mb=self.gpu_manager.available_memory_mb(device),
-                    utilization_percent=0.0,  # TODO: Get actual utilization
-                    available=True,
-                )
-            ]
-            return gpu_pb2.ListDevicesResponse(devices=devices)
-        except GpuNotAvailableError as e:
-            logger.warning("No GPU devices available: %s", e)
-            return gpu_pb2.ListDevicesResponse(devices=[])
         except Exception as e:
-            logger.error("Error listing GPU devices: %s", e)
+            self.logger.error(f"GetGPUStatus failed: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return gpu_pb2.ListDevicesResponse(devices=[])
+            context.set_details(f"GetGPUStatus failed: {e}")
+            return gpu_pb2.GetGPUStatusResponse() if gpu_pb2 else {}
+
+    def ListGPUs(
+        self, request: Any, context: grpc.ServicerContext
+    ) -> Any:
+        """List available GPUs."""
+        try:
+            if gpu_pb2:
+                # Real implementation
+                gpus = self.gpu_manager.list_gpus()
+                response = gpu_pb2.ListGPUsResponse()
+                for gpu in gpus:
+                    gpu_info = response.gpus.add()
+                    gpu_info.id = gpu.get("id", "")
+                    gpu_info.name = gpu.get("name", "")
+                    gpu_info.memory_total = gpu.get("memory_total", 0)
+                    gpu_info.memory_free = gpu.get("memory_free", 0)
+                return response
+            else:
+                # Mock implementation
+                return {"gpus": []}
+
+        except Exception as e:
+            self.logger.error(f"ListGPUs failed: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"ListGPUs failed: {e}")
+            return gpu_pb2.ListGPUsResponse() if gpu_pb2 else {}
 
     def AllocateGPU(
-        self, request: gpu_pb2.AllocationRequest, context: grpc.ServicerContext
-    ) -> gpu_pb2.AllocationResponse:
-        """Allocate GPU resources for a service."""
+        self, request: Any, context: grpc.ServicerContext
+    ) -> Any:
+        """Allocate GPU resources."""
         try:
-            # Check if GPU is available
-            device = self.gpu_manager.get_device()
-
-            # Check memory requirements
-            if request.required_total_memory_mb > 0:
-                self.gpu_manager.assert_total_memory(request.required_total_memory_mb)
-
-            if request.required_memory_mb > 0:
-                self.gpu_manager.assert_available_memory(request.required_memory_mb, device=device)
-
-            return gpu_pb2.AllocationResponse(
-                success=True,
-                device_index=device.index,
-                device_name=device.name,
-                allocated_memory_mb=request.required_memory_mb,
-            )
-        except GpuNotAvailableError as e:
-            logger.warning("GPU allocation failed: %s", e)
-            return gpu_pb2.AllocationResponse(
-                success=False,
-                error_message=str(e),
-            )
-        except Exception as e:
-            logger.error("Error allocating GPU: %s", e)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return gpu_pb2.AllocationResponse(
-                success=False,
-                error_message=f"Internal error: {e}",
-            )
-
-    def GetDeviceInfo(
-        self, request: gpu_pb2.DeviceInfoRequest, context: grpc.ServicerContext
-    ) -> gpu_pb2.DeviceInfoResponse:
-        """Get information about a specific GPU device."""
-        try:
-            device = self.gpu_manager.get_device()
-            if device.index == request.device_index:
-                gpu_device = gpu_pb2.GpuDevice(
-                    index=device.index,
-                    name=device.name,
-                    total_memory_mb=device.total_memory_mb,
-                    free_memory_mb=self.gpu_manager.available_memory_mb(device),
-                    utilization_percent=0.0,  # TODO: Get actual utilization
-                    available=True,
+            if gpu_pb2:
+                # Real implementation
+                allocation = self.gpu_manager.allocate_gpu(
+                    memory_mb=request.memory_mb,
+                    timeout=request.timeout,
                 )
-                return gpu_pb2.DeviceInfoResponse(device=gpu_device, found=True)
+                response = gpu_pb2.AllocateGPUResponse()
+                response.success = allocation.get("success", False)
+                response.gpu_id = allocation.get("gpu_id", "")
+                response.allocation_id = allocation.get("allocation_id", "")
+                return response
             else:
-                return gpu_pb2.DeviceInfoResponse(found=False)
-        except GpuNotAvailableError as e:
-            logger.warning("GPU device not available: %s", e)
-            return gpu_pb2.DeviceInfoResponse(found=False)
-        except Exception as e:
-            logger.error("Error getting device info: %s", e)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return gpu_pb2.DeviceInfoResponse(found=False)
+                # Mock implementation
+                return {"success": False, "gpu_id": "", "allocation_id": ""}
 
-    def GetMemoryInfo(
-        self, request: empty_pb2.Empty, context: grpc.ServicerContext
-    ) -> gpu_pb2.MemoryInfoResponse:
-        """Get GPU memory information."""
+        except Exception as e:
+            self.logger.error(f"AllocateGPU failed: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"AllocateGPU failed: {e}")
+            return gpu_pb2.AllocateGPUResponse() if gpu_pb2 else {}
+
+    def ReleaseGPU(
+        self, request: Any, context: grpc.ServicerContext
+    ) -> Any:
+        """Release GPU resources."""
         try:
-            device = self.gpu_manager.get_device()
-            free_memory = self.gpu_manager.available_memory_mb(device)
-            allocated_memory = device.total_memory_mb - free_memory
+            if gpu_pb2:
+                # Real implementation
+                success = self.gpu_manager.release_gpu(request.allocation_id)
+                response = gpu_pb2.ReleaseGPUResponse()
+                response.success = success
+                return response
+            else:
+                # Mock implementation
+                return {"success": True}
 
-            gpu_device = gpu_pb2.GpuDevice(
-                index=device.index,
-                name=device.name,
-                total_memory_mb=device.total_memory_mb,
-                free_memory_mb=free_memory,
-                utilization_percent=0.0,  # TODO: Get actual utilization
-                available=True,
-            )
-
-            return gpu_pb2.MemoryInfoResponse(
-                total_memory_mb=device.total_memory_mb,
-                free_memory_mb=free_memory,
-                allocated_memory_mb=allocated_memory,
-                devices=[gpu_device],
-            )
-        except GpuNotAvailableError as e:
-            logger.warning("GPU memory info not available: %s", e)
-            return gpu_pb2.MemoryInfoResponse(
-                total_memory_mb=0,
-                free_memory_mb=0,
-                allocated_memory_mb=0,
-                devices=[],
-            )
         except Exception as e:
-            logger.error("Error getting memory info: %s", e)
+            self.logger.error(f"ReleaseGPU failed: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Internal error: {e}")
-            return gpu_pb2.MemoryInfoResponse(
-                total_memory_mb=0,
-                free_memory_mb=0,
-                allocated_memory_mb=0,
-                devices=[],
-            )
+            context.set_details(f"ReleaseGPU failed: {e}")
+            return gpu_pb2.ReleaseGPUResponse() if gpu_pb2 else {}
+
+    def health_check(self) -> dict[str, Any]:
+        """Check service health."""
+        return {
+            "service": "gpu_grpc",
+            "status": "healthy",
+            "gpu_manager": self.gpu_manager.health_check(),
+        }
+
+    def get_metrics(self) -> dict[str, Any]:
+        """Get service metrics."""
+        return {
+            "service": "gpu_grpc",
+            "gpu_manager_metrics": self.gpu_manager.get_metrics(),
+        }
+
+
+class GPUServiceFactory:
+    """Factory for creating GPU gRPC services."""
+
+    @staticmethod
+    def create() -> GPUService:
+        """Create a GPU gRPC service instance."""
+        return GPUService()
+
+    @staticmethod
+    def create_with_config(config: dict[str, Any]) -> GPUService:
+        """Create a GPU gRPC service with configuration."""
+        service = GPUService()
+        # Apply configuration if needed
+        return service
+
+
+# Global GPU gRPC service instance
+_gpu_grpc_service: GPUService | None = None
+
+
+def get_gpu_grpc_service() -> GPUService:
+    """Get the global GPU gRPC service instance."""
+    global _gpu_grpc_service
+
+    if _gpu_grpc_service is None:
+        _gpu_grpc_service = GPUServiceFactory.create()
+
+    return _gpu_grpc_service
+
+
+def create_gpu_grpc_service() -> GPUService:
+    """Create a new GPU gRPC service instance."""
+    return GPUServiceFactory.create()

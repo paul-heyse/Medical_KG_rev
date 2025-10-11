@@ -2,21 +2,9 @@
 
 from __future__ import annotations
 
-"""FastAPI dependencies wiring authentication subsystems together.
-
-This module exposes dependency factories and helper utilities used by the REST
-gateway. The helpers integrate API key validation, OAuth token verification,
-and rate limiting into a cohesive dependency graph that can be re-used by any
-endpoint requiring authenticated access.
-"""
-
-# ============================================================================
-# IMPORTS
-# ============================================================================
-
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Coroutine, TypedDict
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
@@ -24,6 +12,7 @@ from .api_keys import APIKeyManager, build_api_key_manager
 from .context import SecurityContext
 from .jwt import AuthenticationError, JWTAuthenticator, build_authenticator
 from .rate_limit import RateLimiter, RateLimitExceeded, build_rate_limiter
+
 
 # ============================================================================
 # DEPENDENCY FACTORIES
@@ -50,6 +39,11 @@ def _get_api_key_manager() -> APIKeyManager:
 # ============================================================================
 
 
+
+class _CacheEntry(TypedDict):
+    payload: dict[str, Any]
+    expires_at: datetime
+
 async def get_security_context(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
@@ -60,6 +54,7 @@ async def get_security_context(
     """Authenticate the incoming request and populate :class:`SecurityContext`.
 
     Args:
+    ----
         request: Current FastAPI request instance.
         authorization: Optional bearer token header.
         api_key: Optional API key header.
@@ -67,9 +62,11 @@ async def get_security_context(
         api_keys: API key manager dependency.
 
     Returns:
+    -------
         Authenticated :class:`SecurityContext` with scopes and claims.
 
     Raises:
+    ------
         HTTPException: When authentication fails for any reason.
 
     """
@@ -98,14 +95,14 @@ async def get_security_context(
         )
 
     token = authorization.split(" ", 1)[1]
-    cache: dict[str, dict[str, Any]] = getattr(request.app.state, "jwt_cache", {})
+    cache: dict[str, _CacheEntry] = getattr(request.app.state, "jwt_cache", {})
     if not hasattr(request.app.state, "jwt_cache"):
         request.app.state.jwt_cache = cache
     now = datetime.now(UTC)
-    cached = cache.get(token)
+    cached_entry = cache.get(token)
     payload: dict[str, Any]
-    if cached and cached["expires_at"] > now:  # type: ignore[index]
-        payload = cached["payload"]  # type: ignore[index]
+    if cached_entry and cached_entry["expires_at"] > now:
+        payload = cached_entry["payload"]
     else:
         try:
             payload = await authenticator.authenticate(token)
@@ -140,14 +137,16 @@ async def get_security_context(
     return context
 
 
-def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., SecurityContext]:
+def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., Coroutine[Any, Any, SecurityContext]]:
     """Create a dependency enforcing scopes and rate limits for an endpoint.
 
     Args:
+    ----
         scopes: Required scopes for accessing the endpoint.
         endpoint: Logical endpoint identifier used for rate limiting.
 
     Returns:
+    -------
         FastAPI dependency that yields an authenticated :class:`SecurityContext`.
 
     """
@@ -158,10 +157,12 @@ def secure_endpoint(*, scopes: Sequence[str], endpoint: str) -> Callable[..., Se
     ) -> SecurityContext:
         """Validate rate limits and scope membership for the request.
 
-        Returns:
+        Returns
+        -------
             Authenticated security context passed through when checks succeed.
 
-        Raises:
+        Raises
+        ------
             HTTPException: When rate limits are exceeded or scopes are missing.
 
         """

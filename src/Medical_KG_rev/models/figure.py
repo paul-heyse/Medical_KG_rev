@@ -5,6 +5,7 @@ from pydantic import Field
 from .artifact import StructuredArtifact
 
 
+
 class Figure(StructuredArtifact):
     """Metadata describing a figure extracted from a PDF."""
 

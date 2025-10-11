@@ -20,7 +20,8 @@ Performance:
 - Lightweight serialization with minimal overhead
 - No external dependencies
 
-Examples:
+Examples
+--------
     error = ErrorDetail(
         status=400,
         code="INVALID_REQUEST",
@@ -32,10 +33,9 @@ Examples:
 
 """
 
-# IMPORTS
 from __future__ import annotations
 
-from collections.abc import Mapping
+# IMPORTS
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -49,7 +49,8 @@ class ErrorDetail:
     with the JSON:API specification. It provides structured error
     details suitable for API responses.
 
-    Attributes:
+    Attributes
+    ----------
         status: HTTP status code
         code: Error code identifier
         title: Human-readable error title
@@ -59,7 +60,8 @@ class ErrorDetail:
     Thread Safety:
         Immutable dataclass, thread-safe.
 
-    Examples:
+    Examples
+    --------
         error = ErrorDetail(
             status=400,
             code="INVALID_REQUEST",
@@ -73,15 +75,17 @@ class ErrorDetail:
     code: str
     title: str
     detail: str | None = None
-    meta: Mapping[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     def as_json(self) -> dict[str, Any]:
         """Serialize the error detail to JSON-compatible dictionary.
 
-        Returns:
+        Returns
+        -------
             Dictionary representation suitable for JSON serialization
 
-        Raises:
+        Raises
+        ------
             None: This method never raises exceptions.
 
         """

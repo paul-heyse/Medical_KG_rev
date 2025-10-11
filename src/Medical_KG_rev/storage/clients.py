@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import structlog
+
 from Medical_KG_rev.config.settings import ObjectStorageSettings, RedisCacheSettings
 from Medical_KG_rev.storage.base import CacheBackend, ObjectStore
 from Medical_KG_rev.storage.cache import InMemoryCache, RedisCache
@@ -153,6 +154,13 @@ class PdfStorageClient:
         """Retrieve PDF data from S3."""
         return await self._object_store.get(asset.s3_key)
 
+    def get_presigned_url(
+        self, tenant_id: str, document_id: str, checksum: str, expires_in: int = 3600
+    ) -> str | None:
+        """Generate a presigned URL for a PDF asset."""
+        s3_key = self._generate_key(tenant_id, document_id, checksum)
+        return self._object_store.get_presigned_url(s3_key, expires_in)
+
     async def delete_pdf(self, asset: PdfAsset) -> None:
         """Delete PDF from both S3 and cache."""
         # Delete from S3
@@ -277,6 +285,43 @@ class DocumentStorageClient:
                 error=str(e),
             )
             return None
+
+    async def upload_document_artifact(
+        self,
+        tenant_id: str,
+        document_id: str,
+        artifact_type: str,
+        data: bytes,
+        file_extension: str,
+    ) -> str:
+        """Upload a document-related artifact to object storage."""
+        s3_key = self._generate_key(
+            tenant_id, document_id, f"artifacts/{artifact_type}.{file_extension}"
+        )
+        await self._object_store.put(
+            s3_key,
+            data,
+            metadata={
+                "content-type": f"application/{file_extension}",
+                "tenant-id": tenant_id,
+                "document-id": document_id,
+                "artifact-type": artifact_type,
+            },
+        )
+        return s3_key
+
+    async def get_document_artifact(
+        self,
+        tenant_id: str,
+        document_id: str,
+        artifact_type: str,
+        file_extension: str,
+    ) -> bytes | None:
+        """Retrieve a document-related artifact from object storage."""
+        s3_key = self._generate_key(
+            tenant_id, document_id, f"artifacts/{artifact_type}.{file_extension}"
+        )
+        return await self._object_store.get(s3_key)
 
 
 def create_object_store(settings: ObjectStorageSettings) -> ObjectStore:

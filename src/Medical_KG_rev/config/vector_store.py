@@ -6,11 +6,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+import yaml
 
 from Medical_KG_rev.services.vector_store.models import CompressionPolicy, IndexParams
 from Medical_KG_rev.services.vector_store.types import VectorStorePort
+
 
 
 class CompressionConfig(BaseModel):

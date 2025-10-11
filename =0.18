@@ -1,0 +1,10 @@
+Collecting pyalex
+  Using cached pyalex-0.18-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: requests in ./.venv/lib/python3.12/site-packages (from pyalex) (2.32.5)
+Requirement already satisfied: urllib3 in ./.venv/lib/python3.12/site-packages (from pyalex) (2.5.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./.venv/lib/python3.12/site-packages (from requests->pyalex) (3.4.3)
+Requirement already satisfied: idna<4,>=2.5 in ./.venv/lib/python3.12/site-packages (from requests->pyalex) (3.10)
+Requirement already satisfied: certifi>=2017.4.17 in ./.venv/lib/python3.12/site-packages (from requests->pyalex) (2025.10.5)
+Downloading pyalex-0.18-py3-none-any.whl (13 kB)
+Installing collected packages: pyalex
+Successfully installed pyalex-0.18

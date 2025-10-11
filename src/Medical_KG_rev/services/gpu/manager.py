@@ -138,3 +138,7 @@ def deallocate_gpu(device: GpuDevice) -> None:
     raise GpuNotAvailableError(
         "GPU functionality moved to gRPC services. Use GpuServiceManager instead."
     )
+
+
+# Alias for backward compatibility
+GpuManager = GpuServiceManager

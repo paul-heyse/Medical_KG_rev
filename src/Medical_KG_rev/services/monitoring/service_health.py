@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
 import asyncio
 import time
-from typing import Any
 
-import grpc
 from grpc_health.v1 import health_pb2, health_pb2_grpc
+import grpc
 
 from Medical_KG_rev.observability.service_metrics import service_metrics
+
 
 
 class ServiceHealthMonitor:

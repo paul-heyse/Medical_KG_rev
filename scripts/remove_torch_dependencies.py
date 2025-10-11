@@ -207,7 +207,6 @@ class TorchDependencyRemover:
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
-
             task = progress.add_task("Processing files...", total=len(torch_files))
 
             for file_path in torch_files:

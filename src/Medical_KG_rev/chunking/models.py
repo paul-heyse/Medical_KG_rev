@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+
 Granularity = Literal["window", "paragraph", "section", "document", "table"]
 
 

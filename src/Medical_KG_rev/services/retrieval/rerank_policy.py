@@ -1,18 +1,45 @@
-"""Tenant-aware reranking policy with deterministic A/B assignments."""
+"""Tenant-aware reranking policy with deterministic A/B assignments.
+
+Key Responsibilities:
+    - Load reranking configuration from YAML files.
+    - Determine whether reranking should apply per tenant/query.
+    - Support controlled experiments via deterministic hashing.
+
+Collaborators:
+    - Upstream: Retrieval service requesting rerank enablement decisions.
+    - Downstream: Reranking pipelines toggled based on policy output.
+
+Side Effects:
+    - Reads YAML configuration files from disk.
+
+Thread Safety:
+    - Thread-safe: All access is read-only after initialization.
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+import hashlib
 
 import yaml
 
 
+
 @dataclass(slots=True)
 class RerankDecision:
-    """Outcome of evaluating whether a request should be reranked."""
+    """Outcome of evaluating whether a request should be reranked.
+
+    Attributes:
+        enabled: Whether reranking should be applied.
+        cohort: Cohort identifier (tenant, default, or experiment cohort).
+        reason: Reason describing the decision path.
+    """
 
     enabled: bool
     cohort: str
@@ -24,7 +51,13 @@ class RerankDecision:
 
 @dataclass(slots=True)
 class TenantRerankPolicy:
-    """Encapsulates tenant defaults and experimentation for reranking."""
+    """Encapsulate tenant defaults and experimentation for reranking.
+
+    Attributes:
+        default_enabled: Global default reranking toggle.
+        tenant_defaults: Mapping of tenant IDs to explicit rerank flags.
+        experiment_ratio: Fraction of traffic enrolled in experiment cohorts.
+    """
 
     default_enabled: bool = False
     tenant_defaults: Mapping[str, bool] = field(default_factory=dict)
@@ -57,6 +90,16 @@ class TenantRerankPolicy:
         query: str,
         explicit: bool | None,
     ) -> RerankDecision:
+        """Determine whether reranking should be applied for a request.
+
+        Args:
+            tenant_id: Tenant identifier associated with the request.
+            query: Raw query text used for experiment bucketing.
+            explicit: Optional explicit override from the caller.
+
+        Returns:
+            A :class:`RerankDecision` describing the decision and cohort.
+        """
         if explicit is not None:
             return RerankDecision(bool(explicit), "override", "request")
         if tenant_id in self.tenant_defaults:

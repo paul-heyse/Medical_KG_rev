@@ -3,13 +3,13 @@
 Handles the complete pipeline from PDF to processed Doctags results.
 """
 
-import asyncio
-import logging
-import time
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
+import asyncio
+import logging
+import time
 
 from .doctags_interface import (
     DoctagsConfig,
@@ -143,6 +143,7 @@ class DoctagsPipeline:
         """Initialize the Doctags pipeline.
 
         Args:
+        ----
             config: Configuration for the pipeline
 
         """
@@ -204,10 +205,12 @@ class DoctagsPipeline:
         """Process multiple PDFs through the pipeline.
 
         Args:
+        ----
             pdf_paths: List of PDF file paths
             pipeline_id: Optional pipeline ID
 
         Returns:
+        -------
             PipelineResult with processing results
 
         """
@@ -560,9 +563,11 @@ def create_doctags_pipeline(config: PipelineConfig) -> DoctagsPipeline:
     """Create Doctags pipeline instance.
 
     Args:
+    ----
         config: Pipeline configuration
 
     Returns:
+    -------
         DoctagsPipeline instance
 
     """
@@ -573,9 +578,11 @@ def create_default_doctags_pipeline(vlm_service_endpoints: list[str]) -> Doctags
     """Create Doctags pipeline with default configuration.
 
     Args:
+    ----
         vlm_service_endpoints: List of VLM service endpoints
 
     Returns:
+    -------
         DoctagsPipeline instance
 
     """

@@ -3,7 +3,7 @@
 from .cross_encoder import BGEReranker, MiniLMReranker, MonoT5Reranker, QwenReranker
 from .evaluation.harness import EvaluationResult, RerankerEvaluator
 from .factory import RerankerFactory
-from .fusion.service import FusionService
+from .fusion.service import FusionResponse, FusionService, FusionSettings, FusionStrategy
 from .late_interaction import ColbertIndexReranker, ColBERTReranker, QdrantColBERTReranker
 from .lexical import BM25FReranker, BM25Reranker
 from .ltr import OpenSearchLTRReranker, VespaRankProfileReranker
@@ -21,10 +21,6 @@ from .model_registry import (
     RerankerModelRegistry,
 )
 from .models import (
-    CacheMetrics,
-    FusionResponse,
-    FusionSettings,
-    FusionStrategy,
     NormalizationStrategy,
     PipelineSettings,
     QueryDocumentPair,
@@ -45,7 +41,6 @@ __all__ = [
     "BM25FReranker",
     "BM25Reranker",
     "BatchProcessor",
-    "CacheMetrics",
     "CircuitBreaker",
     "ColBERTReranker",
     "ColbertIndexReranker",

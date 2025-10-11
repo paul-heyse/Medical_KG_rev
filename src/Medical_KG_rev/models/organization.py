@@ -7,6 +7,7 @@ from pydantic import Field, field_validator
 from .ir import IRBaseModel
 
 
+
 class Organization(IRBaseModel):
     """Represents an organization that owns data in the system."""
 

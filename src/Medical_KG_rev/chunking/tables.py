@@ -9,6 +9,7 @@ from .provenance import BlockContext
 from .tokenization import TokenCounter, default_token_counter
 
 
+
 @dataclass(slots=True)
 class TableSlice:
     """Represents a logical slice of a table context."""

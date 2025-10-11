@@ -8,7 +8,7 @@ This change introduces durable storage and caching primitives to the ingestion p
 
 - Reuse `ObjectStore` interface in `storage/object_store.py`.
 - Configure an `S3ObjectStore` instance at bootstrap using new settings (`bucket`, `region`, credentials).
-- Expose typed helpers (`PdfStorageClient`, `DocumentStorageClient`) that normalise key structure:  
+- Expose typed helpers (`PdfStorageClient`, `DocumentStorageClient`) that normalise key structure:
   `pdf/{tenant}/{document_id}/{checksum}.pdf`
 - Ensure helpers support presigned URLs for downstream consumers.
 

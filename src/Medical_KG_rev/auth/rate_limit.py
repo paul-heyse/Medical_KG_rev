@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import time
 from dataclasses import dataclass
+import time
 
 import structlog
 
 from ..config.settings import AppSettings, RateLimitSettings, get_settings
+
 
 logger = structlog.get_logger(__name__)
 
@@ -24,7 +22,8 @@ logger = structlog.get_logger(__name__)
 class TokenBucket:
     """Token bucket state used for rate limiting decisions.
 
-    Attributes:
+    Attributes
+    ----------
         capacity: Maximum number of tokens that can be stored.
         refill_rate: Tokens added per second.
         tokens: Current token count.
@@ -41,9 +40,11 @@ class TokenBucket:
         """Attempt to consume tokens from the bucket.
 
         Args:
+        ----
             amount: Number of tokens required to satisfy the request.
 
         Returns:
+        -------
             ``True`` when the bucket contained enough tokens, ``False`` otherwise.
 
         """
@@ -69,6 +70,7 @@ class RateLimitExceeded(RuntimeError):
         """Initialize exception with retry-after seconds.
 
         Args:
+        ----
             retry_after: Number of seconds a caller should wait before retrying.
 
         """
@@ -88,6 +90,7 @@ class RateLimiter:
         """Initialize the limiter with application settings.
 
         Args:
+        ----
             settings: Rate limit configuration sourced from application settings.
 
         """
@@ -98,10 +101,12 @@ class RateLimiter:
         """Ensure the caller is within rate limits for the given endpoint.
 
         Args:
+        ----
             identity: Unique caller identifier (user, API key, or tenant).
             endpoint: Endpoint identifier for which rate limits apply.
 
         Raises:
+        ------
             RateLimitExceeded: When the caller has exhausted their rate limit.
 
         """
@@ -137,9 +142,11 @@ def build_rate_limiter(settings: AppSettings | None = None) -> RateLimiter:
     """Construct a rate limiter instance from application settings.
 
     Args:
+    ----
         settings: Optional application settings override.
 
     Returns:
+    -------
         Configured :class:`RateLimiter` ready for dependency injection.
 
     """

@@ -2,4 +2,5 @@
 
 from .errors import ErrorDetail
 
+
 __all__ = ["ErrorDetail"]

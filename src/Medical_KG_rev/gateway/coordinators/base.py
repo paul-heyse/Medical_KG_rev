@@ -31,6 +31,7 @@ Performance Characteristics:
     - Rate limiting prevents resource exhaustion
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.coordinators.base import BaseCoordinator, CoordinatorConfig
     >>> class MyCoordinator(BaseCoordinator[MyRequest, MyResult]):
     ...     def _execute(self, request: MyRequest, **kwargs) -> MyResult:
@@ -46,22 +47,19 @@ Example:
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import asyncio
-import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
+import asyncio
+import time
 
 from aiolimiter import AsyncLimiter
+from prometheus_client import Counter, Histogram
 from pybreaker import CircuitBreaker, CircuitBreakerError
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
-
 import structlog
-from prometheus_client import Counter, Histogram
+
 
 logger = structlog.get_logger(__name__)
 
@@ -83,6 +81,7 @@ class CoordinatorRequest:
     and metadata storage.
 
     Attributes:
+    ----------
         tenant_id: Unique identifier for the tenant making the request.
         correlation_id: Optional correlation ID for request tracing.
         metadata: Optional mapping of additional request metadata.
@@ -102,6 +101,7 @@ class CoordinatorRequest:
         - Not modified during processing
 
     Example:
+    -------
         >>> request = CoordinatorRequest(
         ...     tenant_id="tenant1",
         ...     correlation_id="req-123",
@@ -125,6 +125,7 @@ class CoordinatorResult:
     and result metadata.
 
     Attributes:
+    ----------
         job_id: Unique identifier for the coordinator job.
         duration_s: Duration of the coordinator operation in seconds.
         metadata: Additional result metadata and context.
@@ -144,6 +145,7 @@ class CoordinatorResult:
         - Used for logging and metrics collection
 
     Example:
+    -------
         >>> result = CoordinatorResult(
         ...     job_id="job-123",
         ...     duration_s=1.5,
@@ -167,6 +169,7 @@ class CoordinatorError(RuntimeError):
     monitoring purposes.
 
     Attributes:
+    ----------
         context: Additional context about the failure (request details, error info).
 
     Invariants:
@@ -183,6 +186,7 @@ class CoordinatorError(RuntimeError):
         - Logged and monitored by error handling systems
 
     Example:
+    -------
         >>> try:
         ...     result = coordinator(request)
         ... except CoordinatorError as e:
@@ -195,10 +199,12 @@ class CoordinatorError(RuntimeError):
         """Initialize coordinator error with message and optional context.
 
         Args:
+        ----
             message: Human-readable error message describing the failure.
             context: Optional mapping containing additional error context.
 
         Example:
+        -------
             >>> error = CoordinatorError(
             ...     "Circuit breaker open",
             ...     context={"request": request, "attempts": 3}
@@ -225,6 +231,7 @@ class CoordinatorMetrics:
     cached per coordinator name to avoid duplicate metric registration.
 
     Attributes:
+    ----------
         attempts: Counter tracking total coordinator invocations.
         failures: Counter tracking coordinator failures after retries.
         duration: Histogram tracking coordinator operation duration.
@@ -245,6 +252,7 @@ class CoordinatorMetrics:
         - Metrics persist for the lifetime of the application
 
     Example:
+    -------
         >>> metrics = CoordinatorMetrics.create("my_coordinator")
         >>> metrics.attempts.inc()  # Increment attempt counter
         >>> with metrics.duration.time():  # Time an operation
@@ -266,15 +274,19 @@ class CoordinatorMetrics:
         to avoid duplicate Prometheus metric registration.
 
         Args:
+        ----
             name: The coordinator name used for metric labels and caching.
 
         Returns:
+        -------
             CoordinatorMetrics instance for the given coordinator name.
 
         Raises:
+        ------
             ValueError: If name is None or empty.
 
         Example:
+        -------
             >>> metrics1 = CoordinatorMetrics.create("my_coordinator")
             >>> metrics2 = CoordinatorMetrics.create("my_coordinator")
             >>> assert metrics1 is metrics2  # Same instance
@@ -319,6 +331,7 @@ class CoordinatorConfig:
     and rate limiting configuration.
 
     Attributes:
+    ----------
         name: Unique name identifier for the coordinator.
         retry_attempts: Maximum number of retry attempts for failed operations.
         retry_wait_base: Base wait time in seconds for exponential backoff.
@@ -342,6 +355,7 @@ class CoordinatorConfig:
         - Not modified after creation
 
     Example:
+    -------
         >>> config = CoordinatorConfig(
         ...     name="my_coordinator",
         ...     retry_attempts=5,
@@ -367,9 +381,11 @@ class CoordinatorConfig:
         backoff with jitter for resilient operation handling.
 
         Returns:
+        -------
             Retrying instance configured with stop and wait strategies.
 
         Example:
+        -------
             >>> config = CoordinatorConfig(name="test", retry_attempts=3)
             >>> retrying = config.build_retrying()
             >>> # Use retrying.call() to execute operations with retry logic
@@ -399,6 +415,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
     while benefiting from automatic retry, circuit breaking, and metrics.
 
     Attributes:
+    ----------
         config: Coordinator configuration including retry and resilience settings.
         metrics: Prometheus metrics for tracking coordinator operations.
 
@@ -420,6 +437,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         - No explicit cleanup required
 
     Example:
+    -------
         >>> class MyCoordinator(BaseCoordinator[MyRequest, MyResult]):
         ...     def _execute(self, request: MyRequest, **kwargs) -> MyResult:
         ...         # Implement coordinator logic
@@ -443,6 +461,7 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         based on the coordinator configuration.
 
         Example:
+        -------
             >>> coordinator = MyCoordinator(config=config, metrics=metrics)
             >>> # __post_init__ is called automatically
             >>> assert coordinator._retrying is not None
@@ -467,16 +486,20 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         5. Logs operation completion or failure
 
         Args:
+        ----
             request: The coordinator request to process.
             **kwargs: Additional keyword arguments passed to _execute method.
 
         Returns:
+        -------
             Coordinator result containing operation outcome and metadata.
 
         Raises:
+        ------
             CoordinatorError: If operation fails after all retry attempts.
 
         Example:
+        -------
             >>> result = coordinator(request)
             >>> print(f"Operation completed in {result.duration_s}s")
 
@@ -533,16 +556,20 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         4. Handle circuit breaker and retry errors
 
         Args:
+        ----
             request: The coordinator request to process.
             **kwargs: Additional keyword arguments passed to _execute method.
 
         Returns:
+        -------
             Coordinator result from successful operation.
 
         Raises:
+        ------
             CoordinatorError: If circuit breaker is open or retries are exhausted.
 
         Example:
+        -------
             >>> result = coordinator._execute_with_guards(request)
             >>> # Method handles all resilience concerns automatically
 
@@ -589,13 +616,16 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         and the coordinator is running in an async context.
 
         Args:
+        ----
             limiter: The async rate limiter to consume permits from.
             func: The function to execute after acquiring permit.
 
         Returns:
+        -------
             Result from the executed function.
 
         Example:
+        -------
             >>> result = await BaseCoordinator._consume_limiter(limiter, lambda: execute())
             >>> # Function executes after rate limiter permits
 
@@ -617,16 +647,20 @@ class BaseCoordinator(ABC, Generic[_RequestT, _ResultT]):
         transparently by the base coordinator.
 
         Args:
+        ----
             request: The coordinator request to process.
             **kwargs: Additional keyword arguments (unused in base implementation).
 
         Returns:
+        -------
             Coordinator result containing operation outcome and metadata.
 
         Raises:
+        ------
             Exception: Any exception will be caught and handled by retry logic.
 
         Example:
+        -------
             >>> class MyCoordinator(BaseCoordinator[MyRequest, MyResult]):
             ...     def _execute(self, request: MyRequest, **kwargs) -> MyResult:
             ...         # Implement specific coordinator logic

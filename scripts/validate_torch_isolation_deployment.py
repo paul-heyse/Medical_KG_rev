@@ -16,7 +16,13 @@ from typing import Any
 import typer
 import yaml
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 # Add src to path for imports
@@ -535,7 +541,6 @@ class TorchIsolationValidator:
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-
             for check in validation_checks:
                 task = progress.add_task(f"Running {check.__name__}...", total=100)
 
@@ -628,7 +633,7 @@ def validate(
 
 @app.command()
 def check_torch_free(
-    config_path: str | None = typer.Option(None, help="Path to validation configuration")
+    config_path: str | None = typer.Option(None, help="Path to validation configuration"),
 ):
     """Check if the main gateway is torch-free."""
 
@@ -656,7 +661,7 @@ def check_torch_free(
 
 @app.command()
 def check_service_health(
-    config_path: str | None = typer.Option(None, help="Path to validation configuration")
+    config_path: str | None = typer.Option(None, help="Path to validation configuration"),
 ):
     """Check service health."""
 

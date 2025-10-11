@@ -5,14 +5,16 @@ providing efficient storage and retrieval of sparse vectors with
 quantized weights and impact scores.
 """
 
+from pathlib import Path
+from typing import Any
 import json
 import logging
 import time
-from pathlib import Path
-from typing import Any
+
+from prometheus_client import Counter, Histogram
 
 from Medical_KG_rev.services.retrieval.splade_service import SPLADEVector
-from prometheus_client import Counter, Histogram
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,7 @@ class SPLADEIndexManifest:
         """Initialize SPLADE index manifest.
 
         Args:
+        ----
             index_path: Path to the index directory
             model_name: Name of the SPLADE model used
             tokenizer_name: Name of the tokenizer used
@@ -133,6 +136,7 @@ class SPLADEImpactIndex:
         """Initialize SPLADE impact index.
 
         Args:
+        ----
             index_path: Path to the index directory
             model_name: Name of the SPLADE model used
             tokenizer_name: Name of the tokenizer used
@@ -211,6 +215,7 @@ class SPLADEImpactIndex:
         """Add a SPLADE vector to the index.
 
         Args:
+        ----
             chunk_id: Unique identifier for the chunk
             vector: SPLADE vector to add
 
@@ -291,9 +296,11 @@ class SPLADEImpactIndex:
         """Get a SPLADE vector from the index.
 
         Args:
+        ----
             chunk_id: Unique identifier for the chunk
 
         Returns:
+        -------
             SPLADE vector if found, None otherwise
 
         """
@@ -357,10 +364,12 @@ class SPLADEImpactIndex:
         """Search for similar vectors using dot product similarity.
 
         Args:
+        ----
             query_terms: Query terms with weights
             top_k: Number of top results to return
 
         Returns:
+        -------
             List of (chunk_id, score) tuples sorted by score
 
         """
@@ -430,7 +439,8 @@ class SPLADEImpactIndex:
     def get_all_vectors(self) -> list[tuple[str, SPLADEVector]]:
         """Get all vectors from the index.
 
-        Returns:
+        Returns
+        -------
             List of (chunk_id, vector) tuples
 
         """
@@ -495,9 +505,11 @@ class SPLADEImpactIndex:
         """Remove a vector from the index.
 
         Args:
+        ----
             chunk_id: Unique identifier for the chunk
 
         Returns:
+        -------
             True if vector was removed, False if not found
 
         """
@@ -631,7 +643,8 @@ class SPLADEImpactIndex:
     def get_index_stats(self) -> dict[str, Any]:
         """Get index statistics.
 
-        Returns:
+        Returns
+        -------
             Dictionary with index statistics
 
         """
@@ -647,7 +660,8 @@ class SPLADEImpactIndex:
     def validate_index(self) -> list[str]:
         """Validate index integrity.
 
-        Returns:
+        Returns
+        -------
             List of validation error messages
 
         """

@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from langchain.text_splitter import (  # type: ignore
+    HTMLHeaderTextSplitter,
+    MarkdownHeaderTextSplitter,
+    NLTKTextSplitter,
+    RecursiveCharacterTextSplitter,
+    SpacyTextSplitter,
+)
+
 from Medical_KG_rev.models.ir import Document
 
 from ..assembly import ChunkAssembler
@@ -16,8 +24,9 @@ from .mapping import OffsetMapper
 
 
 def _create_text_splitter(class_name: str, **kwargs):
-    try:  # pragma: no cover - optional dependency
-        from langchain.text_splitter import (  # type: ignore
+    """Create a LangChain text splitter instance."""
+    try:
+        from langchain.text_splitter import (
             HTMLHeaderTextSplitter,
             MarkdownHeaderTextSplitter,
             NLTKTextSplitter,

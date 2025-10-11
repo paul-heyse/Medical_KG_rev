@@ -6,27 +6,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-try:  # pragma: no cover - optional dependency guard
-    import httpx
-except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environments
-
-    class _HttpxFallback:
-        class HTTPError(Exception):
-            pass
-
-        class HTTPStatusError(HTTPError):
-            pass
-
-        def post(self, *args: Any, **kwargs: Any):
-            raise RuntimeError("httpx is required for network operations")
-
-    httpx = _HttpxFallback()  # type: ignore[assignment]
+import httpx
 
 from Medical_KG_rev.services import GpuNotAvailableError
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.normalization import normalize_batch
+
 
 
 class _HttpError(RuntimeError):

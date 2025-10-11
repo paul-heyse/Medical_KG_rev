@@ -111,17 +111,16 @@ class DocstringCoverageChecker:
             return False
 
         # Skip property setters/getters
-        if isinstance(node, ast.FunctionDef) and node.name.startswith(("get_", "set_")):
-            return False
-
-        return True
+        return not (
+            isinstance(node, ast.FunctionDef) and node.name.startswith(("get_", "set_"))
+        )
 
     def check_file(self, file_path: Path) -> tuple[int, int, list[str]]:
         """Check docstring coverage for a single Python file."""
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -147,15 +146,17 @@ class DocstringCoverageChecker:
 
         # Walk through all nodes in the AST
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if self.should_check_node(node):
-                    total_items += 1
-                    if self.has_docstring(node):
-                        documented_items += 1
-                    else:
-                        line_num = getattr(node, "lineno", "?")
-                        node_type = "class" if isinstance(node, ast.ClassDef) else "function"
-                        missing_docstrings.append(f"{file_path}:{line_num}:{node_type}:{node.name}")
+            if isinstance(
+                node,
+                ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+            ) and self.should_check_node(node):
+                total_items += 1
+                if self.has_docstring(node):
+                    documented_items += 1
+                else:
+                    line_num = getattr(node, "lineno", "?")
+                    node_type = "class" if isinstance(node, ast.ClassDef) else "function"
+                    missing_docstrings.append(f"{file_path}:{line_num}:{node_type}:{node.name}")
 
         return total_items, documented_items, missing_docstrings
 
@@ -303,7 +304,7 @@ class DocstringCoverageChecker:
 
 
 def main():
-    """Main entry point for the docstring coverage checker."""
+    """Run the docstring coverage checker."""
     parser = argparse.ArgumentParser(description="Check docstring coverage")
     parser.add_argument(
         "path", nargs="?", default=".", help="Path to check (default: current directory)"

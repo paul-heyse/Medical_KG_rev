@@ -1,20 +1,38 @@
-"""GPU-backed FAISS index wrapper with metadata persistence."""
+"""GPU-backed FAISS index wrapper with metadata persistence.
+
+Key Responsibilities:
+    - Enforce GPU availability for FAISS operations.
+    - Provide serialization helpers for index metadata.
+    - Expose convenience methods for vector add/search operations (legacy stub).
+
+Collaborators:
+    - Downstream: FAISS GPU libraries, filesystem for metadata persistence.
+    - Upstream: Retrieval services performing dense vector search.
+
+Side Effects:
+    - Allocates GPU memory when configured to use GPU resources.
+    - Reads/writes JSON metadata alongside index files.
+
+Thread Safety:
+    - Not thread-safe: FAISS index operations mutate shared state.
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
+import json
 
+import faiss  # type: ignore import-not-found
 import numpy as np
 
-try:  # pragma: no cover - dependency guard
-    import faiss  # type: ignore import-not-found
-except ModuleNotFoundError as exc:  # pragma: no cover - exercised in minimal envs
-    raise RuntimeError("faiss-cpu must be installed to use FAISSIndex") from exc
-
 from Medical_KG_rev.services import GpuNotAvailableError
+
 
 _METADATA_SUFFIX = ".meta.json"
 
@@ -30,7 +48,15 @@ def _json_default(value: Any) -> Any:
 
 
 class FAISSIndex:
-    """Thin wrapper around FAISS with GPU enforcement and metadata storage."""
+    """Thin wrapper around FAISS with GPU enforcement and metadata storage.
+
+    Attributes:
+        dimension: Dimensionality of vectors managed by the index.
+        metric: FAISS distance metric identifier (e.g., ``ip`` or ``l2``).
+        use_gpu: Whether GPU acceleration is enabled.
+        gpu_device: GPU device ordinal used when ``use_gpu`` is true.
+        index: Underlying FAISS index instance.
+    """
 
     def __init__(
         self,
@@ -40,6 +66,18 @@ class FAISSIndex:
         use_gpu: bool = True,
         gpu_device: int = 0,
     ) -> None:
+        """Create a FAISS index instance with optional GPU acceleration.
+
+        Args:
+            dimension: Dimensionality of vectors stored in the index.
+            metric: FAISS metric identifier (e.g., ``ip`` or ``l2``).
+            use_gpu: Whether to allocate the index on a GPU device.
+            gpu_device: GPU device ordinal used when GPU mode is enabled.
+
+        Raises:
+            ValueError: If an invalid dimension or metric is provided.
+            GpuNotAvailableError: When GPU mode is requested without GPU support.
+        """
         if dimension <= 0:
             raise ValueError("FAISS dimension must be positive")
         self.dimension = int(dimension)

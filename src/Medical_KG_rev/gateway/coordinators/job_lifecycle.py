@@ -30,6 +30,7 @@ Performance Characteristics:
     - SSE events are published asynchronously
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.coordinators.job_lifecycle import JobLifecycleManager
     >>> manager = JobLifecycleManager(
     ...     ledger=JobLedger(),
@@ -42,21 +43,18 @@ Example:
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
+import uuid
 
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
-
 import structlog
 
 from ...orchestration import JobLedger, JobLedgerEntry
 from ..models import JobEvent
 from ..sse.manager import EventStreamManager
+
 
 logger = structlog.get_logger(__name__)
 
@@ -85,6 +83,7 @@ class JobLifecycleManager:
     for real-time monitoring and client updates.
 
     Attributes:
+    ----------
         ledger: JobLedger instance for job persistence and state management.
         events: EventStreamManager instance for SSE event publishing.
         pipeline_name: Name of the pipeline processing jobs (default: "gateway-direct").
@@ -116,6 +115,7 @@ class JobLifecycleManager:
         - No explicit cleanup required
 
     Example:
+    -------
         >>> manager = JobLifecycleManager(
         ...     ledger=JobLedger(),
         ...     events=EventStreamManager(),
@@ -144,6 +144,7 @@ class JobLifecycleManager:
         backoff with configurable parameters.
 
         Example:
+        -------
             >>> manager = JobLifecycleManager(ledger=ledger, events=events)
             >>> # __post_init__ is called automatically
             >>> assert manager._retrying is not None
@@ -177,18 +178,22 @@ class JobLifecycleManager:
         auto-generated if not specified.
 
         Args:
+        ----
             tenant_id: Unique identifier for the tenant creating the job.
             operation: The operation type being performed (e.g., "embed", "chunk").
             metadata: Optional metadata to attach to the job.
             job_id: Optional custom job ID (auto-generated if not provided).
 
         Returns:
+        -------
             The job ID (provided or generated) for the created job.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> job_id = manager.create_job(
             ...     tenant_id="tenant1",
             ...     operation="embed",
@@ -244,6 +249,7 @@ class JobLifecycleManager:
         scenarios.
 
         Args:
+        ----
             job_id: Unique identifier for the job.
             doc_key: Document key for the job entry.
             tenant_id: Unique identifier for the tenant.
@@ -251,12 +257,15 @@ class JobLifecycleManager:
             metadata: Metadata to attach to the job.
 
         Returns:
+        -------
             JobLedgerEntry representing the created or existing job.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> entry = manager.idempotent_create(
             ...     job_id="job-123",
             ...     doc_key="embed:job-123",
@@ -290,13 +299,16 @@ class JobLifecycleManager:
         Optional payload data can be included in the completion event.
 
         Args:
+        ----
             job_id: Unique identifier for the job to mark as completed.
             payload: Optional payload data to include in the completion event.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> manager.mark_completed("job-123", {"embeddings": 100, "duration": 5.2})
             >>> # Job is marked completed and SSE event is published
 
@@ -314,13 +326,16 @@ class JobLifecycleManager:
         job-specific information during processing.
 
         Args:
+        ----
             job_id: Unique identifier for the job to update.
             metadata: New metadata to associate with the job.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> manager.update_metadata("job-123", {"progress": 50, "processed": 25})
             >>> # Job metadata is updated in the ledger
 
@@ -344,15 +359,18 @@ class JobLifecycleManager:
         both the ledger entry and the SSE event.
 
         Args:
+        ----
             job_id: Unique identifier for the job to mark as failed.
             reason: Human-readable reason for the failure.
             stage: Stage where the failure occurred (default: "error").
             metadata: Optional metadata to include with the failure.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> manager.mark_failed(
             ...     "job-123",
             ...     reason="Model loading failed",
@@ -394,14 +412,17 @@ class JobLifecycleManager:
         in both the ledger entry and the SSE event.
 
         Args:
+        ----
             job_id: Unique identifier for the job to cancel.
             reason: Human-readable reason for the cancellation.
             metadata: Optional metadata to include with the cancellation.
 
         Raises:
+        ------
             RuntimeError: If ledger operations fail after retry attempts.
 
         Example:
+        -------
             >>> manager.cancel(
             ...     "job-123",
             ...     reason="User requested cancellation",
@@ -427,17 +448,21 @@ class JobLifecycleManager:
         exponential backoff.
 
         Args:
+        ----
             func: The ledger function to execute.
             *args: Positional arguments to pass to the function.
             **kwargs: Keyword arguments to pass to the function.
 
         Returns:
+        -------
             Result from the ledger operation.
 
         Raises:
+        ------
             RuntimeError: If the operation fails after all retry attempts.
 
         Example:
+        -------
             >>> result = manager._call_ledger(ledger.create, job_id="123", tenant_id="t1")
             >>> # Operation is retried automatically on failure
 

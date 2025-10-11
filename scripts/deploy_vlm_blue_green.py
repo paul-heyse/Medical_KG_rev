@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -30,12 +30,14 @@ app = typer.Typer()
 
 class DeploymentColor(Enum):
     """Deployment color for blue-green strategy."""
+
     BLUE = "blue"
     GREEN = "green"
 
 
 class DeploymentStatus(Enum):
     """Deployment status."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     HEALTHY = "healthy"
@@ -46,6 +48,7 @@ class DeploymentStatus(Enum):
 @dataclass
 class DeploymentConfig:
     """Configuration for VLM deployment."""
+
     namespace: str = "medical-kg"
     service_name: str = "docling-vlm-service"
     image_tag: str = "latest"
@@ -59,6 +62,7 @@ class DeploymentConfig:
 @dataclass
 class DeploymentState:
     """Current deployment state."""
+
     active_color: DeploymentColor
     blue_deployment: Optional[str] = None
     green_deployment: Optional[str] = None
@@ -79,7 +83,7 @@ class VLMBlueGreenDeployer:
         """Load deployment state from file."""
         if self.state_file.exists():
             try:
-                with open(self.state_file, "r") as f:
+                with open(self.state_file) as f:
                     data = json.load(f)
                     return DeploymentState(
                         active_color=DeploymentColor(data["active_color"]),
@@ -108,17 +112,14 @@ class VLMBlueGreenDeployer:
         with open(self.state_file, "w") as f:
             json.dump(data, f, indent=2)
 
-    def _run_kubectl(self, command: List[str], capture_output: bool = True) -> subprocess.CompletedProcess:
+    def _run_kubectl(
+        self, command: list[str], capture_output: bool = True
+    ) -> subprocess.CompletedProcess:
         """Run kubectl command."""
         full_command = ["kubectl"] + command
         logger.info(f"Running: {' '.join(full_command)}")
 
-        return subprocess.run(
-            full_command,
-            capture_output=capture_output,
-            text=True,
-            check=False
-        )
+        return subprocess.run(full_command, capture_output=capture_output, text=True, check=False)
 
     def _get_deployment_name(self, color: DeploymentColor) -> str:
         """Get deployment name for color."""
@@ -137,11 +138,17 @@ class VLMBlueGreenDeployer:
         deployment_name = self._get_deployment_name(color)
 
         # Check if deployment is ready
-        result = self._run_kubectl([
-            "get", "deployment", deployment_name,
-            "-n", self.config.namespace,
-            "-o", "jsonpath={.status.readyReplicas}"
-        ])
+        result = self._run_kubectl(
+            [
+                "get",
+                "deployment",
+                deployment_name,
+                "-n",
+                self.config.namespace,
+                "-o",
+                "jsonpath={.status.readyReplicas}",
+            ]
+        )
 
         if result.returncode != 0:
             return False
@@ -157,11 +164,17 @@ class VLMBlueGreenDeployer:
         service_name = self._get_service_name(color)
 
         # Get service endpoint
-        result = self._run_kubectl([
-            "get", "service", service_name,
-            "-n", self.config.namespace,
-            "-o", "jsonpath={.spec.clusterIP}"
-        ])
+        result = self._run_kubectl(
+            [
+                "get",
+                "service",
+                service_name,
+                "-n",
+                self.config.namespace,
+                "-o",
+                "jsonpath={.spec.clusterIP}",
+            ]
+        )
 
         if result.returncode != 0:
             return False
@@ -173,19 +186,28 @@ class VLMBlueGreenDeployer:
         # Perform health check via port-forward
         try:
             # Create port-forward
-            port_forward = subprocess.Popen([
-                "kubectl", "port-forward",
-                f"service/{service_name}",
-                "50054:50054",
-                "-n", self.config.namespace
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            port_forward = subprocess.Popen(
+                [
+                    "kubectl",
+                    "port-forward",
+                    f"service/{service_name}",
+                    "50054:50054",
+                    "-n",
+                    self.config.namespace,
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
 
             # Wait for port-forward to be ready
             await asyncio.sleep(2)
 
             # Perform health check
-            health_check = subprocess.run([
-                "python", "-c", """
+            health_check = subprocess.run(
+                [
+                    "python",
+                    "-c",
+                    """
 import grpc
 from grpc_health.v1 import health_pb2_grpc, health_pb2
 try:
@@ -195,8 +217,11 @@ try:
     exit(0 if response.status == health_pb2.HealthCheckResponse.SERVING else 1)
 except Exception:
     exit(1)
-"""
-            ], capture_output=True, timeout=10)
+""",
+                ],
+                capture_output=True,
+                timeout=10,
+            )
 
             # Clean up port-forward
             port_forward.terminate()
@@ -213,9 +238,7 @@ except Exception:
         deployment_name = self._get_deployment_name(color)
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn(f"Waiting for {color.value} deployment..."),
-            console=console
+            SpinnerColumn(), TextColumn(f"Waiting for {color.value} deployment..."), console=console
         ) as progress:
             task = progress.add_task("Deploying", total=None)
 
@@ -236,27 +259,34 @@ except Exception:
         service_name = self._get_service_name(color)
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn(f"Validating {color.value} deployment..."),
-            console=console
+            SpinnerColumn(), TextColumn(f"Validating {color.value} deployment..."), console=console
         ) as progress:
             task = progress.add_task("Validating", total=None)
 
             # Test basic functionality
             try:
                 # Create port-forward for testing
-                port_forward = subprocess.Popen([
-                    "kubectl", "port-forward",
-                    f"service/{service_name}",
-                    "50054:50054",
-                    "-n", self.config.namespace
-                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                port_forward = subprocess.Popen(
+                    [
+                        "kubectl",
+                        "port-forward",
+                        f"service/{service_name}",
+                        "50054:50054",
+                        "-n",
+                        self.config.namespace,
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
                 await asyncio.sleep(2)
 
                 # Test health endpoint
-                health_test = subprocess.run([
-                    "python", "-c", """
+                health_test = subprocess.run(
+                    [
+                        "python",
+                        "-c",
+                        """
 import grpc
 from grpc_health.v1 import health_pb2_grpc, health_pb2
 try:
@@ -268,8 +298,11 @@ try:
 except Exception as e:
     print(f"Health check failed: {e}")
     exit(1)
-"""
-                ], capture_output=True, timeout=30)
+""",
+                    ],
+                    capture_output=True,
+                    timeout=30,
+                )
 
                 # Clean up port-forward
                 port_forward.terminate()
@@ -386,9 +419,13 @@ spec:
         self.config.image_tag = image_tag
 
         # Determine target color (opposite of current active)
-        target_color = DeploymentColor.GREEN if self.state.active_color == DeploymentColor.BLUE else DeploymentColor.BLUE
+        target_color = (
+            DeploymentColor.GREEN
+            if self.state.active_color == DeploymentColor.BLUE
+            else DeploymentColor.BLUE
+        )
 
-        console.print(f"[bold blue]Starting blue-green deployment[/bold blue]")
+        console.print("[bold blue]Starting blue-green deployment[/bold blue]")
         console.print(f"Active color: [bold]{self.state.active_color.value}[/bold]")
         console.print(f"Target color: [bold]{target_color.value}[/bold]")
         console.print(f"Image tag: [bold]{image_tag}[/bold]")
@@ -406,14 +443,18 @@ spec:
             # Apply deployment
             result = self._run_kubectl(["apply", "-f", str(manifest_file)])
             if result.returncode != 0:
-                console.print(f"[bold red]Failed to apply {target_color.value} deployment[/bold red]")
+                console.print(
+                    f"[bold red]Failed to apply {target_color.value} deployment[/bold red]"
+                )
                 return False
 
             # Step 2: Wait for deployment to be ready
             console.print(f"\n[bold]Step 2: Waiting for {target_color.value} deployment[/bold]")
 
             if not await self._wait_for_deployment(target_color, self.config.rollout_timeout):
-                console.print(f"[bold red]{target_color.value} deployment failed to become ready[/bold red]")
+                console.print(
+                    f"[bold red]{target_color.value} deployment failed to become ready[/bold red]"
+                )
                 await self._cleanup_deployment(target_color)
                 return False
 
@@ -421,7 +462,9 @@ spec:
             console.print(f"\n[bold]Step 3: Validating {target_color.value} deployment[/bold]")
 
             if not await self._validate_deployment(target_color):
-                console.print(f"[bold red]{target_color.value} deployment validation failed[/bold red]")
+                console.print(
+                    f"[bold red]{target_color.value} deployment validation failed[/bold red]"
+                )
                 await self._cleanup_deployment(target_color)
                 return False
 
@@ -429,7 +472,9 @@ spec:
             console.print(f"\n[bold]Step 4: Switching traffic to {target_color.value}[/bold]")
 
             if not await self._switch_traffic(target_color):
-                console.print(f"[bold red]Failed to switch traffic to {target_color.value}[/bold red]")
+                console.print(
+                    f"[bold red]Failed to switch traffic to {target_color.value}[/bold red]"
+                )
                 return False
 
             # Step 5: Update state
@@ -438,12 +483,16 @@ spec:
             self._save_state()
 
             # Step 6: Cleanup old deployment
-            console.print(f"\n[bold]Step 6: Cleaning up old deployment[/bold]")
+            console.print("\n[bold]Step 6: Cleaning up old deployment[/bold]")
 
-            old_color = DeploymentColor.GREEN if target_color == DeploymentColor.BLUE else DeploymentColor.BLUE
+            old_color = (
+                DeploymentColor.GREEN
+                if target_color == DeploymentColor.BLUE
+                else DeploymentColor.BLUE
+            )
             await self._cleanup_deployment(old_color)
 
-            console.print(f"[bold green]Blue-green deployment completed successfully![/bold green]")
+            console.print("[bold green]Blue-green deployment completed successfully![/bold green]")
             console.print(f"Active color: [bold]{self.state.active_color.value}[/bold]")
 
             return True
@@ -459,11 +508,17 @@ spec:
         service_name = self._get_service_name(target_color)
 
         # Patch the main service selector
-        result = self._run_kubectl([
-            "patch", "service", self.config.service_name,
-            "-n", self.config.namespace,
-            "-p", f'{{"spec": {{"selector": {{"app": "{self.config.service_name}", "color": "{target_color.value}"}}}}}}'
-        ])
+        result = self._run_kubectl(
+            [
+                "patch",
+                "service",
+                self.config.service_name,
+                "-n",
+                self.config.namespace,
+                "-p",
+                f'{{"spec": {{"selector": {{"app": "{self.config.service_name}", "color": "{target_color.value}"}}}}}}',
+            ]
+        )
 
         return result.returncode == 0
 
@@ -473,17 +528,26 @@ spec:
         service_name = self._get_service_name(color)
 
         # Delete deployment
-        self._run_kubectl(["delete", "deployment", deployment_name, "-n", self.config.namespace], capture_output=False)
+        self._run_kubectl(
+            ["delete", "deployment", deployment_name, "-n", self.config.namespace],
+            capture_output=False,
+        )
 
         # Delete service
-        self._run_kubectl(["delete", "service", service_name, "-n", self.config.namespace], capture_output=False)
+        self._run_kubectl(
+            ["delete", "service", service_name, "-n", self.config.namespace], capture_output=False
+        )
 
     async def rollback(self) -> bool:
         """Rollback to previous deployment."""
         console.print("[bold yellow]Starting rollback[/bold yellow]")
 
         # Determine target color (opposite of current active)
-        target_color = DeploymentColor.GREEN if self.state.active_color == DeploymentColor.BLUE else DeploymentColor.BLUE
+        target_color = (
+            DeploymentColor.GREEN
+            if self.state.active_color == DeploymentColor.BLUE
+            else DeploymentColor.BLUE
+        )
 
         console.print(f"Current active: [bold]{self.state.active_color.value}[/bold]")
         console.print(f"Rollback target: [bold]{target_color.value}[/bold]")
@@ -491,14 +555,16 @@ spec:
         try:
             # Switch traffic back
             if not await self._switch_traffic(target_color):
-                console.print(f"[bold red]Failed to switch traffic back to {target_color.value}[/bold red]")
+                console.print(
+                    f"[bold red]Failed to switch traffic back to {target_color.value}[/bold red]"
+                )
                 return False
 
             # Update state
             self.state.active_color = target_color
             self._save_state()
 
-            console.print(f"[bold green]Rollback completed successfully![/bold green]")
+            console.print("[bold green]Rollback completed successfully![/bold green]")
             console.print(f"Active color: [bold]{self.state.active_color.value}[/bold]")
 
             return True
@@ -522,7 +588,7 @@ spec:
             "Blue",
             blue_status,
             self.state.blue_deployment or "Not deployed",
-            str(self.state.last_deployment_time or "Never")
+            str(self.state.last_deployment_time or "Never"),
         )
 
         # Green status
@@ -531,7 +597,7 @@ spec:
             "Green",
             green_status,
             self.state.green_deployment or "Not deployed",
-            str(self.state.last_deployment_time or "Never")
+            str(self.state.last_deployment_time or "Never"),
         )
 
         console.print(table)
@@ -542,14 +608,10 @@ def deploy(
     image_tag: str = typer.Argument(..., help="Docker image tag to deploy"),
     namespace: str = typer.Option("medical-kg", help="Kubernetes namespace"),
     replicas: int = typer.Option(2, help="Number of replicas"),
-    timeout: int = typer.Option(600, help="Deployment timeout in seconds")
+    timeout: int = typer.Option(600, help="Deployment timeout in seconds"),
 ) -> None:
     """Deploy VLM service using blue-green strategy."""
-    config = DeploymentConfig(
-        namespace=namespace,
-        replicas=replicas,
-        rollout_timeout=timeout
-    )
+    config = DeploymentConfig(namespace=namespace, replicas=replicas, rollout_timeout=timeout)
 
     deployer = VLMBlueGreenDeployer(config)
 
@@ -562,9 +624,7 @@ def deploy(
 
 
 @app.command()
-def rollback(
-    namespace: str = typer.Option("medical-kg", help="Kubernetes namespace")
-) -> None:
+def rollback(namespace: str = typer.Option("medical-kg", help="Kubernetes namespace")) -> None:
     """Rollback to previous deployment."""
     config = DeploymentConfig(namespace=namespace)
     deployer = VLMBlueGreenDeployer(config)
@@ -578,9 +638,7 @@ def rollback(
 
 
 @app.command()
-def status(
-    namespace: str = typer.Option("medical-kg", help="Kubernetes namespace")
-) -> None:
+def status(namespace: str = typer.Option("medical-kg", help="Kubernetes namespace")) -> None:
     """Show deployment status."""
     config = DeploymentConfig(namespace=namespace)
     deployer = VLMBlueGreenDeployer(config)

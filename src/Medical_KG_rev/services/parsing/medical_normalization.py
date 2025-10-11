@@ -7,11 +7,13 @@ This module provides normalization capabilities for medical text including:
 - Machine-only field with unit-standardized forms
 """
 
-import logging
-import re
-import unicodedata
 from dataclasses import dataclass
 from enum import Enum
+import logging
+import re
+
+import unicodedata
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class MedicalNormalizer:
         """Initialize the medical normalizer.
 
         Args:
+        ----
             level: Normalization level to apply
 
         """
@@ -180,9 +183,11 @@ class MedicalNormalizer:
         """Normalize medical text according to configured level.
 
         Args:
+        ----
             text: Input text to normalize
 
         Returns:
+        -------
             NormalizationResult with original, normalized, and machine text
 
         """
@@ -323,9 +328,11 @@ class MedicalNormalizer:
         """Validate normalization result quality.
 
         Args:
+        ----
             result: NormalizationResult to validate
 
         Returns:
+        -------
             True if validation passes, False otherwise
 
         """
@@ -363,10 +370,12 @@ def normalize_medical_text(
     """Convenience function for medical text normalization.
 
     Args:
+    ----
         text: Text to normalize
         level: Normalization level
 
     Returns:
+    -------
         NormalizationResult
 
     """

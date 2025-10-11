@@ -9,6 +9,7 @@ from pydantic import Field
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain, AdapterMetadata
 
 
+
 class DomainAdapterMetadata(AdapterMetadata):
     """Base metadata type extended with optional domain descriptors."""
 

@@ -7,18 +7,16 @@ validating tokens, and exposing a dependency-friendly authenticator factory.
 
 from __future__ import annotations
 
-# ============================================================================
-# IMPORTS
-# ============================================================================
-import asyncio
-import time
 from collections.abc import Iterable
 from typing import Any
+import asyncio
+import time
 
-import httpx
 from jose import JWTError, jwt
+import httpx
 
 from ..config.settings import AppSettings, get_settings
+
 
 # ============================================================================
 # JWKS CACHE
@@ -28,7 +26,8 @@ from ..config.settings import AppSettings, get_settings
 class JWKSCache:
     """Cache JWKS responses to reduce network calls for token validation.
 
-    Attributes:
+    Attributes
+    ----------
         _url: JWKS endpoint URL provided by the identity provider.
         _ttl: Cache TTL in seconds.
         _expires_at: Epoch timestamp for when the cache should refresh.
@@ -40,6 +39,7 @@ class JWKSCache:
         """Initialize the cache with the JWKS endpoint and TTL.
 
         Args:
+        ----
             url: HTTPS URL to the JWKS endpoint.
             ttl: Number of seconds to cache keys before refreshing.
 
@@ -54,9 +54,11 @@ class JWKSCache:
         """Return key material for the given ``kid`` if available.
 
         Args:
+        ----
             kid: Key identifier extracted from the JWT header.
 
         Returns:
+        -------
             Dictionary with JWKS key material or ``None`` when not found.
 
         """
@@ -85,7 +87,8 @@ class JWKSCache:
 class JWTAuthenticator:
     """Validate OAuth 2.0 JWT access tokens using configured JWKS keys.
 
-    Attributes:
+    Attributes
+    ----------
         issuer: Expected issuer claim.
         audience: Expected audience claim.
         algorithms: Acceptable signature algorithms.
@@ -105,6 +108,7 @@ class JWTAuthenticator:
         """Initialize authenticator with issuer metadata and algorithms.
 
         Args:
+        ----
             issuer: Expected issuer claim value.
             audience: Expected audience claim value.
             jwks_url: JWKS endpoint URL.
@@ -121,12 +125,15 @@ class JWTAuthenticator:
         """Validate the provided JWT and return decoded claims.
 
         Args:
+        ----
             token: Raw bearer token string from the Authorization header.
 
         Returns:
+        -------
             Decoded token claims when validation succeeds.
 
         Raises:
+        ------
             AuthenticationError: When token structure or signature is invalid.
 
         """
@@ -166,9 +173,11 @@ def build_authenticator(settings: AppSettings | None = None) -> JWTAuthenticator
     """Construct a :class:`JWTAuthenticator` using application settings.
 
     Args:
+    ----
         settings: Optional settings override for dependency injection.
 
     Returns:
+    -------
         Configured :class:`JWTAuthenticator` instance.
 
     """

@@ -29,7 +29,9 @@ try:
         TestServiceFailoverAndResilience,
     )
     from tests.acceptance.test_torch_free_gateway import TestTorchFreeGatewayAcceptance
-    from tests.acceptance.test_torch_isolation_acceptance import TorchIsolationAcceptanceTests
+    from tests.acceptance.test_torch_isolation_acceptance import (
+        TorchIsolationAcceptanceTests,
+    )
 except ImportError as e:
     print(f"Warning: Could not import acceptance test modules: {e}")
     print("Running in mock mode...")
@@ -73,9 +75,8 @@ console = Console()
 
 @app.command()
 def run_all(
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for test results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for test results"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     timeout: int = typer.Option(300, "--timeout", "-t", help="Test timeout in seconds"),
 ) -> None:
@@ -133,9 +134,8 @@ def run_all(
 
 @app.command()
 def run_gateway(
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for test results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for test results"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
     """Run torch-free gateway acceptance tests."""
@@ -231,9 +231,8 @@ def run_gateway(
 
 @app.command()
 def run_gpu_services(
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for test results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for test results"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
     """Run GPU service equivalence acceptance tests."""
@@ -328,9 +327,8 @@ def run_gpu_services(
 
 @app.command()
 def run_failover(
-    output_file: str | None = typer.Option(
-        None, "--output", "-o", help="Output file for test results"
-    ),
+    output_file: str
+    | None = typer.Option(None, "--output", "-o", help="Output file for test results"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
     """Run service failover and resilience acceptance tests."""

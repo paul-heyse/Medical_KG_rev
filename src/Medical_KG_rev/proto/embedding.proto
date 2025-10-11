@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-syntax = "proto3";
-
 package medicalkg.gateway.v1;
 
 option go_package = "github.com/your-org/medicalkg/gateway/v1";

@@ -11,6 +11,7 @@ from .provenance import BlockContext
 from .tokenization import TokenCounter, default_token_counter
 
 
+
 @dataclass(slots=True)
 class CoherenceResult:
     """Represents coherence scores for a sequence of contexts."""

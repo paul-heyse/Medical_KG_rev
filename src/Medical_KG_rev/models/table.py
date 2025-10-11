@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .artifact import StructuredArtifact
 
 
+
 class TableCell(BaseModel):
     """Represents a cell inside a structured table."""
 

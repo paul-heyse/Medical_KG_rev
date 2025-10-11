@@ -13,6 +13,7 @@ from .ports import BaseChunker
 from .registry import ChunkerRegistry, default_registry
 
 
+
 @dataclass(slots=True)
 class RegisteredChunker:
     instance: BaseChunker

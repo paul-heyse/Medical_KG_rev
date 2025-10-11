@@ -9,16 +9,10 @@ import structlog
 
 from ..models import QueryDocumentPair
 
-logger = structlog.get_logger(__name__)
-
-
-try:  # pragma: no cover - optional dependency
-    # import torch  # Removed for torch isolation
-    pass
+try:
+    import torch
 except Exception:  # pragma: no cover - torch optional
-    pass
-# torch = None  # type: ignore  # Removed for torch isolation
-torch = None  # Torch functionality moved to gRPC services
+    torch = None  # Torch functionality moved to gRPC services
 
 
 class BatchProcessor:

@@ -34,6 +34,7 @@ Performance Characteristics:
     - Optional metrics collection to disable when not needed
 
 Example:
+-------
     >>> from Medical_KG_rev.services.embedding.telemetry import StandardEmbeddingTelemetry
     >>> telemetry = StandardEmbeddingTelemetry()
     >>> telemetry.record_embedding_started(namespace="medical", tenant_id="tenant1")
@@ -46,12 +47,11 @@ Example:
 
 """
 
+from __future__ import annotations
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
-
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from dataclasses import asdict, dataclass, field
@@ -59,51 +59,11 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-# ============================================================================
-# OPTIONAL DEPENDENCIES
-# ============================================================================
+from Medical_KG_rev.config.settings import get_settings
+from Medical_KG_rev.observability.metrics_migration import get_migration_helper
 
-try:
-    from Medical_KG_rev.observability.metrics import (
-        CROSS_TENANT_ACCESS_ATTEMPTS,
-        observe_job_duration,
-        record_business_event,
-    )
-except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
-    # Fallback implementations when observability module is not available
-    class _CounterProxy:
-        """Proxy for Prometheus counter when observability module unavailable.
-
-        Provides no-op implementations of Prometheus counter methods to
-        allow telemetry to function without the observability dependency.
-        """
-
-        def labels(self, *args: object, **kwargs: object) -> _CounterProxy:
-            """Return self for method chaining."""
-            return self
-
-        def inc(self, *args: object, **kwargs: object) -> None:
-            """No-op increment operation."""
-            return None
-
-    CROSS_TENANT_ACCESS_ATTEMPTS = _CounterProxy()
-
-    def observe_job_duration(operation: str, duration_seconds: float) -> None:  # type: ignore[override]
-        """No-op job duration observation."""
-        return None
-
-    def record_business_event(event: str, tenant_id: str) -> None:  # type: ignore[override]
-        """No-op business event recording."""
-        return None
-
-
-# ============================================================================
-# TYPE DEFINITIONS
-# ============================================================================
-
-if TYPE_CHECKING:
-    from .persister import PersistenceReport
-    from .policy import NamespaceAccessDecision
+from .persister import PersistenceReport
+from .policy import NamespaceAccessDecision
 
 # ============================================================================
 # LOGGING SETUP
@@ -125,6 +85,7 @@ class TelemetrySettings:
     logging, and sampling rates for embedding operations.
 
     Attributes:
+    ----------
         enable_metrics: Whether to collect and emit Prometheus metrics.
             Defaults to True.
         enable_logging: Whether to emit structured log entries.
@@ -133,6 +94,7 @@ class TelemetrySettings:
             Range: 0.0 to 1.0. Defaults to 1.0 (sample all).
 
     Example:
+    -------
         >>> settings = TelemetrySettings(enable_metrics=True, sample_rate=0.1)
         >>> telemetry = StandardEmbeddingTelemetry(settings)
 
@@ -151,6 +113,7 @@ class TelemetrySnapshot:
     metadata for monitoring and debugging embedding operations.
 
     Attributes:
+    ----------
         policy_evaluations: Total number of namespace policy evaluations.
         policy_denials: Total number of policy denials.
         embedding_batches: Total number of embedding batches processed.
@@ -159,6 +122,7 @@ class TelemetrySnapshot:
         metadata: Additional telemetry data including persistence stats.
 
     Example:
+    -------
         >>> snapshot = telemetry.snapshot()
         >>> print(f"Processed {snapshot.embedding_batches} batches")
         >>> print(f"Last operation took {snapshot.last_duration_ms}ms")
@@ -188,6 +152,7 @@ class EmbeddingTelemetry(ABC):
     telemetry collection strategies.
 
     Attributes:
+    ----------
         _settings: Runtime configuration for telemetry behavior
         _snapshot: Current telemetry state and counters
         _logger: Structured logger bound to this telemetry instance
@@ -207,6 +172,7 @@ class EmbeddingTelemetry(ABC):
         - Counters accumulate over service lifetime
 
     Example:
+    -------
         >>> class CustomTelemetry(EmbeddingTelemetry):
         ...     def _record_decision(self, event: str, decision):
         ...         # Custom implementation
@@ -220,10 +186,12 @@ class EmbeddingTelemetry(ABC):
         """Initialize telemetry provider with optional settings.
 
         Args:
+        ----
             settings: Optional telemetry configuration. If None, uses
                 default settings with metrics and logging enabled.
 
         Note:
+        ----
             Logger is automatically bound to the concrete class name
             for structured logging identification.
 
@@ -236,7 +204,8 @@ class EmbeddingTelemetry(ABC):
     def settings(self) -> TelemetrySettings:
         """Get current telemetry settings.
 
-        Returns:
+        Returns
+        -------
             Current telemetry configuration including metrics, logging,
             and sampling settings.
 
@@ -247,10 +216,12 @@ class EmbeddingTelemetry(ABC):
         """Update telemetry settings with new values.
 
         Args:
+        ----
             **kwargs: Settings to update. Valid keys: enable_metrics,
                 enable_logging, sample_rate.
 
         Note:
+        ----
             Only provided settings are updated; others remain unchanged.
             Invalid keys are ignored.
 
@@ -262,11 +233,13 @@ class EmbeddingTelemetry(ABC):
         """Get current telemetry state snapshot.
 
         Returns:
+        -------
             Immutable snapshot of current telemetry counters and metadata.
             Safe to use for monitoring and debugging without affecting
             the live telemetry state.
 
         Example:
+        -------
             >>> snapshot = telemetry.snapshot()
             >>> print(f"Policy evaluations: {snapshot.policy_evaluations}")
 
@@ -277,9 +250,11 @@ class EmbeddingTelemetry(ABC):
         """Record the duration of an embedding operation.
 
         Args:
+        ----
             duration_ms: Duration in milliseconds of the operation.
 
         Note:
+        ----
             This updates the last_duration_ms field in the snapshot
             for monitoring and alerting purposes.
 
@@ -293,9 +268,11 @@ class EmbeddingTelemetry(ABC):
         the implementation-specific decision recording logic.
 
         Args:
+        ----
             decision: The namespace access decision that was evaluated.
 
         Note:
+        ----
             This is called for all policy evaluations, both allowed
             and denied, to track policy usage patterns.
 
@@ -310,9 +287,11 @@ class EmbeddingTelemetry(ABC):
         the implementation-specific decision recording logic.
 
         Args:
+        ----
             decision: The namespace access decision that was denied.
 
         Note:
+        ----
             This is called specifically for denied access attempts
             to track security violations and policy enforcement.
 
@@ -329,11 +308,13 @@ class EmbeddingTelemetry(ABC):
         information for monitoring and debugging.
 
         Args:
+        ----
             namespace: Namespace where embeddings will be stored.
             tenant_id: Tenant performing the embedding operation.
             model: Optional model name being used for embedding.
 
         Note:
+        ----
             This is typically called at the beginning of embedding
             operations to track usage patterns and performance.
 
@@ -362,6 +343,7 @@ class EmbeddingTelemetry(ABC):
         completion of an embedding operation with performance data.
 
         Args:
+        ----
             namespace: Namespace where embeddings were stored.
             tenant_id: Tenant that performed the embedding operation.
             model: Model name used for embedding.
@@ -370,6 +352,7 @@ class EmbeddingTelemetry(ABC):
             embeddings: Number of embeddings generated.
 
         Note:
+        ----
             This updates both metrics and logs, and records the
             duration for performance monitoring.
 
@@ -377,11 +360,11 @@ class EmbeddingTelemetry(ABC):
         self._snapshot.embedding_batches += 1
         self._record_duration(duration_ms)
 
-        # Emit metrics if enabled
+        # Emit metrics if enabled using domain-specific registries
         if self._settings.enable_metrics:
-            observe_job_duration("embed", duration_ms / 1000)
-            if embeddings:
-                record_business_event("embeddings_generated", tenant_id)
+            settings = get_settings()
+            helper = get_migration_helper(settings)
+            helper.record_pipeline_stage("embedding", "embed", "completed", duration_ms / 1000)
 
         # Log completion if enabled
         if self._settings.enable_logging:
@@ -402,11 +385,13 @@ class EmbeddingTelemetry(ABC):
         monitoring and debugging purposes.
 
         Args:
+        ----
             namespace: Namespace where embedding was attempted.
             tenant_id: Tenant that attempted the embedding operation.
             error: Exception that caused the failure.
 
         Note:
+        ----
             This is called when embedding operations fail to track
             error rates and identify problematic patterns.
 
@@ -433,11 +418,13 @@ class EmbeddingTelemetry(ABC):
         storage operations and success rates.
 
         Args:
+        ----
             report: Persistence report containing operation results.
             namespace: Namespace where persistence occurred.
             tenant_id: Tenant that performed the persistence operation.
 
         Note:
+        ----
             This accumulates persistence statistics in the snapshot
             metadata for storage monitoring and capacity planning.
 
@@ -457,10 +444,12 @@ class EmbeddingTelemetry(ABC):
         to allow custom telemetry collection strategies.
 
         Args:
+        ----
             event: Type of event ("evaluated" or "denied").
             decision: The namespace access decision to record.
 
         Note:
+        ----
             Implementations should handle metrics collection, logging,
             and any custom telemetry logic for policy decisions.
 
@@ -481,6 +470,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
     metrics for monitoring and alerting.
 
     Attributes:
+    ----------
         _denials_by_namespace: Counter for denials by namespace for
             operational metrics and alerting
 
@@ -494,6 +484,7 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         - Safe for concurrent access from multiple threads
 
     Example:
+    -------
         >>> telemetry = StandardEmbeddingTelemetry()
         >>> telemetry.record_embedding_started(namespace="medical", tenant_id="t1")
         >>> metrics = telemetry.operational_metrics()
@@ -508,10 +499,12 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         """Initialize standard telemetry implementation.
 
         Args:
+        ----
             settings: Optional telemetry configuration. If None, uses
                 default settings with metrics and logging enabled.
 
         Note:
+        ----
             Initializes namespace denial tracking for operational metrics.
 
         """
@@ -525,10 +518,12 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         collection for policy decisions including metrics and structured logs.
 
         Args:
+        ----
             event: Type of event ("evaluated" or "denied").
             decision: The namespace access decision to record.
 
         Note:
+        ----
             For denied events, tracks cross-tenant access attempts
             and emits warning logs. For evaluated events, emits debug logs.
 
@@ -572,11 +567,13 @@ class StandardEmbeddingTelemetry(EmbeddingTelemetry):
         """Get operational metrics for monitoring and alerting.
 
         Returns:
+        -------
             Dictionary containing operational metrics including:
                 - denials_by_namespace: Count of denials per namespace
                 - snapshot: Current telemetry snapshot with all counters
 
         Example:
+        -------
             >>> telemetry = StandardEmbeddingTelemetry()
             >>> metrics = telemetry.operational_metrics()
             >>> print(f"Total denials: {sum(metrics['denials_by_namespace'].values())}")

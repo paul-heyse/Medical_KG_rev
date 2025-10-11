@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
+
 def clamp(value: float, *, lower: float = 0.0, upper: float = 1.0) -> float:
     """Clamp *value* between *lower* and *upper* bounds."""
     if lower > upper:

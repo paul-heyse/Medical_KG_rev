@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+import hashlib
 
 import numpy as np
-
 import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.records import RecordBuilder
+
 
 logger = structlog.get_logger(__name__)
 

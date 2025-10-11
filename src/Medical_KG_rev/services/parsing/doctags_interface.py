@@ -157,6 +157,7 @@ class DoctagsInterface:
         """Initialize the Doctags interface.
 
         Args:
+        ----
             config: Configuration for the Doctags interface
 
         """
@@ -212,9 +213,11 @@ class DoctagsInterface:
         """Process PDF using Docling VLM with Doctags output.
 
         Args:
+        ----
             pdf_path: Path to the PDF file
 
         Returns:
+        -------
             DoctagsResult with processing results
 
         """
@@ -260,9 +263,11 @@ class DoctagsInterface:
         """Process multiple PDFs in batch.
 
         Args:
+        ----
             pdf_paths: List of PDF file paths
 
         Returns:
+        -------
             List of DoctagsResult objects
 
         """
@@ -323,23 +328,11 @@ class DoctagsInterface:
     def _convert_doctags_to_dict(self, doctags_result) -> dict[str, Any]:
         """Convert Doctags result to dictionary."""
         # This would convert the gRPC DoctagsResult to a dictionary
-        # For now, return a mock structure
-        return {
-            "document_id": f"doc_{int(time.time())}",
-            "title": "Document Title",
-            "sections": [],
-            "pages": [],
-            "tables": [],
-            "figures": [],
-            "text_blocks": [],
-            "document_type": "research_paper",
-            "language": "en",
-            "author": "Unknown",
-            "keywords": [],
-            "abstract": None,
-            "model_version": "gemma3-12b",
-            "gpu_memory_used": 0.0,
-        }
+        raise NotImplementedError(
+            "Doctags interface mock structure removed. "
+            "This interface requires a real doctags service implementation. "
+            "Please implement or configure a proper doctags service."
+        )
 
     async def _apply_enhancements(self, vlm_result: dict[str, Any], pdf_path: str) -> DoctagsResult:
         """Apply enhancements to VLM result."""
@@ -564,7 +557,8 @@ class DoctagsInterface:
     async def health_check(self) -> dict[str, Any]:
         """Check health of Doctags interface and all components.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """
@@ -630,9 +624,11 @@ def create_doctags_interface(config: DoctagsConfig) -> DoctagsInterface:
     """Create Doctags interface instance.
 
     Args:
+    ----
         config: Doctags processing configuration
 
     Returns:
+    -------
         DoctagsInterface instance
 
     """
@@ -643,9 +639,11 @@ def create_default_doctags_interface(vlm_service_endpoints: list[str]) -> Doctag
     """Create Doctags interface with default configuration.
 
     Args:
+    ----
         vlm_service_endpoints: List of VLM service endpoints
 
     Returns:
+    -------
         DoctagsInterface instance
 
     """

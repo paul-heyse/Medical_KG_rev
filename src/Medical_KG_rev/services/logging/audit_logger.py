@@ -4,19 +4,17 @@ This module provides comprehensive audit logging for all service operations
 including authentication, authorization, data access, and system changes.
 """
 
-import json
-import logging
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+import json
+import logging
+import sys
 
 from pydantic import BaseModel, Field
-
 import structlog
 
-# Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 logger = logging.getLogger(__name__)

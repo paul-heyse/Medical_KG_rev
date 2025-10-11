@@ -157,7 +157,9 @@ class ChunkingEvaluationRunner:
             return self.registry.create(config, allow_experimental=True)
         except ChunkerConfigurationError:
             if name == "semantic_splitter":
-                from Medical_KG_rev.chunking.chunkers.semantic import SemanticSplitterChunker
+                from Medical_KG_rev.chunking.chunkers.semantic import (
+                    SemanticSplitterChunker,
+                )
 
                 class _FallbackEncoder:
                     def encode(self, sentences, convert_to_numpy=True):

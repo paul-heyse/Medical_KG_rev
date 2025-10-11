@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from time import perf_counter
 
+
 Segment = tuple[int, int, str]
 Segmenter = Callable[[str], Iterable[Segment]]
 
@@ -32,6 +33,7 @@ def benchmark_segmenters(
     """Measure throughput for multiple sentence segmenters.
 
     Args:
+    ----
         segmenters: Mapping of readable names to callables that accept a text
             string and return sentence spans.
         corpus: Iterable of documents to segment.
@@ -40,6 +42,7 @@ def benchmark_segmenters(
             :func:`time.perf_counter`.
 
     Returns:
+    -------
         Sorted list of :class:`SegmenterBenchmark` instances ordered by
         descending document throughput.
 

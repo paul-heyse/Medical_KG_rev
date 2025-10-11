@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+import math
 
 import structlog
+
 
 logger = structlog.get_logger(__name__)
 

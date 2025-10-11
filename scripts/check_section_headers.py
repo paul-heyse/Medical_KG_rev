@@ -270,7 +270,7 @@ class SectionHeaderChecker:
         self.log(f"Checking {file_path}")
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             self.errors.append(f"Cannot read {file_path}: {e}")
@@ -365,7 +365,7 @@ class SectionHeaderChecker:
 
 
 def main():
-    """Main entry point for the section header checker."""
+    """Run the section header checker."""
     parser = argparse.ArgumentParser(description="Check section header compliance")
     parser.add_argument(
         "path", nargs="?", default=".", help="Path to check (default: current directory)"

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from .ports import EmbeddingKind, EmbeddingRecord
 
 
+
 @dataclass(slots=True)
 class StorageTarget:
     name: str

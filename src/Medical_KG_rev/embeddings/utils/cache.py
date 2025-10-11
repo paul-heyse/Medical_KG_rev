@@ -10,6 +10,7 @@ from typing import Generic, TypeVar
 
 import structlog
 
+
 logger = structlog.get_logger(__name__)
 
 K = TypeVar("K", bound=Hashable)

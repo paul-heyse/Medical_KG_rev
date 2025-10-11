@@ -8,6 +8,7 @@ from ..registry import EmbedderRegistry
 from .delegate import DelegateCall, DelegatedFrameworkAdapter
 
 
+
 @dataclass(slots=True)
 class LangChainEmbedderAdapter(DelegatedFrameworkAdapter):
     document_calls = (

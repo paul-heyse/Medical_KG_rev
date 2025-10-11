@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 
+
 class ChunkingError(RuntimeError):
     """Base error for chunking related failures."""
 
@@ -55,9 +56,6 @@ class ChunkingFailedError(ChunkingError):
     def __init__(self, message: str, *, detail: str | None = None) -> None:
         super().__init__(message)
         self.detail = detail
-
-
-
 
 
 __all__ = [

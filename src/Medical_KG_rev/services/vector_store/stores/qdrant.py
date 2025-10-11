@@ -2,35 +2,22 @@
 
 from __future__ import annotations
 
-import json
-import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+import json
+import time
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qm
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from ..errors import (
-    BackendUnavailableError,
-    DimensionMismatchError,
-    NamespaceNotFoundError,
-    ResourceExhaustedError,
-)
-from ..models import (
-    CompressionPolicy,
-    HealthStatus,
-    IndexParams,
-    RebuildReport,
-    SnapshotInfo,
-    VectorMatch,
-    VectorQuery,
-    VectorRecord,
-)
+from ..errors import HttpClient
+from ..models import HttpClient
 from ..types import VectorStorePort
+
 
 
 @dataclass(slots=True)

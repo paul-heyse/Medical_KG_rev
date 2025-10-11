@@ -17,7 +17,8 @@ Thread Safety:
 Performance:
 - Lightweight exception definitions with minimal overhead.
 
-Examples:
+Examples
+--------
     try:
         plugin.initialize()
     except AdapterPluginError as e:
@@ -25,8 +26,10 @@ Examples:
 
 """
 
-# IMPORTS
 from __future__ import annotations
+
+# IMPORTS
+
 
 
 # EXCEPTION CLASSES
@@ -39,7 +42,8 @@ class AdapterPluginError(RuntimeError):
     Thread Safety:
         Thread-safe exception class.
 
-    Examples:
+    Examples
+    --------
         try:
             plugin.load_config()
         except AdapterPluginError as e:

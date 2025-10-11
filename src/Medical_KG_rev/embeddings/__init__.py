@@ -6,6 +6,7 @@ from .providers import register_builtin_embedders
 from .registry import EmbedderFactory, EmbedderRegistry
 from .storage import StorageRouter
 
+
 __all__ = [
     "BaseEmbedder",
     "EmbedderConfig",

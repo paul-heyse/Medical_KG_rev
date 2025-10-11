@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
+import hashlib
 
 import structlog
 
 from ..ports import EmbedderConfig, EmbeddingRecord, EmbeddingRequest
 from ..registry import EmbedderRegistry
 from ..utils.records import RecordBuilder
+
 
 logger = structlog.get_logger(__name__)
 

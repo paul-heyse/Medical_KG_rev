@@ -4,6 +4,10 @@ This template shows the required structure and content for @property
 docstrings in the Medical_KG_rev pipeline codebase.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 # Example property docstring structure:
 
 """[One-line summary of what the property represents].
@@ -56,15 +60,18 @@ class ChunkingCoordinator:
             - Updates cache when dependencies change
 
         Returns:
-            bool: True if all dependencies are available and coordinator
+        -------
+            bool: True if all dependencies are available and the coordinator
                 is ready to process requests, False otherwise.
 
         Note:
-            Performance: O(1) time complexity due to caching
-            Thread safety: Safe to call from multiple threads
-            Side effects: May perform health checks on dependencies
+        ----
+            Performance: O(1) time complexity due to caching.
+            Thread safety: Safe to call from multiple threads.
+            Side effects: May perform health checks on dependencies.
 
         Example:
+        -------
             >>> coordinator = ChunkingCoordinator(...)
             >>> if coordinator.is_healthy:
             ...     result = coordinator.execute(request)
@@ -89,15 +96,18 @@ class ChunkingCoordinator:
             - Returns empty list if ChunkingService is unavailable
 
         Returns:
-            list[str]: List of strategy names supported by the
-                ChunkingService (e.g., ["section", "semantic", "paragraph"]).
+        -------
+            list[str]: Strategy names supported by the ChunkingService
+                (for example, ["section", "semantic", "paragraph"]).
 
         Note:
-            Performance: O(1) time complexity due to caching
-            Thread safety: Safe to call from multiple threads
-            Side effects: May query ChunkingService for strategy list
+        ----
+            Performance: O(1) time complexity due to caching.
+            Thread safety: Safe to call from multiple threads.
+            Side effects: May query ChunkingService for strategy list.
 
         Example:
+        -------
             >>> coordinator = ChunkingCoordinator(...)
             >>> strategies = coordinator.supported_strategies
             >>> if "semantic" in strategies:
@@ -122,6 +132,7 @@ class ChunkingCoordinator:
             - Includes both success and failure metrics
 
         Returns:
+        -------
             dict[str, Any]: Summary metrics including:
                 - request_count: Total requests processed
                 - success_rate: Percentage of successful requests
@@ -130,11 +141,13 @@ class ChunkingCoordinator:
                 - last_updated: Timestamp of last metric update
 
         Note:
-            Performance: O(1) time complexity due to caching
-            Thread safety: Safe to call from multiple threads
-            Side effects: None (pure property)
+        ----
+            Performance: O(1) time complexity due to caching.
+            Thread safety: Safe to call from multiple threads.
+            Side effects: None (pure property).
 
         Example:
+        -------
             >>> coordinator = ChunkingCoordinator(...)
             >>> metrics = coordinator.metrics_summary
             >>> print(f"Success rate: {metrics['success_rate']:.1%}")
@@ -166,6 +179,7 @@ class ChunkingService:
             - Returns empty dict if no profiles are available
 
         Returns:
+        -------
             dict[str, dict[str, Any]]: Dictionary mapping profile names
                 to their configuration details. Each profile includes:
                 - chunk_size: Maximum tokens per chunk
@@ -174,11 +188,13 @@ class ChunkingService:
                 - description: Human-readable description
 
         Note:
-            Performance: O(1) time complexity due to caching
-            Thread safety: Safe to call from multiple threads
-            Side effects: May read configuration files
+        ----
+            Performance: O(1) time complexity due to caching.
+            Thread safety: Safe to call from multiple threads.
+            Side effects: May read configuration files.
 
         Example:
+        -------
             >>> service = ChunkingService(...)
             >>> profiles = service.available_profiles
             >>> for name, config in profiles.items():
@@ -204,15 +220,18 @@ class ChunkingService:
             - Returns 0.0 if memory usage cannot be determined
 
         Returns:
+        -------
             float: Memory usage in megabytes. Returns 0.0 if
                 memory usage cannot be determined.
 
         Note:
+        ----
             Performance: O(1) time complexity due to caching
             Thread safety: Safe to call from multiple threads
             Side effects: May query system memory information
 
         Example:
+        -------
             >>> service = ChunkingService(...)
             >>> memory_mb = service.memory_usage_mb
             >>> if memory_mb > 1000:  # 1GB threshold

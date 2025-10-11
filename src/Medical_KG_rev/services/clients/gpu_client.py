@@ -10,117 +10,66 @@ from typing import Any
 import grpc
 from grpc import aio
 
+from Medical_KG_rev.observability.grpc_interceptor import (
+    create_metrics_channel,
+)
+
+# Proto imports - handle missing generated files gracefully
+try:
+    from ...proto.gpu_service_pb2 import (
+        GetGPUStatusRequest,
+        GetGPUStatusResponse,
+        ListGPUsRequest,
+        ListGPUsResponse,
+    )
+    from ...proto.gpu_service_pb2_grpc import GPUServiceStub
+except ImportError:
+    # Mock classes when proto files are not available
+    class GetGPUStatusRequest:
+        pass
+    class GetGPUStatusResponse:
+        pass
+    class ListGPUsRequest:
+        pass
+    class ListGPUsResponse:
+        pass
+    GPUServiceStub = None
 from ..clients.circuit_breaker import CircuitBreaker, CircuitBreakerState
 from ..clients.errors import ServiceError, ServiceTimeoutError, ServiceUnavailableError
 from ..registry import ServiceRegistry
 from ..security.mtls import create_mtls_channel, mTLSManager
 
-# Import generated gRPC stubs (will be generated from proto)
-try:
-    from ...proto.gpu_service_pb2 import (
-        AllocateGPURequest,
-        AllocateGPUResponse,
-        GPUAllocation,
-        GPUDevice,
-        GPUStatus,
-        HealthRequest,
-        HealthResponse,
-        ListDevicesRequest,
-        ListDevicesResponse,
-        ReleaseGPURequest,
-        ReleaseGPUResponse,
-        StatsRequest,
-        StatsResponse,
-        StatusRequest,
-        StatusResponse,
-    )
-    from ...proto.gpu_service_pb2_grpc import GPUServiceStub
-except ImportError:
-    # Fallback for development - will be replaced by generated stubs
-    StatusRequest = None
-    StatusResponse = None
-    ListDevicesRequest = None
-    ListDevicesResponse = None
-    AllocateGPURequest = None
-    AllocateGPUResponse = None
-    ReleaseGPURequest = None
-    ReleaseGPUResponse = None
-    GPUDevice = None
-    GPUAllocation = None
-    GPUStatus = None
-    HealthRequest = None
-    HealthResponse = None
-    StatsRequest = None
-    StatsResponse = None
-    GPUServiceStub = None
-
 logger = logging.getLogger(__name__)
 
 
 class GPUClient:
-    """gRPC client for GPU service.
+    """gRPC client for GPU service operations."""
 
-    Handles:
-    - gRPC communication with GPU service
-    - Circuit breaker patterns for service resilience
-    - Error handling and retry logic
-    - Performance monitoring and metrics
-    """
-
-    def __init__(
-        self,
-        service_endpoint: str,
-        service_registry: ServiceRegistry | None = None,
-        circuit_breaker_config: dict[str, Any] | None = None,
-        mtls_manager: mTLSManager | None = None,
-        service_name: str = "gpu-management",
-    ):
-        """Initialize the GPU client.
+    def __init__(self, service_endpoint: str, registry: ServiceRegistry | None = None):
+        """Initialize GPU client.
 
         Args:
-            service_endpoint: gRPC endpoint for the GPU service
-            service_registry: Optional service registry for discovery
-            circuit_breaker_config: Circuit breaker configuration
-            mtls_manager: Optional mTLS manager for secure communication
-            service_name: Name of the service for mTLS
-
+            service_endpoint: URL of the GPU service
+            registry: Service registry for discovery
         """
         self.service_endpoint = service_endpoint
-        self.service_registry = service_registry
-        self.mtls_manager = mtls_manager
-        self.service_name = service_name
-        self.channel: aio.Channel | None = None
+        self.registry = registry
+        self.channel = None
         self.stub: GPUServiceStub | None = None
-
-        # Circuit breaker configuration
-        circuit_config = circuit_breaker_config or {}
-        self.circuit_breaker = CircuitBreaker(
-            failure_threshold=circuit_config.get("failure_threshold", 5),
-            recovery_timeout=circuit_config.get("recovery_timeout", 60),
-            expected_exception=ServiceError,
-        )
-
-        # Performance tracking
-        self._stats = {
-            "total_requests": 0,
-            "successful_requests": 0,
-            "failed_requests": 0,
-            "total_processing_time": 0.0,
-            "average_processing_time": 0.0,
-            "circuit_breaker_state": CircuitBreakerState.CLOSED,
-        }
+        self.circuit_breaker = CircuitBreaker()
+        self.mtls_manager = mTLSManager()
 
     async def initialize(self) -> None:
-        """Initialize the gRPC client."""
+        """Initialize the gRPC client connection."""
         try:
-            # Create gRPC channel (secure if mTLS enabled)
-            if self.mtls_manager:
-                self.channel = create_mtls_channel(
-                    self.service_endpoint, self.mtls_manager, self.service_name
+            # Create gRPC channel
+            if self.mtls_manager.is_enabled():
+                self.channel = await create_mtls_channel(
+                    self.service_endpoint, self.mtls_manager
                 )
                 logger.info(f"GPU client initialized with mTLS for {self.service_endpoint}")
             else:
-                self.channel = aio.insecure_channel(self.service_endpoint)
+                self.channel = create_metrics_channel(self.service_endpoint)
                 logger.info(f"GPU client initialized without mTLS for {self.service_endpoint}")
 
             # Create service stub
@@ -165,9 +114,11 @@ class GPUClient:
         """Get GPU status and availability.
 
         Args:
+        ----
             include_detailed_info: Whether to include detailed device information
 
         Returns:
+        -------
             GPU status information
 
         """
@@ -240,9 +191,11 @@ class GPUClient:
         """List available GPU devices.
 
         Args:
+        ----
             include_usage_stats: Whether to include usage statistics
 
         Returns:
+        -------
             List of GPU device information
 
         """
@@ -292,6 +245,7 @@ class GPUClient:
         """Allocate GPU for processing.
 
         Args:
+        ----
             allocation_id: Unique allocation identifier
             requested_memory_mb: Requested memory in MB
             preferred_device_id: Preferred GPU device ID
@@ -299,6 +253,7 @@ class GPUClient:
             metadata: Additional metadata
 
         Returns:
+        -------
             GPU allocation information
 
         """
@@ -347,10 +302,12 @@ class GPUClient:
         """Release GPU allocation.
 
         Args:
+        ----
             allocation_id: Allocation identifier
             device_id: GPU device ID
 
         Returns:
+        -------
             Release result information
 
         """
@@ -422,7 +379,8 @@ class GPUClient:
     async def health_check(self) -> dict[str, Any]:
         """Check GPU service health.
 
-        Returns:
+        Returns
+        -------
             Health status information
 
         """
@@ -512,6 +470,7 @@ class GPUClientManager:
         """Initialize the GPU client manager.
 
         Args:
+        ----
             service_endpoints: List of gRPC endpoints for GPU services
             mtls_manager: Optional mTLS manager for secure communication
             service_name: Name of the service for mTLS
@@ -542,9 +501,11 @@ class GPUClientManager:
         """Get GPU status from available GPU client.
 
         Args:
+        ----
             include_detailed_info: Whether to include detailed device information
 
         Returns:
+        -------
             GPU status information
 
         """
@@ -589,6 +550,7 @@ class GPUClientManager:
         """Allocate GPU using available GPU client.
 
         Args:
+        ----
             allocation_id: Unique allocation identifier
             requested_memory_mb: Requested memory in MB
             preferred_device_id: Preferred GPU device ID
@@ -596,6 +558,7 @@ class GPUClientManager:
             metadata: Additional metadata
 
         Returns:
+        -------
             GPU allocation information
 
         """
@@ -673,9 +636,11 @@ def create_gpu_client(service_endpoint: str) -> GPUClient:
     """Create GPU client instance.
 
     Args:
+    ----
         service_endpoint: gRPC endpoint for the GPU service
 
     Returns:
+    -------
         GPUClient instance
 
     """
@@ -686,9 +651,11 @@ def create_gpu_client_manager(service_endpoints: list[str]) -> GPUClientManager:
     """Create GPU client manager.
 
     Args:
+    ----
         service_endpoints: List of gRPC endpoints for GPU services
 
     Returns:
+    -------
         GPUClientManager instance
 
     """

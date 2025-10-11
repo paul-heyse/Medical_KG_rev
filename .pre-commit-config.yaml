@@ -12,8 +12,7 @@ repos:
       rev: v1.7.1
       hooks:
           - id: mypy
-            additional_dependencies: [types-all]
-            args: [--strict, --show-error-codes]
+            args: [--strict, --show-error-codes, --install-types, --non-interactive]
 
     # Pydocstyle for docstring checking
     - repo: https://github.com/pycqa/pydocstyle

@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import mimetypes
 from collections.abc import Iterable
+import asyncio
 
-try:  # Optional dependency
-    import boto3
-except Exception:  # pragma: no cover
-    boto3 = None  # type: ignore
+import boto3
+import mimetypes
 
 from .base import ObjectStore, StorageError
+
 
 
 class InMemoryObjectStore(ObjectStore):

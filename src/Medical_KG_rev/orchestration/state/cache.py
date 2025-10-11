@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import time
 from collections import OrderedDict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
+import time
 
 from attrs import define, field
 
-from Medical_KG_rev.observability.metrics import (
-    PIPELINE_STATE_CACHE_HITS,
-    PIPELINE_STATE_CACHE_MISSES,
-    PIPELINE_STATE_CACHE_SIZE,
-)
+from Medical_KG_rev.observability.metrics import HttpClient
+from Medical_KG_rev.orchestration.stages.contracts import PipelineStateSnapshot
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from Medical_KG_rev.orchestration.stages.contracts import PipelineStateSnapshot
 
 
 @define(slots=True)

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from typing import Any
+
+from importlib import import_module
+
 
 _ATTRIBUTE_MAP: dict[str, tuple[str, str]] = {
     "KafkaClient": ("Medical_KG_rev.orchestration.kafka", "KafkaClient"),

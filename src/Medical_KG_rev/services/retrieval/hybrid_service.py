@@ -4,9 +4,9 @@ This module implements a hybrid retrieval system that combines BM25, SPLADE-v3,
 and Qwen3 dense retrieval strategies for improved accuracy and coverage.
 """
 
+from typing import Any
 import asyncio
 import logging
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -18,6 +18,7 @@ from Medical_KG_rev.services.vector_store.stores.bm25_index import BM25Index
 from Medical_KG_rev.services.vector_store.stores.qwen3_index import Qwen3Index
 from Medical_KG_rev.services.vector_store.stores.splade_index import SPLADEImpactIndex
 from Medical_KG_rev.storage.chunk_store import ChunkStore
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ class HybridRetrievalService:
         """Initialize the hybrid retrieval service.
 
         Args:
+        ----
             bm25_config: BM25 configuration
             splade_config: SPLADE configuration
             qwen3_config: Qwen3 configuration
@@ -137,12 +139,14 @@ class HybridRetrievalService:
         """Perform hybrid search across multiple retrieval strategies.
 
         Args:
+        ----
             query: Search query text
             k: Number of results to return
             methods: List of methods to use (default: all)
             filters: Additional filters to apply
 
         Returns:
+        -------
             List of hybrid retrieval results with fused scores
 
         """
@@ -265,10 +269,12 @@ class HybridRetrievalService:
         """Fuse results using reciprocal rank fusion (RRF).
 
         Args:
+        ----
             method_results: Results from each retrieval method
             k: Number of results to return
 
         Returns:
+        -------
             List of (chunk_id, fused_score, individual_scores) tuples
 
         """

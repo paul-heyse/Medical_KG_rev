@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-try:  # pragma: no cover - optional dependency for YAML loading
+try:
     import yaml
 except Exception:  # pragma: no cover - fall back when PyYAML missing
     yaml = None  # type: ignore[assignment]

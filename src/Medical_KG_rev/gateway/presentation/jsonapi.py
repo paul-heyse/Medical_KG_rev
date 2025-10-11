@@ -30,31 +30,33 @@ Performance Characteristics:
     - Compression reduces bandwidth usage
 
 Example:
+-------
     >>> from Medical_KG_rev.gateway.presentation.jsonapi import JSONAPIPresenter
     >>> presenter = JSONAPIPresenter()
     >>> response = presenter.success({"data": "value"})
 
 """
 
+from __future__ import annotations
+
 # ==============================================================================
 # IMPORTS
 # ==============================================================================
 
-from __future__ import annotations
-
-import gzip
-import json
 from collections.abc import Iterable, Mapping, MutableMapping
 from typing import Any
+import json
 
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
+import gzip
 
 from Medical_KG_rev.utils.logging import get_correlation_id
 
 from .errors import ErrorDetail
 from .interface import ResponsePresenter
 from .lifecycle import current_lifecycle
+
 
 # ==============================================================================
 # CONSTANTS
@@ -72,9 +74,11 @@ def _normalise_payload(data: Any) -> Any:
     """Normalize payload data for JSON:API serialization.
 
     Args:
+    ----
         data: Raw data to normalize.
 
     Returns:
+    -------
         Normalized data suitable for JSON:API serialization.
 
     """

@@ -4,15 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ..models import (
-    FusionResponse,
-    FusionSettings,
-    FusionStrategy,
-    ScoredDocument,
-)
 from . import deduplicate
+from ..models import FusionResponse, FusionSettings, FusionStrategy, ScoredDocument
 from .rrf import rrf
 from .weighted import weighted
+
 
 
 class FusionService:

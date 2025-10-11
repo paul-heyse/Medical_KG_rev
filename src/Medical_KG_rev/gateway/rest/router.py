@@ -1,49 +1,29 @@
-"""REST API router exposing gateway operations.
-
-This module provides the REST API endpoints for the gateway application,
-implementing HTTP-based access to all gateway operations including ingestion,
-retrieval, embedding, evaluation, and adapter management.
+"""REST API router exposing gateway operations for HTTP clients.
 
 Key Responsibilities:
-    - REST endpoint definitions for all gateway operations
-    - Request/response serialization and validation
-    - Authentication and authorization enforcement
-    - Error handling and status code management
-    - OpenAPI documentation generation
-    - Content negotiation and response formatting
+    - Declare REST endpoints that surface gateway ingestion, retrieval, and management APIs
+    - Coordinate request validation, authentication, and response formatting
 
 Collaborators:
-    - Upstream: HTTP clients, API documentation tools
-    - Downstream: Gateway services, coordinators, domain services
+    - Upstream: HTTP clients and API documentation tooling consuming the REST API
+    - Downstream: Gateway service layer orchestrating domain-specific workflows
 
 Side Effects:
-    - Processes HTTP requests and responses
-    - Validates authentication tokens
-    - Logs API access and audit trails
-    - Emits metrics for API usage
+    - Processes HTTP requests, performs authentication, and emits audit/metric events
 
 Thread Safety:
-    - Thread-safe: FastAPI handles concurrent requests
-    - Stateless: No shared mutable state between requests
+    - Thread-safe; FastAPI manages concurrent request handling
 
-Performance Characteristics:
-    - O(1) request routing overhead
-    - O(n) serialization where n is response size
-    - Rate limited by middleware
-
-Example:
-    >>> from fastapi import FastAPI
-    >>> from Medical_KG_rev.gateway.rest.router import router
-    >>> app = FastAPI()
-    >>> app.include_router(router)
-
+Note:
+    Current handler bodies are placeholders and should be refactored to wire real dependencies.
+    See inline ``TODO`` comments for follow-up refactoring requirements.
 """
 
-# ==============================================================================
-# IMPORTS
-# ==============================================================================
-
 from __future__ import annotations
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
 
 from datetime import datetime
 from typing import Annotated, TypeVar
@@ -52,33 +32,12 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
-# ==============================================================================
-# TYPE DEFINITIONS
-# ==============================================================================
 from Medical_KG_rev.services.retrieval.routing import QueryIntent
 
 from ...auth import Scopes, SecurityContext, secure_endpoint
 from ...auth.audit import get_audit_trail
 from ...services.health import HealthService
-from ..models import (
-    BatchOperationResult,
-    ChunkRequest,
-    EmbedRequest,
-    EntityLinkRequest,
-    EvaluationRequest,
-    EvaluationResponse,
-    ExtractionRequest,
-    IngestionRequest,
-    JobStatus,
-    KnowledgeGraphWriteRequest,
-    NamespacePolicyInvalidateRequest,
-    NamespacePolicyUpdateRequest,
-    NamespaceValidationRequest,
-    PipelineIngestionRequest,
-    PipelineQueryRequest,
-    RetrievalResult,
-    RetrieveRequest,
-)
+from ..models import HttpClient
 from ..presentation.dependencies import get_request_lifecycle, get_response_presenter
 from ..presentation.errors import ErrorDetail
 from ..presentation.interface import ResponsePresenter
@@ -86,6 +45,11 @@ from ..presentation.lifecycle import RequestLifecycle
 from ..presentation.odata import ODataParams
 from ..presentation.requests import apply_tenant_context
 from ..services import GatewayService, get_gateway_service
+
+
+# ============================================================================
+# TYPE DEFINITIONS
+# ============================================================================
 
 # Type aliases for dependency injection
 PresenterDep = Annotated[ResponsePresenter, Depends(get_response_presenter)]
@@ -96,21 +60,43 @@ router = APIRouter(prefix="/v1", tags=["gateway"])
 health_router = APIRouter(tags=["system"])
 
 
-# ==============================================================================
+# ============================================================================
 # CONSTANTS
-# ==============================================================================
+# ============================================================================
 
 JSONAPI_CONTENT_TYPE = "application/vnd.api+json"
 
 
-# ==============================================================================
-# ADAPTER ENDPOINTS
-# ==============================================================================
+# ============================================================================
+# REQUEST/RESPONSE MODELS
+# ============================================================================
+
+# TODO: Restore adapter metadata models and dependency wiring when implementing handlers.
+
+# ============================================================================
+# COORDINATOR IMPLEMENTATION
+# ============================================================================
 
 
-@router.get("/adapters", response_model=None)
+@router.get("/adapters", response_model=list[AdapterMetadata])
 async def list_adapters(
-    domain: str | None = Query(default=None),
+    domain: str | None = Query(default=None, description="Filter by domain name"),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> JSONResponse:
+    """List available adapters, optionally filtered by domain.
+
+    Args:
+        domain: Optional domain name to filter adapters by.
+        presenter: Response presenter for formatting output.
+        lifecycle: Request lifecycle manager for audit trails.
+
+    Returns:
+        JSON response containing list of adapter metadata.
+
+    Raises:
+        HTTPException: If adapter listing fails.
+    """
     service: GatewayService = Depends(get_gateway_service),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters")
@@ -132,9 +118,25 @@ async def list_adapters(
     return presenter.success(adapters, meta=lifecycle.meta({"total": len(adapters)}))
 
 
-@router.get("/adapters/{name}/metadata", response_model=None)
+@router.get("/adapters/{name}", response_model=AdapterMetadata)
 async def get_adapter_metadata(
     name: str = Path(..., description="Adapter name"),
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> JSONResponse:
+    """Get detailed metadata for a specific adapter.
+
+    Args:
+        name: Name of the adapter to retrieve metadata for.
+        presenter: Response presenter for formatting output.
+        lifecycle: Request lifecycle manager for audit trails.
+
+    Returns:
+        JSON response containing adapter metadata.
+
+    Raises:
+        HTTPException: If adapter is not found or metadata retrieval fails.
+    """
     service: GatewayService = Depends(get_gateway_service),
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/metadata")
@@ -211,8 +213,16 @@ async def get_adapter_config_schema(
 # ==============================================================================
 
 
-@health_router.get("/health", include_in_schema=True)
+@health_router.get("/health")
 async def health_check(request: Request) -> JSONResponse:
+    """Check overall system health status.
+
+    Args:
+        request: FastAPI request object containing app state.
+
+    Returns:
+        JSON response with health status and component details.
+    """
     service: HealthService = request.app.state.health  # type: ignore[attr-defined]
     return JSONResponse(service.liveness())
 
@@ -328,7 +338,8 @@ async def get_job(
 async def list_job_events(
     job_id: str,
     *,
-    since: datetime | None = Query(
+    since: datetime
+    | None = Query(
         None,
         description="Return events emitted after this timestamp",
         alias="since",
@@ -467,9 +478,25 @@ async def ingest_pmc(
 # ==============================================================================
 
 
-@router.post("/chunk", status_code=200)
+@router.post("/chunk", response_model=ChunkResponse)
 async def chunk_document(
     request: ChunkRequest,
+    presenter: PresenterDep,
+    lifecycle: LifecycleDep,
+) -> JSONResponse:
+    """Chunk a document into smaller segments.
+
+    Args:
+        request: Chunking request with document and parameters.
+        presenter: Response presenter for formatting output.
+        lifecycle: Request lifecycle manager for audit trails.
+
+    Returns:
+        JSON response containing chunked document segments.
+
+    Raises:
+        HTTPException: If chunking operation fails.
+    """
     http_request: Request,
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/chunk")

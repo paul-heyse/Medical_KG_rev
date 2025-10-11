@@ -2,4 +2,5 @@
 
 from .test_mocks import BatchOnly, LlamaStyle, QueryOnly
 
+
 __all__ = ["BatchOnly", "LlamaStyle", "QueryOnly"]

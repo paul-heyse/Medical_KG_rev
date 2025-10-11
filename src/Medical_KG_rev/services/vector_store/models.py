@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 
+
 @dataclass(slots=True, frozen=True)
 class CompressionPolicy:
     """Configuration describing how vectors are compressed in the store."""

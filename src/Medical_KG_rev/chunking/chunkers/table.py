@@ -14,6 +14,7 @@ from ..tables import TableHandler
 from ..tokenization import TokenCounter, default_token_counter
 
 
+
 class TableChunker(BaseChunker):
     name = "table"
     version = "v1"

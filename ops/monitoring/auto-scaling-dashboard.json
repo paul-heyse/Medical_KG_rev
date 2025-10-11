@@ -1,0 +1,253 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "GPU Services Auto-Scaling Dashboard",
+        "tags": [
+            "gpu",
+            "auto-scaling",
+            "hpa"
+        ],
+        "timezone": "browser",
+        "panels": [
+            {
+                "id": 1,
+                "title": "GPU Utilization by Service",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_utilization_percent",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Utilization %",
+                        "min": 0,
+                        "max": 100
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            {
+                "id": 2,
+                "title": "GPU Memory Usage",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_memory_usage_mb",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Memory (MB)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                }
+            },
+            {
+                "id": 3,
+                "title": "Service Replica Count",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "kube_deployment_status_replicas",
+                        "legendFormat": "{{deployment}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Replicas",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                }
+            },
+            {
+                "id": 4,
+                "title": "HPA Scaling Events",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "kube_horizontalpodautoscaler_status_current_replicas",
+                        "legendFormat": "{{horizontalpodautoscaler}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Replicas",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 8
+                }
+            },
+            {
+                "id": 5,
+                "title": "Service Request Rate",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(service_requests_total[5m])",
+                        "legendFormat": "{{service_name}} - {{method}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Requests/sec",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                }
+            },
+            {
+                "id": 6,
+                "title": "Service Response Time",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(service_response_time_seconds_bucket[5m]))",
+                        "legendFormat": "{{service_name}} - {{method}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Response Time (s)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                }
+            },
+            {
+                "id": 7,
+                "title": "CPU Usage by Service",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "cpu_usage_percent",
+                        "legendFormat": "{{service_name}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "CPU %",
+                        "min": 0,
+                        "max": 100
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 24
+                }
+            },
+            {
+                "id": 8,
+                "title": "Memory Usage by Service",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "memory_usage_mb",
+                        "legendFormat": "{{service_name}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Memory (MB)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 24
+                }
+            }
+        ],
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "refresh": "30s"
+    }
+}

@@ -12,7 +12,7 @@ def test_wsdl_available() -> None:
     client = TestClient(create_app())
     response = client.get("/soap/wsdl")
     assert response.status_code == 200
-    assert "GatewayService" in response.text
+    assert "Medical_KG_rev" in response.text
 
 
 def test_ingest_operation() -> None:

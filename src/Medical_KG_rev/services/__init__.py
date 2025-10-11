@@ -20,9 +20,9 @@ else:  # pragma: no cover - optional dependency fallback
 
 
 if _TORCH_AVAILABLE:
-    from .gpu.manager import GpuManager, GpuNotAvailableError  # type: ignore
+    from .gpu.manager import GpuNotAvailableError, GpuServiceManager  # type: ignore
 
-    __all__.extend(["GpuManager", "GpuNotAvailableError"])
+    __all__.extend(["GpuServiceManager", "GpuNotAvailableError"])
 else:  # pragma: no cover - optional dependency fallback
 
     class GpuNotAvailableError(RuntimeError):

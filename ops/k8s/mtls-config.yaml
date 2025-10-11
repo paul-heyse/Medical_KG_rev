@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: mtls-config
+    namespace: medical-kg
+data:
+    mtls-enabled: "true"
+    ca-cert-path: "/certs/ca.crt"
+    ca-key-path: "/certs/ca.key"
+    cert-duration-days: "365"
+    key-size: "2048"
+    auto-generate-certs: "true"
+
+    # Service configurations
+    gateway-common-name: "gateway.medical-kg.local"
+    gateway-san-dns: "gateway.medical-kg.local,localhost"
+    gateway-san-ip: "127.0.0.1"
+
+    gpu-management-common-name: "gpu-management.medical-kg.local"
+    gpu-management-san-dns: "gpu-management.medical-kg.local,localhost"
+    gpu-management-san-ip: "127.0.0.1"
+
+    embedding-common-name: "embedding.medical-kg.local"
+    embedding-san-dns: "embedding.medical-kg.local,localhost"
+    embedding-san-ip: "127.0.0.1"
+
+    reranking-common-name: "reranking.medical-kg.local"
+    reranking-san-dns: "reranking.medical-kg.local,localhost"
+    reranking-san-ip: "127.0.0.1"
+
+    docling-vlm-common-name: "docling-vlm.medical-kg.local"
+    docling-vlm-san-dns: "docling-vlm.medical-kg.local,localhost"
+    docling-vlm-san-ip: "127.0.0.1"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mtls-ca-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded CA certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gateway-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded gateway certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gpu-management-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded gpu-management certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: embedding-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded embedding certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: reranking-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded reranking certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: docling-vlm-cert
+    namespace: medical-kg
+type: kubernetes.io/tls
+data:
+    # Base64 encoded docling-vlm certificate and key
+    # These will be populated by the certificate generation job
+    tls.crt: ""
+    tls.key: ""

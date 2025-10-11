@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+service RerankingService {
+  rpc RerankBatch(RerankBatchRequest) returns (RerankBatchResponse);
+  rpc ListModels(google.protobuf.Empty) returns (ListModelsResponse);
+}
+
+import "google/protobuf/empty.proto";
+
+message RerankBatchRequest {
+  string query = 1;
+  repeated string documents = 2;
+  string model = 3;
+  string tenant_id = 4;
+  int32 top_k = 5;
+}
+
+message RerankedDocument {
+  int32 index = 1;
+  string text = 2;
+  double score = 3;
+  map<string, string> metadata = 4;
+}
+
+message RerankBatchResponse {
+  repeated RerankedDocument results = 1;
+  string model = 2;
+  double duration_ms = 3;
+}
+
+message ModelInfo {
+  string name = 1;
+  string description = 2;
+  int32 max_length = 3;
+  bool available = 4;
+}
+
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+}

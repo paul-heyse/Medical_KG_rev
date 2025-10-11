@@ -53,7 +53,10 @@ from fastapi import Request
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from Medical_KG_rev.observability.metrics import REQUEST_COUNTER, REQUEST_LATENCY
+from Medical_KG_rev.observability.metrics import (
+    GPU_SERVICE_CALL_DURATION_SECONDS as REQUEST_LATENCY,
+)
+from Medical_KG_rev.observability.metrics import GPU_SERVICE_CALLS_TOTAL as REQUEST_COUNTER
 from Medical_KG_rev.utils.logging import (
     bind_correlation_id,
     get_correlation_id,

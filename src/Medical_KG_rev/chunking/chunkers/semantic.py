@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from math import inf
+from typing import Any
 
 import numpy as np
 
@@ -24,7 +25,7 @@ class SemanticSplitterChunker(EmbeddingContextualChunker):
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         tau_coh: float = 0.82,
         min_tokens: int = 200,
-        gpu_semantic_checks: bool = False,
+        gpu_semantic_checks: bool = False,  # Deprecated parameter, kept for compatibility
         encoder: object | None = None,
     ) -> None:
         super().__init__(
@@ -89,7 +90,7 @@ class SemanticClusterChunker(EmbeddingContextualChunker):
         clusterer: str = "agglomerative",
         distance_threshold: float = 0.35,
         min_cluster_size: int = 3,
-        gpu_semantic_checks: bool = False,
+        gpu_semantic_checks: bool = False,  # Deprecated parameter, kept for compatibility
         encoder: object | None = None,
     ) -> None:
         super().__init__(
@@ -142,7 +143,7 @@ class SemanticClusterChunker(EmbeddingContextualChunker):
             return []
         if self.clusterer == "hdbscan":
             try:  # pragma: no cover - optional dependency
-                import hdbscan  # type: ignore
+                import hdbscan
             except Exception:
                 self.clusterer = "agglomerative"
             else:
@@ -150,9 +151,10 @@ class SemanticClusterChunker(EmbeddingContextualChunker):
                     min_cluster_size=self.min_cluster_size,
                     metric="euclidean",
                 )
-                return clusterer.fit_predict(embeddings).tolist()
+                result = clusterer.fit_predict(embeddings)
+                return result.tolist() if hasattr(result, "tolist") else list(result)
         try:  # pragma: no cover - optional dependency
-            from sklearn.cluster import AgglomerativeClustering  # type: ignore
+            from sklearn.cluster import AgglomerativeClustering
         except Exception as exc:
             raise ChunkerConfigurationError(
                 "scikit-learn must be installed for SemanticClusterChunker"
@@ -177,7 +179,7 @@ class GraphPartitionChunker(EmbeddingContextualChunker):
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         similarity_threshold: float = 0.55,
         algorithm: str = "louvain",
-        gpu_semantic_checks: bool = False,
+        gpu_semantic_checks: bool = False,  # Deprecated parameter, kept for compatibility
         encoder: object | None = None,
     ) -> None:
         super().__init__(
@@ -224,9 +226,9 @@ class GraphPartitionChunker(EmbeddingContextualChunker):
             "algorithm": self.algorithm,
         }
 
-    def _similarity_graph(self, embeddings: np.ndarray):
+    def _similarity_graph(self, embeddings: np.ndarray) -> Any:
         try:  # pragma: no cover - optional dependency
-            import networkx as nx  # type: ignore
+            import networkx as nx
         except Exception as exc:
             raise ChunkerConfigurationError(
                 "networkx must be installed for GraphPartitionChunker"
@@ -244,17 +246,15 @@ class GraphPartitionChunker(EmbeddingContextualChunker):
                     graph.add_edge(i, j, weight=weight)
         return graph
 
-    def _partition(self, graph) -> list[int]:
+    def _partition(self, graph: Any) -> list[int]:
         try:  # pragma: no cover - optional dependency
-            import networkx as nx  # type: ignore
+            import networkx as nx
         except Exception as exc:
             raise ChunkerConfigurationError(
                 "networkx must be installed for GraphPartitionChunker"
             ) from exc
         if self.algorithm == "louvain" and hasattr(nx.algorithms.community, "louvain_communities"):
-            communities = list(
-                nx.algorithms.community.louvain_communities(graph)  # type: ignore[attr-defined]
-            )
+            communities = list(nx.algorithms.community.louvain_communities(graph))
         else:
             communities = list(nx.algorithms.community.greedy_modularity_communities(graph))
         labels = [0] * graph.number_of_nodes()

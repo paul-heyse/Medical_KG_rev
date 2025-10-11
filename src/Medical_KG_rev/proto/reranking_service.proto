@@ -1,0 +1,308 @@
+syntax = "proto3";
+
+package medical_kg_rev.reranking;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// Reranking Service Definition
+service RerankingService {
+    // Rerank documents using cross-encoder
+    rpc RerankDocuments(RerankDocumentsRequest) returns (RerankDocumentsResponse);
+
+    // Rerank documents in batch
+    rpc RerankDocumentsBatch(RerankDocumentsBatchRequest) returns (RerankDocumentsBatchResponse);
+
+    // List available reranking models
+    rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+
+    // Get model information
+    rpc GetModelInfo(GetModelInfoRequest) returns (GetModelInfoResponse);
+
+    // Health check endpoint
+    rpc GetHealth(HealthRequest) returns (HealthResponse);
+
+    // Get service statistics
+    rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+
+// Request to rerank documents
+message RerankDocumentsRequest {
+    string query = 1;
+    repeated Document documents = 2;
+    string model_name = 3;
+    RerankingConfig config = 4;
+    ProcessingOptions options = 5;
+}
+
+// Response with reranked documents
+message RerankDocumentsResponse {
+    repeated RerankedDocument results = 1;
+    ProcessingMetadata metadata = 2;
+    ProcessingStatus status = 3;
+    string error_message = 4;
+}
+
+// Batch reranking request
+message RerankDocumentsBatchRequest {
+    repeated RerankDocumentsRequest requests = 1;
+    BatchProcessingOptions batch_options = 2;
+}
+
+// Batch reranking response
+message RerankDocumentsBatchResponse {
+    repeated RerankDocumentsResponse responses = 1;
+    BatchProcessingMetadata batch_metadata = 2;
+    ProcessingStatus overall_status = 3;
+}
+
+// Document to be reranked
+message Document {
+    string document_id = 1;
+    string title = 2;
+    string content = 3;
+    string document_type = 4;
+    map<string, string> metadata = 5;
+    float original_score = 6;
+    int32 original_rank = 7;
+}
+
+// Reranking configuration
+message RerankingConfig {
+    int32 max_sequence_length = 1;
+    float temperature = 2;
+    bool enable_gpu = 3;
+    int32 batch_size = 4;
+    string scoring_method = 5;
+    bool normalize_scores = 6;
+}
+
+// Processing options
+message ProcessingOptions {
+    bool enable_contextualization = 1;
+    bool enable_medical_normalization = 2;
+    bool enable_terminology_support = 3;
+    float min_confidence_threshold = 4;
+    int32 timeout_seconds = 5;
+}
+
+// Reranked document result
+message RerankedDocument {
+    string document_id = 1;
+    string title = 2;
+    string content = 3;
+    float reranked_score = 4;
+    int32 reranked_rank = 5;
+    float original_score = 6;
+    int32 original_rank = 7;
+    float confidence_score = 8;
+    ProcessingProvenance provenance = 9;
+    google.protobuf.Timestamp processed_at = 10;
+    map<string, string> metadata = 11;
+}
+
+// Processing metadata
+message ProcessingMetadata {
+    google.protobuf.Timestamp start_time = 1;
+    google.protobuf.Timestamp end_time = 2;
+    float processing_time_seconds = 3;
+    float gpu_memory_used_mb = 4;
+    string model_name = 5;
+    string processing_method = 6;
+    ProcessingQuality quality = 7;
+}
+
+// Processing provenance
+message ProcessingProvenance {
+    string processing_id = 1;
+    string model_name = 2;
+    string model_version = 3;
+    string processing_config = 4;
+    google.protobuf.Timestamp timestamp = 5;
+    string processing_node = 6;
+    repeated string processing_steps = 7;
+}
+
+// Processing status
+enum ProcessingStatus {
+    PROCESSING_STATUS_UNSPECIFIED = 0;
+    PROCESSING_STATUS_SUCCESS = 1;
+    PROCESSING_STATUS_ERROR = 2;
+    PROCESSING_STATUS_TIMEOUT = 3;
+    PROCESSING_STATUS_PARTIAL = 4;
+    PROCESSING_STATUS_QUEUED = 5;
+    PROCESSING_STATUS_PROCESSING = 6;
+}
+
+// Processing quality
+message ProcessingQuality {
+    float confidence_score = 1;
+    float completeness_score = 2;
+    float accuracy_score = 3;
+    repeated QualityIssue issues = 4;
+    QualityMetrics metrics = 5;
+}
+
+// Quality issue
+message QualityIssue {
+    string issue_type = 1;
+    string description = 2;
+    string severity = 3;
+    string suggestion = 4;
+}
+
+// Quality metrics
+message QualityMetrics {
+    int32 total_documents = 1;
+    int32 processed_documents = 2;
+    int32 failed_documents = 3;
+    float processing_rate = 4;
+    float error_rate = 5;
+}
+
+// Request to list models
+message ListModelsRequest {
+    bool include_model_info = 1;
+}
+
+// Response with available models
+message ListModelsResponse {
+    repeated RerankingModel models = 1;
+    int32 total_count = 2;
+}
+
+// Request to get model information
+message GetModelInfoRequest {
+    string model_name = 1;
+}
+
+// Response with model information
+message GetModelInfoResponse {
+    RerankingModel model = 1;
+    ModelCapabilities capabilities = 2;
+    ModelPerformance performance = 3;
+}
+
+// Reranking model information
+message RerankingModel {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+    int32 max_sequence_length = 4;
+    repeated string supported_languages = 5;
+    repeated string capabilities = 6;
+    ModelStatus status = 7;
+    google.protobuf.Timestamp last_updated = 8;
+}
+
+// Model capabilities
+message ModelCapabilities {
+    bool supports_batch_processing = 1;
+    bool supports_gpu_acceleration = 2;
+    bool supports_contextualization = 3;
+    bool supports_medical_normalization = 4;
+    bool supports_terminology_support = 5;
+    repeated string supported_scoring_methods = 6;
+    repeated string supported_normalization_methods = 7;
+}
+
+// Model performance metrics
+message ModelPerformance {
+    float average_processing_time_ms = 1;
+    float throughput_documents_per_second = 2;
+    float memory_usage_mb = 3;
+    float gpu_memory_usage_mb = 4;
+    float accuracy_score = 5;
+    repeated PerformanceMetric metrics = 6;
+}
+
+// Performance metric
+message PerformanceMetric {
+    string metric_name = 1;
+    double value = 2;
+    string unit = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    map<string, string> labels = 5;
+}
+
+// Model status
+enum ModelStatus {
+    MODEL_STATUS_UNSPECIFIED = 0;
+    MODEL_STATUS_AVAILABLE = 1;
+    MODEL_STATUS_LOADING = 2;
+    MODEL_STATUS_ERROR = 3;
+    MODEL_STATUS_OFFLINE = 4;
+    MODEL_STATUS_MAINTENANCE = 5;
+}
+
+// Batch processing options
+message BatchProcessingOptions {
+    int32 max_batch_size = 1;
+    int32 timeout_seconds = 2;
+    bool fail_fast = 3;
+    bool enable_progress_tracking = 4;
+}
+
+// Batch processing metadata
+message BatchProcessingMetadata {
+    int32 total_requests = 1;
+    int32 successful_requests = 2;
+    int32 failed_requests = 3;
+    float total_processing_time = 4;
+    float average_processing_time = 5;
+    google.protobuf.Timestamp start_time = 6;
+    google.protobuf.Timestamp end_time = 7;
+}
+
+// Health check request
+message HealthRequest {
+    string service_name = 1;
+}
+
+// Health check response
+message HealthResponse {
+    string status = 1;
+    string message = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    ServiceInfo service_info = 4;
+    ResourceUsage resource_usage = 5;
+}
+
+// Service information
+message ServiceInfo {
+    string version = 1;
+    string build_date = 2;
+    string git_commit = 3;
+    repeated string capabilities = 4;
+}
+
+// Resource usage
+message ResourceUsage {
+    float cpu_usage_percent = 1;
+    float memory_usage_mb = 2;
+    float gpu_usage_percent = 3;
+    float gpu_memory_usage_mb = 4;
+    int32 active_models = 5;
+}
+
+// Statistics request
+message StatsRequest {
+    string metric_name = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+}
+
+// Statistics response
+message StatsResponse {
+    repeated MetricValue metrics = 1;
+    google.protobuf.Timestamp generated_at = 2;
+}
+
+// Metric value
+message MetricValue {
+    string metric_name = 1;
+    double value = 2;
+    string unit = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    map<string, string> labels = 5;
+}

@@ -94,7 +94,7 @@ class DiscourseSegmenterChunker(ContextualChunker):
 
 
 class GrobidSectionChunker(ContextualChunker):
-    """Chunker that aligns MinerU output with Grobid TEI XML sections."""
+    """Chunker that aligns Docling VLM output with Grobid TEI XML sections."""
 
     name = "grobid_section"
     version = "v1"

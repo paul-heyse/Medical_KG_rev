@@ -20,7 +20,7 @@ class Artifact(BaseModel):
 
 
 class StructuredArtifact(Artifact):
-    """Provides immutable update helpers for MinerU artefacts."""
+    """Provides immutable update helpers for Docling VLM artefacts."""
 
     def merge_metadata(self, updates: Mapping[str, Any] | None = None, **kwargs: Any) -> Self:
         """Merge metadata with the provided values, returning a new instance."""

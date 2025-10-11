@@ -125,14 +125,12 @@ class StagePluginManager:
         """Discover and register plugins declared via entry points."""
         if self._loaded:
             return
-        discovered = self._plugin_manager.load_setuptools_entrypoints(self.namespace)
+        discovered_count = self._plugin_manager.load_setuptools_entrypoints(self.namespace)
         logger.debug(
-            "orchestration.stage_plugins.entrypoints",
-            namespace=self.namespace,
-            discovered=len(discovered),
+            "orchestration.stage_plugins.entrypoints: namespace=%s discovered_count=%s",
+            self.namespace,
+            discovered_count,
         )
-        for plugin in discovered:
-            self._plugin_manager.register(plugin)
         for hook in self._plugin_manager.hook.stage_plugins():  # type: ignore[attr-defined]
             for candidate in hook:
                 self.register(candidate)
@@ -153,10 +151,10 @@ class StagePluginManager:
             self._stage_index[canonical].append(metadata.name)
             STAGE_PLUGIN_REGISTRATIONS.labels(plugin=metadata.name, stage_type=canonical).inc()
         logger.info(
-            "orchestration.stage_plugins.registered",
-            plugin=metadata.name,
-            version=metadata.version,
-            stage_types=list(metadata.stage_types),
+            "orchestration.stage_plugins.registered: plugin=%s version=%s stage_types=%s",
+            metadata.name,
+            metadata.version,
+            list(metadata.stage_types),
         )
         self._refresh_health(plugin)
 
@@ -168,9 +166,9 @@ class StagePluginManager:
             STAGE_PLUGIN_FAILURES.labels(plugin=metadata.name, stage_type="__health__").inc()
             STAGE_PLUGIN_HEALTH.labels(plugin=metadata.name).set(0)
             logger.warning(
-                "orchestration.stage_plugins.unhealthy",
-                plugin=metadata.name,
-                error=str(exc),
+                "orchestration.stage_plugins.unhealthy: plugin=%s error=%s",
+                metadata.name,
+                str(exc),
             )
         else:
             STAGE_PLUGIN_HEALTH.labels(plugin=plugin.metadata.name).set(1)
@@ -190,9 +188,9 @@ class StagePluginManager:
                 plugin.cleanup(self.context)
             except Exception as exc:  # pragma: no cover - defensive guard
                 logger.warning(
-                    "orchestration.stage_plugins.cleanup_failed",
-                    plugin=plugin.metadata.name,
-                    error=str(exc),
+                    "orchestration.stage_plugins.cleanup_failed: plugin=%s error=%s",
+                    plugin.metadata.name,
+                    str(exc),
                 )
 
     @retry(  # type: ignore[misc]
@@ -214,17 +212,17 @@ class StagePluginManager:
             except Exception as exc:
                 STAGE_PLUGIN_FAILURES.labels(plugin=plugin_name, stage_type=stage_type).inc()
                 logger.error(
-                    "orchestration.stage_plugins.create_failed",
-                    plugin=plugin_name,
-                    stage_type=stage_type,
-                    error=str(exc),
+                    "orchestration.stage_plugins.create_failed: plugin=%s stage_type=%s error=%s",
+                    plugin_name,
+                    stage_type,
+                    str(exc),
                 )
                 raise StagePluginExecutionError(str(exc)) from exc
             if stage is not None:
                 logger.debug(
-                    "orchestration.stage_plugins.created",
-                    plugin=plugin_name,
-                    stage_type=stage_type,
+                    "orchestration.stage_plugins.created: plugin=%s stage_type=%s",
+                    plugin_name,
+                    stage_type,
                 )
                 return stage
 

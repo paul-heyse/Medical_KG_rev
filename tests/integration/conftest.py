@@ -4,11 +4,7 @@ import os
 
 import pytest
 
-from Medical_KG_rev.config.settings import MineruSettings
-from Medical_KG_rev.services.mineru.cli_wrapper import SimulatedMineruCli
-from Medical_KG_rev.services.mineru.service import MineruProcessor
-from Medical_KG_rev.services.mineru.vllm_client import VLLMClient
-
+# MinerU imports removed - using Docling VLM services instead
 from .utils import run_async
 
 _DEFAULT_VLLM_BASE_URL = os.getenv("TEST_VLLM_BASE_URL", "http://localhost:8000")

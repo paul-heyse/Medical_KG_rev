@@ -12,9 +12,12 @@ logger = structlog.get_logger(__name__)
 
 
 try:  # pragma: no cover - optional dependency guard
-    import torch
+    # import torch  # Removed for torch isolation
+    pass
 except Exception:  # pragma: no cover - fallback when torch unavailable
-    torch = None  # type: ignore[assignment]
+    pass
+# torch = None  # type: ignore[assignment]  # Removed for torch isolation
+torch = None  # Torch functionality moved to gRPC services
 
 _BYTES_IN_MEBIBYTE: Final[int] = 1024 * 1024
 
@@ -43,30 +46,14 @@ class GPUMemoryInfo:
 
 
 def probe() -> GPUStatus:
-    if torch is None:
-        return GPUStatus(available=False)
-    available = bool(torch.cuda.is_available())
-    device_count = torch.cuda.device_count() if available else 0
-    name = torch.cuda.get_device_name(0) if available else None
-    return GPUStatus(available=available, device_name=name, device_count=device_count)
+    # GPU functionality moved to gRPC services
+    return GPUStatus(available=False)
 
 
 def memory_info(device: int = 0) -> GPUMemoryInfo:
     """Return a snapshot of GPU memory usage when CUDA is available."""
-    if torch is None or not torch.cuda.is_available():  # pragma: no cover - optional dependency
-        return GPUMemoryInfo(available=False)
-    try:
-        free_bytes, total_bytes = torch.cuda.mem_get_info(device)
-    except Exception:  # pragma: no cover - torch handles device validation
-        logger.debug("embedding.gpu.memory_probe_failed", exc_info=True)
-        return GPUMemoryInfo(available=True)
-    used_bytes = total_bytes - free_bytes
-    return GPUMemoryInfo(
-        available=True,
-        total_mb=int(total_bytes // _BYTES_IN_MEBIBYTE),
-        free_mb=int(free_bytes // _BYTES_IN_MEBIBYTE),
-        used_mb=int(used_bytes // _BYTES_IN_MEBIBYTE),
-    )
+    # GPU functionality moved to gRPC services
+    return GPUMemoryInfo(available=False)
 
 
 def ensure_available(require_gpu: bool, *, operation: str) -> None:

@@ -1,131 +1,100 @@
-"""GPU availability helpers shared by vector store adapters."""
+"""Vector store GPU utilities - Torch-free version."""
 
-from __future__ import annotations
+from typing import Any
 
-from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+import structlog
 
-try:  # pragma: no cover - optional dependency
-    import torch
-except Exception:  # pragma: no cover - torch may be absent in CI
-    torch = None  # type: ignore[assignment]
+from ..clients.embedding_client import EmbeddingClientManager
+
+logger = structlog.get_logger(__name__)
 
 
-def gpu_available() -> bool:
-    """Return True when CUDA devices are visible."""
-    if torch is None:
-        return False
-    return bool(torch.cuda.is_available())
-
-
-@dataclass(slots=True)
-class GPUStats:
-    """Represents utilisation information for a CUDA device."""
-
-    device: str
-    total_memory: int
-    allocated: int
-
-    @property
-    def utilisation(self) -> float:
-        if not self.total_memory:
-            return 0.0
-        return float(self.allocated) / float(self.total_memory) * 100.0
-
-
-@dataclass(slots=True)
 class GPUResourceManager:
-    """Tracks availability and records fallback decisions."""
+    """GPU resource manager for vector store operations."""
 
-    require_gpu: bool = False
-    preferred_batch_size: int = 256
+    def __init__(self):
+        self._client_manager: EmbeddingClientManager | None = None
 
-    def ensure(self) -> bool:
-        """Ensure GPU availability, raising when required."""
-        available = gpu_available()
-        if self.require_gpu and not available:
-            raise RuntimeError("GPU requested but not available")
-        return available
+    async def initialize(self) -> None:
+        """Initialize GPU resources."""
+        pass
 
-    def fallback_message(self, *, operation: str) -> str | None:
-        if self.require_gpu or gpu_available():
-            return None
-        return f"GPU not available for {operation}; falling back to CPU"
-
-    def choose_batch_size(self, *, available: bool, total: int) -> int:
-        if total <= self.preferred_batch_size:
-            return total
-        return self.preferred_batch_size
+    async def cleanup(self) -> None:
+        """Cleanup GPU resources."""
+        pass
 
 
-class GPUFallbackStrategy:
-    """Coordinates logging and fallback decisions for GPU operations."""
+class VectorStoreGPU:
+    """Vector store GPU operations via gRPC services."""
 
-    def __init__(self, *, logger: Callable[[str], None] | None = None) -> None:
-        self.logger = logger
+    def __init__(self):
+        self._client_manager: EmbeddingClientManager | None = None
 
-    def guard(self, *, operation: str, require_gpu: bool) -> bool:
-        available = gpu_available()
-        if require_gpu and not available:
-            raise RuntimeError(f"{operation} requires a GPU but none are available")
-        if not available and self.logger:
-            self.logger(f"gpu_fallback:{operation}")
-        return available
+    async def _get_client_manager(self) -> EmbeddingClientManager:
+        """Get or create embedding client manager."""
+        if self._client_manager is None:
+            self._client_manager = EmbeddingClientManager()
+            await self._client_manager.initialize()
+        return self._client_manager
 
+    async def generate_embeddings(
+        self, texts: list[str], model: str = "default"
+    ) -> list[list[float]]:
+        """Generate embeddings via gRPC service."""
+        try:
+            client_manager = await self._get_client_manager()
+            embeddings = await client_manager.generate_embeddings_batch(texts, model)
+            return embeddings
+        except Exception as e:
+            logger.error("vector_store.embedding.error", error=str(e))
+            raise RuntimeError(f"Embedding generation failed: {e}")
 
-def get_gpu_stats() -> list[GPUStats]:
-    """Return stats for each visible GPU device."""
-    if torch is None or not getattr(torch, "cuda", None) or not torch.cuda.is_available():  # type: ignore[attr-defined]
-        return []
-    stats: list[GPUStats] = []
-    for index in range(torch.cuda.device_count()):  # type: ignore[attr-defined]
-        props = torch.cuda.get_device_properties(index)  # type: ignore[attr-defined]
-        stats.append(
-            GPUStats(
-                device=str(index),
-                total_memory=int(props.total_memory),
-                allocated=int(torch.cuda.memory_allocated(index)),  # type: ignore[attr-defined]
-            )
-        )
-    return stats
+    async def similarity_search(
+        self, query_embedding: list[float], index_embeddings: list[list[float]], top_k: int = 10
+    ) -> list[dict[str, Any]]:
+        """Perform similarity search using embeddings."""
+        try:
+            # Simple cosine similarity implementation
+            import numpy as np
 
+            query_np = np.array(query_embedding)
+            similarities = []
 
-def plan_batches(
-    total: int,
-    *,
-    manager: GPUResourceManager,
-    logger: Callable[[str], None] | None = None,
-) -> Sequence[range]:
-    """Yield ranges describing how to batch work depending on GPU availability."""
-    available = manager.ensure()
-    batch_size = manager.choose_batch_size(available=available, total=total)
-    if not available and logger:
-        message = manager.fallback_message(operation="batching")
-        if message:
-            logger(message)
-    ranges: list[range] = []
-    for start in range(0, total, max(batch_size, 1)):
-        ranges.append(range(start, min(start + batch_size, total)))
-    return ranges
+            for i, embedding in enumerate(index_embeddings):
+                embedding_np = np.array(embedding)
+                similarity = np.dot(query_np, embedding_np) / (
+                    np.linalg.norm(query_np) * np.linalg.norm(embedding_np)
+                )
+                similarities.append(
+                    {"index": i, "similarity": float(similarity), "embedding": embedding}
+                )
 
+            # Sort by similarity and return top_k
+            similarities.sort(key=lambda x: x["similarity"], reverse=True)
+            return similarities[:top_k]
 
-def summarise_stats(stats: Iterable[GPUStats]) -> dict[str, float]:
-    """Summarise GPU stats for Prometheus or logging."""
-    stats = list(stats)
-    if not stats:
-        return {"devices": 0, "max_utilisation": 0.0}
-    return {
-        "devices": float(len(stats)),
-        "max_utilisation": max(stat.utilisation for stat in stats),
-    }
+        except Exception as e:
+            logger.error("vector_store.similarity.error", error=str(e))
+            raise RuntimeError(f"Similarity search failed: {e}")
+
+    async def close(self) -> None:
+        """Close the embedding client manager."""
+        if self._client_manager:
+            await self._client_manager.close()
 
 
-__all__ = [
-    "GPUFallbackStrategy",
-    "GPUResourceManager",
-    "GPUStats",
-    "get_gpu_stats",
-    "gpu_available",
-    "plan_batches",
-    "summarise_stats",
-]
+# Legacy functions (replaced with gRPC service calls)
+def generate_embeddings(texts: list[str], model: str = "default") -> list[list[float]]:
+    """Legacy function - embedding generation moved to gRPC services."""
+    raise NotImplementedError(
+        "Embedding generation moved to gRPC services. Use VectorStoreGPU instead."
+    )
+
+
+def similarity_search(
+    query_embedding: list[float], index_embeddings: list[list[float]], top_k: int = 10
+) -> list[dict[str, Any]]:
+    """Legacy function - similarity search moved to gRPC services."""
+    raise NotImplementedError(
+        "Similarity search moved to gRPC services. Use VectorStoreGPU instead."
+    )

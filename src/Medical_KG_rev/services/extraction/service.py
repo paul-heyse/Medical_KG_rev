@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import structlog
 
-from ..gpu.manager import GpuManager
+from ..gpu.manager import GpuServiceManager
 
 logger = structlog.get_logger(__name__)
 

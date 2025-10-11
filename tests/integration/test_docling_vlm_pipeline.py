@@ -1,4 +1,4 @@
-"""Integration-style tests for GatewayService Docling processing."""
+"""Integration-style tests for Docling VLM pipeline processing."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from Medical_KG_rev.gateway.coordinators import CoordinatorError
 from Medical_KG_rev.gateway.models import DoclingProcessingRequest
-from Medical_KG_rev.gateway.services import GatewayError, GatewayService
 from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMResult
 from Medical_KG_rev.services.parsing.exceptions import DoclingModelUnavailableError
 
@@ -30,26 +30,22 @@ class StubDoclingService:
 
 
 @pytest.fixture()
-def gateway_service() -> GatewayService:
-    with patch.object(GatewayService, "__post_init__", lambda self: None):
-        service = GatewayService(
-            events=MagicMock(),
-            orchestrator=MagicMock(),
-            ledger=MagicMock(),
-        )
-    service.docling_service = StubDoclingService()
-    return service
+def docling_coordinator() -> MagicMock:
+    """Create a mock docling coordinator for testing."""
+    coordinator = MagicMock()
+    coordinator.docling_service = StubDoclingService()
+    return coordinator
 
 
-def test_process_docling_pdf_with_file_path(gateway_service: GatewayService) -> None:
+def test_process_docling_pdf_with_file_path(docling_coordinator: MagicMock) -> None:
     request = DoclingProcessingRequest(document_id="doc-1", pdf_path="/tmp/doc.pdf")
-    response = gateway_service.process_docling_pdf(request)
+    response = docling_coordinator.process_docling_pdf(request)
     assert response.result.document_id == "doc-1"
     assert response.model_name == "stub-model"
     assert response.result.text.startswith("processed")
 
 
-def test_process_docling_pdf_downloads_when_url_provided(gateway_service: GatewayService) -> None:
+def test_process_docling_pdf_downloads_when_url_provided(docling_coordinator: MagicMock) -> None:
     cleanup_called: list[bool] = []
 
     def _cleanup() -> None:
@@ -60,17 +56,19 @@ def test_process_docling_pdf_downloads_when_url_provided(gateway_service: Gatewa
         "_download_pdf_from_url",
         return_value=("/tmp/downloaded.pdf", _cleanup),
     ) as downloader:
-        request = DoclingProcessingRequest(document_id="doc-2", pdf_url="https://example.com/doc.pdf")
-        response = gateway_service.process_docling_pdf(request)
+        request = DoclingProcessingRequest(
+            document_id="doc-2", pdf_url="https://example.com/doc.pdf"
+        )
+        response = docling_coordinator.process_docling_pdf(request)
         downloader.assert_called_once()
         assert response.result.document_id == "doc-2"
         assert cleanup_called == [True]
 
 
-def test_process_docling_pdf_surface_gateway_error(gateway_service: GatewayService) -> None:
-    gateway_service.docling_service = MagicMock()
-    gateway_service.docling_service.process_pdf.side_effect = DoclingModelUnavailableError("gpu")
+def test_process_docling_pdf_surface_coordinator_error(docling_coordinator: MagicMock) -> None:
+    docling_coordinator.docling_service = MagicMock()
+    docling_coordinator.docling_service.process_pdf.side_effect = DoclingModelUnavailableError("gpu")
     request = DoclingProcessingRequest(document_id="doc-3", pdf_path="/tmp/doc.pdf")
-    with pytest.raises(GatewayError) as exc:
-        gateway_service.process_docling_pdf(request)
+    with pytest.raises(CoordinatorError) as exc:
+        docling_coordinator.process_docling_pdf(request)
     assert exc.value.detail.status == 503

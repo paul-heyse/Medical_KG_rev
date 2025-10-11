@@ -1,0 +1,99 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: custom-metrics-adapter
+    namespace: medical-kg
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: custom-metrics-adapter
+rules:
+    - apiGroups: [""]
+      resources: ["services", "endpoints", "pods"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["custom.metrics.k8s.io"]
+      resources: ["*"]
+      verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: custom-metrics-adapter
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: custom-metrics-adapter
+subjects:
+    - kind: ServiceAccount
+      name: custom-metrics-adapter
+      namespace: medical-kg
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: custom-metrics-adapter
+    namespace: medical-kg
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: custom-metrics-adapter
+    template:
+        metadata:
+            labels:
+                app: custom-metrics-adapter
+        spec:
+            serviceAccountName: custom-metrics-adapter
+            containers:
+                - name: custom-metrics-adapter
+                  image: medical-kg/custom-metrics-adapter:latest
+                  ports:
+                      - containerPort: 8080
+                        name: http
+                  env:
+                      - name: PROMETHEUS_URL
+                        value: "http://prometheus:9090"
+                      - name: METRICS_INTERVAL
+                        value: "30s"
+                  resources:
+                      requests:
+                          memory: "128Mi"
+                          cpu: "100m"
+                      limits:
+                          memory: "256Mi"
+                          cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: custom-metrics-adapter
+    namespace: medical-kg
+spec:
+    selector:
+        app: custom-metrics-adapter
+    ports:
+        - port: 8080
+          targetPort: 8080
+          name: http
+    type: ClusterIP
+
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+    name: v1beta1.custom.metrics.k8s.io
+spec:
+    service:
+        name: custom-metrics-adapter
+        namespace: medical-kg
+    group: custom.metrics.k8s.io
+    version: v1beta1
+    insecureSkipTLSVerify: true
+    groupPriorityMinimum: 100
+    versionPriority: 100

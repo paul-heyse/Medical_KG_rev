@@ -57,18 +57,7 @@ class ChunkingFailedError(ChunkingError):
         self.detail = detail
 
 
-class MineruOutOfMemoryError(ChunkingError):
-    """Raised when MinerU exhausts GPU memory during processing."""
 
-    def __init__(self) -> None:
-        super().__init__("GPU out of memory. Retry later or reduce PDF size.")
-
-
-class MineruGpuUnavailableError(ChunkingError):
-    """Raised when MinerU cannot detect a healthy GPU backend."""
-
-    def __init__(self) -> None:
-        super().__init__("GPU required for PDF processing. Check GPU availability.")
 
 
 __all__ = [
@@ -78,8 +67,6 @@ __all__ = [
     "ChunkingFailedError",
     "ChunkingUnavailableError",
     "InvalidDocumentError",
-    "MineruGpuUnavailableError",
-    "MineruOutOfMemoryError",
     "ProfileNotFoundError",
     "TokenizerMismatchError",
 ]

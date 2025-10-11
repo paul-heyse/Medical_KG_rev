@@ -44,7 +44,7 @@ else:  # pragma: no cover - fallback when grpc-health not installed
     health_pb2 = _StubHealthPb2()
     health_pb2_grpc = _StubHealthGrpc()
 
-from ..auth.scopes import Scopes
+from ...auth.scopes import Scopes
 from ..models import (
     ChunkRequest,
     EmbeddingOptions,
@@ -62,59 +62,13 @@ try:  # pragma: no cover - generated modules may be missing in CI
         extraction_pb2_grpc,
         ingestion_pb2,
         ingestion_pb2_grpc,
-        mineru_pb2,
-        mineru_pb2_grpc,
     )
 except ImportError:  # pragma: no cover - generation happens in CI
     embedding_pb2 = embedding_pb2_grpc = None
     extraction_pb2 = extraction_pb2_grpc = None
     ingestion_pb2 = ingestion_pb2_grpc = None
-    mineru_pb2 = mineru_pb2_grpc = None
 
 
-class MineruService(mineru_pb2_grpc.MineruServiceServicer if mineru_pb2_grpc else object):
-    def __init__(self, service: GatewayService) -> None:
-        self.service = service
-
-    async def ProcessPdf(self, request, context):  # type: ignore[override]
-        chunk_request = ChunkRequest(tenant_id=request.tenant_id, document_id=request.document_id)
-        chunks = self.service.chunk_document(chunk_request)
-        if mineru_pb2 is None:
-            return None
-        started_at = datetime.now(UTC)
-        response = mineru_pb2.ProcessPdfResponse()
-        document = response.document
-        document.document_id = request.document_id
-        document.tenant_id = request.tenant_id
-        for chunk in chunks:
-            block = document.blocks.add()
-            block.id = f"{chunk.document_id}-chunk-{chunk.chunk_index}"
-            block.page = getattr(chunk, "page", 0)
-            block.kind = "chunk"
-            block.text = chunk.content or ""
-            block.confidence = 1.0
-            block.reading_order = int(chunk.chunk_index)
-        metadata = response.metadata
-        metadata.document_id = request.document_id
-        metadata.worker_id = "gateway"
-        metadata.started_at = started_at.isoformat()
-        metadata.completed_at = datetime.now(UTC).isoformat()
-        metadata.duration_seconds = 0.0
-        return response
-
-    async def BatchProcessPdf(self, request, context):  # type: ignore[override]
-        if mineru_pb2 is None:
-            return None
-        reply = mineru_pb2.BatchProcessPdfResponse()
-        for item in request.requests:
-            single = await self.ProcessPdf(item, context)
-            if single is None:
-                continue
-            document = reply.documents.add()
-            document.CopyFrom(single.document)
-            metadata = reply.metadata.add()
-            metadata.CopyFrom(single.metadata)
-        return reply
 
 
 class EmbeddingService(
@@ -274,10 +228,6 @@ class GatewayGrpcServer:
 
     async def start(self, host: str = "0.0.0.0", port: int = 50051) -> None:
         self._server = grpc.aio.server()
-        if mineru_pb2_grpc:
-            mineru_pb2_grpc.add_MineruServiceServicer_to_server(
-                MineruService(self.service), self._server
-            )
         if embedding_pb2_grpc:
             embedding_pb2_grpc.add_EmbeddingServiceServicer_to_server(
                 EmbeddingService(self.service), self._server

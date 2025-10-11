@@ -13,7 +13,8 @@ from strawberry.fastapi import GraphQLRouter
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
-from ...auth.scopes import Scopes
+from Medical_KG_rev.auth.scopes import Scopes
+
 from ..models import (
     AdapterHealthView,
     AdapterMetadataView,

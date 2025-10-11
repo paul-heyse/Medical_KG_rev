@@ -1,62 +1,67 @@
 name: pmc-fulltext
 version: "2025-01-01"
 applicable_sources:
-  - pmc-fulltext
+    - pmc-fulltext
 metadata:
-  owner: adapters-team
-  description: Two-phase PDF pipeline for PubMed Central full text articles.
+    owner: adapters-team
+    description: Two-phase PDF pipeline for PubMed Central full text articles.
 stages:
-  - name: ingest
-    type: ingest
-    policy: polite-api
-    config:
-      adapter: pmc
-  - name: download
-    type: download
-    policy: polite-api
-    depends_on:
-      - ingest
-  - name: gate_pdf_ir_ready
-    type: gate
-    policy: default
-    depends_on:
-      - download
-  - name: mineru_ir
-    type: ir-validation
-    policy: gpu-bound
-    depends_on:
-      - gate_pdf_ir_ready
-  - name: chunk
-    type: chunk
-    policy: gpu-bound
-    depends_on:
-      - mineru_ir
-  - name: embed
-    type: embed
-    policy: gpu-bound
-    depends_on:
-      - chunk
-  - name: index
-    type: index
-    policy: default
-    depends_on:
-      - embed
-  - name: extract
-    type: extract
-    policy: gpu-bound
-    depends_on:
-      - mineru_ir
-  - name: kg
-    type: knowledge-graph
-    policy: default
-    depends_on:
-      - extract
-      - index
+    - name: ingest
+      type: ingest
+      policy: polite-api
+      config:
+          adapter: pmc
+    - name: download
+      type: download
+      policy: polite-api
+      depends_on:
+          - ingest
+    - name: gate_pdf_ir_ready
+      type: gate
+      policy: default
+      depends_on:
+          - download
+    - name: parse
+      type: parse
+      policy: gpu-bound
+      depends_on:
+          - gate_pdf_ir_ready
+    - name: mineru_ir
+      type: ir-validation
+      policy: gpu-bound
+      depends_on:
+          - parse
+    - name: chunk
+      type: chunk
+      policy: gpu-bound
+      depends_on:
+          - mineru_ir
+    - name: embed
+      type: embed
+      policy: gpu-bound
+      depends_on:
+          - chunk
+    - name: index
+      type: index
+      policy: default
+      depends_on:
+          - embed
+    - name: extract
+      type: extract
+      policy: gpu-bound
+      depends_on:
+          - mineru_ir
+    - name: kg
+      type: knowledge-graph
+      policy: default
+      depends_on:
+          - extract
+          - index
 gates:
-  - name: pdf_ir_ready
-    resume_stage: mineru_ir
-    condition:
-      field: pdf_ir_ready
-      equals: true
-      timeout_seconds: 900
-      poll_interval_seconds: 10.0
+    - name: pdf_ir_ready
+      resume_stage: mineru_ir
+      condition:
+          field: pdf_ir_ready
+          equals: true
+          timeout_seconds: 900
+          poll_interval_seconds: 10.0

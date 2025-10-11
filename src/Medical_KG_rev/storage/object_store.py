@@ -117,12 +117,12 @@ class FigureStorageClient:
         self,
         backend: ObjectStore,
         *,
-        base_prefix: str = "mineru",
+        base_prefix: str = "docling",
         signed_url_ttl: int = 3600,
         default_content_type: str = "image/png",
     ) -> None:
         self._backend = backend
-        self._base_prefix = base_prefix.strip("/") or "mineru"
+        self._base_prefix = base_prefix.strip("/") or "docling"
         self._signed_url_ttl = signed_url_ttl
         self._default_content_type = default_content_type
 

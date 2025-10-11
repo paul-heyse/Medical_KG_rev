@@ -1,0 +1,242 @@
+# Torch Isolation Deployment Configuration
+# This file configures the deployment of torch-isolated services
+
+deployment:
+    strategy: blue_green
+    environment: production
+    namespace: medical-kg
+    timeout: 1800 # 30 minutes
+    health_check_interval: 30 # seconds
+    max_retries: 3
+    rollback_on_failure: true
+    validation_required: true
+
+# Service configurations
+services:
+    gpu_management:
+        replicas: 2
+        resources:
+            cpu: 1000m
+            memory: 2Gi
+            gpu: 1
+        port: 50051
+        health_check:
+            enabled: true
+            path: /health
+            interval: 30
+            timeout: 10
+        scaling:
+            min_replicas: 1
+            max_replicas: 5
+            target_cpu: 70
+            target_gpu: 80
+
+    embedding_service:
+        replicas: 3
+        resources:
+            cpu: 2000m
+            memory: 8Gi
+            gpu: 1
+        port: 50052
+        health_check:
+            enabled: true
+            path: /health
+            interval: 30
+            timeout: 10
+        scaling:
+            min_replicas: 2
+            max_replicas: 10
+            target_cpu: 70
+            target_gpu: 80
+        model_cache:
+            enabled: true
+            size: 4Gi
+            path: /models/embedding
+
+    reranking_service:
+        replicas: 2
+        resources:
+            cpu: 1000m
+            memory: 4Gi
+            gpu: 1
+        port: 50053
+        health_check:
+            enabled: true
+            path: /health
+            interval: 30
+            timeout: 10
+        scaling:
+            min_replicas: 1
+            max_replicas: 5
+            target_cpu: 70
+            target_gpu: 80
+        model_cache:
+            enabled: true
+            size: 2Gi
+            path: /models/reranking
+
+    docling_vlm_service:
+        replicas: 2
+        resources:
+            cpu: 2000m
+            memory: 24Gi
+            gpu: 1
+        port: 50054
+        health_check:
+            enabled: true
+            path: /health
+            interval: 30
+            timeout: 10
+        scaling:
+            min_replicas: 1
+            max_replicas: 4
+            target_cpu: 70
+            target_gpu: 80
+        model_cache:
+            enabled: true
+            size: 12Gi
+            path: /models/docling-vlm
+
+# Gateway configuration
+gateway:
+    replicas: 3
+    resources:
+        cpu: 1000m
+        memory: 2Gi
+    port: 8000
+    health_check:
+        enabled: true
+        path: /health
+        interval: 30
+        timeout: 10
+    scaling:
+        min_replicas: 2
+        max_replicas: 10
+        target_cpu: 70
+
+# Monitoring configuration
+monitoring:
+    enabled: true
+    metrics_endpoint: /metrics
+    health_endpoint: /health
+    prometheus:
+        enabled: true
+        scrape_interval: 30s
+    grafana:
+        enabled: true
+        dashboards:
+            - gpu-services-dashboard.json
+            - service-architecture-dashboard.json
+    alerting:
+        enabled: true
+        rules:
+            - gpu_service_failures
+            - circuit_breaker_open
+            - high_gpu_service_latency
+            - high_gpu_memory_usage
+
+# Security configuration
+security:
+    mtls:
+        enabled: true
+        ca_cert_path: /certs/ca.crt
+        ca_key_path: /certs/ca.key
+        service_cert_path: /certs/service.crt
+        service_key_path: /certs/service.key
+    network_policies:
+        enabled: true
+        default_deny: true
+    pod_security_policy:
+        enabled: true
+        run_as_non_root: true
+        read_only_root_filesystem: true
+
+# Storage configuration
+storage:
+    persistent_volumes:
+        enabled: true
+        storage_class: gp2
+        size: 100Gi
+    model_cache:
+        enabled: true
+        storage_class: gp2
+        size: 50Gi
+    logs:
+        enabled: true
+        storage_class: gp2
+        size: 20Gi
+        retention: 30d
+
+# Network configuration
+network:
+    service_mesh:
+        enabled: true
+        type: istio
+    load_balancer:
+        enabled: true
+        type: nginx
+    ingress:
+        enabled: true
+        tls:
+            enabled: true
+            cert_manager: true
+
+# Environment-specific overrides
+environments:
+    development:
+        services:
+            gpu_management:
+                replicas: 1
+            embedding_service:
+                replicas: 1
+            reranking_service:
+                replicas: 1
+            docling_vlm_service:
+                replicas: 1
+            gateway:
+                replicas: 1
+        monitoring:
+            enabled: false
+        security:
+            mtls:
+                enabled: false
+
+    staging:
+        services:
+            gpu_management:
+                replicas: 1
+            embedding_service:
+                replicas: 2
+            reranking_service:
+                replicas: 1
+            docling_vlm_service:
+                replicas: 1
+            gateway:
+                replicas: 2
+        monitoring:
+            enabled: true
+        security:
+            mtls:
+                enabled: true
+
+    production:
+        services:
+            gpu_management:
+                replicas: 2
+            embedding_service:
+                replicas: 3
+            reranking_service:
+                replicas: 2
+            docling_vlm_service:
+                replicas: 2
+            gateway:
+                replicas: 3
+        monitoring:
+            enabled: true
+        security:
+            mtls:
+                enabled: true
+        deployment:
+            strategy: blue_green
+            validation_required: true
+            rollback_on_failure: true

@@ -54,9 +54,7 @@ def test_redis_cache_uses_client(monkeypatch: pytest.MonkeyPatch) -> None:
         def set(self, key: str, value: str) -> None:
             storage[key] = value
 
-        def setex(
-            self, key: str, ttl: int, value: str
-        ) -> None:
+        def setex(self, key: str, ttl: int, value: str) -> None:
             storage[key] = value
 
         def scan_iter(self, pattern: str):

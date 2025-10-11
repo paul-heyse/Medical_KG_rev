@@ -1,0 +1,499 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "Service Architecture Dashboard",
+        "tags": [
+            "torch-isolation",
+            "services",
+            "gpu"
+        ],
+        "style": "dark",
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "panels": [
+            {
+                "id": 1,
+                "title": "Service Health Overview",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "service_availability",
+                        "legendFormat": "{{service}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        "mappings": [
+                            {
+                                "type": "value",
+                                "options": {
+                                    "0": {
+                                        "text": "Down"
+                                    },
+                                    "1": {
+                                        "text": "Up"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            {
+                "id": 2,
+                "title": "Service Response Times (P95)",
+                "type": "timeseries",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(service_call_duration_seconds_bucket[5m]))",
+                        "legendFormat": "{{service}} - {{method}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "s",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "linear",
+                            "barAlignment": 0,
+                            "lineWidth": 1,
+                            "fillOpacity": 10,
+                            "gradientMode": "none",
+                            "spanNulls": false,
+                            "insertNulls": false,
+                            "showPoints": "never",
+                            "pointSize": 5,
+                            "stacking": {
+                                "mode": "none",
+                                "group": "A"
+                            },
+                            "axisPlacement": "auto",
+                            "axisLabel": "",
+                            "scaleDistribution": {
+                                "type": "linear"
+                            },
+                            "hideFrom": {
+                                "legend": false,
+                                "tooltip": false,
+                                "vis": false
+                            },
+                            "thresholdsStyle": {
+                                "mode": "off"
+                            }
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 0.1
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 0.5
+                                }
+                            ]
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                }
+            },
+            {
+                "id": 3,
+                "title": "Service Error Rates",
+                "type": "timeseries",
+                "targets": [
+                    {
+                        "expr": "rate(service_call_errors_total[5m]) / rate(service_calls_total[5m])",
+                        "legendFormat": "{{service}} - {{method}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percentunit",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "linear",
+                            "barAlignment": 0,
+                            "lineWidth": 1,
+                            "fillOpacity": 10,
+                            "gradientMode": "none",
+                            "spanNulls": false,
+                            "insertNulls": false,
+                            "showPoints": "never",
+                            "pointSize": 5,
+                            "stacking": {
+                                "mode": "none",
+                                "group": "A"
+                            },
+                            "axisPlacement": "auto",
+                            "axisLabel": "",
+                            "scaleDistribution": {
+                                "type": "linear"
+                            },
+                            "hideFrom": {
+                                "legend": false,
+                                "tooltip": false,
+                                "vis": false
+                            },
+                            "thresholdsStyle": {
+                                "mode": "off"
+                            }
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 0.01
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 0.05
+                                }
+                            ]
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                }
+            },
+            {
+                "id": 4,
+                "title": "Circuit Breaker Status",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "circuit_breaker_state",
+                        "legendFormat": "{{service}} - {{state}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 2
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        "mappings": [
+                            {
+                                "type": "value",
+                                "options": {
+                                    "0": {
+                                        "text": "Closed"
+                                    },
+                                    "1": {
+                                        "text": "Open"
+                                    },
+                                    "2": {
+                                        "text": "Half-Open"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 8
+                }
+            },
+            {
+                "id": 5,
+                "title": "GPU Utilization",
+                "type": "timeseries",
+                "targets": [
+                    {
+                        "expr": "gpu_utilization_percent",
+                        "legendFormat": "{{service}} - {{device_id}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "linear",
+                            "barAlignment": 0,
+                            "lineWidth": 1,
+                            "fillOpacity": 10,
+                            "gradientMode": "none",
+                            "spanNulls": false,
+                            "insertNulls": false,
+                            "showPoints": "never",
+                            "pointSize": 5,
+                            "stacking": {
+                                "mode": "none",
+                                "group": "A"
+                            },
+                            "axisPlacement": "auto",
+                            "axisLabel": "",
+                            "scaleDistribution": {
+                                "type": "linear"
+                            },
+                            "hideFrom": {
+                                "legend": false,
+                                "tooltip": false,
+                                "vis": false
+                            },
+                            "thresholdsStyle": {
+                                "mode": "off"
+                            }
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 70
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 90
+                                }
+                            ]
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                }
+            },
+            {
+                "id": 6,
+                "title": "GPU Memory Usage",
+                "type": "timeseries",
+                "targets": [
+                    {
+                        "expr": "gpu_memory_usage_bytes",
+                        "legendFormat": "{{service}} - {{device_id}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "bytes",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "linear",
+                            "barAlignment": 0,
+                            "lineWidth": 1,
+                            "fillOpacity": 10,
+                            "gradientMode": "none",
+                            "spanNulls": false,
+                            "insertNulls": false,
+                            "showPoints": "never",
+                            "pointSize": 5,
+                            "stacking": {
+                                "mode": "none",
+                                "group": "A"
+                            },
+                            "axisPlacement": "auto",
+                            "axisLabel": "",
+                            "scaleDistribution": {
+                                "type": "linear"
+                            },
+                            "hideFrom": {
+                                "legend": false,
+                                "tooltip": false,
+                                "vis": false
+                            },
+                            "thresholdsStyle": {
+                                "mode": "off"
+                            }
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                }
+            },
+            {
+                "id": 7,
+                "title": "Service Call Volume",
+                "type": "timeseries",
+                "targets": [
+                    {
+                        "expr": "rate(service_calls_total[5m])",
+                        "legendFormat": "{{service}} - {{method}}"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "reqps",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "linear",
+                            "barAlignment": 0,
+                            "lineWidth": 1,
+                            "fillOpacity": 10,
+                            "gradientMode": "none",
+                            "spanNulls": false,
+                            "insertNulls": false,
+                            "showPoints": "never",
+                            "pointSize": 5,
+                            "stacking": {
+                                "mode": "none",
+                                "group": "A"
+                            },
+                            "axisPlacement": "auto",
+                            "axisLabel": "",
+                            "scaleDistribution": {
+                                "type": "linear"
+                            },
+                            "hideFrom": {
+                                "legend": false,
+                                "tooltip": false,
+                                "vis": false
+                            },
+                            "thresholdsStyle": {
+                                "mode": "off"
+                            }
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 24
+                }
+            },
+            {
+                "id": 8,
+                "title": "Service Discovery Metrics",
+                "type": "table",
+                "targets": [
+                    {
+                        "expr": "service_availability",
+                        "format": "table",
+                        "instant": true
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "custom": {
+                            "align": "auto",
+                            "displayMode": "auto"
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 24
+                }
+            }
+        ],
+        "annotations": {
+            "list": [
+                {
+                    "name": "Service Deployments",
+                    "datasource": "Prometheus",
+                    "expr": "changes(service_availability[1m])",
+                    "iconColor": "blue",
+                    "enable": true,
+                    "step": "1m"
+                }
+            ]
+        },
+        "templating": {
+            "list": [
+                {
+                    "name": "service",
+                    "type": "query",
+                    "query": "label_values(service_calls_total, service)",
+                    "refresh": 1,
+                    "includeAll": true,
+                    "multi": true
+                },
+                {
+                    "name": "method",
+                    "type": "query",
+                    "query": "label_values(service_calls_total{service=~\"$service\"}, method)",
+                    "refresh": 1,
+                    "includeAll": true,
+                    "multi": true
+                }
+            ]
+        },
+        "links": [
+            {
+                "title": "Service Architecture Documentation",
+                "url": "https://docs.medical-kg.com/architecture/services"
+            },
+            {
+                "title": "Torch Isolation Migration Guide",
+                "url": "https://docs.medical-kg.com/guides/torch-isolation-migration"
+            }
+        ]
+    }
+}

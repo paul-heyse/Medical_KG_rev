@@ -1,0 +1,276 @@
+version: "3.8"
+
+services:
+    # Main Gateway (torch-free)
+    gateway:
+        build:
+            context: ..
+            dockerfile: ops/docker/gateway/Dockerfile
+        ports:
+            - "8000:8000"
+        environment:
+            - MTLS_ENABLED=true
+            - MTLS_CA_CERT_PATH=/certs/ca.crt
+            - MTLS_CA_KEY_PATH=/certs/ca.key
+            - GPU_SERVICE_ENDPOINT=gpu-management:50051
+            - EMBEDDING_SERVICE_ENDPOINT=embedding:50052
+            - RERANKING_SERVICE_ENDPOINT=reranking:50053
+            - DOCLING_VLM_SERVICE_ENDPOINT=docling-vlm:50054
+        volumes:
+            - ../certs:/certs:ro
+        depends_on:
+            - gpu-management
+            - embedding
+            - reranking
+            - docling-vlm
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+    # GPU Management Service
+    gpu-management:
+        build:
+            context: ..
+            dockerfile: ops/docker/gpu-services/Dockerfile
+        ports:
+            - "50051:50051"
+        environment:
+            - MTLS_ENABLED=true
+            - MTLS_CA_CERT_PATH=/certs/ca.crt
+            - MTLS_CA_KEY_PATH=/certs/ca.key
+            - SERVICE_CERT_PATH=/certs/gpu-management.crt
+            - SERVICE_KEY_PATH=/certs/gpu-management.key
+            - SERVICE_NAME=gpu-management
+        volumes:
+            - ../certs:/certs:ro
+            - /dev/nvidia0:/dev/nvidia0
+            - /dev/nvidiactl:/dev/nvidiactl
+            - /dev/nvidia-uvm:/dev/nvidia-uvm
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "grpc_health_probe",
+                    "-addr=:50051",
+                    "-tls",
+                    "-tls-server-name=gpu-management",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+    # Embedding Service
+    embedding:
+        build:
+            context: ..
+            dockerfile: ops/docker/embedding-services/Dockerfile
+        ports:
+            - "50052:50052"
+        environment:
+            - MTLS_ENABLED=true
+            - MTLS_CA_CERT_PATH=/certs/ca.crt
+            - MTLS_CA_KEY_PATH=/certs/ca.key
+            - SERVICE_CERT_PATH=/certs/embedding.crt
+            - SERVICE_KEY_PATH=/certs/embedding.key
+            - SERVICE_NAME=embedding
+            - MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+            - BATCH_SIZE=32
+            - MAX_SEQUENCE_LENGTH=512
+        volumes:
+            - ../certs:/certs:ro
+            - ../models:/models
+            - /dev/nvidia0:/dev/nvidia0
+            - /dev/nvidiactl:/dev/nvidiactl
+            - /dev/nvidia-uvm:/dev/nvidia-uvm
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "grpc_health_probe",
+                    "-addr=:50052",
+                    "-tls",
+                    "-tls-server-name=embedding",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+    # Reranking Service
+    reranking:
+        build:
+            context: ..
+            dockerfile: ops/docker/reranking-services/Dockerfile
+        ports:
+            - "50053:50053"
+        environment:
+            - MTLS_ENABLED=true
+            - MTLS_CA_CERT_PATH=/certs/ca.crt
+            - MTLS_CA_KEY_PATH=/certs/ca.key
+            - SERVICE_CERT_PATH=/certs/reranking.crt
+            - SERVICE_KEY_PATH=/certs/reranking.key
+            - SERVICE_NAME=reranking
+            - MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
+            - BATCH_SIZE=16
+            - MAX_SEQUENCE_LENGTH=512
+        volumes:
+            - ../certs:/certs:ro
+            - ../models:/models
+            - /dev/nvidia0:/dev/nvidia0
+            - /dev/nvidiactl:/dev/nvidiactl
+            - /dev/nvidia-uvm:/dev/nvidia-uvm
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "grpc_health_probe",
+                    "-addr=:50053",
+                    "-tls",
+                    "-tls-server-name=reranking",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+    # Docling VLM Service
+    docling-vlm:
+        build:
+            context: ..
+            dockerfile: ops/docker/docling-vlm-services/Dockerfile
+        ports:
+            - "50054:50054"
+        environment:
+            - MTLS_ENABLED=true
+            - MTLS_CA_CERT_PATH=/certs/ca.crt
+            - MTLS_CA_KEY_PATH=/certs/ca.key
+            - SERVICE_CERT_PATH=/certs/docling-vlm.crt
+            - SERVICE_KEY_PATH=/certs/docling-vlm.key
+            - SERVICE_NAME=docling-vlm
+            - MODEL_NAME=google/gemma-2-12b-it
+            - BATCH_SIZE=1
+            - MAX_SEQUENCE_LENGTH=4096
+            - GPU_MEMORY_FRACTION=0.95
+        volumes:
+            - ../certs:/certs:ro
+            - ../models:/models
+            - /dev/nvidia0:/dev/nvidia0
+            - /dev/nvidiactl:/dev/nvidiactl
+            - /dev/nvidia-uvm:/dev/nvidia-uvm
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "grpc_health_probe",
+                    "-addr=:50054",
+                    "-tls",
+                    "-tls-server-name=docling-vlm",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+    # Certificate Generation Service
+    cert-generator:
+        build:
+            context: ..
+            dockerfile: ops/docker/cert-generator/Dockerfile
+        volumes:
+            - ../certs:/certs
+            - ../scripts:/scripts:ro
+        command:
+            [
+                "python",
+                "/scripts/generate_mtls_certificates.py",
+                "--services",
+                "gateway",
+                "gpu-management",
+                "embedding",
+                "reranking",
+                "docling-vlm",
+            ]
+        networks:
+            - medical-kg-network
+
+    # Monitoring and Observability
+    prometheus:
+        image: prom/prometheus:latest
+        ports:
+            - "9090:9090"
+        volumes:
+            - ../ops/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+        networks:
+            - medical-kg-network
+
+    grafana:
+        image: grafana/grafana:latest
+        ports:
+            - "3000:3000"
+        environment:
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+        volumes:
+            - ../ops/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+            - ../ops/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+        networks:
+            - medical-kg-network
+
+    jaeger:
+        image: jaegertracing/all-in-one:latest
+        ports:
+            - "16686:16686"
+            - "14268:14268"
+        environment:
+            - COLLECTOR_OTLP_ENABLED=true
+        networks:
+            - medical-kg-network
+
+networks:
+    medical-kg-network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 172.20.0.0/16
+
+volumes:
+    models:
+        driver: local
+    certs:
+        driver: local

@@ -1,0 +1,181 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: medical-kg-gateway-torch-free
+    namespace: medical-kg
+    labels:
+        app: medical-kg-gateway
+        version: torch-free
+spec:
+    replicas: 3
+    selector:
+        matchLabels:
+            app: medical-kg-gateway
+            version: torch-free
+    template:
+        metadata:
+            labels:
+                app: medical-kg-gateway
+                version: torch-free
+        spec:
+            containers:
+                - name: gateway
+                  image: medical-kg-gateway:torch-free
+                  ports:
+                      - containerPort: 8000
+                        name: http
+                  env:
+                      - name: GPU_SERVICE_URL
+                        value: "gpu-services.medical-kg.svc.cluster.local:50051"
+                      - name: EMBEDDING_SERVICE_URL
+                        value: "embedding-services.medical-kg.svc.cluster.local:50051"
+                      - name: RERANKING_SERVICE_URL
+                        value: "reranking-services.medical-kg.svc.cluster.local:50051"
+                      - name: JWT_SECRET
+                        valueFrom:
+                            secretKeyRef:
+                                name: medical-kg-secrets
+                                key: jwt-secret
+                  resources:
+                      requests:
+                          memory: "512Mi"
+                          cpu: "250m"
+                      limits:
+                          memory: "1Gi"
+                          cpu: "500m"
+                  livenessProbe:
+                      httpGet:
+                          path: /health
+                          port: 8000
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                  readinessProbe:
+                      httpGet:
+                          path: /health
+                          port: 8000
+                      initialDelaySeconds: 5
+                      periodSeconds: 5
+                  volumeMounts:
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+                      - name: tls-certs
+                        mountPath: /app/certs
+                        readOnly: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: medical-kg-gateway-config
+                - name: tls-certs
+                  secret:
+                      secretName: medical-kg-tls-certs
+            serviceAccountName: medical-kg-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: medical-kg-gateway
+    namespace: medical-kg
+    labels:
+        app: medical-kg-gateway
+spec:
+    selector:
+        app: medical-kg-gateway
+    ports:
+        - port: 8000
+          targetPort: 8000
+          name: http
+    type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: medical-kg-gateway-config
+    namespace: medical-kg
+data:
+    gateway.yaml: |
+        gateway:
+          host: "0.0.0.0"
+          port: 8000
+          workers: 4
+          log_level: "INFO"
+
+          services:
+            gpu:
+              url: "${GPU_SERVICE_URL}"
+              timeout: 30
+              retries: 3
+              circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+            embedding:
+              url: "${EMBEDDING_SERVICE_URL}"
+              timeout: 30
+              retries: 3
+              circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+            reranking:
+              url: "${RERANKING_SERVICE_URL}"
+              timeout: 30
+              retries: 3
+              circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+          chunking:
+            default_chunker: "docling"
+            chunkers:
+              docling:
+                enabled: true
+                granularity: "paragraph"
+              docling_vlm:
+                enabled: true
+                granularity: "paragraph"
+
+          security:
+            jwt_secret: "${JWT_SECRET}"
+            token_expiry: 3600
+            rate_limit:
+              requests_per_minute: 100
+              burst_size: 20
+
+          monitoring:
+            metrics_enabled: true
+            tracing_enabled: true
+            health_check_interval: 30
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: medical-kg-gateway
+    namespace: medical-kg
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    namespace: medical-kg
+    name: medical-kg-gateway-role
+rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: medical-kg-gateway-rolebinding
+    namespace: medical-kg
+subjects:
+    - kind: ServiceAccount
+      name: medical-kg-gateway
+      namespace: medical-kg
+roleRef:
+    kind: Role
+    name: medical-kg-gateway-role
+    apiGroup: rbac.authorization.k8s.io

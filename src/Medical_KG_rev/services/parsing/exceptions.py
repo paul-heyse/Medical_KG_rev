@@ -13,3 +13,15 @@ class DoclingModelLoadError(DoclingVLMError):
 
 class DoclingProcessingError(DoclingVLMError):
     """Raised when Docling fails to process a PDF document."""
+
+
+class DoclingModelUnavailableError(DoclingVLMError):
+    """Raised when the Docling model is unavailable."""
+
+
+class DoclingOutOfMemoryError(DoclingVLMError):
+    """Raised when Docling runs out of memory."""
+
+
+class DoclingProcessingTimeoutError(DoclingVLMError):
+    """Raised when Docling processing times out."""

@@ -13,9 +13,12 @@ logger = structlog.get_logger(__name__)
 
 
 try:  # pragma: no cover - optional dependency
-    import torch
+    # import torch  # Removed for torch isolation
+    pass
 except Exception:  # pragma: no cover - torch optional
-    torch = None  # type: ignore
+    pass
+# torch = None  # type: ignore  # Removed for torch isolation
+torch = None  # Torch functionality moved to gRPC services
 
 
 class BatchProcessor:
@@ -71,15 +74,8 @@ class BatchProcessor:
         return min(requested, self.max_batch_size)
 
     def gpu_memory_snapshot(self) -> float | None:
-        if torch is None or not hasattr(torch, "cuda") or not torch.cuda.is_available():  # type: ignore[attr-defined]
-            return None
-        try:  # pragma: no cover - depends on GPU runtime
-            free, total = torch.cuda.mem_get_info()  # type: ignore[attr-defined]
-            free_gb = float(free) / (1024**3)
-            logger.debug("rerank.gpu.memory", free_gb=free_gb)
-            return free_gb
-        except Exception:
-            return None
+        # GPU functionality moved to gRPC services
+        return None
 
     def split_on_timeout(
         self,

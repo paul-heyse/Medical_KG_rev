@@ -83,6 +83,7 @@ from Medical_KG_rev.orchestration.stages.contracts import (
     EmbedStage,
     StageContext,
 )
+from Medical_KG_rev.services.embedding.batch_controller import BatchController
 
 from .registry import EmbeddingModelRegistry
 

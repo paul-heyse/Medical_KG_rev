@@ -1,4 +1,4 @@
-"""Chunker that keeps MinerU tables and context together."""
+"""Chunker that keeps Docling VLM tables and context together."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from ..tokenization import TokenCounter, default_token_counter
 class TableAwareChunker(BaseChunker):
     """Chunker that preserves table boundaries and captions."""
 
-    name = "mineru.table-aware"
+    name = "docling.table-aware"
     version = "v1"
 
     def __init__(

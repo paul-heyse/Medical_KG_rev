@@ -25,8 +25,9 @@ if _prom is not None:  # pragma: no cover - optional runtime dependency
         "Number of retry attempts performed by Docling VLM",
     )
 else:  # pragma: no cover - provide no-op fallbacks
+
     class _NoopMetric:  # type: ignore[too-many-ancestors]
-        def labels(self, *_, **__):  # noqa: D401 - simple no-op helper
+        def labels(self, *_, **__):
             return self
 
         def observe(self, *_: object, **__: object) -> None:

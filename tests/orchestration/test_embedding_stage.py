@@ -4,8 +4,8 @@ import pytest
 
 pytest.importorskip("yaml")
 
-from Medical_KG_rev.orchestration.ingestion_pipeline import EmbeddingStage
-from Medical_KG_rev.orchestration.pipeline import PipelineContext
+from Medical_KG_rev.orchestration import EmbeddingStage
+from Medical_KG_rev.orchestration.stages.types import PipelineContext
 from Medical_KG_rev.orchestration.stages import StageFailure
 from Medical_KG_rev.services import GpuNotAvailableError
 from Medical_KG_rev.services.embedding.service import EmbeddingResponse, EmbeddingVector
@@ -36,11 +36,9 @@ def _vector(namespace: str, text: str) -> EmbeddingVector:
     return EmbeddingVector(
         id=f"chunk-{text}",
         model="model",
-        namespace=namespace,
         kind="single_vector",
-        vectors=[[1.0, 0.0]],
-        dimension=2,
-        metadata={"storage_target": "faiss", "provider": "test"},
+        values=(1.0, 0.0),
+        metadata={"storage_target": "faiss", "provider": "test", "namespace": namespace},
     )
 
 

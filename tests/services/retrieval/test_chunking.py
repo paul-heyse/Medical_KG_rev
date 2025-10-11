@@ -13,9 +13,7 @@ class _StubChunkStage:
     def __init__(self) -> None:
         self.executions: list[tuple[StageContext, object]] = []
 
-    def execute(
-        self, ctx: StageContext, document
-    ) -> list[Chunk]:
+    def execute(self, ctx: StageContext, document) -> list[Chunk]:
         self.executions.append((ctx, document))
         text = document.sections[0].blocks[0].text or ""
         return [

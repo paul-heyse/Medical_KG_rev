@@ -44,8 +44,6 @@ from Medical_KG_rev.chunking.exceptions import (
     ChunkingFailedError,
     ChunkingUnavailableError,
     InvalidDocumentError,
-    MineruGpuUnavailableError,
-    MineruOutOfMemoryError,
     ProfileNotFoundError,
     TokenizerMismatchError,
 )
@@ -217,27 +215,6 @@ class ChunkingErrorTranslator:
             )
             return ChunkingErrorReport(detail, "retryable", "ChunkingUnavailableError", job_id)
 
-        if isinstance(exc, MineruOutOfMemoryError):
-            detail = self._problem(
-                title="MinerU out of memory",
-                status=503,
-                detail=str(exc) or "MinerU exhausted GPU memory",
-                instance=instance,
-                type_="https://medical-kg/errors/mineru-oom",
-                extensions={"reason": "gpu_out_of_memory"},
-            )
-            return ChunkingErrorReport(detail, "retryable", "MineruOutOfMemoryError", job_id)
-
-        if isinstance(exc, MineruGpuUnavailableError):
-            detail = self._problem(
-                title="MinerU GPU unavailable",
-                status=503,
-                detail=str(exc) or "MinerU GPU unavailable",
-                instance=instance,
-                type_="https://medical-kg/errors/mineru-gpu-unavailable",
-                extensions={"reason": "gpu_unavailable"},
-            )
-            return ChunkingErrorReport(detail, "retryable", "MineruGpuUnavailableError", job_id)
 
         if isinstance(exc, MemoryError):
             detail = self._problem(

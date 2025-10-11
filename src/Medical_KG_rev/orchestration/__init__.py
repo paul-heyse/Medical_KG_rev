@@ -39,6 +39,7 @@ _ATTRIBUTE_MAP: dict[str, tuple[str, str]] = {
     "KGStage": ("Medical_KG_rev.orchestration.stages.contracts", "KGStage"),
     "ParseStage": ("Medical_KG_rev.orchestration.stages.contracts", "ParseStage"),
     "StageContext": ("Medical_KG_rev.orchestration.stages.contracts", "StageContext"),
+    "EmbeddingStage": ("Medical_KG_rev.orchestration.ingestion_pipeline", "EmbeddingStage"),
 }
 
 __all__ = sorted(_ATTRIBUTE_MAP)

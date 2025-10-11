@@ -177,7 +177,7 @@ class ChunkingEventEmitter:
         )
         return event
 
-    def emit_mineru_gate_waiting(
+    def emit_docling_gate_waiting(
         self,
         *,
         tenant_id: str,
@@ -187,7 +187,7 @@ class ChunkingEventEmitter:
     ) -> CloudEvent:
         subject = f"tenant:{tenant_id}:job:{job_id}"
         attributes = _base_attributes(
-            "com.medical-kg.mineru.gate.waiting",
+            "com.medical-kg.docling.gate.waiting",
             subject=subject,
             correlation_id=None,
         )

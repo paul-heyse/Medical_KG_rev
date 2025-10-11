@@ -53,10 +53,10 @@ from aiolimiter import AsyncLimiter
 from pybreaker import CircuitBreaker
 
 import structlog
+from Medical_KG_rev.auth.scopes import Scopes
 
 from ..adapters import AdapterDomain, AdapterPluginManager, get_plugin_manager
 from ..adapters.plugins.models import AdapterRequest
-from ..auth.scopes import Scopes
 from ..config.settings import get_settings
 from ..kg import ShaclValidator, ValidationError
 from ..observability.metrics import observe_job_duration, record_business_event
@@ -283,7 +283,7 @@ class GatewayService:
             self.chunker = ChunkingService(stage_factory=self.stage_factory)
         if self.chunking_error_translator is None:
             self.chunking_error_translator = ChunkingErrorTranslator(
-                strategies=self.chunker.available_strategies(),
+                available_strategies=self.chunker.available_strategies,
             )
         if self.namespace_registry is None:
             self.namespace_registry = self.embedding_registry.namespace_registry

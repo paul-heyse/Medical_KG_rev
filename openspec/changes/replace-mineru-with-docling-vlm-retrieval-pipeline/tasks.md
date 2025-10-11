@@ -77,36 +77,35 @@
 
 ## 3. Core Docling VLM Integration
 
-- [ ] 3.1 Create DoclingVLMService class in `src/Medical_KG_rev/services/parsing/`
-      - Create `src/Medical_KG_rev/services/parsing/docling_vlm_service.py`
-      - Implement DoclingVLMService class inheriting from same base as MineruProcessor
-      - Add __init__(config: DoclingVLMConfig, docker_service_url: str = "http://docling-vlm:8000")
-      - Implement process_pdf(pdf_path: str) -> DoclingVLMResult method (Docker client)
-      - Add HTTP client for communicating with Docker Docling VLM service
-      - Include error handling for Docker service communication
+- [x] 3.1 Create gRPC service definitions for Docling VLM
+      - Create `src/Medical_KG_rev/proto/docling_vlm_service.proto`
+      - Define DoclingVLMService with ProcessPDF, ProcessPDFBatch, GetHealth RPCs
+      - Define DocTagsResult message with DocumentStructure, Table, Figure, TextBlock
+      - Include ProcessingMetadata and ProcessingStatus messages
+      - Add comprehensive error handling and status codes
 
-- [ ] 3.2 Implement Docling VLM processing interface
-      - Ensure DoclingVLMService implements same MineruProcessor interface
-      - Return DoclingVLMResult with same structure as MineruResult
-      - Include text, tables, figures, and metadata extraction
-      - Maintain backward compatibility with existing document formats
-      - Add provenance tracking for VLM processing (model_version, processing_time)
+- [x] 3.2 Implement gRPC client for Docling VLM service
+      - Create `src/Medical_KG_rev/services/parsing/docling_vlm_client.py`
+      - Implement DoclingVLMClient class with gRPC communication
+      - Add async process_pdf(pdf_path: str) -> DocTagsResult method
+      - Include gRPC error handling and circuit breaker patterns
+      - Add comprehensive logging and monitoring for gRPC calls
 
-- [ ] 3.3 Add Docling VLM error handling and fallbacks
+- [x] 3.3 Add Docling VLM error handling and fallbacks
       - Create custom exception classes in `src/Medical_KG_rev/services/parsing/exceptions.py`
       - Add DoclingVLMError, DoclingModelLoadError, DoclingProcessingError
       - Implement retry logic with exponential backoff for transient failures
       - Add circuit breaker pattern for persistent model failures
       - Include detailed error logging with model state and GPU memory info
 
-- [ ] 3.4 Implement batch processing for multiple PDFs
-      - Add process_pdf_batch(pdf_paths: List[str]) -> List[DoclingVLMResult] method
+- [x] 3.4 Implement batch processing for multiple PDFs
+      - Add process_pdf_batch(pdf_paths: List[str]) -> List[DocTagsResult] method
       - Implement intelligent batching based on available GPU memory
       - Add progress tracking with estimated completion times
       - Handle partial batch failures gracefully (return successful results)
       - Optimize batch sizes based on document complexity and available memory
 
-- [ ] 3.5 Add performance monitoring for VLM processing
+- [x] 3.5 Add performance monitoring for VLM processing
       - Create VLM-specific metrics class in `src/Medical_KG_rev/services/parsing/metrics.py`
       - Track processing_time_seconds, gpu_memory_usage_mb, model_load_time
       - Add counters for successful/failed processing, retry attempts
@@ -138,35 +137,35 @@
 
 ## 5. SPLADE-v3 with Rep-Max Aggregation
 
-- [ ] 5.1 Create SPLADE-v3 service integration
+- [x] 5.1 Create SPLADE-v3 service integration
       - Create `src/Medical_KG_rev/services/retrieval/splade_service.py`
       - Implement SPLADE-v3 encoder with transformers pipeline
       - Add model loading and tokenizer initialization
       - Configure SPLADE-v3 model for document processing
       - Add model warm-up and memory management
 
-- [ ] 5.2 Implement chunk segmentation for SPLADE
+- [x] 5.2 Implement chunk segmentation for SPLADE
       - Add segment_chunk_for_splade(chunk_text: str, tokenizer) -> List[Segment]
       - Split chunk text into ≤512-token segments using SPLADE tokenizer
       - Keep segment order and boundaries for aggregation
       - Handle edge cases (very short chunks, very long chunks)
       - Add segment validation and error handling
 
-- [ ] 5.3 Implement Rep-Max aggregation
+- [x] 5.3 Implement Rep-Max aggregation
       - Add aggregate_splade_segments(segments: List[Segment]) -> SparseVector
       - Merge segment maps by taking maximum weight per term
       - Create one learned-sparse vector per chunk
       - Handle term conflicts and weight normalization
       - Add aggregation validation and quality checks
 
-- [ ] 5.4 Implement sparsity control and quantization
+- [x] 5.4 Implement sparsity control and quantization
       - Add apply_sparsity_threshold(vector: SparseVector, threshold: float) -> SparseVector
       - Cap maximum terms per chunk (top few thousand by weight)
       - Quantize weights to fixed-point integers with consistent scale factor
       - Store as Lucene "impacts" for compact representation
       - Add quantization validation and round-trip testing
 
-- [ ] 5.5 Create SPLADE impact index storage
+- [x] 5.5 Create SPLADE impact index storage
       - Create `src/Medical_KG_rev/services/vector_store/stores/splade_index.py`
       - Implement Lucene impact index for SPLADE vectors
       - Add {chunk_id → [(term, impact), …]} mapping
@@ -175,28 +174,28 @@
 
 ## 6. BM25 Index with Medical Structure
 
-- [ ] 6.1 Create structured BM25 service
+- [x] 6.1 Create structured BM25 service
       - Create `src/Medical_KG_rev/services/retrieval/bm25_service.py`
       - Implement multi-field Lucene index for lexical retrieval
       - Add field configuration: title, section_headers, paragraph, caption, table_text
       - Include footnote and refs_text fields with appropriate boosts
       - Add field-specific analyzers and tokenizers
 
-- [ ] 6.2 Implement BM25 field mapping
+- [x] 6.2 Implement BM25 field mapping
       - Create field mapping from chunk structure to BM25 fields
       - Map title and section_headers with high boosts
       - Map paragraph as backbone with standard settings
       - Map caption and table_text with moderate boosts
       - Map footnote with small boost, refs_text with low/zero boost
 
-- [ ] 6.3 Configure BM25 analyzers and tokenizers
+- [x] 6.3 Configure BM25 analyzers and tokenizers
       - Add standard tokenizer with lowercase, stopword removal, light stemming
       - Preserve medical terms exactly in title field (no stemming)
       - Consider MeSH/UMLS synonym filter for BM25-only index
       - Tune BM25 parameters per field family
       - Document and freeze BM25 defaults as experiment config
 
-- [ ] 6.4 Create BM25 index storage and management
+- [x] 6.4 Create BM25 index storage and management
       - Create `src/Medical_KG_rev/services/vector_store/stores/bm25_index.py`
       - Implement Lucene index with multi-field configuration
       - Add index building from chunk store data
@@ -205,21 +204,21 @@
 
 ## 7. Qwen3 Embedding Integration
 
-- [ ] 7.1 Create Qwen3 embedding service
+- [x] 7.1 Create Qwen3 embedding service
       - Create `src/Medical_KG_rev/services/retrieval/qwen3_service.py`
       - Implement Qwen3 4096-dimension embedding generation
       - Add model loading and tokenizer initialization
       - Configure model for 4096-dimension vectors
       - Add GPU memory management for embedding processing
 
-- [ ] 7.2 Implement contextualized text embedding
+- [x] 7.2 Implement contextualized text embedding
       - Use chunk's contextualized serialization for embedding input
       - Include section_path and caption text in embedding context
       - Generate 4096-dimension vectors for each chunk
       - Add embedding quality validation and error handling
       - Include provenance tracking (model_version, preprocessing_version)
 
-- [ ] 7.3 Create Qwen3 vector storage backend
+- [x] 7.3 Create Qwen3 vector storage backend
       - Create `src/Medical_KG_rev/services/vector_store/stores/qwen3_index.py`
       - Implement FAISS index with IVF configuration for scale
       - Add vector_id == chunk_id mapping for consistency

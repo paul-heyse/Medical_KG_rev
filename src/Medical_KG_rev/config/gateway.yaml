@@ -1,0 +1,67 @@
+# Torch-free gateway configuration
+gateway:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    log_level: "INFO"
+
+    # Service endpoints for GPU services
+    services:
+        gpu:
+            url: "${GPU_SERVICE_URL:gpu-services:50051}"
+            timeout: 30
+            retries: 3
+            circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+        embedding:
+            url: "${EMBEDDING_SERVICE_URL:embedding-services:50051}"
+            timeout: 30
+            retries: 3
+            circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+        reranking:
+            url: "${RERANKING_SERVICE_URL:reranking-services:50051}"
+            timeout: 30
+            retries: 3
+            circuit_breaker:
+                failure_threshold: 5
+                timeout: 60
+                expected_exception: "grpc.RpcError"
+
+    # Chunking configuration (torch-free)
+    chunking:
+        default_chunker: "docling"
+        chunkers:
+            docling:
+                enabled: true
+                granularity: "paragraph"
+            docling_vlm:
+                enabled: true
+                granularity: "paragraph"
+            # Legacy chunkers (no GPU support)
+            basic:
+                enabled: true
+                granularity: "paragraph"
+            regex:
+                enabled: true
+                granularity: "paragraph"
+
+    # Security
+    security:
+        jwt_secret: "${JWT_SECRET:your-secret-key}"
+        token_expiry: 3600
+        rate_limit:
+            requests_per_minute: 100
+            burst_size: 20
+
+    # Monitoring
+    monitoring:
+        metrics_enabled: true
+        tracing_enabled: true
+        health_check_interval: 30

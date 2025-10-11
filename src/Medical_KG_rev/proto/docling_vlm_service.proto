@@ -1,0 +1,446 @@
+syntax = "proto3";
+
+package medical_kg_rev.docling_vlm;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// Docling VLM Service Definition
+service DoclingVLMService {
+    // Process a single PDF document
+    rpc ProcessPDF(ProcessPDFRequest) returns (ProcessPDFResponse);
+
+    // Process multiple PDF documents in batch
+    rpc ProcessPDFBatch(ProcessPDFBatchRequest) returns (ProcessPDFBatchResponse);
+
+    // Health check endpoint
+    rpc GetHealth(HealthRequest) returns (HealthResponse);
+
+    // Get service statistics
+    rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+
+// Request to process a single PDF
+message ProcessPDFRequest {
+    bytes pdf_content = 1;
+    string pdf_path = 2;
+    DoclingConfig config = 3;
+    ProcessingOptions options = 4;
+}
+
+// Response from PDF processing
+message ProcessPDFResponse {
+    DocTagsResult doctags = 1;
+    ProcessingMetadata metadata = 2;
+    ProcessingStatus status = 3;
+    string error_message = 4;
+    string correlation_id = 5;
+}
+
+// Batch processing request
+message ProcessPDFBatchRequest {
+    repeated ProcessPDFRequest requests = 1;
+    BatchProcessingOptions batch_options = 2;
+}
+
+// Batch processing response
+message ProcessPDFBatchResponse {
+    repeated ProcessPDFResponse responses = 1;
+    BatchProcessingMetadata batch_metadata = 2;
+    ProcessingStatus overall_status = 3;
+}
+
+// Docling configuration
+message DoclingConfig {
+    string model_name = 1;
+    int32 max_model_len = 2;
+    float temperature = 3;
+    bool enable_table_extraction = 4;
+    bool enable_figure_extraction = 5;
+    bool enable_text_extraction = 6;
+    repeated string extraction_modes = 7;
+}
+
+// Processing options
+message ProcessingOptions {
+    bool enable_medical_normalization = 1;
+    bool enable_table_fidelity = 2;
+    bool enable_terminology_support = 3;
+    float min_confidence_threshold = 4;
+    bool enable_quality_validation = 5;
+    int32 timeout_seconds = 6;
+}
+
+// DocTags result structure
+message DocTagsResult {
+    DocumentStructure document = 1;
+    repeated Table tables = 2;
+    repeated Figure figures = 3;
+    repeated TextBlock text_blocks = 4;
+    DocumentMetadata doc_metadata = 5;
+    ProcessingProvenance provenance = 6;
+}
+
+// Document structure
+message DocumentStructure {
+    string document_id = 1;
+    string title = 2;
+    repeated Section sections = 3;
+    repeated Page pages = 4;
+    DocumentLayout layout = 5;
+}
+
+// Section information
+message Section {
+    string section_id = 1;
+    string title = 2;
+    string section_type = 3;
+    int32 page_start = 4;
+    int32 page_end = 5;
+    repeated string subsection_ids = 6;
+    string content_summary = 7;
+}
+
+// Page information
+message Page {
+    int32 page_number = 1;
+    float width = 2;
+    float height = 3;
+    repeated Element elements = 4;
+    PageLayout layout = 5;
+}
+
+// Document element
+message Element {
+    string element_id = 1;
+    string element_type = 2;
+    BoundingBox bbox = 3;
+    string content = 4;
+    ElementMetadata metadata = 5;
+}
+
+// Bounding box coordinates
+message BoundingBox {
+    float x = 1;
+    float y = 2;
+    float width = 3;
+    float height = 4;
+}
+
+// Table structure
+message Table {
+    string table_id = 1;
+    string caption = 2;
+    TableSchema schema = 3;
+    repeated TableRow rows = 4;
+    TableMetadata metadata = 5;
+    BoundingBox bbox = 6;
+    int32 page_number = 7;
+}
+
+// Table schema
+message TableSchema {
+    repeated TableHeader headers = 1;
+    int32 num_rows = 2;
+    int32 num_cols = 3;
+    string structure_type = 4;
+}
+
+// Table header
+message TableHeader {
+    string header_id = 1;
+    string text = 2;
+    int32 level = 3;
+    int32 col_span = 4;
+    int32 row_span = 5;
+}
+
+// Table row
+message TableRow {
+    string row_id = 1;
+    repeated TableCell cells = 2;
+    int32 row_index = 3;
+}
+
+// Table cell
+message TableCell {
+    string cell_id = 1;
+    string content = 2;
+    int32 col_index = 3;
+    int32 row_index = 4;
+    int32 col_span = 5;
+    int32 row_span = 6;
+    bool is_header = 7;
+}
+
+// Figure structure
+message Figure {
+    string figure_id = 1;
+    string caption = 2;
+    string figure_type = 3;
+    BoundingBox bbox = 4;
+    int32 page_number = 5;
+    FigureMetadata metadata = 6;
+    string image_data = 7; // Base64 encoded image
+}
+
+// Text block
+message TextBlock {
+    string block_id = 1;
+    string content = 2;
+    string block_type = 3;
+    BoundingBox bbox = 4;
+    int32 page_number = 5;
+    TextBlockMetadata metadata = 6;
+    repeated string paragraph_ids = 7;
+}
+
+// Document metadata
+message DocumentMetadata {
+    string document_type = 1;
+    string language = 2;
+    google.protobuf.Timestamp creation_date = 3;
+    google.protobuf.Timestamp modification_date = 4;
+    string author = 5;
+    string title = 6;
+    repeated string keywords = 7;
+    string abstract = 8;
+    DocumentClassification classification = 9;
+}
+
+// Processing metadata
+message ProcessingMetadata {
+    google.protobuf.Timestamp start_time = 1;
+    google.protobuf.Timestamp end_time = 2;
+    float processing_time_seconds = 3;
+    float gpu_memory_used_mb = 4;
+    string model_version = 5;
+    string processing_method = 6;
+    ProcessingQuality quality = 7;
+}
+
+// Processing provenance
+message ProcessingProvenance {
+    string processing_id = 1;
+    string model_name = 2;
+    string model_version = 3;
+    string processing_config = 4;
+    google.protobuf.Timestamp timestamp = 5;
+    string processing_node = 6;
+    repeated string processing_steps = 7;
+}
+
+// Processing status
+enum ProcessingStatus {
+    PROCESSING_STATUS_UNSPECIFIED = 0;
+    PROCESSING_STATUS_SUCCESS = 1;
+    PROCESSING_STATUS_ERROR = 2;
+    PROCESSING_STATUS_TIMEOUT = 3;
+    PROCESSING_STATUS_PARTIAL = 4;
+    PROCESSING_STATUS_QUEUED = 5;
+    PROCESSING_STATUS_PROCESSING = 6;
+}
+
+// Processing quality
+message ProcessingQuality {
+    float confidence_score = 1;
+    float completeness_score = 2;
+    float accuracy_score = 3;
+    repeated QualityIssue issues = 4;
+    QualityMetrics metrics = 5;
+}
+
+// Quality issue
+message QualityIssue {
+    string issue_type = 1;
+    string description = 2;
+    string severity = 3;
+    string element_id = 4;
+    string suggestion = 5;
+}
+
+// Quality metrics
+message QualityMetrics {
+    int32 total_elements = 1;
+    int32 extracted_elements = 2;
+    int32 failed_elements = 3;
+    float extraction_rate = 4;
+    float error_rate = 5;
+}
+
+// Health check request
+message HealthRequest {
+    string service_name = 1;
+}
+
+// Health check response
+message HealthResponse {
+    string status = 1;
+    string message = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    ServiceInfo service_info = 4;
+    ResourceUsage resource_usage = 5;
+}
+
+// Service information
+message ServiceInfo {
+    string version = 1;
+    string build_date = 2;
+    string git_commit = 3;
+    repeated string capabilities = 4;
+}
+
+// Resource usage
+message ResourceUsage {
+    float cpu_usage_percent = 1;
+    float memory_usage_mb = 2;
+    float gpu_usage_percent = 3;
+    float gpu_memory_usage_mb = 4;
+    int32 active_connections = 5;
+}
+
+// Statistics request
+message StatsRequest {
+    string metric_name = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+}
+
+// Statistics response
+message StatsResponse {
+    repeated MetricValue metrics = 1;
+    google.protobuf.Timestamp generated_at = 2;
+}
+
+// Metric value
+message MetricValue {
+    string metric_name = 1;
+    double value = 2;
+    string unit = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    map<string, string> labels = 5;
+}
+
+// Batch processing options
+message BatchProcessingOptions {
+    int32 max_batch_size = 1;
+    int32 timeout_seconds = 2;
+    bool fail_fast = 3;
+    bool enable_progress_tracking = 4;
+}
+
+// Batch processing metadata
+message BatchProcessingMetadata {
+    int32 total_requests = 1;
+    int32 successful_requests = 2;
+    int32 failed_requests = 3;
+    float total_processing_time = 4;
+    float average_processing_time = 5;
+    google.protobuf.Timestamp start_time = 6;
+    google.protobuf.Timestamp end_time = 7;
+}
+
+// Document layout
+message DocumentLayout {
+    string layout_type = 1;
+    repeated LayoutRegion regions = 2;
+    LayoutAnalysis analysis = 3;
+}
+
+// Layout region
+message LayoutRegion {
+    string region_id = 1;
+    string region_type = 2;
+    BoundingBox bbox = 3;
+    float confidence = 4;
+    repeated string element_ids = 5;
+}
+
+// Layout analysis
+message LayoutAnalysis {
+    string analysis_method = 1;
+    float confidence = 2;
+    repeated string detected_structure = 3;
+    map<string, string> layout_properties = 4;
+}
+
+// Page layout
+message PageLayout {
+    string layout_type = 1;
+    repeated LayoutRegion regions = 2;
+    float layout_confidence = 3;
+}
+
+// Element metadata
+message ElementMetadata {
+    map<string, string> properties = 1;
+    float confidence = 2;
+    string extraction_method = 3;
+    repeated string tags = 4;
+}
+
+// Table metadata
+message TableMetadata {
+    string table_type = 1;
+    float extraction_confidence = 2;
+    string extraction_method = 3;
+    repeated string tags = 4;
+    TableStructureAnalysis structure_analysis = 5;
+}
+
+// Table structure analysis
+message TableStructureAnalysis {
+    bool has_header_row = 1;
+    bool has_footer_row = 2;
+    int32 header_rows = 3;
+    int32 footer_rows = 4;
+    bool has_merged_cells = 5;
+    string table_orientation = 6;
+}
+
+// Figure metadata
+message FigureMetadata {
+    string figure_type = 1;
+    float extraction_confidence = 2;
+    string extraction_method = 3;
+    repeated string tags = 4;
+    FigureAnalysis analysis = 5;
+}
+
+// Figure analysis
+message FigureAnalysis {
+    string figure_category = 1;
+    string content_description = 2;
+    bool has_text_overlay = 3;
+    bool is_chart = 4;
+    bool is_diagram = 5;
+    bool is_photograph = 6;
+}
+
+// Text block metadata
+message TextBlockMetadata {
+    string text_type = 1;
+    float extraction_confidence = 2;
+    string extraction_method = 3;
+    repeated string tags = 4;
+    TextAnalysis analysis = 5;
+}
+
+// Text analysis
+message TextAnalysis {
+    string text_category = 1;
+    string language = 2;
+    bool is_medical_text = 3;
+    bool contains_units = 4;
+    bool contains_numbers = 5;
+    repeated string entities = 6;
+}
+
+// Document classification
+message DocumentClassification {
+    string document_category = 1;
+    string document_subcategory = 2;
+    float classification_confidence = 3;
+    repeated string classification_tags = 4;
+    map<string, float> category_scores = 5;
+}

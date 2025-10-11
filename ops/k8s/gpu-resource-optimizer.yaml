@@ -1,0 +1,135 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: gpu-resource-optimizer
+    namespace: medical-kg
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: gpu-resource-optimizer
+    template:
+        metadata:
+            labels:
+                app: gpu-resource-optimizer
+        spec:
+            containers:
+                - name: gpu-resource-optimizer
+                  image: medical-kg/gpu-resource-optimizer:latest
+                  ports:
+                      - containerPort: 8000
+                        name: metrics
+                  env:
+                      - name: NVIDIA_VISIBLE_DEVICES
+                        value: "all"
+                      - name: NVIDIA_DRIVER_CAPABILITIES
+                        value: "utility"
+                      - name: OPTIMIZATION_INTERVAL
+                        value: "300"
+                      - name: MEMORY_THRESHOLD
+                        value: "0.85"
+                  resources:
+                      requests:
+                          memory: "256Mi"
+                          cpu: "200m"
+                      limits:
+                          memory: "512Mi"
+                          cpu: "500m"
+                  volumeMounts:
+                      - name: nvidia-socket
+                        mountPath: /var/run/nvidia-docker.sock
+                        readOnly: true
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+            volumes:
+                - name: nvidia-socket
+                  hostPath:
+                      path: /var/run/nvidia-docker.sock
+                - name: config
+                  configMap:
+                      name: gpu-optimizer-config
+            nodeSelector:
+                accelerator: nvidia-tesla-k80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: gpu-resource-optimizer
+    namespace: medical-kg
+spec:
+    selector:
+        app: gpu-resource-optimizer
+    ports:
+        - port: 8000
+          targetPort: 8000
+          name: metrics
+    type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: gpu-optimizer-config
+    namespace: medical-kg
+data:
+    optimization_config.yaml: |
+        optimization:
+          interval: 300
+          memory_threshold: 0.85
+          allocation_timeout: 30
+          deallocation_timeout: 10
+
+        monitoring:
+          metrics_port: 8000
+          update_interval: 30
+
+        services:
+          embedding_service:
+            min_memory_mb: 2048
+            max_memory_mb: 8192
+            preferred_device: null
+
+          reranking_service:
+            min_memory_mb: 1024
+            max_memory_mb: 4096
+            preferred_device: null
+
+          docling_vlm_service:
+            min_memory_mb: 4096
+            max_memory_mb: 16384
+            preferred_device: null
+
+          gpu_management_service:
+            min_memory_mb: 512
+            max_memory_mb: 2048
+            preferred_device: null
+
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+    name: gpu-resource-optimizer
+    namespace: medical-kg
+spec:
+    selector:
+        matchLabels:
+            app: gpu-resource-optimizer
+    endpoints:
+        - port: metrics
+          interval: 30s
+          path: /metrics
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+    name: gpu-resource-optimizer-pdb
+    namespace: medical-kg
+spec:
+    minAvailable: 1
+    selector:
+        matchLabels:
+            app: gpu-resource-optimizer

@@ -27,7 +27,6 @@ PIPELINE_STATE_DAGSTER_TYPE = PythonObjectDagsterType(
         "Typed orchestration state capturing stage outputs, metrics, and"
         " lifecycle checkpoints for Dagster runs."
     ),
-    type_check_fn=_pipeline_state_type_check,
 )
 
 

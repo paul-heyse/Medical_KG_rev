@@ -85,9 +85,11 @@ class PdfGateStage(GateStage):
 
                         if not backend_ready:
                             logger.debug(
-                                "pdf_gate_stage.vlm_not_ready"
-                                if self._backend == "docling_vlm"
-                                else "pdf_gate_stage.pdf_ir_not_ready",
+                                (
+                                    "pdf_gate_stage.vlm_not_ready"
+                                    if self._backend == "docling_vlm"
+                                    else "pdf_gate_stage.pdf_ir_not_ready"
+                                ),
                                 tenant_id=state.tenant_id,
                                 job_id=job_id,
                                 gate_name=self._gate_name,
@@ -96,9 +98,11 @@ class PdfGateStage(GateStage):
                                 name=self._gate_name,
                                 ready=False,
                                 metadata={
-                                    "reason": "pdf_vlm_not_ready"
-                                    if self._backend == "docling_vlm"
-                                    else "pdf_ir_not_ready",
+                                    "reason": (
+                                        "pdf_vlm_not_ready"
+                                        if self._backend == "docling_vlm"
+                                        else "pdf_ir_not_ready"
+                                    ),
                                     "job_id": job_id,
                                     "timestamp": time.time(),
                                 },
@@ -132,9 +136,11 @@ class PdfGateStage(GateStage):
             is_ready = getattr(state.pdf_gate, self._state_ready_attr, False)
             if not is_ready:
                 logger.debug(
-                    "pdf_gate_stage.state_vlm_not_ready"
-                    if self._backend == "docling_vlm"
-                    else "pdf_gate_stage.state_ir_not_ready",
+                    (
+                        "pdf_gate_stage.state_vlm_not_ready"
+                        if self._backend == "docling_vlm"
+                        else "pdf_gate_stage.state_ir_not_ready"
+                    ),
                     tenant_id=state.tenant_id,
                     gate_name=self._gate_name,
                 )
@@ -142,9 +148,11 @@ class PdfGateStage(GateStage):
                     name=self._gate_name,
                     ready=False,
                     metadata={
-                        "reason": "state_vlm_not_ready"
-                        if self._backend == "docling_vlm"
-                        else "state_ir_not_ready",
+                        "reason": (
+                            "state_vlm_not_ready"
+                            if self._backend == "docling_vlm"
+                            else "state_ir_not_ready"
+                        ),
                         "timestamp": time.time(),
                     },
                 )

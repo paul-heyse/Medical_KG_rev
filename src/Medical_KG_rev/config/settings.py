@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .docling_config import DoclingVLMConfig
 from .retrieval_config import BM25Config, FusionConfig, Qwen3Config, RetrievalConfig, SPLADEConfig
 
+
 class Environment(str, Enum):
     """Deployment environments supported by the platform."""
 
@@ -469,62 +470,6 @@ class RetrievalSettings(BaseModel):
         )
 
 
-class MineruCircuitBreakerSettings(BaseModel):
-    """Circuit breaker thresholds for the MinerU vLLM client."""
-
-    enabled: bool = True
-    failure_threshold: int = Field(default=5, ge=1)
-    recovery_timeout_seconds: float = Field(default=60.0, ge=5.0)
-    success_threshold: int = Field(default=2, ge=1)
-
-
-class MineruHttpClientSettings(BaseModel):
-    """HTTP client configuration for MinerU → vLLM communication."""
-
-    connection_pool_size: int = Field(default=10, ge=1)
-    keepalive_connections: int = Field(default=5, ge=1)
-    timeout_seconds: float = Field(default=300.0, ge=30.0)
-    retry_attempts: int = Field(default=3, ge=0)
-    retry_backoff_multiplier: float = Field(default=1.0, ge=0.1)
-    circuit_breaker: MineruCircuitBreakerSettings = Field(
-        default_factory=MineruCircuitBreakerSettings
-    )
-
-
-class MineruVllmServerSettings(BaseModel):
-    """Configuration for the dedicated vLLM server."""
-
-    enabled: bool = True
-    base_url: AnyHttpUrl = Field(default="http://vllm-server:8000")
-    model: str = Field(default="Qwen/Qwen2.5-VL-7B-Instruct")
-    health_check_interval_seconds: int = Field(default=30, ge=5)
-    connection_timeout_seconds: float = Field(default=300.0, ge=30.0)
-
-
-class MineruWorkerSettings(BaseModel):
-    """CPU-oriented MinerU worker configuration."""
-
-    count: int = Field(default=8, ge=1)
-    backend: Literal["vlm-http-client"] = "vlm-http-client"
-    cpu_per_worker: int = Field(default=2, ge=1)
-    memory_per_worker_gb: int = Field(default=4, ge=1)
-    batch_size: int = Field(default=4, ge=1)
-    timeout_seconds: int = Field(default=300, ge=30)
-
-
-class MineruSettings(BaseModel):
-    """Top-level MinerU split-container configuration."""
-
-    deployment_mode: Literal["split-container"] = "split-container"
-    cli_command: str = Field(default="mineru", description="Path to MinerU CLI")
-    expected_version: str = Field(default=">=2.5.4")
-    vllm_server: MineruVllmServerSettings = Field(default_factory=MineruVllmServerSettings)
-    workers: MineruWorkerSettings = Field(default_factory=MineruWorkerSettings)
-    http_client: MineruHttpClientSettings = Field(default_factory=MineruHttpClientSettings)
-
-    def cli_timeout_seconds(self) -> int:
-        """Expose worker timeout for CLI invocations."""
-        return self.workers.timeout_seconds
 
 
 class VaultSettings(BaseModel):
@@ -539,7 +484,7 @@ class VaultSettings(BaseModel):
 class FeatureFlagSettings(BaseModel):
     """Dynamic feature flag configuration."""
 
-    pdf_processing_backend: Literal["mineru", "docling_vlm"] = "docling_vlm"
+    pdf_processing_backend: Literal["docling_vlm"] = "docling_vlm"
     docling_rollout_percentage: int = Field(default=0, ge=0, le=100)
     retrieval_backend: Literal["bm25", "splade", "qwen3", "hybrid"] = "hybrid"
     retrieval_rollout_percentage: int = Field(default=100, ge=0, le=100)
@@ -784,9 +729,9 @@ class RerankerModelSettings(BaseModel):
             raise ValueError(str(exc)) from exc
         if self.requires_gpu:
             try:
-                import torch
+# import torch  # Removed for torch isolation
 
-                if not torch.cuda.is_available():  # type: ignore[attr-defined]
+                if not False:  # GPU functionality moved to gRPC services
                     raise ValueError("GPU is required for the configured reranker but unavailable")
             except Exception as exc:  # pragma: no cover - torch optional
                 raise ValueError(
@@ -918,7 +863,6 @@ class AppSettings(BaseSettings):
     service_name: str = "medical-kg"
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
-    mineru: MineruSettings = Field(default_factory=MineruSettings)
     docling_vlm: DoclingVLMSettings = Field(default_factory=DoclingVLMSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     vault: VaultSettings = Field(default_factory=VaultSettings)

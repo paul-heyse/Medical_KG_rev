@@ -151,10 +151,14 @@ class ContextualChunker(BaseChunker, ABC):
 def resolve_sentence_encoder(
     model_name: str,
     *,
-    gpu_semantic_checks: bool,
+    gpu_semantic_checks: bool = False,  # Deprecated parameter, kept for compatibility
     encoder: object | None,
 ) -> object:
-    """Resolve a sentence transformer encoder with optional GPU placement."""
+    """Resolve a sentence transformer encoder without GPU placement.
+
+    Note: GPU semantic checks are no longer supported in the torch-free architecture.
+    Use Docling's built-in chunking capabilities instead.
+    """
     if encoder is not None:
         return encoder
     try:  # pragma: no cover - optional dependency
@@ -164,14 +168,11 @@ def resolve_sentence_encoder(
             "sentence-transformers must be installed for semantic chunkers"
         ) from exc
     resolved = SentenceTransformer(model_name)
+    # GPU semantic checks removed - use Docling chunking instead
     if gpu_semantic_checks:
-        try:  # pragma: no cover - optional dependency
-            import torch
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError("GPU semantic checks requested but torch is unavailable") from exc
-        if not torch.cuda.is_available():  # pragma: no cover - runtime guard
-            raise RuntimeError("GPU semantic checks requested but CUDA is not available")
-        resolved = resolved.to("cuda")
+        raise ChunkerConfigurationError(
+            "GPU semantic checks are no longer supported. Use Docling's built-in chunking capabilities instead."
+        )
     return resolved
 
 
@@ -183,7 +184,7 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
         *,
         token_counter: TokenCounter | None = None,
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-        gpu_semantic_checks: bool = False,
+        gpu_semantic_checks: bool = False,  # Deprecated parameter, kept for compatibility
         encoder: object | None = None,
         segmenter: Segmenter | None = None,
         context_filter: Callable[[BlockContext], bool] | None = None,
@@ -199,9 +200,7 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
             encoder=encoder,
         )
 
-    def encode_contexts(
-        self, contexts: Sequence[BlockContext]
-    ) -> np.ndarray:  # type: ignore[name-defined]
+    def encode_contexts(self, contexts: Sequence[BlockContext]) -> np.ndarray:
         import numpy as np
 
         sentences = [ctx.text for ctx in contexts]
@@ -210,5 +209,5 @@ class EmbeddingContextualChunker(ContextualChunker, ABC):
         encode = getattr(self.model, "encode", None)
         if encode is None:
             raise ChunkerConfigurationError("Encoder does not expose an encode() method")
-        embeddings = encode(sentences, convert_to_numpy=True)  # type: ignore[arg-type]
+        embeddings = encode(sentences, convert_to_numpy=True)
         return np.asarray(embeddings)

@@ -27,7 +27,9 @@ class ProcessRequest(BaseModel):
                 raise HTTPException(status_code=400, detail="PDF path does not exist")
             return path
         if not self.content_base64:
-            raise HTTPException(status_code=400, detail="Either pdf_path or content_base64 must be supplied")
+            raise HTTPException(
+                status_code=400, detail="Either pdf_path or content_base64 must be supplied"
+            )
         try:
             payload = base64.b64decode(self.content_base64)
         except Exception as exc:  # pragma: no cover - FastAPI validates base64
@@ -47,7 +49,7 @@ class ProcessResponse(BaseModel):
     metadata: dict[str, Any]
 
     @classmethod
-    def from_result(cls, result: DoclingVLMResult) -> "ProcessResponse":
+    def from_result(cls, result: DoclingVLMResult) -> ProcessResponse:
         return cls(
             document_id=result.document_id,
             text=result.text,

@@ -23,9 +23,7 @@ DEFAULT_VLLM_CONFIG = Path(__file__).resolve().parents[3] / "config" / "embeddin
 
 
 def _load_mapping(path: Path) -> Mapping[str, Any]:
-    if not path.exists():
-        return {}
-    if yaml is None:
+    if not path.exists() or yaml is None:
         return {}
     return yaml.safe_load(path.read_text()) or {}
 
@@ -45,7 +43,7 @@ class VLLMModelConfig:
     trust_remote_code: bool = True
     download_dir: str = "/models/qwen3-embedding"
     revision: str | None = "main"
-    model_type: str = "vllm"
+    model_type: str = "vllm"  # "vllm" | "docling_vlm"
 
 
 @dataclass(slots=True)
@@ -70,9 +68,26 @@ class VLLMLoggingConfig:
 
 @dataclass(slots=True)
 class VLLMGPUConfig:
-    model_type: str = "vllm"
+    model_type: str = "vllm"  # "vllm" | "docling_vlm"
     gpu_memory_utilization: float = 0.8
     required_total_memory_mb: int | None = None
+    docling_vlm_memory_mb: int = 24 * 1024  # 24GB for Docling VLM
+
+
+@dataclass(slots=True)
+class UnifiedGPUConfig:
+    """Unified GPU configuration that works for both vLLM and Docling VLM."""
+
+    model_type: str = "vllm"  # "vllm" | "docling_vlm"
+    gpu_memory_utilization: float = 0.8
+    required_total_memory_mb: int | None = None
+    docling_vlm_memory_mb: int = 24 * 1024  # 24GB for Docling VLM
+
+    def get_required_memory_mb(self) -> int:
+        """Get the required memory based on model type."""
+        if self.model_type == "docling_vlm":
+            return self.docling_vlm_memory_mb
+        return self.required_total_memory_mb or 8 * 1024  # Default 8GB for vLLM
 
 
 @dataclass(slots=True)
@@ -83,6 +98,7 @@ class VLLMConfig:
     health_check: VLLMHealthCheckConfig = field(default_factory=VLLMHealthCheckConfig)
     logging: VLLMLoggingConfig = field(default_factory=VLLMLoggingConfig)
     gpu: VLLMGPUConfig = field(default_factory=VLLMGPUConfig)
+    unified_gpu: UnifiedGPUConfig = field(default_factory=UnifiedGPUConfig)
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> VLLMConfig:
@@ -92,6 +108,7 @@ class VLLMConfig:
         health = VLLMHealthCheckConfig(**data.get("health_check", {}))
         logging = VLLMLoggingConfig(**data.get("logging", {}))
         gpu = VLLMGPUConfig(**data.get("gpu", {}))
+        unified_gpu = UnifiedGPUConfig(**data.get("unified_gpu", {}))
         return cls(
             service=service,
             model=model,
@@ -99,6 +116,7 @@ class VLLMConfig:
             health_check=health,
             logging=logging,
             gpu=gpu,
+            unified_gpu=unified_gpu,
         )
 
     @classmethod
@@ -145,6 +163,13 @@ if BaseModel is not None:  # pragma: no cover - exercised when pydantic installe
         model_type: str = Field(default="vllm")
         gpu_memory_utilization: float = Field(default=0.8, ge=0.0, le=1.0)
         required_total_memory_mb: int | None = Field(default=None, ge=1)
+        docling_vlm_memory_mb: int = Field(default=24 * 1024, ge=1)
+
+    class _UnifiedGPUModel(BaseModel):
+        model_type: str = Field(default="vllm")
+        gpu_memory_utilization: float = Field(default=0.8, ge=0.0, le=1.0)
+        required_total_memory_mb: int | None = Field(default=None, ge=1)
+        docling_vlm_memory_mb: int = Field(default=24 * 1024, ge=1)
 
     class _VLLMConfigModel(BaseModel):
         service: _VLLMServiceModel = Field(default_factory=_VLLMServiceModel)
@@ -153,6 +178,7 @@ if BaseModel is not None:  # pragma: no cover - exercised when pydantic installe
         health_check: _VLLMHealthCheckModel = Field(default_factory=_VLLMHealthCheckModel)
         logging: _VLLMLoggingModel = Field(default_factory=_VLLMLoggingModel)
         gpu: _VLLMGPUModel = Field(default_factory=_VLLMGPUModel)
+        unified_gpu: _UnifiedGPUModel = Field(default_factory=_UnifiedGPUModel)
 
 
 def load_vllm_config(path: str | Path | None = None) -> VLLMConfig:
@@ -162,11 +188,12 @@ def load_vllm_config(path: str | Path | None = None) -> VLLMConfig:
 
 __all__ = [
     "DEFAULT_VLLM_CONFIG",
+    "UnifiedGPUConfig",
     "VLLMBatchingConfig",
     "VLLMConfig",
+    "VLLMGPUConfig",
     "VLLMHealthCheckConfig",
     "VLLMLoggingConfig",
-    "VLLMGPUConfig",
     "VLLMModelConfig",
     "VLLMServiceConfig",
     "load_vllm_config",

@@ -10,9 +10,7 @@ def test_event_emitter_publishes_lifecycle_events() -> None:
             for topic in topics:
                 self.topics.setdefault(topic, [])
 
-        def publish(
-            self, topic: str, value: dict[str, object], *, key=None, headers=None
-        ):
+        def publish(self, topic: str, value: dict[str, object], *, key=None, headers=None):
             self.topics.setdefault(topic, []).append(value)
 
         def consume(self, topic: str):

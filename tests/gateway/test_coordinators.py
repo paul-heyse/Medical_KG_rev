@@ -46,9 +46,7 @@ class _StubChunker:
             raise self._raise
         return [_StubChunk(command.text)]
 
-    def chunk(
-        self, tenant_id: str, document_id: str, text: str, options
-    ) -> list[_StubChunk]:
+    def chunk(self, tenant_id: str, document_id: str, text: str, options) -> list[_StubChunk]:
         if self._raise:
             raise self._raise
         return [_StubChunk(text)]

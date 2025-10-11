@@ -85,7 +85,7 @@ class OpenAlexAdapter(BaseAdapter, PdfManifestMixin, StorageHelperMixin):
     The adapter relies on the official :mod:`pyalex` client so that we benefit
     from built-in pagination, polite pool handling, and upstream API changes.
     PDF availability is surfaced through structured metadata so the downstream
-    PDF ingestion pipeline can persist artefacts for MinerU processing.
+    PDF ingestion pipeline can persist artefacts for Docling VLM processing.
     """
 
     DEFAULT_MAX_RESULTS = 5

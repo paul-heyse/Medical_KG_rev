@@ -136,10 +136,10 @@ class TestStorageIntegration:
             clients = create_storage_clients(s3_settings, redis_settings)
 
             # Test artifact upload
-            artifact_data = b'{"mineru_output": "test data"}'
+            artifact_data = b'{"docling_output": "test data"}'
             tenant_id = "integration-tenant"
             document_id = "integration-doc"
-            artifact_type = "mineru_output"
+            artifact_type = "docling_output"
             file_extension = "json"
 
             uri = await clients.document_storage_client.upload_document_artifact(

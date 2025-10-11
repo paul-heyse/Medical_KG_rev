@@ -24,7 +24,12 @@ async def test_query_document() -> None:
       document(id: $id) { id title }
     }
     """
-    context = GraphQLContext(service=service, loaders=GraphQLLoaders(service))
+    context = GraphQLContext(
+        service=service,
+        loaders=GraphQLLoaders(service),
+        tenant_id="test-tenant",
+        scopes={"read:documents"}
+    )
     result = await schema.execute(query, variable_values={"id": "doc-1"}, context_value=context)
     assert result.errors is None
     assert result.data["document"]["id"] == "doc-1"

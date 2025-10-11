@@ -6,10 +6,10 @@ import asyncio
 import time
 from statistics import mean, quantiles
 
-from Medical_KG_rev.services.mineru.vllm_client import VLLMClient
+# MinerU VLLM client removed - using Docling VLM services instead
 
 
-async def single_request(client: VLLMClient, request_id: int) -> float:
+async def single_request(client, request_id: int) -> float:
     """Issue a single chat completion request and return latency in seconds."""
     start = time.time()
     await client.chat_completion(

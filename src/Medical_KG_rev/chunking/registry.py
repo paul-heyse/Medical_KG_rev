@@ -69,10 +69,12 @@ def _maybe_register(
 
 def default_registry() -> ChunkerRegistry:
     from .chunkers.clinical_role import ClinicalRoleChunker
+    from .chunkers.docling import DoclingChunker, DoclingVLMChunker
     from .chunkers.layout import LayoutHeuristicChunker
     from .chunkers.section import SectionAwareChunker
     from .chunkers.sliding_window import SlidingWindowChunker
     from .chunkers.table import TableChunker
+    from .hybrid_chunker import HybridChunker
 
     registry = ChunkerRegistry()
     registry.register("section_aware", SectionAwareChunker)
@@ -80,6 +82,9 @@ def default_registry() -> ChunkerRegistry:
     registry.register("table", TableChunker)
     registry.register("clinical_role", ClinicalRoleChunker)
     registry.register("layout_heuristic", LayoutHeuristicChunker)
+    registry.register("docling", DoclingChunker)
+    registry.register("docling_vlm", DoclingVLMChunker)
+    registry.register("hybrid", HybridChunker)
 
     optional_specs = [
         (

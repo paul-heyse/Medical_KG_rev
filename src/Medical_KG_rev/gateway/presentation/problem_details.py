@@ -17,7 +17,6 @@ def build_docling_problem(
     extensions: dict[str, Any] | None = None,
 ) -> ProblemDetail:
     """Create a ProblemDetail instance tailored for Docling VLM errors."""
-
     payload = {
         "title": title,
         "status": status,

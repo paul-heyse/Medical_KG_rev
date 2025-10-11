@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 try:  # pragma: no cover - optional dependency used at runtime only
     import yaml
 except Exception:  # pragma: no cover - graceful fallback when PyYAML missing
     yaml = None  # type: ignore[assignment]
 
-DEFAULT_RETRIEVAL_CONFIG_PATH = (
-    Path(__file__).resolve().parents[2] / "config" / "retrieval.yaml"
-)
+DEFAULT_RETRIEVAL_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "retrieval.yaml"
 
 
 def _to_path(value: str | Path | None) -> Path | None:
@@ -76,8 +75,7 @@ class BM25Config:
             payload["synonyms_path"] = _to_path(payload["synonyms_path"])
         if "field_boosts" in payload and isinstance(payload["field_boosts"], Mapping):
             payload["field_boosts"] = {
-                str(key): float(value)
-                for key, value in payload["field_boosts"].items()
+                str(key): float(value) for key, value in payload["field_boosts"].items()
             }
         return cls(**payload)
 
@@ -244,16 +242,20 @@ class RetrievalConfig:
         fusion_payload = payload.get("fusion")
         return cls(
             default_backend=str(payload.get("default_backend", "hybrid")),
-            bm25=BM25Config.from_mapping(bm25_payload if isinstance(bm25_payload, Mapping) else None),
+            bm25=BM25Config.from_mapping(
+                bm25_payload if isinstance(bm25_payload, Mapping) else None
+            ),
             splade=SPLADEConfig.from_mapping(
                 splade_payload if isinstance(splade_payload, Mapping) else None
             ),
             qwen3=Qwen3Config.from_mapping(
                 qwen_payload if isinstance(qwen_payload, Mapping) else None
             ),
-            fusion=FusionConfig(**dict(fusion_payload))
-            if isinstance(fusion_payload, Mapping)
-            else FusionConfig(),
+            fusion=(
+                FusionConfig(**dict(fusion_payload))
+                if isinstance(fusion_payload, Mapping)
+                else FusionConfig()
+            ),
         )
 
     @classmethod
@@ -279,9 +281,7 @@ class RetrievalConfig:
                 "index_path": str(self.bm25.index_path),
                 "field_boosts": dict(self.bm25.field_boosts),
                 "analyzer": self.bm25.analyzer,
-                "synonyms_path": str(self.bm25.synonyms_path)
-                if self.bm25.synonyms_path
-                else None,
+                "synonyms_path": str(self.bm25.synonyms_path) if self.bm25.synonyms_path else None,
                 "enable_synonyms": self.bm25.enable_synonyms,
                 "query_timeout_ms": self.bm25.query_timeout_ms,
                 "cache_ttl_seconds": self.bm25.cache_ttl_seconds,
@@ -323,8 +323,8 @@ class RetrievalConfig:
 __all__ = [
     "DEFAULT_RETRIEVAL_CONFIG_PATH",
     "BM25Config",
-    "SPLADEConfig",
-    "Qwen3Config",
     "FusionConfig",
+    "Qwen3Config",
     "RetrievalConfig",
+    "SPLADEConfig",
 ]

@@ -1,0 +1,364 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: vlm-request-queue-config
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+data:
+    config.yaml: |
+        max_queue_size: 1000
+        max_concurrent_requests: 10
+        strategy: "priority"
+        default_timeout: 300.0
+        default_priority: "normal"
+        max_retries: 3
+        retry_delay: 1.0
+        health_check_interval: 30.0
+        cleanup_interval: 300.0
+        enable_metrics: true
+        enable_tracing: true
+    logging.yaml: |
+        version: 1
+        disable_existing_loggers: false
+        formatters:
+          default:
+            format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            datefmt: '%Y-%m-%d %H:%M:%S'
+          json:
+            format: '%(asctime)s %(name)s %(levelname)s %(message)s'
+            datefmt: '%Y-%m-%d %H:%M:%S'
+        handlers:
+          console:
+            class: logging.StreamHandler
+            level: INFO
+            formatter: default
+            stream: ext://sys.stdout
+          file:
+            class: logging.handlers.RotatingFileHandler
+            level: DEBUG
+            formatter: json
+            filename: /var/log/vlm-request-queue.log
+            maxBytes: 10485760
+            backupCount: 5
+        loggers:
+          Medical_KG_rev.services.queuing.vlm_request_queue:
+            level: DEBUG
+            handlers: [console, file]
+            propagate: false
+        root:
+          level: INFO
+          handlers: [console, file]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: vlm-request-queue
+    template:
+        metadata:
+            labels:
+                app: vlm-request-queue
+                component: queuing
+            annotations:
+                prometheus.io/scrape: "true"
+                prometheus.io/port: "8080"
+                prometheus.io/path: "/metrics"
+        spec:
+            serviceAccountName: vlm-request-queue
+            containers:
+                - name: vlm-request-queue
+                  image: medical-kg/vlm-request-queue:latest
+                  imagePullPolicy: Always
+                  ports:
+                      - name: metrics
+                        containerPort: 8080
+                        protocol: TCP
+                      - name: health
+                        containerPort: 8081
+                        protocol: TCP
+                      - name: api
+                        containerPort: 8082
+                        protocol: TCP
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app/src"
+                      - name: LOG_LEVEL
+                        value: "INFO"
+                      - name: CONFIG_FILE
+                        value: "/app/config/config.yaml"
+                      - name: LOGGING_CONFIG
+                        value: "/app/config/logging.yaml"
+                      - name: QUEUE_ENABLED
+                        value: "true"
+                      - name: MAX_QUEUE_SIZE
+                        value: "1000"
+                      - name: MAX_CONCURRENT_REQUESTS
+                        value: "10"
+                      - name: STRATEGY
+                        value: "priority"
+                      - name: DEFAULT_TIMEOUT
+                        value: "300.0"
+                      - name: MAX_RETRIES
+                        value: "3"
+                      - name: RETRY_DELAY
+                        value: "1.0"
+                      - name: HEALTH_CHECK_INTERVAL
+                        value: "30.0"
+                      - name: CLEANUP_INTERVAL
+                        value: "300.0"
+                      - name: ENABLE_METRICS
+                        value: "true"
+                      - name: ENABLE_TRACING
+                        value: "true"
+                  resources:
+                      requests:
+                          memory: "512Mi"
+                          cpu: "200m"
+                      limits:
+                          memory: "2Gi"
+                          cpu: "1000m"
+                  volumeMounts:
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+                      - name: logs
+                        mountPath: /var/log
+                      - name: tmp
+                        mountPath: /tmp
+                  livenessProbe:
+                      httpGet:
+                          path: /health
+                          port: 8081
+                      initialDelaySeconds: 30
+                      periodSeconds: 30
+                      timeoutSeconds: 10
+                      failureThreshold: 3
+                  readinessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 8081
+                      initialDelaySeconds: 10
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      runAsUser: 1000
+                      runAsGroup: 1000
+                      capabilities:
+                          drop:
+                              - ALL
+                      readOnlyRootFilesystem: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: vlm-request-queue-config
+                - name: logs
+                  emptyDir: {}
+                - name: tmp
+                  emptyDir: {}
+            nodeSelector:
+                kubernetes.io/os: linux
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+spec:
+    type: ClusterIP
+    ports:
+        - name: metrics
+          port: 8080
+          targetPort: 8080
+          protocol: TCP
+        - name: health
+          port: 8081
+          targetPort: 8081
+          protocol: TCP
+        - name: api
+          port: 8082
+          targetPort: 8082
+          protocol: TCP
+    selector:
+        app: vlm-request-queue
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+rules:
+    - apiGroups: [""]
+      resources: ["pods", "nodes"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["metrics.k8s.io"]
+      resources: ["nodes", "pods"]
+      verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+subjects:
+    - kind: ServiceAccount
+      name: vlm-request-queue
+      namespace: medical-kg
+roleRef:
+    kind: Role
+    name: vlm-request-queue
+    apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+    name: vlm-request-queue
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+spec:
+    selector:
+        matchLabels:
+            app: vlm-request-queue
+    endpoints:
+        - port: metrics
+          path: /metrics
+          interval: 30s
+          scrapeTimeout: 10s
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: vlm-request-queue-logs
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 10Gi
+    storageClassName: gp2
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: vlm-request-queue-alerts
+    namespace: medical-kg
+    labels:
+        app: vlm-request-queue
+        component: queuing
+data:
+    alerts.yaml: |
+        groups:
+        - name: vlm-request-queue
+          rules:
+          - alert: VLMRequestQueueDown
+            expr: up{job="vlm-request-queue"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "VLM Request Queue is down"
+              description: "VLM Request Queue has been down for more than 1 minute."
+
+          - alert: VLMRequestQueueFull
+            expr: vlm_queue_size / vlm_max_queue_size > 0.9
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue is nearly full"
+              description: "VLM Request Queue utilization is {{ $value }}% for more than 2 minutes."
+
+          - alert: VLMRequestQueueOverflow
+            expr: vlm_queue_size >= vlm_max_queue_size
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "VLM Request Queue is full"
+              description: "VLM Request Queue is at maximum capacity for more than 1 minute."
+
+          - alert: VLMRequestQueueHighErrorRate
+            expr: vlm_error_rate > 0.1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue error rate is high"
+              description: "VLM Request Queue error rate is {{ $value }}% for more than 5 minutes."
+
+          - alert: VLMRequestQueueLowThroughput
+            expr: vlm_throughput < 1
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue throughput is low"
+              description: "VLM Request Queue throughput is {{ $value }} req/min for more than 10 minutes."
+
+          - alert: VLMRequestQueueHighProcessingTime
+            expr: vlm_average_processing_time > 300
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue processing time is high"
+              description: "VLM Request Queue average processing time is {{ $value }}s for more than 5 minutes."
+
+          - alert: VLMRequestQueueTimeoutRequests
+            expr: rate(vlm_timeout_requests_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue timeout requests detected"
+              description: "VLM Request Queue has {{ $value }} timeout requests per second."
+
+          - alert: VLMRequestQueueRetryRate
+            expr: rate(vlm_retry_requests_total[5m]) > 0.1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM Request Queue retry rate is high"
+              description: "VLM Request Queue retry rate is {{ $value }} retries per second for more than 5 minutes."

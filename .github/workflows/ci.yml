@@ -1,140 +1,279 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-  schedule:
-    - cron: '0 3 * * *'
-  workflow_dispatch:
+    push:
+        branches:
+            - main
+            - develop
+    pull_request:
+    schedule:
+        - cron: "0 3 * * *"
+    workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.12'
-  POETRY_VIRTUALENVS_CREATE: 'false'
-  HF_HOME: ~/.cache/huggingface
-  DOCLING_MODEL_DIR: .ci/gemma3
+    PYTHON_VERSION: "3.12"
+    POETRY_VIRTUALENVS_CREATE: "false"
+    HF_HOME: ~/.cache/huggingface
+    DOCLING_MODEL_DIR: .ci/gemma3
 
 jobs:
-  lint:
-    name: Lint & Static Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: pip install .[dev]
-      - name: Black
-        run: black --check .
-      - name: Ruff
-        run: ruff check .
-      - name: MyPy
-        run: mypy src tests
+    lint:
+        name: Lint & Static Analysis
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Cache pip dependencies
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+            - name: Install dependencies
+              run: pip install .[dev]
+            - name: Black
+              run: black --check .
+            - name: Ruff
+              run: ruff check .
+            - name: MyPy
+              run: mypy src tests
+            - name: Torch Isolation Quality Gate
+              run: python scripts/ci_torch_isolation_check.py
 
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: pip install .[dev]
-      - name: Run pytest (unit)
-        run: pytest tests --ignore=tests/performance --maxfail=1 --cov=Medical_KG_rev --cov-report=xml
-      - name: Upload coverage to artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-xml
-          path: coverage.xml
+    unit-tests:
+        name: Unit Tests
+        runs-on: ubuntu-latest
+        needs: lint
+        steps:
+            - uses: actions/checkout@v4
+            - name: Cache pip dependencies
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+            - name: Install dependencies
+              run: pip install .[dev]
+            - name: Run pytest (unit)
+              run: pytest tests --ignore=tests/performance --maxfail=1 --cov=Medical_KG_rev --cov-report=xml
+            - name: Upload coverage to artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-xml
+                  path: coverage.xml
 
-  docling-validation:
-    name: Docling Validation
-    runs-on: ubuntu-latest
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Cache Hugging Face models
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.HF_HOME }}
-          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
-          restore-keys: |
-            ${{ runner.os }}-hf-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: pip install .[dev]
-      - name: Prepare Gemma3 cache (CI placeholder)
-        run: |
-          mkdir -p "${DOCLING_MODEL_DIR}"
-          cat <<'JSON' > "${DOCLING_MODEL_DIR}/config.json"
-          {"model_type": "gemma", "architectures": ["GemmaForConditionalGeneration"]}
-          JSON
-          python scripts/download_gemma3.py --verify-only --target "${DOCLING_MODEL_DIR}"
-      - name: Run Docling-focused tests
-        run: |
-          pytest \
-            tests/services/parsing/test_docling_vlm_service.py \
-            tests/integration/test_docling_vlm_pipeline.py \
-            tests/regression/test_mineru_vs_docling_comparison.py
+    docling-validation:
+        name: Docling Validation
+        runs-on: ubuntu-latest
+        needs: unit-tests
+        steps:
+            - uses: actions/checkout@v4
+            - name: Cache pip dependencies
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
+            - name: Cache Hugging Face models
+              uses: actions/cache@v4
+              with:
+                  path: ${{ env.HF_HOME }}
+                  key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
+                  restore-keys: |
+                      ${{ runner.os }}-hf-
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+            - name: Install dependencies
+              run: pip install .[dev]
+            - name: Prepare Gemma3 cache (CI placeholder)
+              run: |
+                  mkdir -p "${DOCLING_MODEL_DIR}"
+                  cat <<'JSON' > "${DOCLING_MODEL_DIR}/config.json"
+                  {"model_type": "gemma", "architectures": ["GemmaForConditionalGeneration"]}
+                  JSON
+                  python scripts/download_gemma3.py --verify-only --target "${DOCLING_MODEL_DIR}"
+            - name: Run Docling-focused tests
+              run: |
+                  pytest \
+                    tests/services/parsing/test_docling_vlm_service.py \
+                    tests/integration/test_docling_vlm_pipeline.py \
+                    tests/regression/test_mineru_vs_docling_comparison.py
 
-  integration-tests:
-    name: Integration Tests
+    integration-tests:
+        name: Integration Tests
+        runs-on: ubuntu-latest
+        needs: docling-validation
+        services:
+            kafka:
+                image: bitnami/kafka:3.6
+                ports:
+                    - 9092:9092
+                env:
+                    KAFKA_BROKER_ID: 1
+                    KAFKA_CFG_ZOOKEEPER_CONNECT: localhost:2181
+                    KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
+                    KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+                    KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+                options: >-
+                    --health-cmd="kafka-topics.sh --bootstrap-server localhost:9092 --list"
+                    --health-interval=10s
+                    --health-timeout=10s
+                    --health-retries=10
+            zookeeper:
+                image: bitnami/zookeeper:3.8
+                ports:
+                    - 2181:2181
+                env:
+                    ALLOW_ANONYMOUS_LOGIN: "yes"
+        steps:
+            - uses: actions/checkout@v4
+            - name: Cache pip dependencies
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
+            - name: Cache Hugging Face models
+              uses: actions/cache@v4
+              with:
+                  path: ${{ env.HF_HOME }}
+                  key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
+                  restore-keys: |
+                      ${{ runner.os }}-hf-
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+            - name: Install dependencies
+              run: pip install .[dev]
+            - name: Launch Docker Compose stack
+              run: |
+                  docker compose -f ops/docker-compose.yml up -d
+            - name: Wait for services
+              run: ./scripts/wait_for_services.sh
+            - name: Run integration suite
+              run: pytest tests/gateway tests/services tests/orchestration
+            - name: Tear down stack
+              if: always()
+              run: docker compose -f ops/docker-compose.yml down -v
+
+    contract-tests:
+        name: Contract Validation
+        runs-on: ubuntu-latest
+        needs: integration-tests
+        steps:
+            - uses: actions/checkout@v4
+            - name: Cache pip dependencies
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
+            - name: Cache Hugging Face models
+              uses: actions/cache@v4
+              with:
+                  path: ${{ env.HF_HOME }}
+                  key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
+                  restore-keys: |
+                      ${{ runner.os }}-hf-
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+            - name: Install dependencies
+              run: pip install .[dev]
+            - name: Run pytest contract tests
+              run: pytest tests/contract
+            - name: Generate OpenAPI schema
+              run: python -m Medical_KG_rev.gateway.main --export-openapi > openapi.yaml
+            - name: Schemathesis CLI
+              run: schemathesis run --app=Medical_KG_rev.gateway.app:create_app openapi.yaml
+            - name: Install Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+            - name: GraphQL Inspector diff
+              run: |
+                  npm install -g @graphql-inspector/cli
+                  python -m Medical_KG_rev.gateway.main --export-graphql > current.graphql
+                  graphql-inspector diff docs/schema.graphql current.graphql
+            - name: Buf breaking change detection
+              uses: bufbuild/buf-setup-action@v1
+            - name: Run Buf checks
+              run: |
+                  buf lint
+                  buf breaking --against '.git#branch=main'
+
+    performance-tests:
+        name: k6 Performance Tests
+        runs-on: ubuntu-latest
+        needs: contract-tests
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install k6
+              uses: grafana/setup-k6-action@v1
+            - name: Run retrieval performance scenario
+              run: k6 run tests/performance/retrieve_latency.js
+            - name: Run ingestion throughput scenario
+              run: k6 run tests/performance/ingest_throughput.js
+            - name: Run concurrent jobs scenario
+              run: k6 run tests/performance/concurrency.js
+
+    docker-images:
+        name: Build & Push Docker Images
+        runs-on: ubuntu-latest
+        needs: contract-tests
+        strategy:
+            matrix:
+                service:
+                    [
+                        gateway,
+                        gpu-management,
+                        embedding-service,
+                        reranking-service,
+                        docling-vlm-service,
+                    ]
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build and push ${{ matrix.service }} image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ops/docker/${{ matrix.service }}/Dockerfile
+                  push: ${{ github.event_name != 'pull_request' }}
+                  tags: |
+                      ghcr.io/${{ github.repository }}/${{ matrix.service }}:sha-${{ github.sha }}
+                      ghcr.io/${{ github.repository }}/${{ matrix.service }}:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+  service-integration-tests:
+    name: Service Integration Tests
     runs-on: ubuntu-latest
-    needs: docling-validation
-    services:
-      kafka:
-        image: bitnami/kafka:3.6
-        ports:
-          - 9092:9092
-        env:
-          KAFKA_BROKER_ID: 1
-          KAFKA_CFG_ZOOKEEPER_CONNECT: localhost:2181
-          KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
-          KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-          KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
-        options: >-
-          --health-cmd="kafka-topics.sh --bootstrap-server localhost:9092 --list"
-          --health-interval=10s
-          --health-timeout=10s
-          --health-retries=10
-      zookeeper:
-        image: bitnami/zookeeper:3.8
-        ports:
-          - 2181:2181
-        env:
-          ALLOW_ANONYMOUS_LOGIN: 'yes'
+    needs: docker-images
     steps:
       - uses: actions/checkout@v4
       - name: Cache pip dependencies
@@ -144,121 +283,41 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Cache Hugging Face models
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.HF_HOME }}
-          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
-          restore-keys: |
-            ${{ runner.os }}-hf-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
         run: pip install .[dev]
-      - name: Launch Docker Compose stack
+      - name: Launch GPU services stack
         run: |
-          docker compose -f ops/docker-compose.yml up -d
-      - name: Wait for services
-        run: ./scripts/wait_for_services.sh
-      - name: Run integration suite
-        run: pytest tests/gateway tests/services tests/orchestration
-      - name: Tear down stack
+          docker compose -f ops/docker/docker-compose.torch-isolation.yml up -d
+      - name: Wait for GPU services
+        run: |
+          timeout 300 bash -c 'until docker compose -f ops/docker/docker-compose.torch-isolation.yml ps | grep -q "healthy"; do sleep 5; done'
+      - name: Run service integration tests
+        run: |
+          pytest tests/services/integration/test_gpu_service.py \
+                 tests/services/integration/test_embedding_service.py \
+                 tests/services/integration/test_reranking_service.py \
+                 tests/services/integration/test_docling_vlm_service.py
+      - name: Run torch isolation tests
+        run: |
+          pytest tests/integration/test_torch_isolation.py
+      - name: Torch-Free Deployment Validation
+        run: python scripts/validate_torch_free_deployment.py
+      - name: Performance Regression Tests
+        run: python scripts/performance_regression_test.py
+      - name: Security Validation
+        run: python scripts/security_validation.py
+      - name: Tear down GPU services stack
         if: always()
-        run: docker compose -f ops/docker-compose.yml down -v
-
-  contract-tests:
-    name: Contract Validation
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Cache Hugging Face models
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.HF_HOME }}
-          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', 'scripts/download_gemma3.py') }}
-          restore-keys: |
-            ${{ runner.os }}-hf-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: pip install .[dev]
-      - name: Run pytest contract tests
-        run: pytest tests/contract
-      - name: Generate OpenAPI schema
-        run: python -m Medical_KG_rev.gateway.main --export-openapi > openapi.yaml
-      - name: Schemathesis CLI
-        run: schemathesis run --app=Medical_KG_rev.gateway.app:create_app openapi.yaml
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: GraphQL Inspector diff
-        run: |
-          npm install -g @graphql-inspector/cli
-          python -m Medical_KG_rev.gateway.main --export-graphql > current.graphql
-          graphql-inspector diff docs/schema.graphql current.graphql
-      - name: Buf breaking change detection
-        uses: bufbuild/buf-setup-action@v1
-      - name: Run Buf checks
-        run: |
-          buf lint
-          buf breaking --against '.git#branch=main'
-
-  performance-tests:
-    name: k6 Performance Tests
-    runs-on: ubuntu-latest
-    needs: contract-tests
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install k6
-        uses: grafana/setup-k6-action@v1
-      - name: Run retrieval performance scenario
-        run: k6 run tests/performance/retrieve_latency.js
-      - name: Run ingestion throughput scenario
-        run: k6 run tests/performance/ingest_throughput.js
-      - name: Run concurrent jobs scenario
-        run: k6 run tests/performance/concurrency.js
-
-  docker-image:
-    name: Build & Push Docker Image
-    runs-on: ubuntu-latest
-    needs: contract-tests
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
-            ghcr.io/${{ github.repository }}:latest
+        run: docker compose -f ops/docker/docker-compose.torch-isolation.yml down -v
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: docker-image
+    needs: service-integration-tests
     if: github.ref == 'refs/heads/main'
     environment:
       name: staging
@@ -267,11 +326,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
-      - name: Render manifests
-        run: kubectl kustomize ops/k8s/overlays/staging
-      - name: Deploy manifests
+      - name: Install deployment automation
+        run: pip install .[dev]
+      - name: Deploy torch isolation services
         run: |
-          kubectl apply -k ops/k8s/overlays/staging
+          python scripts/deploy_torch_isolation.py deploy \
+            --services "gpu_management,embedding_service,reranking_service,docling_vlm_service,gateway" \
+            --config-path ops/config/torch_isolation_deployment.yaml \
+            --validate
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_STAGING }}
 
   deploy-production:
     name: Deploy to Production
@@ -285,11 +349,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
-      - name: Render manifests
-        run: kubectl kustomize ops/k8s/overlays/production
-      - name: Deploy manifests
+      - name: Install deployment automation
+        run: pip install .[dev]
+      - name: Deploy torch isolation services
         run: |
-          kubectl apply -k ops/k8s/overlays/production
+          python scripts/deploy_torch_isolation.py deploy \
+            --services "gpu_management,embedding_service,reranking_service,docling_vlm_service,gateway" \
+            --config-path ops/config/torch_isolation_deployment.yaml \
+            --validate
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_PRODUCTION }}
       - name: Manual approval gate
         uses: chrnorm/deployment-action@v2
         with:
@@ -319,7 +388,7 @@ jobs:
   branch-protection:
     name: Update Branch Protection
     runs-on: ubuntu-latest
-    needs: docker-image
+    needs: docker-images
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Configure branch protection
@@ -332,5 +401,5 @@ jobs:
           enforce_admins: true
           require_status_checks: true
           required_status_checks: >-
-            ["Lint & Static Analysis", "Unit Tests", "Docling Validation", "Integration Tests", "Contract Validation"]
+            ["Lint & Static Analysis", "Unit Tests", "Docling Validation", "Integration Tests", "Contract Validation", "Service Integration Tests", "Torch Isolation Quality Gate", "Torch-Free Deployment Validation", "Performance Regression Tests", "Security Validation"]
           required_pull_request_reviews: 2

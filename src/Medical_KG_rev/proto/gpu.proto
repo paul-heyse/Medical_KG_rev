@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package medicalkg.gateway.v1;
+
+option go_package = "github.com/your-org/medicalkg/gateway/v1";
+
+import "google/protobuf/empty.proto";
+
+service GPUService {
+  rpc GetStatus(google.protobuf.Empty) returns (StatusResponse);
+  rpc ListDevices(google.protobuf.Empty) returns (ListDevicesResponse);
+  rpc AllocateGPU(AllocationRequest) returns (AllocationResponse);
+  rpc GetDeviceInfo(DeviceInfoRequest) returns (DeviceInfoResponse);
+  rpc GetMemoryInfo(google.protobuf.Empty) returns (MemoryInfoResponse);
+}
+
+message StatusResponse {
+  bool available = 1;
+  int32 device_count = 2;
+  string error_message = 3;
+  repeated string device_names = 4;
+}
+
+message GpuDevice {
+  int32 index = 1;
+  string name = 2;
+  int64 total_memory_mb = 3;
+  int64 free_memory_mb = 4;
+  double utilization_percent = 5;
+  bool available = 6;
+}
+
+message ListDevicesResponse {
+  repeated GpuDevice devices = 1;
+}
+
+message AllocationRequest {
+  int64 required_memory_mb = 1;
+  int64 required_total_memory_mb = 2;
+  string service_name = 3;
+  int32 preferred_device = 4;
+}
+
+message AllocationResponse {
+  bool success = 1;
+  int32 device_index = 2;
+  string device_name = 3;
+  int64 allocated_memory_mb = 4;
+  string error_message = 5;
+}
+
+message DeviceInfoRequest {
+  int32 device_index = 1;
+}
+
+message DeviceInfoResponse {
+  GpuDevice device = 1;
+  bool found = 2;
+}
+
+message MemoryInfoResponse {
+  int64 total_memory_mb = 1;
+  int64 free_memory_mb = 2;
+  int64 allocated_memory_mb = 3;
+  repeated GpuDevice devices = 4;
+}

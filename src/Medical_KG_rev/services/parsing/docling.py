@@ -46,7 +46,6 @@ class DoclingVLMOutputParser:
 
     def parse(self, result: DoclingVLMResult) -> Document:
         """Map a Docling VLM result into a :class:`Document` instance."""
-
         blocks: list[Block] = []
         blocks.extend(self._text_blocks(result))
 
@@ -136,7 +135,9 @@ class DoclingVLMOutputParser:
 
     @staticmethod
     def _build_table(doc_id: str, index: int, payload: Any) -> Table:
-        metadata = DoclingVLMOutputParser._extract_metadata(payload, {"cells", "headers", "caption"})
+        metadata = DoclingVLMOutputParser._extract_metadata(
+            payload, {"cells", "headers", "caption"}
+        )
         table_id = str(payload.get("id", f"{doc_id}-table-{index}"))
         page = int(payload.get("page", 1) or 1)
         headers = tuple(str(item) for item in payload.get("headers", []) if item is not None)
@@ -175,19 +176,17 @@ class DoclingVLMOutputParser:
         figure_id = str(payload.get("id", f"{doc_id}-figure-{index}"))
         page = int(payload.get("page", 1) or 1)
         image_path = str(
-            payload.get("image_path")
-            or payload.get("uri")
-            or f"{doc_id}-figure-{index}.png"
+            payload.get("image_path") or payload.get("uri") or f"{doc_id}-figure-{index}.png"
         )
         return Figure(
             id=figure_id,
             page=page if page > 0 else 1,
             image_path=image_path,
-            caption=(
-                str(payload.get("caption")) if payload.get("caption") is not None else None
-            ),
+            caption=(str(payload.get("caption")) if payload.get("caption") is not None else None),
             figure_type=str(payload.get("type")) if payload.get("type") is not None else None,
-            mime_type=str(payload.get("mime_type")) if payload.get("mime_type") is not None else None,
+            mime_type=(
+                str(payload.get("mime_type")) if payload.get("mime_type") is not None else None
+            ),
             width=int(payload.get("width")) if payload.get("width") is not None else None,
             height=int(payload.get("height")) if payload.get("height") is not None else None,
             metadata=metadata,

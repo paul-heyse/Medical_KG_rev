@@ -1,0 +1,361 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: vlm-gpu-memory-optimizer-config
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+data:
+    config.yaml: |
+        enabled: true
+        strategy: "balanced"
+        monitoring_interval: 5
+        memory_threshold_warning: 0.8
+        memory_threshold_critical: 0.9
+        memory_threshold_oom: 0.95
+        temperature_threshold: 80.0
+        optimization_interval: 60
+        cleanup_interval: 300
+        max_batch_size: 16
+        min_batch_size: 1
+        memory_reserve_mb: 1024
+        gc_threshold: 0.85
+        fragmentation_threshold: 0.3
+    logging.yaml: |
+        version: 1
+        disable_existing_loggers: false
+        formatters:
+          default:
+            format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            datefmt: '%Y-%m-%d %H:%M:%S'
+          json:
+            format: '%(asctime)s %(name)s %(levelname)s %(message)s'
+            datefmt: '%Y-%m-%d %H:%M:%S'
+        handlers:
+          console:
+            class: logging.StreamHandler
+            level: INFO
+            formatter: default
+            stream: ext://sys.stdout
+          file:
+            class: logging.handlers.RotatingFileHandler
+            level: DEBUG
+            formatter: json
+            filename: /var/log/vlm-memory-optimizer.log
+            maxBytes: 10485760
+            backupCount: 5
+        loggers:
+          Medical_KG_rev.services.optimization.vlm_gpu_memory_optimizer:
+            level: DEBUG
+            handlers: [console, file]
+            propagate: false
+        root:
+          level: INFO
+          handlers: [console, file]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: vlm-gpu-memory-optimizer
+    template:
+        metadata:
+            labels:
+                app: vlm-gpu-memory-optimizer
+                component: optimization
+            annotations:
+                prometheus.io/scrape: "true"
+                prometheus.io/port: "8080"
+                prometheus.io/path: "/metrics"
+        spec:
+            serviceAccountName: vlm-gpu-memory-optimizer
+            containers:
+                - name: vlm-gpu-memory-optimizer
+                  image: medical-kg/vlm-gpu-memory-optimizer:latest
+                  imagePullPolicy: Always
+                  ports:
+                      - name: metrics
+                        containerPort: 8080
+                        protocol: TCP
+                      - name: health
+                        containerPort: 8081
+                        protocol: TCP
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app/src"
+                      - name: LOG_LEVEL
+                        value: "INFO"
+                      - name: CONFIG_FILE
+                        value: "/app/config/config.yaml"
+                      - name: LOGGING_CONFIG
+                        value: "/app/config/logging.yaml"
+                      - name: GPU_MONITORING_ENABLED
+                        value: "true"
+                      - name: MEMORY_OPTIMIZATION_ENABLED
+                        value: "true"
+                      - name: MONITORING_INTERVAL
+                        value: "5"
+                      - name: OPTIMIZATION_INTERVAL
+                        value: "60"
+                      - name: MEMORY_THRESHOLD_WARNING
+                        value: "0.8"
+                      - name: MEMORY_THRESHOLD_CRITICAL
+                        value: "0.9"
+                      - name: MEMORY_THRESHOLD_OOM
+                        value: "0.95"
+                      - name: MAX_BATCH_SIZE
+                        value: "16"
+                      - name: MIN_BATCH_SIZE
+                        value: "1"
+                      - name: MEMORY_RESERVE_MB
+                        value: "1024"
+                      - name: GC_THRESHOLD
+                        value: "0.85"
+                      - name: FRAGMENTATION_THRESHOLD
+                        value: "0.3"
+                      - name: TEMPERATURE_THRESHOLD
+                        value: "80.0"
+                      - name: CLEANUP_INTERVAL
+                        value: "300"
+                      - name: STRATEGY
+                        value: "balanced"
+                  resources:
+                      requests:
+                          memory: "512Mi"
+                          cpu: "100m"
+                      limits:
+                          memory: "1Gi"
+                          cpu: "500m"
+                  volumeMounts:
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+                      - name: logs
+                        mountPath: /var/log
+                      - name: tmp
+                        mountPath: /tmp
+                  livenessProbe:
+                      httpGet:
+                          path: /health
+                          port: 8081
+                      initialDelaySeconds: 30
+                      periodSeconds: 30
+                      timeoutSeconds: 10
+                      failureThreshold: 3
+                  readinessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 8081
+                      initialDelaySeconds: 10
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      runAsUser: 1000
+                      runAsGroup: 1000
+                      capabilities:
+                          drop:
+                              - ALL
+                      readOnlyRootFilesystem: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: vlm-gpu-memory-optimizer-config
+                - name: logs
+                  emptyDir: {}
+                - name: tmp
+                  emptyDir: {}
+            nodeSelector:
+                kubernetes.io/os: linux
+            tolerations:
+                - key: "nvidia.com/gpu"
+                  operator: "Exists"
+                  effect: "NoSchedule"
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: "nvidia.com/gpu"
+                                    operator: "Exists"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+spec:
+    type: ClusterIP
+    ports:
+        - name: metrics
+          port: 8080
+          targetPort: 8080
+          protocol: TCP
+        - name: health
+          port: 8081
+          targetPort: 8081
+          protocol: TCP
+    selector:
+        app: vlm-gpu-memory-optimizer
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+rules:
+    - apiGroups: [""]
+      resources: ["pods", "nodes"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["metrics.k8s.io"]
+      resources: ["nodes", "pods"]
+      verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+subjects:
+    - kind: ServiceAccount
+      name: vlm-gpu-memory-optimizer
+      namespace: medical-kg
+roleRef:
+    kind: Role
+    name: vlm-gpu-memory-optimizer
+    apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+    name: vlm-gpu-memory-optimizer
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+spec:
+    selector:
+        matchLabels:
+            app: vlm-gpu-memory-optimizer
+    endpoints:
+        - port: metrics
+          path: /metrics
+          interval: 30s
+          scrapeTimeout: 10s
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: vlm-gpu-memory-optimizer-logs
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 10Gi
+    storageClassName: gp2
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: vlm-gpu-memory-optimizer-alerts
+    namespace: medical-kg
+    labels:
+        app: vlm-gpu-memory-optimizer
+        component: optimization
+data:
+    alerts.yaml: |
+        groups:
+        - name: vlm-gpu-memory-optimizer
+          rules:
+          - alert: VLMMemoryOptimizerDown
+            expr: up{job="vlm-gpu-memory-optimizer"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "VLM GPU Memory Optimizer is down"
+              description: "VLM GPU Memory Optimizer has been down for more than 1 minute."
+
+          - alert: VLMMemoryUsageHigh
+            expr: vlm_memory_usage_percent > 0.9
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM GPU memory usage is high"
+              description: "VLM GPU memory usage is {{ $value }}% for more than 2 minutes."
+
+          - alert: VLMMemoryUsageCritical
+            expr: vlm_memory_usage_percent > 0.95
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "VLM GPU memory usage is critical"
+              description: "VLM GPU memory usage is {{ $value }}% for more than 1 minute."
+
+          - alert: VLMMemoryOptimizationFailed
+            expr: vlm_memory_optimization_failures_total > 0
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM memory optimization failed"
+              description: "VLM memory optimization has failed {{ $value }} times."
+
+          - alert: VLMMemoryFragmentationHigh
+            expr: vlm_memory_fragmentation_percent > 30
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "VLM GPU memory fragmentation is high"
+              description: "VLM GPU memory fragmentation is {{ $value }}% for more than 5 minutes."
+
+          - alert: VLMBatchSizeOptimizationActive
+            expr: vlm_batch_size_optimizations_total > 0
+            for: 0m
+            labels:
+              severity: info
+            annotations:
+              summary: "VLM batch size optimization is active"
+              description: "VLM batch size optimization has been triggered {{ $value }} times."

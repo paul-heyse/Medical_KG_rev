@@ -7,10 +7,10 @@ from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
 from Medical_KG_rev.gateway.app import create_app
-from Medical_KG_rev.gateway.models import DoclingProcessingResponse, DoclingProcessingPayload
+from Medical_KG_rev.gateway.models import DoclingProcessingPayload, DoclingProcessingResponse
 
 
-class StubGatewayService:
+class StubDoclingCoordinator:
     def __init__(self) -> None:
         self.docling_service = MagicMock()
         self.process_docling_pdf = MagicMock(
@@ -47,15 +47,15 @@ def _fake_secure_endpoint(*_, **__):
 
 
 def test_docling_rest_endpoint_returns_payload(monkeypatch):
-    stub_service = StubGatewayService()
+    stub_service = StubDoclingCoordinator()
     stub_service.docling_service = StubDoclingService()
 
     monkeypatch.setattr(
-        "Medical_KG_rev.gateway.services.get_gateway_service",
+        "Medical_KG_rev.gateway.app.get_docling_coordinator",
         lambda: stub_service,
     )
     monkeypatch.setattr(
-        "Medical_KG_rev.gateway.rest.router.get_gateway_service",
+        "Medical_KG_rev.gateway.rest.router.get_docling_coordinator",
         lambda: stub_service,
     )
     monkeypatch.setattr(

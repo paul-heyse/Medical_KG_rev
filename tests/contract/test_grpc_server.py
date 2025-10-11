@@ -17,7 +17,6 @@ def test_grpc_server_start_registers_services(monkeypatch) -> None:
     monkeypatch.setattr("grpc.aio.server", lambda *args, **kwargs: fake_server)
     server = GatewayGrpcServer(service=get_gateway_service())
     # Even if protobuf stubs are missing, start should not raise.
-    monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.mineru_pb2_grpc", None)
     monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.embedding_pb2_grpc", None)
     monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.extraction_pb2_grpc", None)
     monkeypatch.setattr("Medical_KG_rev.gateway.grpc.server.ingestion_pb2_grpc", None)

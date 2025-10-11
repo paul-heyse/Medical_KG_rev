@@ -551,6 +551,55 @@ def build_batch_result(statuses: Iterable[OperationStatus]) -> BatchOperationRes
 
 
 # ==============================================================================
+# PROCESSING MODELS
+# ==============================================================================
+
+class DoclingProcessingPayload(BaseModel):
+    """Payload for Docling processing requests."""
+
+    document_id: str = Field(..., description="Document identifier")
+    file_path: str = Field(..., description="Path to the document file")
+    processing_options: Dict[str, Any] = Field(default_factory=dict, description="Processing options")
+    callback_url: Optional[str] = Field(None, description="Callback URL for async processing")
+
+    class Config:
+        """Pydantic configuration."""
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+
+class DoclingProcessingRequest(BaseModel):
+    """Request for Docling processing."""
+
+    document_id: str = Field(..., description="Document identifier")
+    file_path: str = Field(..., description="Path to the document file")
+    processing_options: Dict[str, Any] = Field(default_factory=dict, description="Processing options")
+    callback_url: Optional[str] = Field(None, description="Callback URL for async processing")
+
+    class Config:
+        """Pydantic configuration."""
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+
+class DoclingProcessingResponse(BaseModel):
+    """Response for Docling processing requests."""
+
+    result: DoclingProcessingPayload = Field(..., description="Processing result")
+    status: str = Field(default="completed", description="Processing status")
+    processing_time: float = Field(default=0.0, description="Processing time in seconds")
+    error_message: Optional[str] = Field(None, description="Error message if processing failed")
+
+    class Config:
+        """Pydantic configuration."""
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+
+# ==============================================================================
 # EXPORTS
 # ==============================================================================
 
@@ -597,6 +646,9 @@ __all__ = [
     # Utility models
     "Pagination",
     "SearchArguments",
+    # Processing models
+    "DoclingProcessingPayload",
+    "DoclingProcessingResponse",
     # Helper functions
     "build_batch_result",
 ]

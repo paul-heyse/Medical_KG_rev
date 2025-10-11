@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-
 from Medical_KG_rev.config.docling_config import DoclingVLMConfig
 from Medical_KG_rev.services import GpuNotAvailableError
 from Medical_KG_rev.services.parsing.docling_vlm_service import DoclingVLMService
@@ -90,9 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = (
-        DoclingVLMConfig.from_yaml(args.config)
-        if args.config
-        else DoclingVLMConfig.from_dict(None)
+        DoclingVLMConfig.from_yaml(args.config) if args.config else DoclingVLMConfig.from_dict(None)
     )
     ensure_cache_directory(config.model_path)
 

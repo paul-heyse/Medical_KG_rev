@@ -52,6 +52,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
+# ==============================================================================
+# TYPE DEFINITIONS
+# ==============================================================================
+from Medical_KG_rev.services.retrieval.routing import QueryIntent
+
 from ...auth import Scopes, SecurityContext, secure_endpoint
 from ...auth.audit import get_audit_trail
 from ...services.health import HealthService
@@ -82,11 +87,6 @@ from ..presentation.odata import ODataParams
 from ..presentation.requests import apply_tenant_context
 from ..services import GatewayService, get_gateway_service
 
-# ==============================================================================
-# TYPE DEFINITIONS
-# ==============================================================================
-from ..services.retrieval.routing import QueryIntent
-
 # Type aliases for dependency injection
 PresenterDep = Annotated[ResponsePresenter, Depends(get_response_presenter)]
 LifecycleDep = Annotated[RequestLifecycle, Depends(get_request_lifecycle)]
@@ -115,8 +115,8 @@ async def list_adapters(
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters")
     ),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     try:
         adapters = service.list_adapters(domain)
@@ -139,8 +139,8 @@ async def get_adapter_metadata(
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/metadata")
     ),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     metadata = service.get_adapter_metadata(name)
     if metadata is None:
@@ -163,8 +163,8 @@ async def get_adapter_health(
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/health")
     ),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     health = service.get_adapter_health(name)
     if health is None:
@@ -189,8 +189,8 @@ async def get_adapter_config_schema(
             scopes=[Scopes.ADAPTERS_READ], endpoint="GET /v1/adapters/{name}/config-schema"
         )
     ),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     schema = service.get_adapter_config_schema(name)
     if schema is None:
@@ -255,8 +255,8 @@ async def ingest_dataset(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/ingest")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result: BatchOperationResult = service.ingest(dataset, request)
@@ -278,8 +278,8 @@ async def ingest_pipeline(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/pipelines/ingest")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     ingest_request = IngestionRequest.model_validate(request.model_dump(exclude={"dataset"}))
@@ -315,8 +315,8 @@ async def get_job(
         secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     job = service.get_job(job_id, tenant_id=security.tenant_id)
     if not job:
@@ -337,8 +337,8 @@ async def list_job_events(
         secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs/{job_id}/events")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     job = service.get_job(job_id, tenant_id=security.tenant_id)
     if not job:
@@ -366,8 +366,8 @@ async def list_jobs(
         secure_endpoint(scopes=[Scopes.JOBS_READ], endpoint="GET /v1/jobs")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     jobs = service.list_jobs(status=status, tenant_id=security.tenant_id)
     meta = lifecycle.meta({"total": len(jobs), "status": status})
@@ -381,8 +381,8 @@ async def cancel_job(
         secure_endpoint(scopes=[Scopes.JOBS_WRITE], endpoint="POST /v1/jobs/{job_id}/cancel")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     job = service.cancel_job(job_id, tenant_id=security.tenant_id, reason="client-request")
     if not job:
@@ -404,8 +404,8 @@ async def ingest_clinicaltrials(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/ingest/clinicaltrials")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     return await ingest_dataset(
         "clinicaltrials",
@@ -426,8 +426,8 @@ async def ingest_dailymed(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/ingest/dailymed")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     return await ingest_dataset(
         "dailymed",
@@ -448,8 +448,8 @@ async def ingest_pmc(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/ingest/pmc")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     return await ingest_dataset(
         "pmc",
@@ -475,8 +475,8 @@ async def chunk_document(
         secure_endpoint(scopes=[Scopes.INGEST_WRITE], endpoint="POST /v1/chunk")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     chunks = service.chunk_document(request)
@@ -498,8 +498,8 @@ async def embed_text(
         secure_endpoint(scopes=[Scopes.EMBED_WRITE], endpoint="POST /v1/embed")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     response = service.embed(request)
@@ -532,8 +532,8 @@ async def retrieve(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="POST /v1/retrieve")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     odata = ODataParams.from_request(http_request)
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
@@ -566,8 +566,8 @@ async def list_namespaces(
         secure_endpoint(scopes=[Scopes.EMBED_READ], endpoint="GET /v1/namespaces")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     http_request.state.requested_tenant_id = security.tenant_id
     namespaces = service.list_namespaces(tenant_id=security.tenant_id, scope=Scopes.EMBED_READ)
@@ -580,8 +580,8 @@ async def get_namespace_policy(
         secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     status = service.namespace_policy_status()
     return presenter.success(status, meta=lifecycle.meta())
@@ -594,8 +594,8 @@ async def update_namespace_policy(
         secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="PATCH /v1/namespaces/policy")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     try:
         status = service.update_namespace_policy(request)
@@ -612,8 +612,8 @@ async def get_namespace_policy_diagnostics(
         )
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     diagnostics = service.namespace_policy_diagnostics()
     return presenter.success(diagnostics, meta=lifecycle.meta())
@@ -625,8 +625,8 @@ async def get_namespace_policy_health(
         secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/health")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     health = service.namespace_policy_health()
     return presenter.success(health, meta=lifecycle.meta())
@@ -638,8 +638,8 @@ async def get_namespace_policy_metrics(
         secure_endpoint(scopes=[Scopes.EMBED_ADMIN], endpoint="GET /v1/namespaces/policy/metrics")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     metrics = service.namespace_policy_metrics()
     return presenter.success(metrics, meta=lifecycle.meta())
@@ -654,8 +654,8 @@ async def invalidate_namespace_policy_cache(
         )
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     service.invalidate_namespace_policy_cache(request.namespace)
     payload = {"status": "cache-invalidated", "namespace": request.namespace}
@@ -673,8 +673,8 @@ async def validate_namespace(
         )
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.validate_namespace_texts(
@@ -693,8 +693,8 @@ async def evaluate(
         secure_endpoint(scopes=[Scopes.EVALUATE_WRITE], endpoint="POST /v1/evaluate")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     try:
@@ -714,8 +714,8 @@ async def query_pipeline(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="POST /v1/pipelines/query")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     odata = ODataParams.from_request(http_request)
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
@@ -750,8 +750,8 @@ async def search(
         secure_endpoint(scopes=[Scopes.RETRIEVE_READ], endpoint="GET /v1/search")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request_model = RetrieveRequest(
         tenant_id=security.tenant_id,
@@ -790,8 +790,8 @@ async def entity_link(
         secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/map/el")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     results = service.entity_link(request)
@@ -820,8 +820,8 @@ async def extract(
         secure_endpoint(scopes=[Scopes.PROCESS_WRITE], endpoint="POST /v1/extract")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     extraction = service.extract(kind, request)
@@ -842,8 +842,8 @@ async def kg_write(
         secure_endpoint(scopes=[Scopes.KG_WRITE], endpoint="POST /v1/kg/write")
     ),
     service: GatewayService = Depends(get_gateway_service),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     request = _apply_tenant(request, security, http_request)  # type: ignore[assignment]
     result = service.write_kg(request)
@@ -867,8 +867,8 @@ async def list_audit_logs(
     security: SecurityContext = Depends(
         secure_endpoint(scopes=[Scopes.AUDIT_READ], endpoint="GET /v1/audit/logs")
     ),
-    presenter: PresenterDep = Depends(get_response_presenter),
-    lifecycle: LifecycleDep = Depends(get_request_lifecycle),
+    presenter: ResponsePresenter = Depends(get_response_presenter),
+    lifecycle: RequestLifecycle = Depends(get_request_lifecycle),
 ) -> Response:
     logs = get_audit_trail().list(tenant_id=security.tenant_id, limit=limit)
     data = [

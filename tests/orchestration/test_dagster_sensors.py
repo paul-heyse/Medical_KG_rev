@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dagster import RunRequest, SkipReason
-from dagster._core.test_utils import build_asset_context
+from dagster import RunRequest, SkipReason, build_asset_context
 
 from Medical_KG_rev.orchestration.dagster.runtime import pdf_ir_ready_sensor
 from Medical_KG_rev.orchestration.ledger import JobLedger

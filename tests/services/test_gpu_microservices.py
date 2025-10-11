@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("pydantic")
 
-from Medical_KG_rev.config.settings import MineruSettings, MineruWorkerSettings
+# MinerU settings removed - using Docling VLM services instead
 
 
 def _build_fake_torch():

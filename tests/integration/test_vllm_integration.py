@@ -6,8 +6,7 @@ import os
 import httpx
 import pytest
 
-from Medical_KG_rev.services.mineru.vllm_client import VLLMClient
-
+# MinerU VLLM client removed - using Docling VLM services instead
 from .utils import run_async
 
 pytestmark = pytest.mark.integration
@@ -15,7 +14,7 @@ pytestmark = pytest.mark.integration
 BASE_URL = os.getenv("TEST_VLLM_BASE_URL", "http://localhost:8000")
 
 
-def test_real_vllm_chat_completion(live_vllm_client: VLLMClient):
+def test_real_vllm_chat_completion(live_vllm_client):
     response = run_async(
         live_vllm_client.chat_completion(
             messages=[{"role": "user", "content": "What is the capital of France?"}],

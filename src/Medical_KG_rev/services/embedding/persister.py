@@ -307,10 +307,10 @@ class EmbeddingPersister(ABC):
         except Exception as exc:  # pragma: no cover - defensive
             report.record_error(str(exc))
             self._logger.exception(
-                "persister.persist.error",
-                namespace=context.namespace,
-                tenant_id=context.tenant_id,
-                error=str(exc),
+                "persister.persist.error: namespace=%s tenant_id=%s error=%s",
+                context.namespace,
+                context.tenant_id,
+                str(exc),
             )
         report.duration_ms = (perf_counter() - started) * 1000
         if self._telemetry:
@@ -444,7 +444,7 @@ class EmbeddingPersister(ABC):
                 evicted = self._recent.pop()
                 self._cache.pop(evicted, None)
         if kwargs:
-            self._logger.info("persister.configure", **kwargs)
+            self._logger.info("persister.configure", extra=kwargs)
 
 
 # ============================================================================

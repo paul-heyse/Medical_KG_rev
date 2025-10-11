@@ -472,7 +472,7 @@ def test_semantic_scholar_adapter_v2_enriches_citations() -> None:
 
 def test_extracted_adapters_backward_compatibility() -> None:
     """Test that extracted adapters maintain backward compatibility."""
-    # Test that we can still import from the old biomedical module
+    # Test that we can still import from the biomedical module
     from Medical_KG_rev.adapters.biomedical import (
         ChEMBLAdapter as LegacyChEMBLAdapter,
     )
@@ -546,7 +546,7 @@ def test_extracted_adapters_backward_compatibility() -> None:
     )
     from Medical_KG_rev.adapters.unpaywall import UnpaywallAdapter as NewUnpaywallAdapter
 
-    # Verify that both old and new adapters exist and are different classes
+    # Verify that both legacy and new adapters exist and are different classes
     assert LegacyUnpaywallAdapter is not NewUnpaywallAdapter
     assert LegacyCrossrefAdapter is not NewCrossrefAdapter
     assert LegacyPMCAdapter is not NewPMCAdapter

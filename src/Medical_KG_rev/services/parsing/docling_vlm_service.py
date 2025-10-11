@@ -1,243 +1,457 @@
-"""Docling Gemma3 12B VLM integration service."""
+"""Docling VLM service for biomedical document processing.
 
-from __future__ import annotations
+This module provides Docling Vision-Language Model integration including:
+- HTTP client for communicating with Docker Docling VLM service
+- PDF processing interface compatible with existing pipeline
+- Error handling for Docker service communication
+- Batch processing for multiple PDFs
+- Performance monitoring and metrics for VLM processing
+"""
 
-import json
-import threading
+import asyncio
+import logging
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
-import structlog
+import httpx
 
-from Medical_KG_rev.config.docling_config import DoclingVLMConfig
-from Medical_KG_rev.config.settings import get_settings
-from Medical_KG_rev.services import GpuManager, GpuNotAvailableError
-
-from .exceptions import DoclingModelLoadError, DoclingProcessingError, DoclingVLMError
-from .metrics import (
-    DOCLING_GPU_MEMORY_MB,
-    DOCLING_PROCESSING_SECONDS,
-    DOCLING_RETRIES_TOTAL,
-)
-
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
+class VLMProcessingStatus(Enum):
+    """VLM processing status."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    TIMEOUT = "timeout"
+
+
+@dataclass
 class DoclingVLMResult:
-    """Structured result returned by the Docling VLM pipeline."""
+    """Result from Docling VLM processing."""
 
-    document_id: str
-    text: str
+    pdf_path: str
+    status: VLMProcessingStatus
+    text_content: str
     tables: list[dict[str, Any]]
     figures: list[dict[str, Any]]
     metadata: dict[str, Any]
+    processing_time: float
+    error_message: str | None = None
+    model_version: str | None = None
+    gpu_memory_used: float | None = None
+
+
+@dataclass
+class DoclingVLMConfig:
+    """Configuration for Docling VLM service."""
+
+    service_url: str = "http://docling-vlm:8000"
+    timeout: int = 300
+    retry_attempts: int = 3
+    batch_size: int = 8
+    model_name: str = "gemma3-12b"
+    gpu_memory_fraction: float = 0.95
+    max_model_len: int = 4096
 
 
 class DoclingVLMService:
-    """High-level interface around Docling's Gemma3 12B VLM pipeline."""
+    """Docling VLM service for biomedical document processing.
 
-    def __init__(
-        self,
-        config: DoclingVLMConfig | None = None,
-        gpu_manager: GpuManager | None = None,
-        *,
-        eager: bool = False,
-    ) -> None:
-        self._config = config or get_settings().docling_vlm.as_config()
-        self._config.ensure_model_path()
-        self._gpu = gpu_manager or GpuManager(min_memory_mb=self._config.required_total_memory_mb)
-        self._pipeline: Any | None = None
-        self._lock = threading.Lock()
-        if eager:
-            self._ensure_pipeline(warmup=True)
+    Handles:
+    - HTTP client for communicating with Docker Docling VLM service
+    - PDF processing interface compatible with existing pipeline
+    - Error handling for Docker service communication
+    - Batch processing for multiple PDFs
+    - Performance monitoring and metrics for VLM processing
+    """
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _load_transformers_pipeline(self) -> Any:
-        try:
-            from transformers import pipeline
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise DoclingModelLoadError("transformers is required for Docling VLM usage") from exc
+    def __init__(self, config: DoclingVLMConfig):
+        """Initialize the Docling VLM service.
 
-        model_dir = str(self._config.model_path)
-        kwargs = {
-            "model": self._config.model_name,
-            "model_kwargs": {
-                "cache_dir": model_dir,
-                "revision": None,
-                "trust_remote_code": True,
-            },
-            "device_map": "auto",
+        Args:
+            config: Configuration for the VLM service
+
+        """
+        self.config = config
+        self.session: httpx.AsyncClient | None = None
+        self._processing_stats = {
+            "total_processed": 0,
+            "successful_processed": 0,
+            "failed_processed": 0,
+            "total_processing_time": 0.0,
+            "average_processing_time": 0.0,
         }
-        logger.info(
-            "docling_vlm.loading_pipeline",
-            model=self._config.model_name,
-            cache_dir=model_dir,
-        )
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.initialize()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
+
+    async def initialize(self) -> None:
+        """Initialize the VLM service."""
         try:
-            return pipeline("document-question-answering", **kwargs)
-        except Exception as exc:  # pragma: no cover - heavy dependency load
-            raise DoclingModelLoadError("Failed to load Gemma3 VLM pipeline") from exc
+            self.session = httpx.AsyncClient(
+                timeout=httpx.Timeout(self.config.timeout),
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
 
-    def _ensure_pipeline(self, *, warmup: bool = False) -> Any:
-        if self._pipeline is not None:
-            return self._pipeline
-        with self._lock:
-            if self._pipeline is None:
-                self._pipeline = self._load_transformers_pipeline()
-                if warmup:
-                    self._run_warmup()
-        return self._pipeline
+            # Test connection to VLM service
+            await self._test_connection()
+            logger.info(f"Docling VLM service initialized at {self.config.service_url}")
 
-    def _run_warmup(self) -> None:
-        prompts = [
-            {
-                "question": "Summarise the document",
-                "context": "Docling warmup",
+        except Exception as e:
+            logger.error(f"Failed to initialize Docling VLM service: {e}")
+            raise
+
+    async def close(self) -> None:
+        """Close the VLM service."""
+        if self.session:
+            await self.session.aclose()
+            self.session = None
+
+    async def _test_connection(self) -> None:
+        """Test connection to VLM service."""
+        try:
+            response = await self.session.get(f"{self.config.service_url}/health")
+            response.raise_for_status()
+
+            health_data = response.json()
+            if not health_data.get("status") == "healthy":
+                raise Exception(f"VLM service not healthy: {health_data}")
+
+        except Exception as e:
+            logger.error(f"VLM service connection test failed: {e}")
+            raise
+
+    async def process_pdf(self, pdf_path: str) -> DoclingVLMResult:
+        """Process a single PDF using Docling VLM.
+
+        Args:
+            pdf_path: Path to the PDF file
+
+        Returns:
+            DoclingVLMResult with processing results
+
+        """
+        start_time = time.time()
+
+        try:
+            # Validate PDF path
+            if not Path(pdf_path).exists():
+                raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+            # Prepare request data
+            request_data = {
+                "pdf_path": pdf_path,
+                "model_name": self.config.model_name,
+                "gpu_memory_fraction": self.config.gpu_memory_fraction,
+                "max_model_len": self.config.max_model_len,
             }
-            for _ in range(max(self._config.warmup_prompts, 1))
-        ]
-        try:
-            with self._gpu.device_session(
-                "docling_vlm_warmup",
-                required_total_memory_mb=self._config.required_total_memory_mb,
-            ):
-                pipeline = self._ensure_pipeline()
-                for prompt in prompts:
-                    pipeline(prompt["question"], prompt["context"])
-        except Exception as exc:  # pragma: no cover - warmup best effort
-            logger.warning("docling_vlm.warmup_failed", error=str(exc))
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    def process_pdf(self, pdf_path: str, *, document_id: str) -> DoclingVLMResult:
-        start = time.perf_counter()
-        pipeline = self._ensure_pipeline()
-        attempts = max(self._config.retry_attempts, 0) + 1
-        delay = 1.0
-        last_exc: Exception | None = None
-        requested_memory_mb = int(
-            self._config.gpu_memory_fraction * self._config.required_total_memory_mb
-        )
-        for attempt in range(attempts):
-            try:
-                with self._gpu.device_session(
-                    "docling_vlm",
-                    required_memory_mb=requested_memory_mb,
-                    required_total_memory_mb=self._config.required_total_memory_mb,
-                ):
-                    outputs = pipeline(
-                        question="Extract structured content",
-                        document=pdf_path,
-                        top_k=1,
-                        max_len=self._config.max_model_len,
-                    )
-                break
-            except GpuNotAvailableError:
-                raise
-            except Exception as exc:  # pragma: no cover - depends on docling runtime
-                last_exc = exc
-                if attempt == attempts - 1:
-                    DOCLING_PROCESSING_SECONDS.labels(status="error").observe(
-                        time.perf_counter() - start
-                    )
-                    raise DoclingProcessingError(str(exc)) from exc
-                time.sleep(delay)
-                delay = min(delay * 2, 30.0)
-                logger.warning(
-                    "docling_vlm.retry", attempt=attempt + 1, max_attempts=attempts, error=str(exc)
-                )
-                DOCLING_RETRIES_TOTAL.inc()
-        else:  # pragma: no cover - defensive
-            raise DoclingProcessingError(str(last_exc))
+            # Send request to VLM service
+            response = await self._send_processing_request(request_data)
 
-        duration = time.perf_counter() - start
-        DOCLING_GPU_MEMORY_MB.observe(requested_memory_mb)
-        DOCLING_PROCESSING_SECONDS.labels(status="ok").observe(duration)
-        return self._map_outputs(document_id=document_id, outputs=outputs, duration=duration)
+            # Process response
+            result = self._process_response(response, pdf_path, start_time)
 
-    def process_pdf_batch(self, items: Sequence[tuple[str, str]]) -> list[DoclingVLMResult]:
-        results: list[DoclingVLMResult] = []
-        failures: list[tuple[str, Exception]] = []
-        for document_id, path in items:
-            try:
-                results.append(self.process_pdf(path, document_id=document_id))
-            except DoclingVLMError as exc:
-                failures.append((document_id, exc))
-        if failures:
-            summary = "; ".join(f"{doc_id}: {exc}" for doc_id, exc in failures)
-            logger.error("docling_vlm.batch_failures", failures=summary)
+            # Update statistics
+            self._update_stats(result)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error processing PDF {pdf_path}: {e}")
+            return self._create_error_result(pdf_path, str(e), start_time)
+
+    async def process_pdf_batch(self, pdf_paths: list[str]) -> list[DoclingVLMResult]:
+        """Process multiple PDFs in batch.
+
+        Args:
+            pdf_paths: List of PDF file paths
+
+        Returns:
+            List of DoclingVLMResult objects
+
+        """
+        results = []
+
+        # Process in batches to manage memory
+        for i in range(0, len(pdf_paths), self.config.batch_size):
+            batch = pdf_paths[i : i + self.config.batch_size]
+
+            # Process batch concurrently
+            batch_tasks = [self.process_pdf(pdf_path) for pdf_path in batch]
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+
+            # Handle exceptions
+            for j, result in enumerate(batch_results):
+                if isinstance(result, Exception):
+                    error_result = self._create_error_result(batch[j], str(result), time.time())
+                    results.append(error_result)
+                else:
+                    results.append(result)
+
         return results
 
-    def health(self) -> dict[str, Any]:
-        try:
-            device = self._gpu.assert_total_memory(self._config.required_total_memory_mb)
-            required_free = int(
-                self._config.gpu_memory_fraction * self._config.required_total_memory_mb
-            )
-            available_free = self._gpu.assert_available_memory(
-                required_free, device=device
-            )
-        except GpuNotAvailableError as exc:
-            return {"status": "error", "detail": str(exc)}
-        cache_exists = Path(self._config.model_path).exists()
-        pipeline_ready = self._pipeline is not None
-        return {
-            "status": "ok" if cache_exists else "degraded",
-            "model_path": str(self._config.model_path),
-            "pipeline_ready": pipeline_ready,
-            "cache_exists": cache_exists,
-            "available_memory_mb": available_free,
-        }
+    async def _send_processing_request(self, request_data: dict[str, Any]) -> httpx.Response:
+        """Send processing request to VLM service."""
+        for attempt in range(self.config.retry_attempts):
+            try:
+                response = await self.session.post(
+                    f"{self.config.service_url}/process", json=request_data
+                )
+                response.raise_for_status()
+                return response
 
-    # ------------------------------------------------------------------
-    # Mapping helpers
-    # ------------------------------------------------------------------
-    def _map_outputs(
-        self,
-        *,
-        document_id: str,
-        outputs: Any,
-        duration: float,
+            except httpx.TimeoutException:
+                if attempt == self.config.retry_attempts - 1:
+                    raise Exception("VLM service timeout after all retries")
+                logger.warning(f"VLM service timeout, retrying... (attempt {attempt + 1})")
+                await asyncio.sleep(2**attempt)  # Exponential backoff
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code >= 500:  # Server error
+                    if attempt == self.config.retry_attempts - 1:
+                        raise Exception(f"VLM service error: {e.response.status_code}")
+                    logger.warning(f"VLM service error, retrying... (attempt {attempt + 1})")
+                    await asyncio.sleep(2**attempt)
+                else:  # Client error
+                    raise Exception(f"VLM service client error: {e.response.status_code}")
+
+    def _process_response(
+        self, response: httpx.Response, pdf_path: str, start_time: float
     ) -> DoclingVLMResult:
-        data = self._normalise_output(outputs)
-        metadata = data.get("metadata", {})
-        provenance = {
-            "model_name": self._config.model_name,
-            "processing_time_seconds": round(duration, 3),
-            "gpu_memory_fraction": self._config.gpu_memory_fraction,
-        }
-        metadata.setdefault("provenance", provenance)
+        """Process VLM service response."""
+        try:
+            data = response.json()
+
+            return DoclingVLMResult(
+                pdf_path=pdf_path,
+                status=VLMProcessingStatus.COMPLETED,
+                text_content=data.get("text_content", ""),
+                tables=data.get("tables", []),
+                figures=data.get("figures", []),
+                metadata=data.get("metadata", {}),
+                processing_time=time.time() - start_time,
+                model_version=data.get("model_version"),
+                gpu_memory_used=data.get("gpu_memory_used"),
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing VLM response: {e}")
+            return self._create_error_result(
+                pdf_path, f"Response processing error: {e}", start_time
+            )
+
+    def _create_error_result(
+        self, pdf_path: str, error_message: str, start_time: float
+    ) -> DoclingVLMResult:
+        """Create error result."""
         return DoclingVLMResult(
-            document_id=document_id,
-            text=str(data.get("text", "")),
-            tables=list(data.get("tables", [])),
-            figures=list(data.get("figures", [])),
-            metadata=metadata,
+            pdf_path=pdf_path,
+            status=VLMProcessingStatus.FAILED,
+            text_content="",
+            tables=[],
+            figures=[],
+            metadata={},
+            processing_time=time.time() - start_time,
+            error_message=error_message,
         )
 
-    def _normalise_output(self, payload: Any) -> dict[str, Any]:
-        if isinstance(payload, Mapping):
-            return dict(payload)
-        if isinstance(payload, list) and payload:
-            candidate = payload[0]
-            if isinstance(candidate, Mapping):
-                return dict(candidate)
-            if hasattr(candidate, "model_dump"):
-                return candidate.model_dump()
-        if hasattr(payload, "model_dump"):
-            return payload.model_dump()
+    def _update_stats(self, result: DoclingVLMResult) -> None:
+        """Update processing statistics."""
+        self._processing_stats["total_processed"] += 1
+        self._processing_stats["total_processing_time"] += result.processing_time
+
+        if result.status == VLMProcessingStatus.COMPLETED:
+            self._processing_stats["successful_processed"] += 1
+        else:
+            self._processing_stats["failed_processed"] += 1
+
+        # Calculate average processing time
+        if self._processing_stats["total_processed"] > 0:
+            self._processing_stats["average_processing_time"] = (
+                self._processing_stats["total_processing_time"]
+                / self._processing_stats["total_processed"]
+            )
+
+    async def health_check(self) -> dict[str, Any]:
+        """Check VLM service health.
+
+        Returns:
+            Health status information
+
+        """
         try:
-            return json.loads(json.dumps(payload))
-        except Exception:  # pragma: no cover - fallback path
+            if not self.session:
+                return {"status": "unhealthy", "error": "Service not initialized"}
+
+            response = await self.session.get(f"{self.config.service_url}/health")
+            response.raise_for_status()
+
+            health_data = response.json()
             return {
-                "text": "",
-                "tables": [],
-                "figures": [],
-                "metadata": {},
+                "status": "healthy",
+                "service_url": self.config.service_url,
+                "model_name": self.config.model_name,
+                "processing_stats": self._processing_stats,
+                **health_data,
             }
+
+        except Exception as e:
+            logger.error(f"VLM service health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "service_url": self.config.service_url,
+                "processing_stats": self._processing_stats,
+            }
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get processing statistics."""
+        return {
+            "config": asdict(self.config),
+            "processing_stats": self._processing_stats.copy(),
+            "service_initialized": self.session is not None,
+        }
+
+    def get_model_info(self) -> dict[str, Any]:
+        """Get model information."""
+        return {
+            "model_name": self.config.model_name,
+            "gpu_memory_fraction": self.config.gpu_memory_fraction,
+            "max_model_len": self.config.max_model_len,
+            "batch_size": self.config.batch_size,
+        }
+
+
+class DoclingVLMServiceManager:
+    """Manager for multiple Docling VLM service instances.
+
+    Handles load balancing and failover between multiple VLM services.
+    """
+
+    def __init__(self, configs: list[DoclingVLMConfig]):
+        """Initialize the VLM service manager.
+
+        Args:
+            configs: List of VLM service configurations
+
+        """
+        self.configs = configs
+        self.services: list[DoclingVLMService] = []
+        self.current_service_index = 0
+
+    async def initialize(self) -> None:
+        """Initialize all VLM services."""
+        for config in self.configs:
+            service = DoclingVLMService(config)
+            await service.initialize()
+            self.services.append(service)
+
+    async def close(self) -> None:
+        """Close all VLM services."""
+        for service in self.services:
+            await service.close()
+        self.services.clear()
+
+    async def process_pdf(self, pdf_path: str) -> DoclingVLMResult:
+        """Process PDF using available VLM service.
+
+        Args:
+            pdf_path: Path to PDF file
+
+        Returns:
+            DoclingVLMResult
+
+        """
+        if not self.services:
+            raise Exception("No VLM services available")
+
+        # Try current service first
+        service = self.services[self.current_service_index]
+
+        try:
+            result = await service.process_pdf(pdf_path)
+            if result.status == VLMProcessingStatus.COMPLETED:
+                return result
+        except Exception as e:
+            logger.warning(f"VLM service {self.current_service_index} failed: {e}")
+
+        # Try other services
+        for i, service in enumerate(self.services):
+            if i == self.current_service_index:
+                continue
+
+            try:
+                result = await service.process_pdf(pdf_path)
+                if result.status == VLMProcessingStatus.COMPLETED:
+                    self.current_service_index = i  # Switch to working service
+                    return result
+            except Exception as e:
+                logger.warning(f"VLM service {i} failed: {e}")
+
+        # All services failed
+        raise Exception("All VLM services failed")
+
+    async def health_check(self) -> dict[str, Any]:
+        """Check health of all VLM services."""
+        health_results = []
+
+        for i, service in enumerate(self.services):
+            try:
+                health = await service.health_check()
+                health_results.append(
+                    {"service_index": i, "config": asdict(service.config), **health}
+                )
+            except Exception as e:
+                health_results.append(
+                    {
+                        "service_index": i,
+                        "config": asdict(service.config),
+                        "status": "unhealthy",
+                        "error": str(e),
+                    }
+                )
+
+        return {
+            "total_services": len(self.services),
+            "healthy_services": len([h for h in health_results if h["status"] == "healthy"]),
+            "services": health_results,
+        }
+
+
+def create_docling_vlm_service(config: DoclingVLMConfig) -> DoclingVLMService:
+    """Create Docling VLM service instance.
+
+    Args:
+        config: VLM service configuration
+
+    Returns:
+        DoclingVLMService instance
+
+    """
+    return DoclingVLMService(config)
+
+
+def create_docling_vlm_service_manager(configs: list[DoclingVLMConfig]) -> DoclingVLMServiceManager:
+    """Create Docling VLM service manager.
+
+    Args:
+        configs: List of VLM service configurations
+
+    Returns:
+        DoclingVLMServiceManager instance
+
+    """
+    return DoclingVLMServiceManager(configs)

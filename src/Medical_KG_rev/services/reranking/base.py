@@ -132,9 +132,8 @@ class BaseReranker(RerankerPort):
 
     def _gpu_available(self) -> bool:
         try:
-            import torch
-
-            return bool(torch.cuda.is_available())  # type: ignore[attr-defined]
+            # import torch  # Removed for torch isolation
+            return bool(False)  # GPU functionality moved to gRPC services
         except Exception:  # pragma: no cover - torch optional
             return False
 

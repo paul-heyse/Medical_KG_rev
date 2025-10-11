@@ -1,0 +1,391 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: docling-vlm-service
+    namespace: medical-kg
+    labels:
+        app: docling-vlm-service
+        component: gpu-service
+        service: docling-vlm
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: docling-vlm-service
+    template:
+        metadata:
+            labels:
+                app: docling-vlm-service
+                component: gpu-service
+                service: docling-vlm
+            annotations:
+                prometheus.io/scrape: "true"
+                prometheus.io/port: "8080"
+                prometheus.io/path: "/metrics"
+        spec:
+            containers:
+                - name: docling-vlm-service
+                  image: medical-kg/docling-vlm-service:latest
+                  ports:
+                      - containerPort: 50054
+                        name: grpc
+                      - containerPort: 8080
+                        name: metrics
+                  env:
+                      - name: CUDA_VISIBLE_DEVICES
+                        value: "0"
+                      - name: GPU_MEMORY_FRACTION
+                        value: "0.9"
+                      - name: FAIL_FAST
+                        value: "true"
+                      - name: MODEL_NAME
+                        value: "gemma3-12b"
+                      - name: MAX_MODEL_LEN
+                        value: "4096"
+                      - name: TEMPERATURE
+                        value: "0.1"
+                      - name: BATCH_SIZE
+                        value: "4"
+                      - name: ENABLE_TABLE_EXTRACTION
+                        value: "true"
+                      - name: ENABLE_FIGURE_EXTRACTION
+                        value: "true"
+                      - name: ENABLE_TEXT_EXTRACTION
+                        value: "true"
+                      - name: ENABLE_MEDICAL_NORMALIZATION
+                        value: "true"
+                      - name: ENABLE_TABLE_FIDELITY
+                        value: "true"
+                      - name: ENABLE_TERMINOLOGY_SUPPORT
+                        value: "true"
+                      - name: MIN_CONFIDENCE_THRESHOLD
+                        value: "0.7"
+                      - name: ENABLE_QUALITY_VALIDATION
+                        value: "true"
+                      - name: TIMEOUT_SECONDS
+                        value: "300"
+                      - name: MAX_CONCURRENT_REQUESTS
+                        value: "5"
+                      - name: REQUEST_QUEUE_SIZE
+                        value: "100"
+                      - name: MODEL_WARMUP_ENABLED
+                        value: "true"
+                      - name: CACHE_ENABLED
+                        value: "true"
+                      - name: CACHE_SIZE
+                        value: "1000"
+                      - name: CACHE_TTL_SECONDS
+                        value: "3600"
+                      - name: METRICS_ENABLED
+                        value: "true"
+                      - name: TRACING_ENABLED
+                        value: "true"
+                      - name: JAEGER_ENDPOINT
+                        value: "http://jaeger-collector:14268/api/traces"
+                  resources:
+                      requests:
+                          memory: "16Gi"
+                          cpu: "2000m"
+                          nvidia.com/gpu: 1
+                      limits:
+                          memory: "32Gi"
+                          cpu: "4000m"
+                          nvidia.com/gpu: 1
+                  livenessProbe:
+                      exec:
+                          command:
+                              - python
+                              - -c
+                              - "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50054'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='docling_vlm')); assert response.status == health_pb2.HealthCheckResponse.SERVING"
+                      initialDelaySeconds: 120
+                      periodSeconds: 30
+                      timeoutSeconds: 10
+                      failureThreshold: 3
+                  readinessProbe:
+                      exec:
+                          command:
+                              - python
+                              - -c
+                              - "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50054'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='docling_vlm')); assert response.status == health_pb2.HealthCheckResponse.SERVING"
+                      initialDelaySeconds: 60
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  startupProbe:
+                      exec:
+                          command:
+                              - python
+                              - -c
+                              - "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50054'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='docling_vlm')); assert response.status == health_pb2.HealthCheckResponse.SERVING"
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 12
+                  volumeMounts:
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+                      - name: models
+                        mountPath: /app/models
+                      - name: cache
+                        mountPath: /app/cache
+                      - name: tls-certs
+                        mountPath: /app/certs
+                        readOnly: true
+                      - name: gpu-device
+                        mountPath: /dev/nvidia0
+                        readOnly: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: docling-vlm-service-config
+                - name: models
+                  persistentVolumeClaim:
+                      claimName: docling-vlm-models-pvc
+                - name: cache
+                  persistentVolumeClaim:
+                      claimName: docling-vlm-cache-pvc
+                - name: tls-certs
+                  secret:
+                      secretName: medical-kg-tls-certs
+                - name: gpu-device
+                  hostPath:
+                      path: /dev/nvidia0
+            nodeSelector:
+                accelerator: nvidia-tesla-v100
+            tolerations:
+                - key: nvidia.com/gpu
+                  operator: Exists
+                  effect: NoSchedule
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: accelerator
+                                    operator: In
+                                    values:
+                                        - nvidia-tesla-v100
+                                        - nvidia-tesla-a100
+                                        - nvidia-rtx-4090
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: docling-vlm-service
+    namespace: medical-kg
+    labels:
+        app: docling-vlm-service
+        component: gpu-service
+        service: docling-vlm
+spec:
+    selector:
+        app: docling-vlm-service
+    ports:
+        - port: 50054
+          targetPort: 50054
+          name: grpc
+        - port: 8080
+          targetPort: 8080
+          name: metrics
+    type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: docling-vlm-service-config
+    namespace: medical-kg
+data:
+    config.yaml: |
+        docling_vlm_service:
+          host: "0.0.0.0"
+          port: 50054
+          log_level: "INFO"
+
+          gpu:
+            enabled: true
+            device_id: 0
+            memory_fraction: 0.9
+            fail_fast: true
+
+          model:
+            name: "gemma3-12b"
+            max_model_len: 4096
+            temperature: 0.1
+            batch_size: 4
+            warmup_enabled: true
+            warmup_requests: 3
+
+          processing:
+            enable_table_extraction: true
+            enable_figure_extraction: true
+            enable_text_extraction: true
+            enable_medical_normalization: true
+            enable_table_fidelity: true
+            enable_terminology_support: true
+            min_confidence_threshold: 0.7
+            enable_quality_validation: true
+            timeout_seconds: 300
+
+          performance:
+            max_concurrent_requests: 5
+            request_queue_size: 100
+            batch_processing: true
+            batch_size: 4
+
+          caching:
+            enabled: true
+            cache_size: 1000
+            cache_ttl_seconds: 3600
+            cache_strategy: "lru"
+
+          health:
+            check_interval: 30
+            gpu_check: true
+            memory_check: true
+            model_check: true
+            warmup_check: true
+
+          metrics:
+            enabled: true
+            port: 8080
+            path: "/metrics"
+
+          tracing:
+            enabled: true
+            jaeger_endpoint: "http://jaeger-collector:14268/api/traces"
+            sample_rate: 0.1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: docling-vlm-models-pvc
+    namespace: medical-kg
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 100Gi
+    storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: docling-vlm-cache-pvc
+    namespace: medical-kg
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 20Gi
+    storageClassName: fast-ssd
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+    name: docling-vlm-service-hpa
+    namespace: medical-kg
+spec:
+    scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: docling-vlm-service
+    minReplicas: 1
+    maxReplicas: 3
+    metrics:
+        - type: Resource
+          resource:
+              name: nvidia.com/gpu
+              target:
+                  type: Utilization
+                  averageUtilization: 75
+        - type: Resource
+          resource:
+              name: cpu
+              target:
+                  type: Utilization
+                  averageUtilization: 80
+        - type: Resource
+          resource:
+              name: memory
+              target:
+                  type: Utilization
+                  averageUtilization: 85
+        - type: Pods
+          pods:
+              metric:
+                  name: docling_vlm_queue_size
+              target:
+                  type: AverageValue
+                  averageValue: "50"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+    name: docling-vlm-service-monitor
+    namespace: medical-kg
+    labels:
+        app: docling-vlm-service
+spec:
+    selector:
+        matchLabels:
+            app: docling-vlm-service
+    endpoints:
+        - port: metrics
+          path: /metrics
+          interval: 30s
+          scrapeTimeout: 10s
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+    name: docling-vlm-service-pdb
+    namespace: medical-kg
+spec:
+    minAvailable: 1
+    selector:
+        matchLabels:
+            app: docling-vlm-service
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+    name: docling-vlm-service-netpol
+    namespace: medical-kg
+spec:
+    podSelector:
+        matchLabels:
+            app: docling-vlm-service
+    policyTypes:
+        - Ingress
+        - Egress
+    ingress:
+        - from:
+              - namespaceSelector:
+                    matchLabels:
+                        name: medical-kg
+          ports:
+              - protocol: TCP
+                port: 50054
+              - protocol: TCP
+                port: 8080
+    egress:
+        - to:
+              - namespaceSelector:
+                    matchLabels:
+                        name: medical-kg
+          ports:
+              - protocol: TCP
+                port: 50051 # GPU service
+              - protocol: TCP
+                port: 50052 # Embedding service
+              - protocol: TCP
+                port: 50053 # Reranking service
+        - to: [] # Allow external access for model downloads
+          ports:
+              - protocol: TCP
+                port: 443
+              - protocol: TCP
+                port: 80

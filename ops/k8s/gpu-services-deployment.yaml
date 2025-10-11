@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: medical-kg-gpu-services
+    namespace: medical-kg
+    labels:
+        app: medical-kg-gpu-services
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: medical-kg-gpu-services
+    template:
+        metadata:
+            labels:
+                app: medical-kg-gpu-services
+        spec:
+            containers:
+                - name: gpu-services
+                  image: medical-kg-gpu-services:latest
+                  ports:
+                      - containerPort: 50051
+                        name: grpc
+                  env:
+                      - name: CUDA_VISIBLE_DEVICES
+                        value: "0"
+                      - name: GPU_MEMORY_FRACTION
+                        value: "0.8"
+                      - name: FAIL_FAST
+                        value: "true"
+                  resources:
+                      requests:
+                          memory: "4Gi"
+                          cpu: "1000m"
+                          nvidia.com/gpu: 1
+                      limits:
+                          memory: "8Gi"
+                          cpu: "2000m"
+                          nvidia.com/gpu: 1
+                  livenessProbe:
+                      exec:
+                          command:
+                              - python
+                              - -c
+                              - "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50051'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='')); assert response.status == health_pb2.HealthCheckResponse.SERVING"
+                      initialDelaySeconds: 60
+                      periodSeconds: 30
+                  readinessProbe:
+                      exec:
+                          command:
+                              - python
+                              - -c
+                              - "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50051'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='')); assert response.status == health_pb2.HealthCheckResponse.SERVING"
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                  volumeMounts:
+                      - name: config
+                        mountPath: /app/config
+                        readOnly: true
+                      - name: models
+                        mountPath: /app/models
+                      - name: tls-certs
+                        mountPath: /app/certs
+                        readOnly: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: medical-kg-gpu-services-config
+                - name: models
+                  persistentVolumeClaim:
+                      claimName: gpu-services-models-pvc
+                - name: tls-certs
+                  secret:
+                      secretName: medical-kg-tls-certs
+            nodeSelector:
+                accelerator: nvidia-tesla-v100
+            tolerations:
+                - key: nvidia.com/gpu
+                  operator: Exists
+                  effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: gpu-services
+    namespace: medical-kg
+    labels:
+        app: medical-kg-gpu-services
+spec:
+    selector:
+        app: medical-kg-gpu-services
+    ports:
+        - port: 50051
+          targetPort: 50051
+          name: grpc
+    type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: medical-kg-gpu-services-config
+    namespace: medical-kg
+data:
+    config.yaml: |
+        gpu_services:
+          host: "0.0.0.0"
+          port: 50051
+          log_level: "INFO"
+
+          gpu:
+            enabled: true
+            device_id: 0
+            memory_fraction: 0.8
+            fail_fast: true
+
+          models:
+            embedding:
+              model_name: "sentence-transformers/all-MiniLM-L6-v2"
+              batch_size: 32
+              max_length: 512
+
+            reranking:
+              model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+              batch_size: 16
+              max_length: 512
+
+          performance:
+            max_concurrent_requests: 10
+            request_timeout: 30
+            batch_processing: true
+            cache_size: 1000
+
+          health:
+            check_interval: 30
+            gpu_check: true
+            memory_check: true
+            model_check: true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: gpu-services-models-pvc
+    namespace: medical-kg
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 50Gi
+    storageClassName: fast-ssd
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+    name: gpu-services-hpa
+    namespace: medical-kg
+spec:
+    scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: medical-kg-gpu-services
+    minReplicas: 1
+    maxReplicas: 5
+    metrics:
+        - type: Resource
+          resource:
+              name: nvidia.com/gpu
+              target:
+                  type: Utilization
+                  averageUtilization: 70
+        - type: Resource
+          resource:
+              name: cpu
+              target:
+                  type: Utilization
+                  averageUtilization: 80

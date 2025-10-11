@@ -11,8 +11,6 @@ from Medical_KG_rev.chunking.exceptions import (
     ChunkingFailedError,
     ChunkingUnavailableError,
     InvalidDocumentError,
-    MineruGpuUnavailableError,
-    MineruOutOfMemoryError,
     ProfileNotFoundError,
     TokenizerMismatchError,
 )
@@ -137,30 +135,6 @@ class ChunkingErrorTranslator:
                 title="Chunking temporarily unavailable",
                 status=503,
                 type="https://httpstatuses.com/503",
-                detail=str(exc),
-                extensions=extensions,
-            )
-            return TranslatedChunkingError(detail, failure_type, "transient")
-        if isinstance(exc, MineruOutOfMemoryError):
-            extensions = {"reason": "gpu_out_of_memory"}
-            if correlation_id:
-                extensions["correlation_id"] = correlation_id
-            detail = ProblemDetail(
-                title="MinerU out of memory",
-                status=503,
-                type="https://medical-kg/errors/mineru-oom",
-                detail=str(exc),
-                extensions=extensions,
-            )
-            return TranslatedChunkingError(detail, failure_type, "transient")
-        if isinstance(exc, MineruGpuUnavailableError):
-            extensions = {"reason": "gpu_unavailable"}
-            if correlation_id:
-                extensions["correlation_id"] = correlation_id
-            detail = ProblemDetail(
-                title="MinerU GPU unavailable",
-                status=503,
-                type="https://medical-kg/errors/mineru-gpu-unavailable",
                 detail=str(exc),
                 extensions=extensions,
             )

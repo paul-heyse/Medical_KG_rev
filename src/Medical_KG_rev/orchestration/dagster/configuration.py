@@ -405,7 +405,7 @@ class PipelineConfigLoader:
             entry = self._cache.get(name)
             mtime = path.stat().st_mtime
             if force or entry is None or entry.mtime < mtime:
-                logger.info("pipeline.config.reload", pipeline=name, path=str(path))
+                logger.info("pipeline.config.reload: pipeline=%s path=%s", name, str(path))
                 raw = yaml.safe_load(path.read_text()) or {}
                 try:
                     config = PipelineTopologyConfig.model_validate(raw)

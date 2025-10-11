@@ -238,7 +238,6 @@ class ChunkingService:
 
     def _prepare_document_for_chunking(self, document: Document) -> Document:
         """Ensure blocks extracted from Docling contain chunkable text."""
-
         mutated = False
         prepared_sections: list[Section] = []
         for section in document.sections:

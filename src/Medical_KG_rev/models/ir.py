@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .equation import Equation
 from .figure import Figure
-from .table import Table
+from .table import Table, TableCell
 
 
 class IRBaseModel(BaseModel):

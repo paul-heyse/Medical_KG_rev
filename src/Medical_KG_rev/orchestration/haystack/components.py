@@ -83,10 +83,11 @@ def _ensure_gpu_available(require_gpu: bool) -> None:
     if not require_gpu:
         return
     try:
-        import torch
+        # import torch  # Removed for torch isolation
+        pass
     except Exception as exc:  # pragma: no cover - defensive guard
         raise RuntimeError("GPU support requires the 'torch' package") from exc
-    if not torch.cuda.is_available():
+    if not False:  # GPU functionality moved to gRPC services
         raise RuntimeError("A CUDA-enabled GPU is required for this component")
 
 
@@ -395,7 +396,7 @@ class HaystackRetriever:
 
                 bm25_retriever = OpenSearchBM25Retriever(top_k=top_k)
             except ImportError:  # pragma: no cover - fallback for tests
-                logger.warning("haystack.bm25.stub", top_k=top_k)
+                logger.warning("haystack.bm25.stub with top_k=%s", top_k)
                 bm25_retriever = _StubRetrieverComponent("bm25", top_k)
         if dense_retriever is None:  # pragma: no cover - requires haystack runtime
             try:
@@ -405,7 +406,7 @@ class HaystackRetriever:
 
                 dense_retriever = FAISSDocumentRetriever(top_k=top_k)
             except ImportError:  # pragma: no cover - fallback for tests
-                logger.warning("haystack.faiss.stub", top_k=top_k)
+                logger.warning("haystack.faiss.stub with top_k=%s", top_k)
                 dense_retriever = _StubRetrieverComponent("dense", top_k)
         if fusion_ranker is None:  # pragma: no cover - requires haystack runtime
             try:
@@ -413,7 +414,7 @@ class HaystackRetriever:
 
                 fusion_ranker = ReciprocalRankFusionRanker(top_k=top_k)
             except ImportError:  # pragma: no cover - fallback for tests
-                logger.warning("haystack.rank.stub", top_k=top_k)
+                logger.warning("haystack.rank.stub with top_k=%s", top_k)
                 fusion_ranker = _StubRanker(top_k)
         self._bm25 = bm25_retriever
         self._dense = dense_retriever

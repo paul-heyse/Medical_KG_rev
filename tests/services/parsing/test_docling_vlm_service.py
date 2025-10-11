@@ -48,7 +48,9 @@ def docling_config(tmp_path: Path) -> DoclingVLMConfig:
     return config
 
 
-def _build_service(config: DoclingVLMConfig, gpu_error: Exception | None = None) -> DoclingVLMService:
+def _build_service(
+    config: DoclingVLMConfig, gpu_error: Exception | None = None
+) -> DoclingVLMService:
     service = DoclingVLMService(config=config, gpu_manager=DummyGpu(should_fail=gpu_error))
     fake_pipeline = MagicMock(
         side_effect=lambda **_: {
@@ -72,13 +74,17 @@ def test_process_pdf_success_returns_normalised_result(docling_config: DoclingVL
     assert "provenance" in result.metadata
 
 
-def test_process_pdf_raises_model_unavailable_on_gpu_failure(docling_config: DoclingVLMConfig) -> None:
+def test_process_pdf_raises_model_unavailable_on_gpu_failure(
+    docling_config: DoclingVLMConfig,
+) -> None:
     service = _build_service(docling_config, gpu_error=GpuNotAvailableError("no gpu"))
     with pytest.raises(DoclingModelUnavailableError):
         service.process_pdf("/tmp/failure.pdf", document_id="doc-2")
 
 
-def test_process_pdf_raises_out_of_memory_on_runtime_error(docling_config: DoclingVLMConfig) -> None:
+def test_process_pdf_raises_out_of_memory_on_runtime_error(
+    docling_config: DoclingVLMConfig,
+) -> None:
     service = _build_service(docling_config)
     failing_pipeline = MagicMock(side_effect=RuntimeError("CUDA out of memory"))
     service._ensure_pipeline = MagicMock(return_value=failing_pipeline)
@@ -86,7 +92,9 @@ def test_process_pdf_raises_out_of_memory_on_runtime_error(docling_config: Docli
         service.process_pdf("/tmp/failure.pdf", document_id="doc-3")
 
 
-def test_process_pdf_raises_timeout_when_pipeline_times_out(docling_config: DoclingVLMConfig) -> None:
+def test_process_pdf_raises_timeout_when_pipeline_times_out(
+    docling_config: DoclingVLMConfig,
+) -> None:
     service = _build_service(docling_config)
     timeout_pipeline = MagicMock(side_effect=TimeoutError("deadline"))
     service._ensure_pipeline = MagicMock(return_value=timeout_pipeline)
@@ -96,10 +104,12 @@ def test_process_pdf_raises_timeout_when_pipeline_times_out(docling_config: Docl
 
 def test_process_pdf_batch_handles_partial_failures(docling_config: DoclingVLMConfig) -> None:
     service = _build_service(docling_config)
-    service.process_pdf = MagicMock(side_effect=[
-        DoclingVLMResult("doc-1", "text", [], [], {}),
-        DoclingVLMResult("doc-2", "text", [], [], {}),
-    ])
+    service.process_pdf = MagicMock(
+        side_effect=[
+            DoclingVLMResult("doc-1", "text", [], [], {}),
+            DoclingVLMResult("doc-2", "text", [], [], {}),
+        ]
+    )
     results = service.process_pdf_batch([("doc-1", "/tmp/1.pdf"), ("doc-2", "/tmp/2.pdf")])
     assert len(results) == 2
     assert [r.document_id for r in results] == ["doc-1", "doc-2"]

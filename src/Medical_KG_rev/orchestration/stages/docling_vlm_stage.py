@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import structlog
-
 from Medical_KG_rev.models.ir import BlockType, Document
 from Medical_KG_rev.orchestration.stages.contracts import (
     DownloadArtifact,

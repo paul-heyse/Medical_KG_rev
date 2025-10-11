@@ -26,7 +26,8 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 import structlog
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+
+# StageDefinition import moved to avoid circular imports
 from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
@@ -77,7 +78,7 @@ class StagePluginRegistration:
     """Registration record returned by plugin implementations."""
 
     metadata: StagePluginMetadata
-    builder: Callable[[StageDefinition, StagePluginResources], object]
+    builder: Callable[["StageDefinition", StagePluginResources], object]
     provider: StagePlugin | None = None
 
     def bind(self, provider: StagePlugin) -> StagePluginRegistration:
@@ -191,7 +192,7 @@ class StagePlugin(ABC):
         self,
         *,
         stage_type: str,
-        builder: Callable[[StageDefinition, StagePluginResources], object],
+        builder: Callable[["StageDefinition", StagePluginResources], object],
         capabilities: Sequence[str] | None = None,
         dependencies: Sequence[str] | None = None,
     ) -> StagePluginRegistration:
@@ -378,7 +379,7 @@ class StagePluginManager:
             report[name] = health
         return report
 
-    def build_stage(self, definition: StageDefinition) -> object:
+    def build_stage(self, definition: "StageDefinition") -> object:
         """Instantiate a stage for the supplied definition."""
         stage_type = definition.stage_type
         registrations = self._registry.get(stage_type, [])
@@ -444,8 +445,8 @@ class StagePluginManager:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.1, max=2.0))
     def _execute_with_retry(
         self,
-        builder: Callable[[StageDefinition, StagePluginResources], object],
-        definition: StageDefinition,
+        builder: Callable[["StageDefinition", StagePluginResources], object],
+        definition: "StageDefinition",
     ) -> object:
         return builder(definition, self.resources)
 

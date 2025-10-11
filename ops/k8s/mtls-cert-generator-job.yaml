@@ -1,0 +1,291 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: mtls-cert-generator
+    namespace: medical-kg
+spec:
+    template:
+        spec:
+            containers:
+                - name: cert-generator
+                  image: medical-kg-rev/cert-generator:latest
+                  command: ["python", "/scripts/generate_mtls_certificates.py"]
+                  args:
+                      - "--services"
+                      - "gateway"
+                      - "gpu-management"
+                      - "embedding"
+                      - "reranking"
+                      - "docling-vlm"
+                      - "--ca-cert"
+                      - "/certs/ca.crt"
+                      - "--ca-key"
+                      - "/certs/ca.key"
+                  volumeMounts:
+                      - name: certs
+                        mountPath: /certs
+                      - name: scripts
+                        mountPath: /scripts
+                        readOnly: true
+                  env:
+                      - name: MTLS_ENABLED
+                        value: "true"
+                      - name: MTLS_CA_CERT_PATH
+                        value: "/certs/ca.crt"
+                      - name: MTLS_CA_KEY_PATH
+                        value: "/certs/ca.key"
+            volumes:
+                - name: certs
+                  emptyDir: {}
+                - name: scripts
+                  configMap:
+                      name: cert-scripts
+            restartPolicy: Never
+    backoffLimit: 3
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: cert-scripts
+    namespace: medical-kg
+data:
+    generate_mtls_certificates.py: |
+        #!/usr/bin/env python3
+        """
+        Certificate generation script for mTLS setup.
+        """
+        import argparse
+        import asyncio
+        import logging
+        import sys
+        from pathlib import Path
+
+        # Add src to path for imports
+        sys.path.insert(0, "/app/src")
+
+        from Medical_KG_rev.services.security.mtls import CertificateConfig, mTLSManager
+
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
+        async def generate_ca_certificate(
+            ca_cert_path: str,
+            ca_key_path: str,
+            key_size: int = 2048,
+            duration_days: int = 3650
+        ) -> None:
+            """Generate CA certificate and private key."""
+            from cryptography import x509
+            from cryptography.hazmat.primitives import hashes, serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
+            from cryptography.x509.oid import NameOID
+            from datetime import datetime, timedelta
+
+            try:
+                # Generate CA private key
+                ca_key = rsa.generate_private_key(
+                    public_exponent=65537,
+                    key_size=key_size
+                )
+
+                # Create CA certificate
+                subject = issuer = x509.Name([
+                    x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                    x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+                    x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Medical_KG_rev"),
+                    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Certificate Authority"),
+                    x509.NameAttribute(NameOID.COMMON_NAME, "Medical_KG_rev CA"),
+                ])
+
+                ca_cert = (
+                    x509.CertificateBuilder()
+                    .subject_name(subject)
+                    .issuer_name(issuer)
+                    .public_key(ca_key.public_key())
+                    .serial_number(x509.random_serial_number())
+                    .not_valid_before(datetime.utcnow())
+                    .not_valid_after(datetime.utcnow() + timedelta(days=duration_days))
+                    .add_extension(
+                        x509.BasicConstraints(ca=True, path_length=None),
+                        critical=True
+                    )
+                    .add_extension(
+                        x509.KeyUsage(
+                            key_cert_sign=True,
+                            crl_sign=True,
+                            digital_signature=True,
+                            key_encipherment=False,
+                            content_commitment=False,
+                            data_encipherment=False,
+                            key_agreement=False,
+                            encipher_only=False,
+                            decipher_only=False
+                        ),
+                        critical=True
+                    )
+                    .add_extension(
+                        x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()),
+                        critical=False
+                    )
+                    .sign(ca_key, hashes.SHA256())
+                )
+
+                # Ensure certs directory exists
+                Path(ca_cert_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(ca_key_path).parent.mkdir(parents=True, exist_ok=True)
+
+                # Write CA certificate
+                with open(ca_cert_path, 'wb') as f:
+                    f.write(ca_cert.public_bytes(serialization.Encoding.PEM))
+
+                # Write CA private key
+                with open(ca_key_path, 'wb') as f:
+                    f.write(ca_key.private_bytes(
+                        encoding=serialization.Encoding.PEM,
+                        format=serialization.PrivateFormat.PKCS8,
+                        encryption_algorithm=serialization.NoEncryption()
+                    ))
+
+                logger.info(f"Generated CA certificate: {ca_cert_path}")
+                logger.info(f"Generated CA private key: {ca_key_path}")
+
+            except Exception as e:
+                logger.error(f"Failed to generate CA certificate: {e}")
+                raise
+
+        async def generate_service_certificates(
+            ca_cert_path: str,
+            ca_key_path: str,
+            services: list[str],
+            key_size: int = 2048,
+            duration_days: int = 365
+        ) -> None:
+            """Generate service certificates signed by the CA."""
+            try:
+                # Initialize mTLS manager
+                config = CertificateConfig(
+                    ca_cert_path=ca_cert_path,
+                    ca_key_path=ca_key_path,
+                    cert_path="",
+                    key_path="",
+                    key_size=key_size,
+                    cert_duration_days=duration_days
+                )
+
+                mtls_manager = mTLSManager(config)
+                await mtls_manager.initialize()
+
+                # Generate certificates for each service
+                for service in services:
+                    logger.info(f"Generating certificate for service: {service}")
+
+                    # Determine common name and SANs based on service
+                    if service == "gateway":
+                        common_name = "gateway.medical-kg.local"
+                        san_dns_names = ["gateway.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+                    elif service == "gpu-management":
+                        common_name = "gpu-management.medical-kg.local"
+                        san_dns_names = ["gpu-management.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+                    elif service == "embedding":
+                        common_name = "embedding.medical-kg.local"
+                        san_dns_names = ["embedding.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+                    elif service == "reranking":
+                        common_name = "reranking.medical-kg.local"
+                        san_dns_names = ["reranking.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+                    elif service == "docling-vlm":
+                        common_name = "docling-vlm.medical-kg.local"
+                        san_dns_names = ["docling-vlm.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+                    else:
+                        common_name = f"{service}.medical-kg.local"
+                        san_dns_names = [f"{service}.medical-kg.local", "localhost"]
+                        san_ip_addresses = ["127.0.0.1"]
+
+                    # Generate service certificate
+                    await mtls_manager.generate_service_certificate(
+                        service_name=service,
+                        common_name=common_name,
+                        san_dns_names=san_dns_names,
+                        san_ip_addresses=san_ip_addresses
+                    )
+
+                logger.info("All service certificates generated successfully")
+
+            except Exception as e:
+                logger.error(f"Failed to generate service certificates: {e}")
+                raise
+
+        async def main():
+            """Main function to generate mTLS certificates."""
+            parser = argparse.ArgumentParser(description="Generate mTLS certificates")
+            parser.add_argument(
+                "--ca-cert",
+                default="/certs/ca.crt",
+                help="Path to CA certificate file"
+            )
+            parser.add_argument(
+                "--ca-key",
+                default="/certs/ca.key",
+                help="Path to CA private key file"
+            )
+            parser.add_argument(
+                "--services",
+                nargs="+",
+                default=["gateway", "gpu-management", "embedding", "reranking", "docling-vlm"],
+                help="List of services to generate certificates for"
+            )
+            parser.add_argument(
+                "--key-size",
+                type=int,
+                default=2048,
+                help="RSA key size in bits"
+            )
+            parser.add_argument(
+                "--duration",
+                type=int,
+                default=365,
+                help="Certificate validity duration in days"
+            )
+            parser.add_argument(
+                "--ca-duration",
+                type=int,
+                default=3650,
+                help="CA certificate validity duration in days"
+            )
+
+            args = parser.parse_args()
+
+            try:
+                # Generate CA certificate
+                logger.info("Generating CA certificate...")
+                await generate_ca_certificate(
+                    ca_cert_path=args.ca_cert,
+                    ca_key_path=args.ca_key,
+                    key_size=args.key_size,
+                    duration_days=args.ca_duration
+                )
+
+                # Generate service certificates
+                logger.info("Generating service certificates...")
+                await generate_service_certificates(
+                    ca_cert_path=args.ca_cert,
+                    ca_key_path=args.ca_key,
+                    services=args.services,
+                    key_size=args.key_size,
+                    duration_days=args.duration
+                )
+
+                logger.info("Certificate generation completed successfully")
+
+            except Exception as e:
+                logger.error(f"Certificate generation failed: {e}")
+                sys.exit(1)
+
+        if __name__ == "__main__":
+            asyncio.run(main())

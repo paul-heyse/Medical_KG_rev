@@ -1,0 +1,181 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "Service Cache Monitoring",
+        "tags": [
+            "cache",
+            "performance",
+            "medical-kg"
+        ],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+            {
+                "id": 1,
+                "title": "Cache Hit Rate",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) * 100",
+                        "legendFormat": "Hit Rate %"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "min": 0,
+                        "max": 100,
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 70
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 90
+                                }
+                            ]
+                        }
+                    }
+                },
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            {
+                "id": 2,
+                "title": "Cache Operations per Second",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(cache_operations_total[1m])",
+                        "legendFormat": "{{service}} - {{operation}} - {{result}}"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Operations/sec",
+                        "min": 0
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                }
+            },
+            {
+                "id": 3,
+                "title": "Cache Size Utilization",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "cache_size_bytes",
+                        "legendFormat": "{{service}} Cache Size"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Bytes",
+                        "min": 0,
+                        "unit": "bytes"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                }
+            },
+            {
+                "id": 4,
+                "title": "Cache Performance",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(cache_performance_seconds_bucket[5m]))",
+                        "legendFormat": "95th percentile - {{service}} - {{operation}}"
+                    },
+                    {
+                        "expr": "histogram_quantile(0.50, rate(cache_performance_seconds_bucket[5m]))",
+                        "legendFormat": "50th percentile - {{service}} - {{operation}}"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Seconds",
+                        "min": 0,
+                        "unit": "s"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 8
+                }
+            },
+            {
+                "id": 5,
+                "title": "Cache TTL Distribution",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(cache_ttl_seconds_bucket[5m])",
+                        "legendFormat": "{{service}} - {{le}}"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Count/sec",
+                        "min": 0
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                }
+            },
+            {
+                "id": 6,
+                "title": "Cached Operations",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(cached_operations_total[1m])",
+                        "legendFormat": "{{service}} - {{operation}}"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Operations/sec",
+                        "min": 0
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                }
+            }
+        ],
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "refresh": "30s"
+    }
+}

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 try:  # pragma: no cover - optional dependency for YAML loading
     import yaml
@@ -92,4 +93,4 @@ class DoclingVLMConfig:
         }
 
 
-__all__ = ["DoclingVLMConfig", "DEFAULT_CONFIG_PATH", "DEFAULT_MODEL_PATH", "DEFAULT_MODEL_NAME"]
+__all__ = ["DEFAULT_CONFIG_PATH", "DEFAULT_MODEL_NAME", "DEFAULT_MODEL_PATH", "DoclingVLMConfig"]

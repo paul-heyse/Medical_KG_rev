@@ -35,6 +35,7 @@ Examples:
     plugin.initialise(context)
 
     # Create an ingest stage
+    from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
     definition = StageDefinition(name="ingest", stage_type="ingest", config={"adapter": "pdf"})
     stage = plugin.create_stage(definition, context)
 
@@ -49,7 +50,9 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from Medical_KG_rev.adapters.plugins.manager import AdapterPluginManager
 from Medical_KG_rev.adapters.plugins.models import AdapterDomain
-from Medical_KG_rev.orchestration.dagster.configuration import StageDefinition
+from Medical_KG_rev.config.settings import get_settings
+
+# StageDefinition import moved to avoid circular imports
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from Medical_KG_rev.orchestration.dagster.stages import HaystackPipelineResource
@@ -186,7 +189,7 @@ class CoreStagePlugin(StagePlugin):
         if not isinstance(self._pipeline_resource, HaystackPipelineResource):
             raise RuntimeError("Haystack pipeline resource not available")
 
-    def create_stage(self, definition: StageDefinition, context: StagePluginContext) -> object:
+    def create_stage(self, definition: "StageDefinition", context: StagePluginContext) -> object:
         """Create a stage instance based on the stage definition.
 
         Args:
@@ -279,7 +282,7 @@ class PdfTwoPhasePlugin(StagePlugin):
     This plugin specializes in PDF processing workflows, providing stages for
     downloading PDFs and gating pipeline execution based on backend readiness.
     It's designed for two-phase PDF processing where the first phase handles
-    PDF acquisition and the second phase waits for MinerU or Docling processing
+    PDF acquisition and the second phase waits for Docling processing
     completion depending on the active feature flag.
 
     Attributes:
@@ -350,7 +353,7 @@ class PdfTwoPhasePlugin(StagePlugin):
         if not isinstance(self._ledger, JobLedger):
             raise RuntimeError("Job ledger unavailable for PDF plugin")
 
-    def create_stage(self, definition: StageDefinition, context: StagePluginContext) -> object:
+    def create_stage(self, definition: "StageDefinition", context: StagePluginContext) -> object:
         """Create a stage instance based on the stage definition.
 
         Args:
@@ -464,7 +467,7 @@ class _PdfGateStage:
     """Gate stage that validates downstream processing readiness using the ledger.
 
     This private stage implementation handles pipeline gating for PDF processing.
-    It checks the job ledger to determine if the configured backend (MinerU or
+    It checks the job ledger to determine if the configured backend (Docling
     Docling VLM) has completed processing and either allows pipeline continuation
     or raises a gate not ready exception.
 
@@ -476,7 +479,7 @@ class _PdfGateStage:
         Thread-safe. The ledger is assumed to be thread-safe.
 
     Examples:
-        stage = _PdfGateStage(ledger, gate_name="mineru-ready")
+        stage = _PdfGateStage(ledger, gate_name="docling-ready")
         decision = stage.execute(context, state)
 
     """
@@ -500,7 +503,7 @@ class _PdfGateStage:
     def execute(self, ctx: StageContext, state: PipelineState) -> GateDecision:
         """Execute the PDF gate stage.
 
-        Checks the job ledger to determine if MinerU processing is complete.
+        Checks the job ledger to determine if Docling processing is complete.
         If ready, returns a gate decision allowing continuation. If not ready,
         raises a PipelineGateNotReady exception to block pipeline execution.
 
@@ -513,7 +516,7 @@ class _PdfGateStage:
 
         Raises:
             ValueError: If no job identifier is available for ledger lookup
-            PipelineGateNotReady: If MinerU processing is not yet complete
+            PipelineGateNotReady: If Docling processing is not yet complete
 
         """
         job_id = ctx.job_id or state.job_id
@@ -535,7 +538,7 @@ class _PdfGateStage:
                 (
                     f"Docling VLM not ready for job {job_id}"
                     if self._backend == "docling_vlm"
-                    else f"MinerU IR not ready for job {job_id}"
+                    else f"Docling IR not ready for job {job_id}"
                 ),
                 gate=self._gate_name,
             )

@@ -24,7 +24,7 @@ def test_block_type_enum():
 
 
 def test_table_validation_and_iteration():
-    table = Table(cells=[TableCell(row=0, column=0, content="A")])
+    table = Table(id="table1", page=1, cells=[TableCell(row=0, column=0, content="A")])
     block = Block(
         id="b1",
         type=BlockType.TABLE,

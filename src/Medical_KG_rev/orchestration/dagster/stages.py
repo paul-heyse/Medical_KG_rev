@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+# Import additional plugin framework classes from plugins.py module
+# (These are in plugins.py, not plugin_manager.py)
+# Import directly from the plugins.py file to avoid circular imports
+import importlib.util
 import json
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+
+# Import additional plugin framework classes from plugins.py module
+# (These are in plugins.py, not plugin_manager.py)
+# Define minimal versions locally to avoid circular dependencies
+from typing import Any, Callable
 from uuid import uuid4
+
+from attrs import define
 
 import structlog
 from Medical_KG_rev.adapters import AdapterPluginError
@@ -21,9 +33,26 @@ from Medical_KG_rev.orchestration.haystack.components import (
     HaystackIndexWriter,
 )
 
-# Import additional plugin framework classes from plugins.py module
-# (These are in plugins.py, not plugin_manager.py)
-from Medical_KG_rev.orchestration.stages import plugins as _plugins_module
+
+@define(slots=True)
+class StagePluginResources:
+    """Shared resources handed to plugin builders during registration."""
+    adapter_manager: Any
+    pipeline_resource: Any
+    job_ledger: Any | None = None
+    object_store: Any | None = None
+    cache_backend: Any | None = None
+    pdf_storage: Any | None = None
+    document_storage: Any | None = None
+    object_storage_settings: Any | None = None
+    redis_cache_settings: Any | None = None
+
+@define(slots=True)
+class StagePluginRegistration:
+    """Registration record returned by plugin implementations."""
+    metadata: Any
+    builder: Callable[["StageDefinition", StagePluginResources], object]
+    provider: Any | None = None
 
 # Import plugin framework from the plugins.py module (not the plugins/ package)
 # Python resolves "plugins" as the package directory, so we import the module differently
@@ -47,13 +76,13 @@ from Medical_KG_rev.orchestration.stages.contracts import (
 # Import plugin framework from the plugin_manager module (the canonical location)
 from Medical_KG_rev.orchestration.stages.plugin_manager import (
     StagePlugin,
+    StagePluginContext,
     StagePluginManager,
     StagePluginMetadata,
     hookimpl,
 )
 
-StagePluginResources = _plugins_module.StagePluginResources
-StagePluginRegistration = _plugins_module.StagePluginRegistration
+# StagePluginResources and StagePluginRegistration are now defined locally above
 
 # Note: CoreStagePlugin and PdfTwoPhasePlugin are imported lazily where needed
 # to avoid circular imports (plugins/builtin.py imports from dagster/configuration.py)
@@ -377,7 +406,12 @@ class CoreStagePlugin(StagePlugin):
     VERSION = "1.0.0"
 
     def __init__(self) -> None:
-        super().__init__(plugin_name=self.NAME, version=self.VERSION)
+        self.metadata = StagePluginMetadata(
+            name=self.NAME,
+            version=self.VERSION,
+            stage_types=("ingest", "extract", "chunk", "embed", "index", "query"),
+            description="Core orchestration stage implementations"
+        )
 
     def registrations(self, resources: StagePluginResources) -> Sequence[StagePluginRegistration]:
         """Return empty list - this plugin uses stage_builders instead."""
@@ -628,7 +662,20 @@ def create_stage_plugin_manager(
         object_storage_settings=object_storage_settings,
         redis_cache_settings=redis_cache_settings,
     )
-    manager = StagePluginManager(resources=resources)
+    # Convert StagePluginResources to dict manually since it uses slots=True
+    resources_dict = {
+        "adapter_manager": resources.adapter_manager,
+        "pipeline_resource": resources.pipeline_resource,
+        "job_ledger": resources.job_ledger,
+        "object_store": resources.object_store,
+        "cache_backend": resources.cache_backend,
+        "pdf_storage": resources.pdf_storage,
+        "document_storage": resources.document_storage,
+        "object_storage_settings": resources.object_storage_settings,
+        "redis_cache_settings": resources.redis_cache_settings,
+    }
+    context = StagePluginContext(resources=resources_dict)
+    manager = StagePluginManager(context=context)
     manager.register(CoreStagePlugin())
     if load_entrypoints:
         manager.load_entrypoints()

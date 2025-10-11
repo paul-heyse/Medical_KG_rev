@@ -1,7 +1,0 @@
-WARNING: Unknown option 'per-file-ignores' ignored
-WARNING: Error in file src/Medical_KG_rev/orchestration/stages/pdf_download.py: Cannot parse file.
-WARNING: Error in file src/Medical_KG_rev/orchestration/stages/plugins.py: Cannot parse file.
-WARNING: Error in file src/Medical_KG_rev/gateway/rest/router.py: Cannot parse file.
-WARNING: Error in file src/Medical_KG_rev/auth/audit.py: Cannot parse file.
-WARNING: Error in file tests/integration/conftest.py: Cannot parse file.
-WARNING: Error in file tests/integration/mineru_samples.py: Cannot parse file.

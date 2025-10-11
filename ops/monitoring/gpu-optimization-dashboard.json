@@ -1,0 +1,368 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "GPU Resource Optimization Dashboard",
+        "tags": [
+            "gpu",
+            "optimization",
+            "resource-management"
+        ],
+        "timezone": "browser",
+        "panels": [
+            {
+                "id": 1,
+                "title": "GPU Memory Utilization",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_memory_usage_mb / gpu_memory_total_mb * 100",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Utilization %",
+                        "min": 0,
+                        "max": 100
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            {
+                "id": 2,
+                "title": "GPU Memory Usage",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_memory_usage_mb",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Memory (MB)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                }
+            },
+            {
+                "id": 3,
+                "title": "GPU Temperature",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_temperature_celsius",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Temperature (°C)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                }
+            },
+            {
+                "id": 4,
+                "title": "GPU Power Usage",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "gpu_power_usage_watts",
+                        "legendFormat": "{{service_name}} - GPU {{device_id}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Power (W)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 8
+                }
+            },
+            {
+                "id": 5,
+                "title": "GPU Allocation Requests",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(gpu_allocation_requests_total[5m])",
+                        "legendFormat": "{{service_name}} - {{status}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Requests/sec",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                }
+            },
+            {
+                "id": 6,
+                "title": "GPU Allocation Duration",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(gpu_allocation_duration_seconds_bucket[5m]))",
+                        "legendFormat": "{{service_name}} - 95th percentile",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Duration (s)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                }
+            },
+            {
+                "id": 7,
+                "title": "GPU Throughput",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(gpu_throughput_ops_total[5m])",
+                        "legendFormat": "{{service_name}} - {{operation_type}}",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Operations/sec",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 24
+                }
+            },
+            {
+                "id": 8,
+                "title": "GPU Operation Latency",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(gpu_operation_latency_seconds_bucket[5m]))",
+                        "legendFormat": "{{service_name}} - {{operation_type}} - 95th percentile",
+                        "refId": "A"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Latency (s)",
+                        "min": 0
+                    }
+                ],
+                "xAxes": [
+                    {
+                        "type": "time"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 24
+                }
+            },
+            {
+                "id": 9,
+                "title": "GPU Memory Free",
+                "type": "singlestat",
+                "targets": [
+                    {
+                        "expr": "sum(gpu_memory_free_mb)",
+                        "refId": "A"
+                    }
+                ],
+                "valueName": "current",
+                "format": "short",
+                "prefix": "",
+                "postfix": " MB",
+                "thresholds": "1000,5000",
+                "colorBackground": true,
+                "colorValue": false,
+                "colors": [
+                    "#d44a3a",
+                    "#e24d42",
+                    "#299c46"
+                ],
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 0,
+                    "y": 32
+                }
+            },
+            {
+                "id": 10,
+                "title": "GPU Memory Used",
+                "type": "singlestat",
+                "targets": [
+                    {
+                        "expr": "sum(gpu_memory_usage_mb)",
+                        "refId": "A"
+                    }
+                ],
+                "valueName": "current",
+                "format": "short",
+                "prefix": "",
+                "postfix": " MB",
+                "thresholds": "5000,10000",
+                "colorBackground": true,
+                "colorValue": false,
+                "colors": [
+                    "#299c46",
+                    "#e24d42",
+                    "#d44a3a"
+                ],
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 6,
+                    "y": 32
+                }
+            },
+            {
+                "id": 11,
+                "title": "GPU Memory Total",
+                "type": "singlestat",
+                "targets": [
+                    {
+                        "expr": "sum(gpu_memory_total_mb)",
+                        "refId": "A"
+                    }
+                ],
+                "valueName": "current",
+                "format": "short",
+                "prefix": "",
+                "postfix": " MB",
+                "thresholds": "10000,20000",
+                "colorBackground": true,
+                "colorValue": false,
+                "colors": [
+                    "#d44a3a",
+                    "#e24d42",
+                    "#299c46"
+                ],
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 12,
+                    "y": 32
+                }
+            },
+            {
+                "id": 12,
+                "title": "GPU Utilization Average",
+                "type": "singlestat",
+                "targets": [
+                    {
+                        "expr": "avg(gpu_utilization_percent)",
+                        "refId": "A"
+                    }
+                ],
+                "valueName": "current",
+                "format": "short",
+                "prefix": "",
+                "postfix": " %",
+                "thresholds": "50,80",
+                "colorBackground": true,
+                "colorValue": false,
+                "colors": [
+                    "#299c46",
+                    "#e24d42",
+                    "#d44a3a"
+                ],
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 18,
+                    "y": 32
+                }
+            }
+        ],
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "refresh": "30s"
+    }
+}

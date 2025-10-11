@@ -15,58 +15,88 @@ The system maintains backward compatibility while providing superior document un
 
 ### Goals
 
-- Implement Docling VLM for superior PDF understanding and table/figure recognition
+- Implement Docling VLM with gRPC communication for superior PDF understanding
 - Create hybrid retrieval system (BM25 + SPLADE + Qwen3) for improved accuracy
 - Establish chunk store + separate indexes storage model for reproducibility
 - Implement deterministic chunking with tokenizer alignment
 - Add comprehensive provenance tracking for clinical trust
-- Maintain backward compatibility with existing document formats
+- Design new Doctags-based interfaces (no MinerU compatibility needed)
 - Achieve 20-30% accuracy improvement over current MinerU pipeline
+- Implement gRPC service architecture for all GPU services
 
 ### Non-Goals
 
-- Completely redesign the document processing pipeline architecture
-- Change the external API interfaces (maintain compatibility)
-- Remove support for existing MinerU-processed documents
+- Maintain MinerU compatibility or interfaces
+- Use HTTP REST APIs for service communication
+- Support existing MinerU-processed documents (clean migration)
 - Implement real-time PDF processing (batch processing is acceptable)
 - Install torch dependencies in main codebase (torch remains Docker-only)
 
 ## Decisions
 
-### 1. Docling VLM Integration Architecture
+### 1. Docling VLM gRPC Integration Architecture
 
-**Decision**: Replace MinerU + vLLM with Docling VLM in Docker containers for PDF processing.
+**Decision**: Replace MinerU + vLLM with Docling VLM using gRPC communication for PDF processing.
 
 **Implementation Details**:
 
-```python
-# Docling VLM service client (connects to Docker container)
-class DoclingVLMService:
-    def __init__(self, docker_service_url: str = "http://docling-vlm:8000"):
-        self.service_url = docker_service_url
+```protobuf
+// docling_vlm_service.proto
+service DoclingVLMService {
+    rpc ProcessPDF(ProcessPDFRequest) returns (ProcessPDFResponse);
+    rpc ProcessPDFBatch(ProcessPDFBatchRequest) returns (ProcessPDFBatchResponse);
+    rpc GetHealth(HealthRequest) returns (HealthResponse);
+}
 
-    def process_pdf(self, pdf_path: str) -> DoclingVLMResult:
-        # Send PDF to Docling VLM Docker service
-        with open(pdf_path, 'rb') as f:
-            response = requests.post(
-                f"{self.service_url}/process",
-                files={'pdf': f},
-                timeout=300
-            )
-        result = response.json()
-        return DoclingVLMResult(
-            text=result['text'],
-            tables=result['tables'],
-            figures=result['figures']
-        )
+message ProcessPDFRequest {
+    bytes pdf_content = 1;
+    string pdf_path = 2;
+    DoclingConfig config = 3;
+}
+
+message ProcessPDFResponse {
+    DocTagsResult doctags = 1;
+    ProcessingMetadata metadata = 2;
+    ProcessingStatus status = 3;
+    string error_message = 4;
+}
+
+message DocTagsResult {
+    DocumentStructure document = 1;
+    repeated Table tables = 2;
+    repeated Figure figures = 3;
+    repeated TextBlock text_blocks = 4;
+    DocumentMetadata doc_metadata = 5;
+}
 ```
 
-**Rationale**: Docling VLM runs in Docker container with docling[vlm] and vLLM dependencies, providing better document understanding than OCR + LLM pipeline.
+```python
+# gRPC client for Docling VLM service
+class DoclingVLMClient:
+    def __init__(self, grpc_endpoint: str):
+        self.channel = grpc.aio.insecure_channel(grpc_endpoint)
+        self.stub = DoclingVLMServiceStub(self.channel)
+
+    async def process_pdf(self, pdf_path: str) -> DocTagsResult:
+        with open(pdf_path, 'rb') as f:
+            pdf_content = f.read()
+
+        request = ProcessPDFRequest(
+            pdf_content=pdf_content,
+            pdf_path=pdf_path,
+            config=DoclingConfig()
+        )
+
+        response = await self.stub.ProcessPDF(request)
+        return response.doctags
+```
+
+**Rationale**: gRPC provides better performance, type safety, and streaming capabilities compared to HTTP. DocTags format offers superior document structure representation than MinerU output.
 
 **Alternatives Considered**:
 
-- Keep MinerU + vLLM: Current approach with known limitations in accuracy
-- Complete rewrite: Too risky for production system
+- HTTP REST API: Less efficient for binary data and lacks type safety
+- Direct integration: Increases coupling and deployment complexity
 - Multiple VLM models: Increases complexity and resource requirements
 
 ### 2. Hybrid Retrieval System Architecture
@@ -291,64 +321,64 @@ class MedicalBM25Analyzer:
 
 ## Migration Plan
 
-### Phase 1: Infrastructure Preparation (Week 1)
+### Phase 1: gRPC Infrastructure Preparation (Week 1)
 
-1. Update dependencies and Docker configuration
-2. Set up Docling VLM service in Docker
+1. Create gRPC service definitions for Docling VLM
+2. Set up Docling VLM gRPC service in Docker
 3. Configure GPU resource allocation for 24GB VRAM
-4. Implement basic DoclingVLMService with health checks
+4. Implement gRPC client for Docling VLM communication
 
-### Phase 2: Core Integration (Week 2-3)
+### Phase 2: Doctags Interface Design (Week 2)
 
-1. Replace MinerU service with DoclingVLMService
-2. Update pipeline stages to use VLM processing
-3. Implement feature flag for migration control
-4. Add comprehensive monitoring and metrics
+1. Design new Doctags-based processing interfaces
+2. Create Doctags result models and data structures
+3. Implement Doctags processing pipeline
+4. Add comprehensive Doctags validation and quality checks
 
-### Phase 3: Retrieval System Implementation (Week 4-5)
+### Phase 3: Retrieval System Implementation (Week 3-4)
 
 1. Implement hybrid chunker with tokenizer alignment
 2. Add SPLADE-v3 with Rep-Max aggregation
 3. Integrate Qwen3 embeddings with FAISS storage
 4. Implement structured BM25 indexing
 
-### Phase 4: Storage and Provenance (Week 6)
+### Phase 4: Storage and Provenance (Week 5)
 
 1. Implement chunk store database with DuckDB
 2. Create separate index storage with manifests
 3. Add comprehensive provenance tracking
 4. Implement medical text normalization
 
-### Phase 5: Testing and Validation (Week 7)
+### Phase 5: Testing and Validation (Week 6)
 
-1. Run comprehensive test suite comparing old vs new pipeline
+1. Run comprehensive test suite for Doctags pipeline
 2. Performance benchmarking with medical document corpus
-3. Integration testing with existing document corpus
+3. Integration testing with new Doctags format
 4. Security and compliance validation
 
-### Phase 6: Gradual Rollout (Week 8-9)
+### Phase 6: gRPC Service Integration (Week 7)
 
-1. Enable feature flag for percentage of traffic
-2. Monitor performance and accuracy metrics
-3. Compare results with existing MinerU pipeline
-4. Gradually increase traffic to new pipeline
+1. Integrate all GPU services with gRPC communication
+2. Implement service discovery and health checks
+3. Add circuit breaker patterns for service resilience
+4. Monitor gRPC service performance and metrics
 
-### Phase 7: Full Migration (Week 10)
+### Phase 7: Full Deployment (Week 8)
 
-1. Switch default processing to Docling VLM
+1. Deploy complete gRPC-based Docling VLM system
 2. Monitor for any issues or performance degradation
-3. Complete migration of all PDF processing
-4. Archive MinerU-related code and configurations
+3. Complete migration to Doctags-based processing
+4. Archive all MinerU-related code and configurations
 
 ### Rollback Plan
 
 If issues arise during rollout:
 
-1. Disable Docling feature flag immediately
-2. Fall back to MinerU processing
+1. Disable Docling gRPC service immediately
+2. Switch to backup processing pipeline
 3. Investigate root cause with comprehensive logging
 4. Fix issues and retry rollout
-5. Maintain ability to process existing documents with either method
+5. Maintain ability to reprocess documents with corrected pipeline
 
 ## Open Questions
 

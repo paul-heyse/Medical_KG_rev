@@ -12,10 +12,9 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Protocol
 
+import structlog
 import yaml
 from structlog.stdlib import BoundLogger
-
-import structlog
 
 DEFAULT_COMPONENT_CONFIG = Path("config/retrieval/components.yaml")
 

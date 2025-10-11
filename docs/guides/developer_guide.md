@@ -50,6 +50,7 @@ graph TD
 - **Authentication and authorization**: JWT-based security
 - **Rate limiting**: Per-user and per-IP limits
 - **Request routing**: Intelligent routing to microservices
+- **Torch-free architecture**: No PyTorch dependencies in main gateway
 
 #### Document Processing Pipeline
 
@@ -80,6 +81,15 @@ graph TD
 - **Hybrid ranking**: Reciprocal Rank Fusion (RRF)
 - **Real-time indexing**: Near real-time search updates
 - **Performance optimization**: Sub-500ms P95 latency
+
+#### GPU Services Architecture
+
+- **GPU Management Service**: gRPC service for GPU resource allocation and monitoring
+- **Embedding Service**: gRPC service for transformer-based embedding generation
+- **Reranking Service**: gRPC service for cross-encoder reranking models
+- **Docling VLM Service**: gRPC service for document processing using vision-language models
+- **Service Communication**: gRPC with circuit breaker patterns, service discovery, and health checks
+- **Fail-fast Behavior**: Services fail immediately if GPU unavailable (no CPU fallback)
 
 ### Technology Stack
 
@@ -164,8 +174,14 @@ python -m Medical_KG_rev.storage.migrate
 # Start all services
 docker-compose up -d
 
-# Start API gateway
+# Start API gateway (torch-free)
 python -m Medical_KG_rev.gateway.main
+
+# Start GPU services
+docker-compose up -d gpu-management-service
+docker-compose up -d embedding-service
+docker-compose up -d reranking-service
+docker-compose up -d docling-vlm-service
 
 # Start document processing
 python -m Medical_KG_rev.services.document.main
@@ -470,6 +486,422 @@ async def get_document(
     Requires authentication and appropriate permissions.
     """
     pass
+```
+
+## GPU Services Development
+
+### Service Architecture Overview
+
+The GPU services architecture isolates all PyTorch dependencies in dedicated Docker containers, communicating with the main gateway via gRPC. This provides:
+
+- **Resource isolation**: GPU memory and compute resources are isolated per service
+- **Independent scaling**: Services can scale independently based on workload
+- **Fail-fast behavior**: Services fail immediately if GPU unavailable (no CPU fallback)
+- **Simplified deployment**: Main gateway can run on CPU-only infrastructure
+
+### Service Communication Patterns
+
+#### gRPC Client Usage
+
+```python
+import grpc
+from Medical_KG_rev.proto import embedding_service_pb2_grpc, embedding_service_pb2
+from Medical_KG_rev.services.clients.embedding_client import EmbeddingClient
+from Medical_KG_rev.services.clients.error_handler import ServiceErrorHandler
+
+# Initialize client with error handling
+embedding_client = EmbeddingClient(
+    service_url="localhost:50052",
+    timeout=30.0,
+    retry_attempts=3
+)
+
+# Use with error handling
+error_handler = ServiceErrorHandler()
+
+async def generate_embeddings(texts: list[str]) -> list[list[float]]:
+    """Generate embeddings with proper error handling."""
+    try:
+        result = await error_handler.execute_with_retry(
+            embedding_client.generate_embeddings,
+            texts=texts,
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+        return result.embeddings
+    except Exception as e:
+        logger.error(f"Embedding generation failed: {e}")
+        raise
+```
+
+#### Circuit Breaker Integration
+
+```python
+from Medical_KG_rev.services.clients.circuit_breaker import CircuitBreaker
+
+# Initialize circuit breaker
+circuit_breaker = CircuitBreaker(
+    failure_threshold=5,
+    recovery_timeout=60,
+    expected_exception=grpc.RpcError
+)
+
+# Use with service calls
+async def safe_embedding_call(texts: list[str]) -> list[list[float]]:
+    """Make embedding call with circuit breaker protection."""
+    return await circuit_breaker.call(
+        embedding_client.generate_embeddings,
+        texts=texts
+    )
+```
+
+### Service Development Guidelines
+
+#### Creating New GPU Services
+
+1. **Define gRPC Service**:
+
+```protobuf
+syntax = "proto3";
+
+package medical_kg_rev.v1;
+
+service NewGPUService {
+  rpc ProcessData(ProcessDataRequest) returns (ProcessDataResponse);
+  rpc GetHealth(HealthRequest) returns (HealthResponse);
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+
+message ProcessDataRequest {
+  string input_data = 1;
+  string model_name = 2;
+  map<string, string> options = 3;
+}
+
+message ProcessDataResponse {
+  string result = 1;
+  float confidence = 2;
+  ProcessingMetadata metadata = 3;
+}
+```
+
+2. **Implement Service**:
+
+```python
+import grpc
+from concurrent import futures
+from Medical_KG_rev.proto import new_gpu_service_pb2_grpc, new_gpu_service_pb2
+from Medical_KG_rev.services.clients.error_handler import ServiceErrorHandler
+import torch
+import logging
+
+logger = logging.getLogger(__name__)
+
+class NewGPUServiceServicer(new_gpu_service_pb2_grpc.NewGPUServiceServicer):
+    """gRPC service implementation for new GPU service."""
+
+    def __init__(self):
+        self.model = None
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.error_handler = ServiceErrorHandler()
+
+    async def ProcessData(
+        self,
+        request: new_gpu_service_pb2.ProcessDataRequest,
+        context: grpc.aio.ServicerContext
+    ) -> new_gpu_service_pb2.ProcessDataResponse:
+        """Process data using GPU model."""
+        try:
+            # Load model if not already loaded
+            if self.model is None:
+                await self._load_model(request.model_name)
+
+            # Process data
+            result = await self._process_data(request.input_data)
+
+            return new_gpu_service_pb2.ProcessDataResponse(
+                result=result["output"],
+                confidence=result["confidence"],
+                metadata=new_gpu_service_pb2.ProcessingMetadata(
+                    model_name=request.model_name,
+                    processing_time_ms=result["processing_time"],
+                    gpu_memory_used_mb=result["gpu_memory"]
+                )
+            )
+
+        except Exception as e:
+            logger.error(f"Processing error: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Processing failed: {str(e)}")
+            return new_gpu_service_pb2.ProcessDataResponse()
+
+    async def _load_model(self, model_name: str):
+        """Load GPU model."""
+        try:
+            # Model loading logic
+            self.model = torch.load_model(model_name)
+            self.model.to(self.device)
+            logger.info(f"Model {model_name} loaded successfully")
+        except Exception as e:
+            logger.error(f"Model loading failed: {e}")
+            raise
+
+    async def _process_data(self, input_data: str) -> dict:
+        """Process input data."""
+        # Processing logic
+        pass
+```
+
+3. **Create Service Client**:
+
+```python
+import grpc
+from Medical_KG_rev.proto import new_gpu_service_pb2_grpc, new_gpu_service_pb2
+from Medical_KG_rev.services.clients.error_handler import ServiceErrorHandler
+from Medical_KG_rev.services.clients.circuit_breaker import CircuitBreaker
+import logging
+
+logger = logging.getLogger(__name__)
+
+class NewGPUClient:
+    """Client for new GPU service."""
+
+    def __init__(self, service_url: str, timeout: float = 30.0):
+        self.service_url = service_url
+        self.timeout = timeout
+        self.error_handler = ServiceErrorHandler()
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=5,
+            recovery_timeout=60
+        )
+
+    async def process_data(
+        self,
+        input_data: str,
+        model_name: str,
+        options: dict = None
+    ) -> dict:
+        """Process data using GPU service."""
+        async with grpc.aio.insecure_channel(self.service_url) as channel:
+            stub = new_gpu_service_pb2_grpc.NewGPUServiceStub(channel)
+
+            request = new_gpu_service_pb2.ProcessDataRequest(
+                input_data=input_data,
+                model_name=model_name,
+                options=options or {}
+            )
+
+            try:
+                response = await self.circuit_breaker.call(
+                    stub.ProcessData,
+                    request,
+                    timeout=self.timeout
+                )
+
+                return {
+                    "result": response.result,
+                    "confidence": response.confidence,
+                    "metadata": {
+                        "model_name": response.metadata.model_name,
+                        "processing_time_ms": response.metadata.processing_time_ms,
+                        "gpu_memory_used_mb": response.metadata.gpu_memory_used_mb
+                    }
+                }
+            except Exception as e:
+                logger.error(f"Service call failed: {e}")
+                raise
+```
+
+#### Error Handling Best Practices
+
+```python
+from Medical_KG_rev.services.clients.errors import (
+    ServiceError,
+    ServiceTimeoutError,
+    ServiceUnavailableError
+)
+
+async def robust_service_call():
+    """Example of robust service calling."""
+    try:
+        result = await service_client.process_data(
+            input_data="test",
+            model_name="test-model"
+        )
+        return result
+    except ServiceTimeoutError:
+        logger.warning("Service timeout, retrying with longer timeout")
+        # Retry with longer timeout
+        result = await service_client.process_data(
+            input_data="test",
+            model_name="test-model",
+            timeout=60.0
+        )
+        return result
+    except ServiceUnavailableError:
+        logger.error("Service unavailable, failing fast")
+        raise
+    except ServiceError as e:
+        logger.error(f"Service error: {e}")
+        raise
+```
+
+### Testing GPU Services
+
+#### Unit Testing
+
+```python
+import pytest
+from unittest.mock import Mock, patch
+from Medical_KG_rev.services.clients.embedding_client import EmbeddingClient
+
+class TestEmbeddingClient:
+    """Test cases for EmbeddingClient."""
+
+    @pytest.fixture
+    def embedding_client(self):
+        """Create EmbeddingClient instance."""
+        return EmbeddingClient(
+            service_url="localhost:50052",
+            timeout=30.0
+        )
+
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_success(self, embedding_client):
+        """Test successful embedding generation."""
+        # Mock gRPC response
+        mock_response = Mock()
+        mock_response.embeddings = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+
+        with patch.object(embedding_client, '_call_service') as mock_call:
+            mock_call.return_value = mock_response
+
+            result = await embedding_client.generate_embeddings(
+                texts=["test1", "test2"],
+                model_name="test-model"
+            )
+
+            assert len(result) == 2
+            assert result[0] == [0.1, 0.2, 0.3]
+            assert result[1] == [0.4, 0.5, 0.6]
+
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_timeout(self, embedding_client):
+        """Test embedding generation timeout."""
+        with patch.object(embedding_client, '_call_service') as mock_call:
+            mock_call.side_effect = grpc.RpcError("Timeout")
+
+            with pytest.raises(ServiceTimeoutError):
+                await embedding_client.generate_embeddings(
+                    texts=["test"],
+                    model_name="test-model"
+                )
+```
+
+#### Integration Testing
+
+```python
+import pytest
+import asyncio
+from Medical_KG_rev.services.clients.embedding_client import EmbeddingClient
+
+class TestEmbeddingServiceIntegration:
+    """Integration tests for embedding service."""
+
+    @pytest.fixture
+    async def embedding_client(self):
+        """Create EmbeddingClient for integration testing."""
+        client = EmbeddingClient(
+            service_url="localhost:50052",
+            timeout=30.0
+        )
+        yield client
+        # Cleanup if needed
+
+    @pytest.mark.asyncio
+    async def test_embedding_service_health(self, embedding_client):
+        """Test embedding service health check."""
+        health_status = await embedding_client.health_check()
+        assert health_status["status"] == "healthy"
+
+    @pytest.mark.asyncio
+    async def test_embedding_generation_integration(self, embedding_client):
+        """Test end-to-end embedding generation."""
+        texts = ["This is a test document", "Another test document"]
+
+        embeddings = await embedding_client.generate_embeddings(
+            texts=texts,
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+
+        assert len(embeddings) == 2
+        assert len(embeddings[0]) > 0  # Non-empty embedding
+        assert len(embeddings[1]) > 0  # Non-empty embedding
+```
+
+### Service Configuration
+
+#### Environment Variables
+
+```bash
+# GPU Service Configuration
+GPU_SERVICE_URL=localhost:50051
+EMBEDDING_SERVICE_URL=localhost:50052
+RERANKING_SERVICE_URL=localhost:50053
+DOCLING_VLM_SERVICE_URL=localhost:50054
+
+# Service Timeouts
+GPU_SERVICE_TIMEOUT=30.0
+EMBEDDING_SERVICE_TIMEOUT=60.0
+RERANKING_SERVICE_TIMEOUT=45.0
+DOCLING_VLM_SERVICE_TIMEOUT=300.0
+
+# Circuit Breaker Settings
+CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+CIRCUIT_BREAKER_RECOVERY_TIMEOUT=60
+CIRCUIT_BREAKER_EXPECTED_EXCEPTION=grpc.RpcError
+
+# Retry Settings
+MAX_RETRY_ATTEMPTS=3
+RETRY_BASE_DELAY=1.0
+RETRY_MAX_DELAY=60.0
+RETRY_EXPONENTIAL_BASE=2.0
+```
+
+#### Docker Configuration
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  embedding-service:
+    build:
+      context: .
+      dockerfile: ops/docker/embedding-services/Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      - MODEL_CACHE_DIR=/models
+      - GPU_MEMORY_FRACTION=0.8
+      - BATCH_SIZE=32
+    volumes:
+      - model_cache:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50052"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  model_cache:
 ```
 
 ## API Development

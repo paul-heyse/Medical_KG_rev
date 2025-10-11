@@ -14,7 +14,7 @@ try:  # pragma: no cover - metrics optional in minimal environments
 except Exception:  # pragma: no cover - fallback stub when dependencies missing
 
     def register_metrics(app, settings):  # type: ignore[override]
-        logger.warning("metrics.registration.unavailable", reason="dependencies_missing")
+        logger.warning("metrics.registration.unavailable: %s", "dependencies_missing")
 
 
 try:  # pragma: no cover - sentry optional dependency
@@ -22,7 +22,7 @@ try:  # pragma: no cover - sentry optional dependency
 except Exception:  # pragma: no cover - fallback stub when sentry dependencies missing
 
     def initialise_sentry(settings):  # type: ignore[override]
-        logger.info("sentry.disabled", reason="dependencies_missing")
+        logger.info("sentry.disabled: %s", "dependencies_missing")
 
 
 try:  # pragma: no cover - tracing optional dependency
@@ -30,10 +30,10 @@ try:  # pragma: no cover - tracing optional dependency
 except Exception:  # pragma: no cover - fallback stub when tracing dependencies missing
 
     def configure_tracing(service_name, telemetry):  # type: ignore[override]
-        logger.info("tracing.disabled", reason="dependencies_missing")
+        logger.info("tracing.disabled: %s", "dependencies_missing")
 
     def instrument_application(app, settings):  # type: ignore[override]
-        logger.info("tracing.instrumentation.skipped", reason="dependencies_missing")
+        logger.info("tracing.instrumentation.skipped: %s", "dependencies_missing")
 
 
 if TYPE_CHECKING:  # pragma: no cover - import hints only

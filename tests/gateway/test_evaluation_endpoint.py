@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from Medical_KG_rev.gateway.app import create_app
-from Medical_KG_rev.gateway.services import GatewayService
+from Medical_KG_rev.gateway.coordinators import EmbeddingCoordinator
 from Medical_KG_rev.services.evaluation import EvaluationConfig, EvaluationResult, MetricSummary
 
 
@@ -25,7 +25,8 @@ def client(monkeypatch) -> TestClient:
         config=EvaluationConfig(top_k=10),
     )
 
-    monkeypatch.setattr(GatewayService, "evaluate_retrieval", lambda self, req: result)
+    # Mock evaluation service - evaluation is handled by coordinators now
+    monkeypatch.setattr("Medical_KG_rev.gateway.app.evaluation_service", lambda req: result)
     return TestClient(app)
 
 

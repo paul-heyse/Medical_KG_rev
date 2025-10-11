@@ -18,10 +18,14 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
 
 ### Architecture Components
 
-- **API Gateway**: Multi-protocol API (REST, GraphQL, gRPC, SOAP, AsyncAPI)
+- **API Gateway**: Multi-protocol API (REST, GraphQL, gRPC, SOAP, AsyncAPI) - **Torch-free**
 - **Orchestration**: Dagster-based pipeline orchestration
 - **Storage**: S3-compatible object storage + Redis caching
-- **AI Services**: MinerU (PDF processing), vLLM (embeddings)
+- **GPU Services**: Dedicated Docker containers for AI workloads:
+  - **GPU Management Service**: gRPC service for GPU resource allocation
+  - **Embedding Service**: gRPC service for transformer-based embeddings
+  - **Reranking Service**: gRPC service for cross-encoder reranking
+  - **Docling VLM Service**: gRPC service for document processing
 - **Knowledge Graph**: Neo4j graph database
 - **Monitoring**: Prometheus + Grafana + Jaeger
 
@@ -29,11 +33,15 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
 
 | Service | Port | Purpose | Health Check |
 |---------|------|---------|--------------|
-| API Gateway | 8000 | Main API endpoint | `/health` |
+| API Gateway | 8000 | Main API endpoint (torch-free) | `/health` |
 | Dagster UI | 3000 | Pipeline management | `/health` |
 | MinIO | 9000 | Object storage | `/minio/health/live` |
 | Redis | 6379 | Caching | `PING` |
 | Neo4j | 7474 | Graph database | `/health` |
+| GPU Management Service | 50051 | GPU resource management | gRPC health check |
+| Embedding Service | 50052 | Embedding generation | gRPC health check |
+| Reranking Service | 50053 | Cross-encoder reranking | gRPC health check |
+| Docling VLM Service | 50054 | Document processing | gRPC health check |
 | Prometheus | 9090 | Metrics collection | `/health` |
 | Grafana | 3001 | Dashboards | `/health` |
 | Jaeger | 16686 | Distributed tracing | `/health` |
@@ -64,6 +72,15 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
 - `http_request_duration_seconds`: API response time
 - `dagster_job_runs_total`: Pipeline job runs
 - `dagster_job_failures_total`: Pipeline failures
+
+#### GPU Service Metrics
+
+- `gpu_service_calls_total`: Total gRPC service calls
+- `gpu_service_call_duration_seconds`: gRPC service response time
+- `gpu_service_errors_total`: gRPC service errors by type
+- `gpu_memory_usage_mb`: GPU memory usage per service
+- `gpu_service_health_status`: Service health status (0=healthy, 1=unhealthy)
+- `circuit_breaker_state`: Circuit breaker state (0=closed, 1=open, 2=half-open)
 
 ### Alerting Rules
 
@@ -96,6 +113,24 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
     severity: critical
   annotations:
     summary: "Pipeline failures detected"
+
+# GPU service failures
+- alert: GPUServiceFailures
+  expr: rate(gpu_service_errors_total[5m]) > 0.05
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: "GPU service failures detected"
+
+# Circuit breaker open
+- alert: CircuitBreakerOpen
+  expr: circuit_breaker_state == 1
+  for: 1m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Circuit breaker is open for GPU service"
 ```
 
 #### Warning Alerts
@@ -118,6 +153,24 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
     severity: warning
   annotations:
     summary: "Low cache hit rate detected"
+
+# High GPU service latency
+- alert: HighGPUServiceLatency
+  expr: histogram_quantile(0.95, rate(gpu_service_call_duration_seconds_bucket[5m])) > 5
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High GPU service latency detected"
+
+# GPU memory usage high
+- alert: HighGPUMemoryUsage
+  expr: gpu_memory_usage_mb > 20000
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High GPU memory usage detected"
 ```
 
 ### Dashboard URLs
@@ -126,6 +179,258 @@ This runbook provides operational procedures for the Medical_KG_rev platform, fo
 - **Storage Dashboard**: <http://grafana:3001/d/storage>
 - **Pipeline Dashboard**: <http://grafana:3001/d/pipeline>
 - **API Dashboard**: <http://grafana:3001/d/api>
+- **GPU Services Dashboard**: <http://grafana:3001/d/gpu-services>
+- **Service Architecture Dashboard**: <http://grafana:3001/d/service-architecture>
+
+## GPU Services Operations
+
+### Service Health Checks
+
+#### GPU Management Service Health Check
+
+```bash
+#!/bin/bash
+# Check GPU service health via gRPC
+grpc_health_probe -addr=localhost:50051 || exit 1
+
+# Check GPU service status
+python3 -c "
+import grpc
+from Medical_KG_rev.proto import gpu_service_pb2_grpc, gpu_service_pb2
+
+channel = grpc.insecure_channel('localhost:50051')
+stub = gpu_service_pb2_grpc.GPUServiceStub(channel)
+response = stub.GetStatus(gpu_service_pb2.GPUStatusRequest())
+print(f'GPU Service Status: {response.status}')
+print(f'Available GPUs: {response.available_gpus}')
+"
+```
+
+#### Embedding Service Health Check
+
+```bash
+#!/bin/bash
+# Check embedding service health via gRPC
+grpc_health_probe -addr=localhost:50052 || exit 1
+
+# Test embedding generation
+python3 -c "
+import grpc
+from Medical_KG_rev.proto import embedding_service_pb2_grpc, embedding_service_pb2
+
+channel = grpc.insecure_channel('localhost:50052')
+stub = embedding_service_pb2_grpc.EmbeddingServiceStub(channel)
+request = embedding_service_pb2.GenerateEmbeddingsRequest(texts=['test'])
+response = stub.GenerateEmbeddings(request)
+print(f'Embedding generated: {len(response.embeddings)} vectors')
+"
+```
+
+#### Reranking Service Health Check
+
+```bash
+#!/bin/bash
+# Check reranking service health via gRPC
+grpc_health_probe -addr=localhost:50053 || exit 1
+
+# Test reranking
+python3 -c "
+import grpc
+from Medical_KG_rev.proto import reranking_service_pb2_grpc, reranking_service_pb2
+
+channel = grpc.insecure_channel('localhost:50053')
+stub = reranking_service_pb2_grpc.RerankingServiceStub(channel)
+request = reranking_service_pb2.RerankBatchRequest(
+    query='test query',
+    documents=['doc1', 'doc2']
+)
+response = stub.RerankBatch(request)
+print(f'Reranking completed: {len(response.results)} results')
+"
+```
+
+#### Docling VLM Service Health Check
+
+```bash
+#!/bin/bash
+# Check Docling VLM service health via gRPC
+grpc_health_probe -addr=localhost:50054 || exit 1
+
+# Test VLM processing
+python3 -c "
+import grpc
+from Medical_KG_rev.proto import docling_vlm_service_pb2_grpc, docling_vlm_service_pb2
+
+channel = grpc.insecure_channel('localhost:50054')
+stub = docling_vlm_service_pb2_grpc.DoclingVLMServiceStub(channel)
+request = docling_vlm_service_pb2.HealthRequest()
+response = stub.GetHealth(request)
+print(f'Docling VLM Status: {response.status}')
+print(f'Model loaded: {response.model_loaded}')
+"
+```
+
+### Service Management
+
+#### Start GPU Services
+
+```bash
+#!/bin/bash
+# Start all GPU services
+docker-compose up -d gpu-management-service
+docker-compose up -d embedding-service
+docker-compose up -d reranking-service
+docker-compose up -d docling-vlm-service
+
+# Wait for services to be ready
+sleep 30
+
+# Verify all services are healthy
+grpc_health_probe -addr=localhost:50051 || echo "GPU Management Service not ready"
+grpc_health_probe -addr=localhost:50052 || echo "Embedding Service not ready"
+grpc_health_probe -addr=localhost:50053 || echo "Reranking Service not ready"
+grpc_health_probe -addr=localhost:50054 || echo "Docling VLM Service not ready"
+```
+
+#### Stop GPU Services
+
+```bash
+#!/bin/bash
+# Stop all GPU services gracefully
+docker-compose stop gpu-management-service
+docker-compose stop embedding-service
+docker-compose stop reranking-service
+docker-compose stop docling-vlm-service
+
+# Verify services are stopped
+docker-compose ps | grep -E "(gpu|embedding|reranking|docling)"
+```
+
+#### Restart GPU Services
+
+```bash
+#!/bin/bash
+# Restart GPU services
+docker-compose restart gpu-management-service
+docker-compose restart embedding-service
+docker-compose restart reranking-service
+docker-compose restart docling-vlm-service
+
+# Wait for services to be ready
+sleep 30
+
+# Verify all services are healthy
+grpc_health_probe -addr=localhost:50051 && echo "GPU Management Service ready"
+grpc_health_probe -addr=localhost:50052 && echo "Embedding Service ready"
+grpc_health_probe -addr=localhost:50053 && echo "Reranking Service ready"
+grpc_health_probe -addr=localhost:50054 && echo "Docling VLM Service ready"
+```
+
+### GPU Resource Monitoring
+
+#### Check GPU Memory Usage
+
+```bash
+#!/bin/bash
+# Check GPU memory usage
+nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits
+
+# Check GPU utilization
+nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits
+
+# Check GPU temperature
+nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits
+```
+
+#### Monitor Service GPU Usage
+
+```bash
+#!/bin/bash
+# Monitor GPU usage by service
+python3 -c "
+import grpc
+from Medical_KG_rev.proto import gpu_service_pb2_grpc, gpu_service_pb2
+
+channel = grpc.insecure_channel('localhost:50051')
+stub = gpu_service_pb2_grpc.GPUServiceStub(channel)
+response = stub.GetStatus(gpu_service_pb2.GPUStatusRequest())
+
+print('GPU Service Status:')
+for gpu in response.gpus:
+    print(f'  GPU {gpu.device_id}: {gpu.memory_used_mb}/{gpu.memory_total_mb} MB')
+    print(f'    Utilization: {gpu.utilization_percent}%')
+    print(f'    Temperature: {gpu.temperature_celsius}°C')
+    print(f'    Status: {gpu.status}')
+"
+```
+
+### Service Troubleshooting
+
+#### GPU Service Connection Issues
+
+**Symptoms**:
+
+- `gpu_service_errors_total` metric increasing
+- Circuit breaker state is open
+- Error logs showing "gRPC connection failed"
+
+**Diagnosis**:
+
+```bash
+# Check service connectivity
+grpc_health_probe -addr=localhost:50051
+grpc_health_probe -addr=localhost:50052
+grpc_health_probe -addr=localhost:50053
+grpc_health_probe -addr=localhost:50054
+
+# Check service logs
+docker-compose logs gpu-management-service
+docker-compose logs embedding-service
+docker-compose logs reranking-service
+docker-compose logs docling-vlm-service
+
+# Check network connectivity
+netstat -tulpn | grep -E "(50051|50052|50053|50054)"
+```
+
+**Resolution**:
+
+1. Check Docker service status: `docker-compose ps`
+2. Restart affected services: `docker-compose restart service-name`
+3. Check GPU availability: `nvidia-smi`
+4. Verify service configuration and dependencies
+5. Check for resource constraints (memory, disk space)
+
+#### GPU Memory Issues
+
+**Symptoms**:
+
+- `gpu_memory_usage_mb` metric > 20000
+- GPU out of memory errors
+- Service failures during model loading
+
+**Diagnosis**:
+
+```bash
+# Check GPU memory usage
+nvidia-smi
+
+# Check service memory usage
+docker stats
+
+# Check service logs for memory errors
+docker-compose logs embedding-service | grep -i memory
+docker-compose logs reranking-service | grep -i memory
+docker-compose logs docling-vlm-service | grep -i memory
+```
+
+**Resolution**:
+
+1. Restart services to free GPU memory
+2. Reduce batch sizes in service configuration
+3. Check for memory leaks in service code
+4. Scale up GPU resources if needed
+5. Implement GPU memory monitoring and alerting
 
 ## Storage Operations
 

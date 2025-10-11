@@ -57,8 +57,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from Medical_KG_rev.chunking.exceptions import (
     ChunkingFailedError,
-    MineruGpuUnavailableError,
-    MineruOutOfMemoryError,
     ProfileNotFoundError,
     TokenizerMismatchError,
 )
@@ -203,7 +201,7 @@ def create_app() -> FastAPI:
 
     gateway_service = get_gateway_service()
     docling_config = settings.docling_vlm.as_config()
-    docling_service = DoclingVLMService(docling_config, eager=False)
+    docling_service = DoclingVLMService(docling_config)
 
     def kafka_check() -> CheckResult:
         health = gateway_service.orchestrator.kafka.health()
@@ -220,7 +218,9 @@ def create_app() -> FastAPI:
         if health_state.get("status") != "ok":
             return failure(str(health_state))
         available = int(health_state.get("available_memory_mb", 0))
-        required_free = int(docling_config.gpu_memory_fraction * docling_config.required_total_memory_mb)
+        required_free = int(
+            docling_config.gpu_memory_fraction * docling_config.required_total_memory_mb
+        )
         if available < required_free:
             return failure(
                 f"Docling GPU free memory below threshold: required {required_free} MB, have {available} MB"
@@ -340,29 +340,7 @@ def create_app() -> FastAPI:
         _log_problem("gateway.chunking.failed", detail)
         return create_problem_response(detail)
 
-    @app.exception_handler(MineruOutOfMemoryError)
-    async def handle_mineru_oom(_: Request, exc: MineruOutOfMemoryError) -> JSONResponse:
-        detail = ProblemDetail(
-            title="MinerU out of memory",
-            status=503,
-            type="https://medical-kg/errors/mineru-oom",
-            detail=str(exc),
-            extensions={"reason": "gpu_out_of_memory"},
-        )
-        _log_problem("gateway.mineru.out_of_memory", detail)
-        return create_problem_response(detail)
 
-    @app.exception_handler(MineruGpuUnavailableError)
-    async def handle_mineru_unavailable(_: Request, exc: MineruGpuUnavailableError) -> JSONResponse:
-        detail = ProblemDetail(
-            title="MinerU GPU unavailable",
-            status=503,
-            type="https://medical-kg/errors/mineru-gpu-unavailable",
-            detail=str(exc),
-            extensions={"reason": "gpu_unavailable"},
-        )
-        _log_problem("gateway.mineru.gpu_unavailable", detail)
-        return create_problem_response(detail)
 
     return app
 

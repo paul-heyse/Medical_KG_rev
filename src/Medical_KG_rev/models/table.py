@@ -23,7 +23,7 @@ class TableCell(BaseModel):
 
 
 class Table(StructuredArtifact):
-    """Structured table representation extracted from MinerU output."""
+    """Structured table representation extracted from Docling VLM output."""
 
     model_config = StructuredArtifact.model_config
 

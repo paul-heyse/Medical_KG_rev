@@ -1,0 +1,206 @@
+version: "3.8"
+
+services:
+    # Torch-free main API gateway
+    gateway:
+        build:
+            context: ../..
+            dockerfile: ops/docker/gateway/Dockerfile
+        ports:
+            - "8000:8000"
+        environment:
+            - GPU_SERVICE_URL=gpu-services:50051
+            - EMBEDDING_SERVICE_URL=embedding-services:50051
+            - RERANKING_SERVICE_URL=reranking-services:50051
+        depends_on:
+            - gpu-services
+            - embedding-services
+            - reranking-services
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    # GPU services with torch ecosystem
+    gpu-services:
+        build:
+            context: ../..
+            dockerfile: ops/docker/gpu-services/Dockerfile
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        environment:
+            - CUDA_VISIBLE_DEVICES=0
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python",
+                    "-c",
+                    "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50051'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='')); assert response.status == health_pb2.HealthCheckResponse.SERVING",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
+
+    # Embedding services with torch ecosystem
+    embedding-services:
+        build:
+            context: ../..
+            dockerfile: ops/docker/embedding-services/Dockerfile
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        environment:
+            - CUDA_VISIBLE_DEVICES=0
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python",
+                    "-c",
+                    "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50051'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='')); assert response.status == health_pb2.HealthCheckResponse.SERVING",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
+
+    # Reranking services with torch ecosystem
+    reranking-services:
+        build:
+            context: ../..
+            dockerfile: ops/docker/reranking-services/Dockerfile
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        environment:
+            - CUDA_VISIBLE_DEVICES=0
+        networks:
+            - medical-kg-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python",
+                    "-c",
+                    "import grpc; from grpc_health.v1 import health_pb2_grpc, health_pb2; channel = grpc.insecure_channel('localhost:50051'); stub = health_pb2_grpc.HealthStub(channel); response = stub.Check(health_pb2.HealthCheckRequest(service='')); assert response.status == health_pb2.HealthCheckResponse.SERVING",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
+
+    # Infrastructure services
+    neo4j:
+        image: neo4j:5.15
+        ports:
+            - "7474:7474"
+            - "7687:7687"
+        environment:
+            - NEO4J_AUTH=neo4j/password
+            - NEO4J_PLUGINS=["apoc"]
+        volumes:
+            - neo4j_data:/data
+            - neo4j_logs:/logs
+        networks:
+            - medical-kg-network
+
+    opensearch:
+        image: opensearchproject/opensearch:2.11.0
+        ports:
+            - "9200:9200"
+        environment:
+            - discovery.type=single-node
+            - plugins.security.disabled=true
+        volumes:
+            - opensearch_data:/usr/share/opensearch/data
+        networks:
+            - medical-kg-network
+
+    kafka:
+        image: confluentinc/cp-kafka:7.4.0
+        ports:
+            - "9092:9092"
+        environment:
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        depends_on:
+            - zookeeper
+        networks:
+            - medical-kg-network
+
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.4.0
+        ports:
+            - "2181:2181"
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+        networks:
+            - medical-kg-network
+
+    redis:
+        image: redis:7.2-alpine
+        ports:
+            - "6379:6379"
+        networks:
+            - medical-kg-network
+
+    prometheus:
+        image: prom/prometheus:latest
+        ports:
+            - "9090:9090"
+        volumes:
+            - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--web.console.libraries=/etc/prometheus/console_libraries"
+            - "--web.console.templates=/etc/prometheus/consoles"
+            - "--web.enable-lifecycle"
+        networks:
+            - medical-kg-network
+
+    grafana:
+        image: grafana/grafana:latest
+        ports:
+            - "3000:3000"
+        environment:
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+        volumes:
+            - grafana_data:/var/lib/grafana
+        networks:
+            - medical-kg-network
+
+networks:
+    medical-kg-network:
+        driver: bridge
+
+volumes:
+    neo4j_data:
+    neo4j_logs:
+    opensearch_data:
+    grafana_data:

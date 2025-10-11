@@ -4,17 +4,15 @@ from __future__ import annotations
 
 from .docling_config import (
     DEFAULT_CONFIG_PATH as DEFAULT_DOCLING_CONFIG_PATH,
-    DEFAULT_MODEL_NAME as DEFAULT_DOCLING_MODEL_NAME,
-    DEFAULT_MODEL_PATH as DEFAULT_DOCLING_MODEL_PATH,
-    DoclingVLMConfig,
 )
-from .retrieval_config import (
-    DEFAULT_RETRIEVAL_CONFIG_PATH,
-    BM25Config,
-    FusionConfig,
-    Qwen3Config,
-    RetrievalConfig,
-    SPLADEConfig,
+from .docling_config import (
+    DEFAULT_MODEL_NAME as DEFAULT_DOCLING_MODEL_NAME,
+)
+from .docling_config import (
+    DEFAULT_MODEL_PATH as DEFAULT_DOCLING_MODEL_PATH,
+)
+from .docling_config import (
+    DoclingVLMConfig,
 )
 from .domains import DomainConfig, DomainRegistry
 from .pyserini_config import (
@@ -26,6 +24,14 @@ from .pyserini_config import (
     PyseriniOpenSearchConfig,
     PyseriniServiceConfig,
     load_pyserini_config,
+)
+from .retrieval_config import (
+    DEFAULT_RETRIEVAL_CONFIG_PATH,
+    BM25Config,
+    FusionConfig,
+    Qwen3Config,
+    RetrievalConfig,
+    SPLADEConfig,
 )
 from .vllm_config import (
     DEFAULT_VLLM_CONFIG,
@@ -39,26 +45,26 @@ from .vllm_config import (
 )
 
 __all__ = [
-    "DEFAULT_PYSERINI_CONFIG",
-    "DEFAULT_VLLM_CONFIG",
     "DEFAULT_DOCLING_CONFIG_PATH",
     "DEFAULT_DOCLING_MODEL_NAME",
     "DEFAULT_DOCLING_MODEL_PATH",
-    "DoclingVLMConfig",
+    "DEFAULT_PYSERINI_CONFIG",
     "DEFAULT_RETRIEVAL_CONFIG_PATH",
+    "DEFAULT_VLLM_CONFIG",
     "BM25Config",
-    "FusionConfig",
-    "Qwen3Config",
-    "RetrievalConfig",
-    "SPLADEConfig",
+    "DoclingVLMConfig",
     "DomainConfig",
     "DomainRegistry",
+    "FusionConfig",
     "PyseriniConfig",
     "PyseriniExpansionConfig",
     "PyseriniExpansionSideConfig",
     "PyseriniModelConfig",
     "PyseriniOpenSearchConfig",
     "PyseriniServiceConfig",
+    "Qwen3Config",
+    "RetrievalConfig",
+    "SPLADEConfig",
     "VLLMBatchingConfig",
     "VLLMConfig",
     "VLLMHealthCheckConfig",
